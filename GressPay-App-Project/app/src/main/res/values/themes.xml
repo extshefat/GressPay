@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.GressPay" parent="Theme.Material3.Light.NoActionBar">
+        <item name="colorPrimary">@color/gp_teal</item>
+        <item name="colorPrimaryDark">@color/gp_teal_dark</item>
+        <item name="colorAccent">@color/gp_teal</item>
+        <item name="android:statusBarColor">@color/gp_zinc_950</item>
+        <item name="android:navigationBarColor">@color/gp_white</item>
+        <item name="android:windowBackground">@color/gp_zinc_100</item>
+    </style>
+</resources>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="gp_teal">#0F766E</color>
+    <color name="gp_teal_dark">#0D9488</color>
+    <color name="gp_zinc_950">#09090B</color>
+    <color name="gp_zinc_100">#F4F4F5</color>
+    <color name="gp_zinc_500">#71717A</color>
+    <color name="gp_white">#FFFFFF</color>
+    <color name="gp_error">#DC2626</color>
+</resources>

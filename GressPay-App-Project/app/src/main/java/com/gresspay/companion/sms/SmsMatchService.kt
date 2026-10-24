@@ -1,0 +1,101 @@
+package com.gresspay.companion.sms
+
+import android.app.Notification
+import android.app.PendingIntent
+import android.app.Service
+import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.ServiceInfo
+import android.os.Build
+import android.os.IBinder
+import android.provider.Telephony
+import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
+import com.gresspay.companion.GressPayApp
+import com.gresspay.companion.R
+import com.gresspay.companion.data.Prefs
+import com.gresspay.companion.ui.MainActivity
+
+/**
+ * Foreground service while matching is opted-in.
+ * Dynamically registers SmsBroadcastReceiver so SMS is not listened to when off.
+ */
+class SmsMatchService : Service() {
+    private var smsReceiver: SmsBroadcastReceiver? = null
+
+    override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val prefs = Prefs(this)
+        if (!prefs.matchingEnabled || !prefs.consentAccepted) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
+        val open = PendingIntent.getActivity(
+            this,
+            0,
+            Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val notification: Notification = NotificationCompat.Builder(this, GressPayApp.CHANNEL_SMS)
+            .setContentTitle(getString(R.string.notification_title))
+            .setContentText(getString(R.string.notification_text))
+            .setSmallIcon(R.drawable.ic_stat_gp)
+            .setContentIntent(open)
+            .setOngoing(true)
+            .build()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(NOTIF_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        } else {
+            startForeground(NOTIF_ID, notification)
+        }
+
+        registerSmsReceiver()
+        return START_STICKY
+    }
+
+    private fun registerSmsReceiver() {
+        if (smsReceiver != null) return
+        val receiver = SmsBroadcastReceiver()
+        val filter = IntentFilter(Telephony.Sms.Intents.SMS_RECEIVED_ACTION).apply {
+            priority = 999
+        }
+        ContextCompat.registerReceiver(
+            this,
+            receiver,
+            filter,
+            ContextCompat.RECEIVER_EXPORTED
+        )
+        smsReceiver = receiver
+    }
+
+    override fun onDestroy() {
+        smsReceiver?.let {
+            try {
+                unregisterReceiver(it)
+            } catch (_: Exception) {
+            }
+        }
+        smsReceiver = null
+        super.onDestroy()
+    }
+
+    companion object {
+        private const val NOTIF_ID = 4201
+
+        fun start(context: android.content.Context) {
+            val i = Intent(context, SmsMatchService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(i)
+            } else {
+                context.startService(i)
+            }
+        }
+
+        fun stop(context: android.content.Context) {
+            context.stopService(Intent(context, SmsMatchService::class.java))
+        }
+    }
+}
