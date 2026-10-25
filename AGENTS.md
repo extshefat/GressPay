@@ -74,3 +74,65 @@ push.bat "feat: <message>"
    - bKash/Nagad require companion SMS matching.
    - Binance Pay requires official merchant order verification.
    - USDT TRC-20 requires TronGrid on-chain confirmations.
+
+---
+
+## Cursor Cloud specific instructions
+
+Cloud Agent VMs develop the Next.js app and PHP API locally. Production MySQL, Coolify, and the Android SDK stay off this VM.
+
+### Toolchain
+
+- Node.js on the default image (22.x) runs this Next.js 15 app.
+- PHP 8.3 CLI needs `pdo_sqlite`, `bcmath`, `curl`, `mbstring`, and `xml`:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y php-cli php-sqlite3 php-bcmath php-curl php-mbstring php-xml
+```
+
+### Install
+
+From the repo root:
+
+```bash
+npm ci || npm install
+```
+
+`npm ci` on npm 10.9 rejects the committed lockfile (`picomatch@2.3.2` does not satisfy `picomatch@4.0.7`). The Dockerfile and `.github/workflows/verify.yml` already fall back to `npm install`. Leave `package-lock.json` unchanged unless a dependency update is the task.
+
+### Dev servers
+
+`backend/.env.example` is production MySQL. Booting the API from that file returns HTTP 503 until secrets exist. Local boot uses SQLite. Write `backend/.env` (gitignored) before starting PHP:
+
+```
+APP_ENV=development
+DB_DRIVER=sqlite
+SQLITE_PATH=storage/gresspay.sqlite
+JWT_SECRET=<at least 32 characters>
+APP_ENCRYPTION_KEY=<at least 32 characters>
+CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+GRESSPAY_CRYPTO_ALLOWED=0
+```
+
+Write `.env.local` so the dashboard talks to PHP instead of mock data:
+
+```
+NEXT_PUBLIC_DATA_SOURCE=live
+NEXT_PUBLIC_API_URL=
+GRESSPAY_PHP_URL=http://127.0.0.1:8080
+```
+
+- API: `cd backend && php -S 0.0.0.0:8080 -t public public/index.php` then `GET /api/v1/health`
+- Web: `npm run dev -- --hostname 0.0.0.0 --port 3000`
+- Browser calls `/api/v1/*`. `src/app/api/v1/[...path]/route.ts` proxies to `GRESSPAY_PHP_URL`.
+
+Hello-world: `POST /api/v1/auth/register` with `name`, `email`, `password` (8+), and `businessName`, then `POST /api/v1/payment-links` with the returned bearer token. Hosted checkout is `/pay/<linkId>`.
+
+### Checks
+
+- `npx tsc --noEmit`
+- `NEXT_PUBLIC_DATA_SOURCE=live npm run build` (a production build requires `live`)
+- `cd backend && php tests/run.php` (SQLite, no MySQL). The JPEG magic assertion fails today: the fixture is shorter than the 12-byte minimum in `R2Client::detectImageMime`. PNG magic passes. That is product code, not a missing extension.
+
+Android Gradle tests need JDK 17 and the Android SDK. Google, Binance, Tron, and Cloudflare R2 stay empty until those secrets are provided. Empty checkout rails mean the merchant has not connected a wallet.
