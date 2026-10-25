@@ -9,7 +9,8 @@ export const metadata: Metadata = {
   description:
     "First release: bKash and Nagad via merchant wallet + SMS companion, Binance Pay merchant checkout, and USDT TRC-20 on-chain verification.",
   icons: {
-    icon: "/favicon.ico",
+    icon: "/brand/gresspay-app-icon.png",
+    apple: "/brand/gresspay-app-icon.png",
   },
 };
 

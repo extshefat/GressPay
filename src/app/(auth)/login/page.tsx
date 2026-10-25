@@ -19,8 +19,8 @@ import { ArrowRight, Lock, Mail } from "lucide-react";
 export default function LoginPage() {
   const router = useRouter();
   const { success, error: toastError } = useToast();
-  const [email, setEmail] = useState("founder@gresspay.io");
-  const [password, setPassword] = useState("demo-password");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);

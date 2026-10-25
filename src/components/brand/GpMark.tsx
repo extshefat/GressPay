@@ -6,18 +6,18 @@ export interface GpMarkProps {
 }
 
 const sizeClass = {
-  sm: "w-7 h-7 text-[10px]",
-  md: "w-8 h-8 text-xs",
-  lg: "w-10 h-10 text-sm",
+  sm: "h-7 w-7",
+  md: "h-8 w-8",
+  lg: "h-10 w-10",
 };
 
-/** Teal GP mark — brand signal used in nav, footer, auth, dashboard. */
+/** Color mark on light backgrounds, white mark on dark backgrounds. */
 export const GpMark: React.FC<GpMarkProps> = ({ size = "md", className = "" }) => {
+  const box = `${sizeClass[size]} object-contain shrink-0 ${className}`;
   return (
-    <div
-      className={`${sizeClass[size]} rounded-lg bg-teal-700 text-white dark:bg-teal-400 dark:text-teal-950 flex items-center justify-center font-bold shadow-sm ${className}`}
-    >
-      GP
-    </div>
+    <span className="inline-flex shrink-0" aria-hidden>
+      <img src="/brand/gresspay-mark-color.png" alt="" className={`${box} dark:hidden`} />
+      <img src="/brand/gresspay-mark-white.png" alt="" className={`${box} hidden dark:block`} />
+    </span>
   );
 };

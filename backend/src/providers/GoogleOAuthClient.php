@@ -49,7 +49,7 @@ final class GoogleOAuthClient
         $now = time();
         $expiresAt = $now + 600; // 10 minutes expiry
 
-        // Clean expired states first
+        // Clean expired states first. A missing row makes the callback fail closed.
         try {
             GpDb::exec('DELETE FROM gp_oauth_states WHERE expires_at < ?', [$now]);
             GpDb::exec(
@@ -59,6 +59,10 @@ final class GoogleOAuthClient
             );
         } catch (Throwable $e) {
             error_log('GoogleOAuth state storage error: ' . $e->getMessage());
+            return [
+                'enabled' => false,
+                'reason' => 'Google sign-in could not store the login session. ' . $e->getMessage(),
+            ];
         }
 
         $params = [

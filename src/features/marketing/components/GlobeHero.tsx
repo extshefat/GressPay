@@ -5,7 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { InteractiveGlobe } from "../3d/InteractiveGlobe";
 import { Button } from "@/components/ui/button";
-import { GpMark } from "@/components/brand/GpMark";
+import { GressPayLogo } from "@/components/brand/GressPayLogo";
 import { ArrowRight, Layers } from "lucide-react";
 
 export const GlobeHero: React.FC = () => {
@@ -36,16 +36,11 @@ export const GlobeHero: React.FC = () => {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              className="flex items-center gap-3"
+              className="space-y-2"
             >
-              <GpMark size="lg" />
-              <div>
-                <div className="text-2xl sm:text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-100">
-                  GressPay
-                </div>
-                <div className="text-[11px] font-mono tracking-wider text-teal-700 dark:text-teal-400 uppercase">
-                  South Asia · USDT
-                </div>
+              <GressPayLogo size="lg" />
+              <div className="text-[11px] font-mono tracking-wider text-teal-700 dark:text-teal-400 uppercase">
+                South Asia · USDT
               </div>
             </motion.div>
 
