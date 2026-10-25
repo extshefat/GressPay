@@ -123,21 +123,21 @@ export default function OverviewPage() {
           </Badge>
         </div>
 
-        {/* Binance Pay Official API */}
+        {/* Direct-to-Wallet Architecture */}
         <div className="flex items-center justify-between p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-2xs">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400">
+            <div className="p-2 rounded-lg bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400">
               <ShieldCheck className="w-4 h-4" />
             </div>
             <div>
               <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-                Binance Pay Merchant
+                Direct-to-Wallet Settlement
               </div>
-              <div className="text-[11px] text-zinc-500">Server-to-Server Checkout</div>
+              <div className="text-[11px] text-zinc-500">Non-Custodial · Zero Escrow</div>
             </div>
           </div>
           <Badge variant="emerald" size="sm" dot>
-            Operational
+            Protected
           </Badge>
         </div>
 

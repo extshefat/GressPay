@@ -78,7 +78,7 @@ export function Navbar() {
                   Log in
                 </Button>
               </Link>
-              <Link href="/register">
+              <Link href="/login">
                 <Button size="sm" rightIcon={<ArrowRight className="w-4 h-4" />}>
                   Get started
                 </Button>
@@ -113,7 +113,7 @@ export function Navbar() {
                 </Button>
               </Link>
             ) : (
-              <Link href="/register" className="flex-1" onClick={() => setOpen(false)}>
+              <Link href="/login" className="flex-1" onClick={() => setOpen(false)}>
                 <Button className="w-full" size="sm">
                   Get started
                 </Button>

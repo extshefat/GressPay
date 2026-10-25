@@ -29,11 +29,8 @@ export interface HostedCheckoutModalProps {
 }
 
 const COUNTRY_CONFIG: Record<string, { label: string; flag: string }> = {
-  BD: { label: "Bangladesh", flag: "BD" },
-  GLOBAL: { label: "Crypto & Global", flag: "USDT" },
-  IN: { label: "India", flag: "IN" },
-  PK: { label: "Pakistan", flag: "PK" },
-  NP: { label: "Nepal", flag: "NP" },
+  BD: { label: "Bangladesh (bKash / Nagad)", flag: "BD" },
+  GLOBAL: { label: "USDT Crypto", flag: "USDT" },
 };
 
 export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ session }) => {

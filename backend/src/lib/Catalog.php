@@ -12,20 +12,9 @@ final class GpCatalog
     public static function methods(): array
     {
         return [
-            self::row('bkash', 'bkash-personal', 'bKash (personal + SMS match)', 'BD', 'BDT', 'mfs', 'automation', true, true, 1.2, 50, 25000),
-            self::row('nagad', 'nagad-personal', 'Nagad (personal + SMS match)', 'BD', 'BDT', 'mfs', 'automation', true, true, 1.0, 50, 25000),
-            self::row('rocket', 'rocket-personal', 'Rocket', 'BD', 'BDT', 'mfs', 'automation', false, true, 1.2, 50, 25000),
-            self::row('upay', 'upay-personal', 'Upay', 'BD', 'BDT', 'mfs', 'automation', false, true, 1.2, 50, 25000),
-            self::row('cellfin', 'cellfin-personal', 'Cellfin', 'BD', 'BDT', 'mfs', 'automation', false, true, 1.0, 50, 25000),
-            self::row('upi_qr', 'upi-qr-personal', 'UPI QR', 'IN', 'INR', 'bank_upi', 'automation', false, true, 0.5, 10, 100000),
-            self::row('phonepe', 'phonepe-intent', 'PhonePe', 'IN', 'INR', 'bank_upi', 'automation', false, true, 0.5, 10, 100000),
-            self::row('easypaisa', 'easypaisa-personal', 'Easypaisa', 'PK', 'PKR', 'mfs', 'automation', false, true, 1.5, 50, 50000),
-            self::row('jazzcash', 'jazzcash-personal', 'JazzCash', 'PK', 'PKR', 'mfs', 'automation', false, true, 1.5, 50, 50000),
-            self::row('esewa', 'esewa-personal', 'eSewa', 'NP', 'NPR', 'mfs', 'automation', false, true, 1.0, 10, 50000),
-            self::row('khalti', 'khalti-personal', 'Khalti', 'NP', 'NPR', 'mfs', 'automation', false, true, 1.0, 10, 50000),
-            self::row('binance_pay', 'binance-personal', 'Binance Pay', 'GLOBAL', 'USDT', 'crypto', 'provider', true, true, 0.5, 1, 100000),
-            self::row('bybit_pay', 'bybit-pay', 'Bybit Pay', 'GLOBAL', 'USDT', 'crypto', 'manual', false, true, 0.5, 1, 100000),
-            self::row('usdt_trc20', 'usdt-trc20', 'USDT TRC-20', 'GLOBAL', 'USDT', 'crypto', 'onchain', true, true, 0.0, 1, 100000),
+            self::row('bkash', 'bkash-personal', 'bKash (Direct Wallet + SMS Match)', 'BD', 'BDT', 'mfs', 'automation', true, true, 1.2, 50, 25000),
+            self::row('nagad', 'nagad-personal', 'Nagad (Direct Wallet + SMS Match)', 'BD', 'BDT', 'mfs', 'automation', true, true, 1.0, 50, 25000),
+            self::row('usdt_trc20', 'usdt-trc20', 'USDT TRC-20 (TRON On-Chain)', 'GLOBAL', 'USDT', 'crypto', 'onchain', true, true, 0.0, 1, 100000),
         ];
     }
 

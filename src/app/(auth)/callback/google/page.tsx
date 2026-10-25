@@ -50,8 +50,14 @@ function GoogleCallbackContent() {
         if (alive) {
           setStatus("success");
           setTimeout(() => {
-            router.push("/dashboard/overview");
-          }, 1200);
+            if (res.user?.role === "admin" || res.user?.isAdmin) {
+              router.push("/dashboard/admin");
+            } else if (res.isNew) {
+              router.push("/dashboard/methods?onboarding=1");
+            } else {
+              router.push("/dashboard/overview");
+            }
+          }, 1000);
         }
       } catch (err: unknown) {
         if (alive) {
@@ -96,18 +102,18 @@ function GoogleCallbackContent() {
           <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
             Authenticated Successfully
           </h2>
-          <p className="text-xs text-zinc-500">Redirecting to your merchant dashboard…</p>
+          <p className="text-xs text-zinc-500">Redirecting to your console…</p>
         </div>
       )}
 
       {status === "error" && (
-        <div className="space-y-4 pt-2">
-          <Alert variant="danger" title="Google Sign-In Error">
+        <div className="space-y-4 text-left">
+          <Alert variant="danger" title="Authentication Error">
             {errorMessage}
           </Alert>
-          <div className="pt-2">
-            <Link href="/login" className="block">
-              <Button variant="outline" size="md" className="w-full" leftIcon={<ArrowLeft className="w-4 h-4" />}>
+          <div className="pt-2 text-center">
+            <Link href="/login">
+              <Button size="sm" variant="outline" leftIcon={<ArrowLeft className="w-3.5 h-3.5" />}>
                 Back to Sign In
               </Button>
             </Link>
@@ -120,13 +126,13 @@ function GoogleCallbackContent() {
 
 export default function GoogleCallbackPage() {
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col justify-center items-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-zinc-50 dark:bg-zinc-950">
       <Suspense
         fallback={
-          <Card className="p-8 max-w-md w-full text-center space-y-4">
-            <Spinner size="lg" className="mx-auto" />
-            <p className="text-xs text-zinc-500">Loading OAuth session…</p>
-          </Card>
+          <div className="text-center text-xs text-zinc-500">
+            <Spinner size="md" className="mx-auto mb-2" />
+            Loading authentication handler…
+          </div>
         }
       >
         <GoogleCallbackContent />

@@ -6,7 +6,7 @@ import { MOCK_EXCHANGE_RATES } from "@/lib/mock-data";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
-const CURRENCIES = ["USD", "BDT", "INR", "PKR", "NPR", "USDT"] as const;
+const CURRENCIES = ["BDT", "USD", "USDT"] as const;
 
 export function RatesCalculator() {
   const [amount, setAmount] = useState("100");
@@ -33,13 +33,13 @@ export function RatesCalculator() {
       <div className="max-w-xl mx-auto space-y-4">
         <div className="text-center space-y-2">
           <h2 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-            Indicative FX
+            Indicative Conversion Rate
           </h2>
           <p className="text-sm text-zinc-500">
-            Sample rates from <code className="font-mono text-xs">GET /api/v1/rates</code> — not a live interbank feed.
+            Configured merchant conversion baseline (<code className="font-mono text-xs">GET /api/v1/rates</code>).
           </p>
         </div>
-        <Card className="p-6 space-y-4">
+        <Card className="p-6 space-y-4 border-zinc-200 dark:border-zinc-800">
           <Input
             label="Amount"
             type="number"
@@ -50,7 +50,7 @@ export function RatesCalculator() {
             <label className="space-y-1.5 text-xs">
               <span className="text-zinc-500">From</span>
               <select
-                className="w-full h-10 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 text-sm"
+                className="w-full h-10 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 text-sm text-zinc-900 dark:text-zinc-100"
                 value={from}
                 onChange={(e) => setFrom(e.target.value as (typeof CURRENCIES)[number])}
               >
@@ -64,7 +64,7 @@ export function RatesCalculator() {
             <label className="space-y-1.5 text-xs">
               <span className="text-zinc-500">To</span>
               <select
-                className="w-full h-10 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 text-sm"
+                className="w-full h-10 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 text-sm text-zinc-900 dark:text-zinc-100"
                 value={to}
                 onChange={(e) => setTo(e.target.value as (typeof CURRENCIES)[number])}
               >

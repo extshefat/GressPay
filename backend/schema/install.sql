@@ -215,3 +215,55 @@ CREATE TABLE IF NOT EXISTS gp_oauth_states (
   expires_at INTEGER NOT NULL,
   created_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS gp_plans (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  plan_id VARCHAR(32) NOT NULL UNIQUE,
+  name VARCHAR(80) NOT NULL,
+  code VARCHAR(40) NOT NULL UNIQUE,
+  description TEXT,
+  price_bdt DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  billing_cycle VARCHAR(20) NOT NULL DEFAULT 'monthly',
+  credit_allowance INTEGER NOT NULL DEFAULT 100,
+  features_json TEXT,
+  is_free INTEGER NOT NULL DEFAULT 0,
+  status VARCHAR(20) NOT NULL DEFAULT 'active',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS gp_subscriptions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  subscription_id VARCHAR(32) NOT NULL UNIQUE,
+  merchant_id VARCHAR(24) NOT NULL,
+  plan_id VARCHAR(32) NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'active',
+  credits_remaining INTEGER NOT NULL DEFAULT 0,
+  credits_used INTEGER NOT NULL DEFAULT 0,
+  starts_at TEXT NOT NULL,
+  expires_at TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS gp_credit_transactions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  merchant_id VARCHAR(24) NOT NULL,
+  delta INTEGER NOT NULL,
+  balance_after INTEGER NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  created_by VARCHAR(120) NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS gp_admin_audit_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  actor_email VARCHAR(120) NOT NULL,
+  target_type VARCHAR(40) NOT NULL,
+  target_id VARCHAR(64) NOT NULL,
+  action VARCHAR(64) NOT NULL,
+  details_json TEXT,
+  ip_address VARCHAR(45),
+  created_at TEXT NOT NULL
+);
+

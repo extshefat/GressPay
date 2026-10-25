@@ -10,6 +10,7 @@ export interface User {
   email: string;
   businessName: string;
   role: UserRole;
+  isAdmin?: boolean;
   isVerified: boolean;
   avatarUrl?: string;
   createdAt: string;
@@ -278,4 +279,75 @@ export interface MerchantSettings {
     usdt_trc20?: { enabled?: boolean; destinationConfigured?: boolean };
     binance_pay?: { enabled?: boolean; credentialsConfigured?: boolean };
   };
+}
+
+export interface AdminMerchant {
+  id: string;
+  name: string;
+  email: string;
+  brandId?: string;
+  brandName: string;
+  authProvider: string;
+  status: "active" | "suspended";
+  credits: number;
+  transactionsCount: number;
+  subscription?: {
+    id: string;
+    planId: string;
+    planName: string;
+    planCode: string;
+    creditsRemaining: number;
+    creditsUsed: number;
+    startsAt: string;
+    expiresAt?: string | null;
+  } | null;
+  createdAt: string;
+}
+
+export interface AdminPlan {
+  id: string;
+  name: string;
+  code: string;
+  description: string;
+  priceBdt: number;
+  billingCycle: string;
+  creditAllowance: number;
+  features: string[];
+  isFree: boolean;
+  status: "active" | "archived" | "disabled";
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminSubscription {
+  id: string;
+  merchantId: string;
+  merchantName?: string;
+  merchantEmail?: string;
+  planId: string;
+  planName: string;
+  planCode: string;
+  status: "active" | "archived" | "expired" | "canceled";
+  creditsRemaining: number;
+  creditsUsed: number;
+  startsAt: string;
+  expiresAt?: string | null;
+  createdAt: string;
+}
+
+export interface AdminAuditLog {
+  id: string;
+  actorEmail: string;
+  targetType: string;
+  targetId: string;
+  action: string;
+  details: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface AdminStats {
+  merchants: { total: number; active: number };
+  transactions: { total: number; completed: number; volumeBdt: number; volumeUsdt: number };
+  subscriptions: { activePlans: number; activeSubscriptions: number };
+  system: { status: string; adminEmails: string[]; serverTime: string };
 }

@@ -14,7 +14,7 @@ export const CompanionShowcase: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           {/* Left copy */}
           <div className="lg:col-span-6 space-y-6">
-            <Badge variant="cyan" dot>
+            <Badge variant="emerald" dot>
               Companion Automation
             </Badge>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-100 tracking-tight leading-tight">

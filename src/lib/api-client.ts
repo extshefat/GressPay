@@ -21,6 +21,11 @@ import {
   ApiCredentials,
   Currency,
   MerchantSettings,
+  AdminMerchant,
+  AdminPlan,
+  AdminSubscription,
+  AdminAuditLog,
+  AdminStats,
 } from "./types/api";
 import { METHOD_THEMES } from "./method-theme";
 
@@ -711,6 +716,92 @@ class ApiClient {
       };
     }
     return this.request<CheckoutStatusResponse>(`/api/v1/checkout/${sessionId}/status`);
+  }
+
+  // --- Admin API Methods ---
+  async getAdminStats(): Promise<AdminStats> {
+    return this.request<AdminStats>("/api/v1/admin/stats");
+  }
+
+  async getAdminMerchants(): Promise<{ merchants: AdminMerchant[] }> {
+    return this.request<{ merchants: AdminMerchant[] }>("/api/v1/admin/merchants");
+  }
+
+  async adjustAdminCredit(
+    merchantId: string,
+    delta: number,
+    reason: string
+  ): Promise<{ ok: boolean; credits: number }> {
+    return this.request<{ ok: boolean; credits: number }>(
+      `/api/v1/admin/merchants/${merchantId}/credit`,
+      {
+        method: "POST",
+        body: JSON.stringify({ delta, reason }),
+      }
+    );
+  }
+
+  async updateAdminMerchantStatus(
+    merchantId: string,
+    status: "active" | "suspended"
+  ): Promise<{ ok: boolean; status: string }> {
+    return this.request<{ ok: boolean; status: string }>(
+      `/api/v1/admin/merchants/${merchantId}/status`,
+      {
+        method: "POST",
+        body: JSON.stringify({ status }),
+      }
+    );
+  }
+
+  async getAdminPlans(): Promise<{ plans: AdminPlan[] }> {
+    return this.request<{ plans: AdminPlan[] }>("/api/v1/admin/plans");
+  }
+
+  async createAdminPlan(payload: {
+    name: string;
+    code: string;
+    priceBdt: number;
+    creditAllowance: number;
+    description?: string;
+    isFree?: boolean;
+    features?: string[];
+  }): Promise<{ ok: boolean; planId: string }> {
+    return this.request<{ ok: boolean; planId: string }>("/api/v1/admin/plans", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async updateAdminPlan(
+    planId: string,
+    payload: Partial<AdminPlan>
+  ): Promise<{ ok: boolean }> {
+    return this.request<{ ok: boolean }>(`/api/v1/admin/plans/${planId}`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async getAdminSubscriptions(): Promise<{ subscriptions: AdminSubscription[] }> {
+    return this.request<{ subscriptions: AdminSubscription[] }>("/api/v1/admin/subscriptions");
+  }
+
+  async assignAdminSubscription(
+    merchantId: string,
+    planId: string
+  ): Promise<{ ok: boolean; subscriptionId: string }> {
+    return this.request<{ ok: boolean; subscriptionId: string }>(
+      "/api/v1/admin/subscriptions",
+      {
+        method: "POST",
+        body: JSON.stringify({ merchantId, planId }),
+      }
+    );
+  }
+
+  async getAdminAuditLogs(): Promise<{ auditLogs: AdminAuditLog[] }> {
+    return this.request<{ auditLogs: AdminAuditLog[] }>("/api/v1/admin/audit");
   }
 }
 

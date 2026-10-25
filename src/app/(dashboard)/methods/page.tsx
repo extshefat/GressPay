@@ -17,13 +17,14 @@ import {
   Save,
   Trash2,
   ImageIcon,
+  ShieldCheck,
+  CheckCircle2,
 } from "lucide-react";
 
 const METHOD_OPTIONS = [
-  { code: "bkash", label: "bKash" },
-  { code: "nagad", label: "Nagad" },
-  { code: "usdt_trc20", label: "USDT TRC-20" },
-  { code: "binance_pay", label: "Binance Pay" },
+  { code: "bkash", label: "bKash (MFS Automation)" },
+  { code: "nagad", label: "Nagad (MFS Automation)" },
+  { code: "usdt_trc20", label: "USDT TRC-20 (TRON Blockchain)" },
 ];
 
 function readinessBadge(r: string): { label: string; variant: "emerald" | "amber" | "slate" | "rose" } {
@@ -58,6 +59,7 @@ export default function GatewaysPage() {
   const [formMethod, setFormMethod] = useState("bkash");
   const [formName, setFormName] = useState("");
   const [formAccount, setFormAccount] = useState("");
+  const [formAccountType, setFormAccountType] = useState<"personal" | "agent" | "merchant">("personal");
   const [formInstructions, setFormInstructions] = useState("");
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -86,6 +88,7 @@ export default function GatewaysPage() {
     setFormMethod("bkash");
     setFormName("");
     setFormAccount("");
+    setFormAccountType("personal");
     setFormInstructions("");
     setPreviewUrl(null);
     setShowForm(true);
@@ -96,6 +99,7 @@ export default function GatewaysPage() {
     setFormMethod(g.methodCode);
     setFormName(g.displayName);
     setFormAccount(g.account || "");
+    setFormAccountType((g.accountType as any) || "personal");
     setFormInstructions((g.instructions as string) || "");
     setPreviewUrl(null);
     setShowForm(true);
@@ -118,6 +122,7 @@ export default function GatewaysPage() {
         await api.updateGateway(editing.gatewayId, {
           displayName: formName,
           account: formAccount,
+          account_type: formAccountType,
           instructions: formInstructions,
         });
       } else {
@@ -125,6 +130,7 @@ export default function GatewaysPage() {
           methodCode: formMethod,
           displayName: formName || METHOD_OPTIONS.find((m) => m.code === formMethod)?.label,
           account: formAccount,
+          account_type: formAccountType,
           instructions: formInstructions,
         });
       }
@@ -198,56 +204,67 @@ export default function GatewaysPage() {
       setUploadProgress("Uploading to storage…");
       const put = await fetch(intent.uploadUrl, {
         method: "PUT",
-        headers: intent.requiredHeaders,
+        headers: { "Content-Type": file.type },
         body: file,
       });
-      if (!put.ok) throw new Error("Direct upload to R2 failed (" + put.status + ").");
-      setUploadProgress("Confirming…");
-      const done = await api.qrUploadComplete(editing.gatewayId, intent.objectKey);
-      setEditing(done.gateway);
-      const p = await api.previewGatewayQr(editing.gatewayId);
-      setPreviewUrl(p.url);
+      if (!put.ok) throw new Error(`Upload HTTP ${put.status}`);
+      setUploadProgress("Finalizing QR…");
+      await api.qrUploadComplete(editing.gatewayId, intent.objectKey);
       setUploadProgress(null);
       await load();
+      if (editing) await openEdit(editing);
     } catch (err: unknown) {
       setUploadProgress(null);
-      setErrorMessage(err instanceof Error ? err.message : "QR upload failed.");
+      setErrorMessage(err instanceof Error ? err.message : "Upload failed.");
     } finally {
       setBusyId(null);
     }
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+    <div className="space-y-6 max-w-4xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Payment gateways</h1>
-          <p className="text-sm text-zinc-500 mt-1">
-            Add multiple bKash/Nagad/USDT accounts, upload QR images to private R2 storage, and enable each gateway
-            independently. Scanning a QR never marks a payment as paid by itself.
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+            Payment Gateways &amp; Destinations
+          </h1>
+          <p className="text-xs text-zinc-500 mt-1">
+            Configure bKash numbers, Nagad numbers, and TRON USDT addresses for automated checkout.
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary" size="sm" onClick={load} leftIcon={<RefreshCw className="w-3.5 h-3.5" />}>
+          <Button size="sm" variant="outline" onClick={load} leftIcon={<RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`} />}>
             Refresh
           </Button>
-          <Button size="sm" onClick={openCreate} leftIcon={<Plus className="w-3.5 h-3.5" />}>
-            Add gateway
+          <Button size="sm" variant="primary" onClick={openCreate} leftIcon={<Plus className="w-3.5 h-3.5" />}>
+            Add Destination
           </Button>
         </div>
       </div>
 
+      {/* Onboarding Non-Custodial Banner */}
+      <div className="p-4 rounded-xl border border-teal-200 dark:border-teal-800/60 bg-teal-50/50 dark:bg-teal-950/30 flex items-start gap-3 text-xs text-zinc-700 dark:text-zinc-300">
+        <ShieldCheck className="w-5 h-5 text-teal-600 dark:text-teal-400 shrink-0 mt-0.5" />
+        <div className="space-y-1">
+          <div className="font-semibold text-zinc-900 dark:text-zinc-100">
+            Direct-to-Wallet Principle
+          </div>
+          <p>
+            You are responsible for entering and verifying your own receiving details below. When customers pay via hosted checkout or payment links, funds settle directly into your designated bKash, Nagad, or USDT TRC-20 wallet. GressPay never touches or pools your funds.
+          </p>
+        </div>
+      </div>
+
       {!r2Configured && (
-        <Card className="p-4 text-sm text-amber-800 dark:text-amber-200 bg-amber-50/80 dark:bg-amber-950/30 border-amber-200/60">
-          QR upload unavailable: set Cloudflare R2 platform secrets on the PHP API in Coolify. Destinations and rails still
-          work without QR images.
+        <Card className="p-4 text-xs text-amber-800 dark:text-amber-200 bg-amber-50/80 dark:bg-amber-950/30 border-amber-200/60">
+          Cloudflare R2 storage is optional for custom static QR images. Numbers, addresses, and automated SMS matching operate normally without QR uploads.
         </Card>
       )}
 
       {errorMessage && (
-        <Card className="p-4 border-rose-300/50 flex gap-3 items-start">
+        <Card className="p-4 border-rose-300/50 flex gap-3 items-start bg-rose-50/50 dark:bg-rose-950/20">
           <AlertCircle className="w-5 h-5 text-rose-500 shrink-0" />
-          <p className="text-sm">{errorMessage}</p>
+          <p className="text-xs text-rose-800 dark:text-rose-200">{errorMessage}</p>
         </Card>
       )}
 
@@ -255,25 +272,28 @@ export default function GatewaysPage() {
         <p className="text-xs font-mono text-zinc-500">Loading gateways…</p>
       ) : gateways.length === 0 ? (
         <Card className="p-10 text-center text-sm text-zinc-500">
-          No gateways yet. Add a bKash or Nagad receiving account to get started.
+          No gateways configured yet. Click "Add Destination" above to set up your bKash, Nagad, or USDT wallet.
         </Card>
       ) : (
         <div className="space-y-2" role="list">
           {gateways.map((g, index) => {
             const rb = readinessBadge(g.readiness);
             return (
-              <Card key={g.gatewayId} className="p-4 flex flex-col sm:flex-row sm:items-center gap-3" role="listitem">
+              <Card key={g.gatewayId} className="p-4 flex flex-col sm:flex-row sm:items-center gap-3 border-zinc-200 dark:border-zinc-800" role="listitem">
                 <div className="flex-1 min-w-0 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium truncate">{g.displayName}</span>
-                    <Badge variant="slate">{g.methodCode}</Badge>
-                    <Badge variant={g.enabled ? "emerald" : "slate"}>{g.enabled ? "On" : "Off"}</Badge>
-                    <Badge variant={rb.variant}>{rb.label}</Badge>
+                    <span className="font-semibold text-zinc-900 dark:text-zinc-100 truncate">{g.displayName}</span>
+                    <Badge variant="cyan" className="text-[10px]">{g.methodCode}</Badge>
+                    {g.accountType && (
+                      <Badge variant="slate" className="text-[10px] uppercase">{g.accountType}</Badge>
+                    )}
+                    <Badge variant={g.enabled ? "emerald" : "slate"} className="text-[10px]">
+                      {g.enabled ? "Active" : "Disabled"}
+                    </Badge>
+                    <Badge variant={rb.variant} className="text-[10px]">{rb.label}</Badge>
                   </div>
-                  <p className="text-xs font-mono text-zinc-500 truncate">{g.account || "No destination"}</p>
-                  <p className="text-[11px] text-zinc-400">
-                    QR: {g.qrStatus}
-                    {g.supportsQr ? "" : " (not applicable)"}
+                  <p className="text-xs font-mono text-zinc-600 dark:text-zinc-400 truncate">
+                    Destination: <span className="font-bold">{g.account || "Not configured"}</span>
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
@@ -317,14 +337,16 @@ export default function GatewaysPage() {
       )}
 
       {showForm && (
-        <Card className="p-6 space-y-4 border-teal-200/50">
-          <h2 className="font-semibold">{editing ? "Edit gateway" : "Add gateway"}</h2>
+        <Card className="p-6 space-y-4 border-teal-200/50 dark:border-teal-800/40">
+          <h2 className="font-bold text-base text-zinc-900 dark:text-zinc-100">
+            {editing ? `Edit Destination — ${editing.displayName}` : "Configure New Payment Destination"}
+          </h2>
           <form onSubmit={saveForm} className="space-y-3">
             {!editing && (
-              <label className="block text-sm space-y-1">
-                <span className="text-zinc-600">Method</span>
+              <label className="block text-xs font-medium space-y-1 text-zinc-700 dark:text-zinc-300">
+                <span>Select Payment Rail</span>
                 <select
-                  className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-transparent px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs text-zinc-900 dark:text-zinc-100"
                   value={formMethod}
                   onChange={(e) => setFormMethod(e.target.value)}
                 >
@@ -336,37 +358,54 @@ export default function GatewaysPage() {
                 </select>
               </label>
             )}
-            <Input label="Display name" value={formName} onChange={(e) => setFormName(e.target.value)} required />
-            {formMethod !== "binance_pay" && (
-              <Input
-                label={formMethod === "usdt_trc20" ? "TRC-20 receive address" : "Receiving number"}
-                value={formAccount}
-                onChange={(e) => setFormAccount(e.target.value)}
-                className="font-mono text-sm"
-              />
-            )}
-            {formMethod === "binance_pay" && (
-              <p className="text-xs text-zinc-500">
-                Binance Pay credentials are configured in{" "}
-                <Link href="/dashboard/settings" className="underline">
-                  Settings
-                </Link>
-                .
-              </p>
-            )}
+
             <Input
-              label="Checkout instructions (optional)"
+              label="Display Name (shown to customer)"
+              value={formName}
+              onChange={(e) => setFormName(e.target.value)}
+              placeholder="e.g. bKash Personal 017..."
+              required
+            />
+
+            {formMethod !== "usdt_trc20" && (
+              <label className="block text-xs font-medium space-y-1 text-zinc-700 dark:text-zinc-300">
+                <span>Account Type</span>
+                <select
+                  className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs text-zinc-900 dark:text-zinc-100"
+                  value={formAccountType}
+                  onChange={(e) => setFormAccountType(e.target.value as any)}
+                >
+                  <option value="personal">Personal Account (Send Money)</option>
+                  <option value="agent">Agent Account (Cash In)</option>
+                  <option value="merchant">Merchant Account (Payment)</option>
+                </select>
+              </label>
+            )}
+
+            <Input
+              label={formMethod === "usdt_trc20" ? "TRON USDT Address (Base58 starting with T)" : "Your Wallet Phone Number"}
+              value={formAccount}
+              onChange={(e) => setFormAccount(e.target.value)}
+              placeholder={formMethod === "usdt_trc20" ? "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t" : "017XXXXXXXX"}
+              className="font-mono text-xs"
+              required
+            />
+
+            <Input
+              label="Buyer Checkout Instructions (optional)"
               value={formInstructions}
               onChange={(e) => setFormInstructions(e.target.value)}
+              placeholder="e.g. Use Send Money option and paste the 10-digit TrxID below."
             />
+
             {editing && editing.supportsQr && (
               <div className="space-y-2 border-t border-zinc-100 dark:border-zinc-800 pt-3">
-                <p className="text-sm font-medium flex items-center gap-2">
-                  <ImageIcon className="w-4 h-4" /> QR image
+                <p className="text-xs font-medium flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4" /> QR Code Image (optional)
                 </p>
                 {previewUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={previewUrl} alt="QR preview" className="w-36 h-36 object-contain border rounded-lg bg-white" />
+                  <img src={previewUrl} alt="QR preview" className="w-32 h-32 object-contain border rounded-lg bg-white" />
                 )}
                 <input
                   type="file"
@@ -392,9 +431,10 @@ export default function GatewaysPage() {
                 )}
               </div>
             )}
-            <div className="flex gap-2">
+
+            <div className="flex gap-2 pt-2">
               <Button type="submit" isLoading={busyId === "form"} leftIcon={<Save className="w-4 h-4" />}>
-                Save
+                Save Destination
               </Button>
               <Button type="button" variant="secondary" onClick={() => setShowForm(false)}>
                 Cancel
@@ -405,9 +445,8 @@ export default function GatewaysPage() {
       )}
 
       <p className="text-[11px] text-zinc-400">
-        Companion SMS matching is server-side (number + TxID + amount). Merchant QR keywords do not change the Android
-        parser. See{" "}
-        <Link href="/dashboard/devices" className="underline">
+        bKash and Nagad companion SMS matching operates automatically in the background. Pair your phone via{" "}
+        <Link href="/dashboard/devices" className="underline text-teal-600 dark:text-teal-400">
           Companion devices
         </Link>
         .

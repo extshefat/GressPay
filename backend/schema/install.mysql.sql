@@ -227,3 +227,59 @@ CREATE TABLE IF NOT EXISTS gp_oauth_states (
   INDEX idx_gp_oauth_state (state),
   INDEX idx_gp_oauth_expires (expires_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS gp_plans (
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  plan_id VARCHAR(32) NOT NULL UNIQUE,
+  name VARCHAR(80) NOT NULL,
+  code VARCHAR(40) NOT NULL UNIQUE,
+  description TEXT NULL,
+  price_bdt DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  billing_cycle VARCHAR(20) NOT NULL DEFAULT 'monthly',
+  credit_allowance INT NOT NULL DEFAULT 100,
+  features_json TEXT NULL,
+  is_free INT NOT NULL DEFAULT 0,
+  status VARCHAR(20) NOT NULL DEFAULT 'active',
+  created_at VARCHAR(32) NOT NULL,
+  updated_at VARCHAR(32) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS gp_subscriptions (
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  subscription_id VARCHAR(32) NOT NULL UNIQUE,
+  merchant_id VARCHAR(24) NOT NULL,
+  plan_id VARCHAR(32) NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'active',
+  credits_remaining INT NOT NULL DEFAULT 0,
+  credits_used INT NOT NULL DEFAULT 0,
+  starts_at VARCHAR(32) NOT NULL,
+  expires_at VARCHAR(32) NULL,
+  created_at VARCHAR(32) NOT NULL,
+  updated_at VARCHAR(32) NOT NULL,
+  INDEX idx_gp_sub_merchant (merchant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS gp_credit_transactions (
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  merchant_id VARCHAR(24) NOT NULL,
+  delta INT NOT NULL,
+  balance_after INT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  created_by VARCHAR(120) NOT NULL,
+  created_at VARCHAR(32) NOT NULL,
+  INDEX idx_gp_credit_merchant (merchant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS gp_admin_audit_logs (
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  actor_email VARCHAR(120) NOT NULL,
+  target_type VARCHAR(40) NOT NULL,
+  target_id VARCHAR(64) NOT NULL,
+  action VARCHAR(64) NOT NULL,
+  details_json TEXT NULL,
+  ip_address VARCHAR(45) NULL,
+  created_at VARCHAR(32) NOT NULL,
+  INDEX idx_gp_admin_audit_actor (actor_email),
+  INDEX idx_gp_admin_audit_target (target_type, target_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+

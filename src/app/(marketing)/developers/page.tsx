@@ -225,7 +225,7 @@ def verify_payment_status(session_id: str) -> dict:
     info: {
       title: "GressPay Merchant REST API",
       version: "1.0.0",
-      description: "Self-hosted international payment gateway supporting bKash, Nagad, Binance Pay, and USDT TRC-20.",
+      description: "Non-custodial payment automation and verification platform supporting bKash, Nagad, and USDT TRC-20.",
     },
     servers: [{ url: "/api/v1" }],
     paths: {

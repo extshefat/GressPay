@@ -207,10 +207,10 @@ export default function SettingsPage() {
           <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 flex items-center justify-between">
             <div className="space-y-0.5">
               <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-                Enable Crypto Rails (Binance Pay & USDT)
+                Enable USDT TRC-20 Crypto Rail
               </span>
               <p className="text-[11px] text-zinc-500">
-                Allow customers to pay in digital currencies on your hosted checkout sessions.
+                Allow customers to select on-chain TRON USDT settlement on your hosted checkout sessions.
               </p>
             </div>
             <Toggle checked={cryptoEnabled} onChange={setCryptoEnabled} />

@@ -71,7 +71,7 @@ export default function DashboardLayout({
 
   return (
     <div className="flex min-h-screen bg-zinc-50/50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 transition-colors">
-      <DashboardSidebar mobileOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
+      <DashboardSidebar mobileOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} user={user} />
       <div className="flex-1 flex flex-col min-w-0">
         <DashboardHeader user={user} onMenuClick={() => setMobileNavOpen(true)} />
         <main key={ledgerMode} className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto">

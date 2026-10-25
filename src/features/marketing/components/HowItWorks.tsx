@@ -8,27 +8,27 @@ export const HowItWorks: React.FC = () => {
   const steps = [
     {
       num: "01",
-      icon: <KeyRound className="w-5 h-5 text-[#077C74] dark:text-[#1BD1C0]" />,
-      title: "Activate Your Rails",
-      desc: "Register your merchant account and input your wallet numbers (bKash/Nagad), Binance Pay API keys, or USDT TRC-20 address. Sandbox mode is enabled instantly.",
+      icon: <KeyRound className="w-5 h-5 text-teal-600 dark:text-teal-400" />,
+      title: "Sign In & Configure",
+      desc: "Sign in with Google in one click. Input your own bKash, Nagad personal/agent numbers or your TRON USDT address. Zero paperwork required.",
     },
     {
       num: "02",
-      icon: <Smartphone className="w-5 h-5 text-[#077C74] dark:text-[#1BD1C0]" />,
+      icon: <Smartphone className="w-5 h-5 text-teal-600 dark:text-teal-400" />,
       title: "Pair Android Companion",
-      desc: "Install the lightweight GressPay Companion APK on your phone. Pair via a secure one-time token to enable zero-downtime background SMS transaction matching.",
+      desc: "Install the lightweight GressPay Companion APK on your phone. Pair via a reveal-once token to enable zero-downtime background SMS matching.",
     },
     {
       num: "03",
-      icon: <ExternalLink className="w-5 h-5 text-[#077C74] dark:text-[#1BD1C0]" />,
+      icon: <ExternalLink className="w-5 h-5 text-teal-600 dark:text-teal-400" />,
       title: "Deploy Checkout Links",
-      desc: "Generate single-use or reusable payment links directly from the dashboard, or initiate sessions programmatically via our clean REST API (`POST /api/v1/checkout/create`).",
+      desc: "Generate hosted payment links from your dashboard or initiate sessions programmatically via our clean REST API (`POST /api/v1/checkout/create`).",
     },
     {
       num: "04",
       icon: <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />,
       title: "Automated Instant Settlement",
-      desc: "When a customer pays, GressPay verifies the TxID in real time (via Companion SMS match or TRON blockchain), updates the ledger, and fires signed HMAC webhooks.",
+      desc: "When a customer pays, GressPay verifies the TrxID in real time (via Companion SMS match or TRON blockchain), updates the ledger, and fires signed HMAC webhooks.",
     },
   ];
 
@@ -36,14 +36,14 @@ export const HowItWorks: React.FC = () => {
     <section className="py-20 sm:py-28 bg-zinc-50/50 dark:bg-zinc-900/30 border-t border-zinc-200 dark:border-zinc-800 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto space-y-3 mb-16">
-          <Badge variant="cyan" dot>
+          <Badge variant="emerald" dot>
             Workflow
           </Badge>
           <h2 className="text-3xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-100 tracking-tight">
             How GressPay Powers Your Payment Flow
           </h2>
           <p className="text-zinc-600 dark:text-zinc-400 text-sm sm:text-base leading-relaxed">
-            From registration to your first automated settlement in under five minutes. No complicated banking bureaucracy.
+            From Google sign-in to your first automated settlement in under three minutes. Funds go straight to your own account.
           </p>
         </div>
 
@@ -71,7 +71,7 @@ export const HowItWorks: React.FC = () => {
               </div>
 
               <div className="mt-6 pt-4 border-t border-zinc-100 dark:border-zinc-900">
-                <span className="text-[11px] font-mono text-[#077C74] dark:text-[#1BD1C0] font-medium">
+                <span className="text-[11px] font-mono text-teal-700 dark:text-teal-400 font-medium">
                   Step {step.num} Complete →
                 </span>
               </div>

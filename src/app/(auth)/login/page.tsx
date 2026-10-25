@@ -14,7 +14,7 @@ import { GressPayLogo } from "@/components/brand/GressPayLogo";
 import { ThemeToggle } from "@/lib/theme";
 import { api } from "@/lib/api-client";
 import { useToast } from "@/components/ui/toast";
-import { ArrowRight, Lock, Mail } from "lucide-react";
+import { ArrowRight, Lock, Mail, ShieldCheck } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -39,7 +39,6 @@ export default function LoginPage() {
         }
       })
       .catch(() => {
-        // Fallback: disabled
         if (alive) setGoogleEnabled(false);
       });
     return () => {
@@ -52,9 +51,13 @@ export default function LoginPage() {
     setIsLoading(true);
     setError(null);
     try {
-      await api.login(email, password);
-      success("Logged in successfully. Redirecting to merchant dashboard...", "Welcome Back");
-      router.push("/dashboard/overview");
+      const res = await api.login(email, password);
+      success("Logged in successfully. Redirecting...", "Welcome Back");
+      if (res.user?.role === "admin" || res.user?.isAdmin) {
+        router.push("/dashboard/admin");
+      } else {
+        router.push("/dashboard/overview");
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Invalid email or password credentials.";
       setError(msg);
@@ -74,11 +77,11 @@ export default function LoginPage() {
       if (res.enabled && res.url) {
         window.location.href = res.url;
       } else {
-        setError(res.reason || "Google OAuth is not enabled on this platform.");
+        setError(res.reason || "Google OAuth is not configured on this instance.");
         setIsGoogleLoading(false);
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to initiate Google OAuth.";
+      const msg = err instanceof Error ? err.message : "Failed to initiate Google sign-in.";
       setError(msg);
       setIsGoogleLoading(false);
     }
@@ -98,82 +101,30 @@ export default function LoginPage() {
             <GressPayLogo variant="auto" size="lg" />
           </Link>
           <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-            Sign in to Merchant Portal
+            Sign in to GressPay
           </h1>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Manage your bKash, Nagad, Binance Pay & USDT TRC-20 settlements
+            Payment automation and verification for Bangladesh (bKash & Nagad) with optional USDT
           </p>
         </div>
 
         {/* Login Card */}
         <Card className="p-6 sm:p-8 shadow-xl bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-4">
             {error && (
-              <Alert variant="danger" title="Authentication Error">
+              <Alert variant="danger" title="Authentication Notice">
                 {error}
               </Alert>
             )}
 
-            <Input
-              label="Merchant Email Address"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@company.com"
-              leftIcon={<Mail className="w-4 h-4" />}
-              required
-              autoComplete="email"
-            />
-
-            <PasswordInput
-              label="Account Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••••••"
-              required
-              autoComplete="current-password"
-            />
-
-            <div className="flex items-center justify-between text-xs pt-1">
-              <Checkbox
-                label="Remember this device"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-              />
-              <Link
-                href="/help"
-                className="text-xs text-teal-700 hover:text-teal-800 dark:text-[#1BD1C0] dark:hover:underline"
-              >
-                Forgot password?
-              </Link>
-            </div>
-
-            <Button
-              type="submit"
-              size="lg"
-              className="w-full mt-2"
-              isLoading={isLoading}
-              rightIcon={<ArrowRight className="w-4 h-4" />}
-            >
-              Sign in to Dashboard
-            </Button>
-
-            {/* Google OAuth Option */}
-            <div className="pt-2">
-              <div className="relative flex py-2 items-center">
-                <div className="flex-grow border-t border-zinc-200 dark:border-zinc-800" />
-                <span className="flex-shrink mx-3 text-[11px] font-mono text-zinc-400 uppercase">
-                  or
-                </span>
-                <div className="flex-grow border-t border-zinc-200 dark:border-zinc-800" />
-              </div>
-
+            {/* Google One-Click Sign In (Primary Recommended Flow) */}
+            <div>
               {googleEnabled ? (
                 <button
                   type="button"
                   onClick={handleGoogleSignIn}
                   disabled={isGoogleLoading}
-                  className="w-full flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white hover:bg-zinc-50 dark:bg-zinc-800 dark:hover:bg-zinc-750 text-xs font-semibold text-zinc-800 dark:text-zinc-100 shadow-2xs transition-all cursor-pointer"
+                  className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white hover:bg-zinc-50 dark:bg-zinc-800 dark:hover:bg-zinc-750 text-xs font-semibold text-zinc-800 dark:text-zinc-100 shadow-sm transition-all cursor-pointer"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24">
                     <path
@@ -193,60 +144,80 @@ export default function LoginPage() {
                       d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
                     />
                   </svg>
-                  <span>{isGoogleLoading ? "Connecting to Google…" : "Continue with Google"}</span>
+                  <span>{isGoogleLoading ? "Connecting to Google…" : "Continue with Google (Single Sign-In)"}</span>
                 </button>
               ) : (
-                <Tooltip
-                  content="Google OAuth is optional platform configuration. To enable, configure GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in Coolify environment variables."
-                  position="top"
-                  className="w-full"
-                >
-                  <button
-                    type="button"
-                    disabled
-                    className="w-full flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/40 text-xs font-medium text-zinc-400 cursor-not-allowed opacity-60"
-                  >
-                    <svg className="w-4 h-4" viewBox="0 0 24 24">
-                      <path
-                        fill="currentColor"
-                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                      />
-                      <path
-                        fill="currentColor"
-                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                      />
-                      <path
-                        fill="currentColor"
-                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                      />
-                      <path
-                        fill="currentColor"
-                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                      />
-                    </svg>
-                    <span>Continue with Google (Platform Setup Required)</span>
-                  </button>
-                </Tooltip>
+                <div className="p-3 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-xs text-zinc-500 text-center">
+                  Google sign-in is configuring on this instance. Use email credentials below.
+                </div>
               )}
             </div>
-          </form>
+
+            <div className="relative flex py-1 items-center">
+              <div className="flex-grow border-t border-zinc-200 dark:border-zinc-800" />
+              <span className="flex-shrink mx-3 text-[11px] font-mono text-zinc-400 uppercase">
+                or sign in with password
+              </span>
+              <div className="flex-grow border-t border-zinc-200 dark:border-zinc-800" />
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <Input
+                label="Merchant Email Address"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@company.com"
+                leftIcon={<Mail className="w-4 h-4" />}
+                required
+                autoComplete="email"
+              />
+
+              <PasswordInput
+                label="Account Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••••••"
+                required
+                autoComplete="current-password"
+              />
+
+              <div className="flex items-center justify-between text-xs pt-1">
+                <Checkbox
+                  label="Remember this device"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                />
+                <Link
+                  href="/help"
+                  className="text-xs text-teal-700 hover:text-teal-800 dark:text-[#1BD1C0] dark:hover:underline"
+                >
+                  Need help?
+                </Link>
+              </div>
+
+              <Button
+                type="submit"
+                size="lg"
+                className="w-full mt-2"
+                isLoading={isLoading}
+                rightIcon={<ArrowRight className="w-4 h-4" />}
+              >
+                Sign in with Password
+              </Button>
+            </form>
+          </div>
         </Card>
 
-        {/* Footer info */}
-        <div className="text-center space-y-2 text-xs text-zinc-500">
-          <p>
-            Don&apos;t have a merchant account?{" "}
-            <Link
-              href="/register"
-              className="text-[#077C74] font-medium hover:underline dark:text-[#1BD1C0]"
-            >
-              Open Merchant Account →
-            </Link>
+        {/* Security / Non-Custodial Footer Notice */}
+        <div className="text-center text-xs text-zinc-500 dark:text-zinc-400 space-y-1">
+          <p className="flex items-center justify-center gap-1.5 font-medium text-zinc-600 dark:text-zinc-300">
+            <ShieldCheck className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+            Non-custodial verification. Funds settle directly into your own wallet.
           </p>
-          <div className="flex items-center justify-center gap-1 text-[11px] text-zinc-400">
-            <Lock className="w-3 h-3" />
-            <span>256-bit TLS Encrypted • Isolated Sandbox Environment</span>
-          </div>
+          <p className="text-[11px]">
+            No complex merchant application required. Sign in with Google to begin.
+          </p>
         </div>
       </div>
     </div>

@@ -247,4 +247,35 @@ final class GpConfig
             && self::r2SecretAccessKey() !== ''
             && self::r2Endpoint() !== '';
     }
+/**
+     * Comma-separated allowlist of administrator Gmail / email addresses.
+     * Enforced strictly server-side.
+     *
+     * @return list<string>
+     */
+    public static function adminEmails(): array
+    {
+        $raw = trim(self::get('ADMIN_EMAIL', self::get('ADMIN_EMAILS', '')));
+        if ($raw === '') {
+            // Default configured platform operator emails.
+            return ['ownerofext@gmail.com', 'measahin9@gmail.com', 'tradershefat8@gmail.com'];
+        }
+        $emails = [];
+        foreach (explode(',', $raw) as $part) {
+            $e = strtolower(trim($part));
+            if ($e !== '' && filter_var($e, FILTER_VALIDATE_EMAIL)) {
+                $emails[] = $e;
+            }
+        }
+        return array_values(array_unique($emails));
+    }
+
+    public static function isAdmin(string $email): bool
+    {
+        $email = strtolower(trim($email));
+        if ($email === '') {
+            return false;
+        }
+        return in_array($email, self::adminEmails(), true);
+    }
 }

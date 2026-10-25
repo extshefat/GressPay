@@ -123,6 +123,24 @@ final class GpAuth
     /**
      * @return array{merchant_id:string,brand_id:string,email:string,mode:string,auth:string,scopes:list<string>}
      */
+    /**
+     * Strictly enforce role-based admin authorization on the server/API.
+     * Evaluates the authenticated merchant's email against GpConfig::adminEmails().
+     * Fail closed: if allowlist is empty or actor email is not included, denies with 403 FORBIDDEN.
+     *
+     * @return array{merchant_id:string,brand_id:string,email:string,mode:string,auth:string,scopes:list<string>,is_admin:bool}
+     */
+    public static function requireAdmin(GpRequest $req): array
+    {
+        $actor = self::requireActor($req);
+        $email = strtolower(trim((string) ($actor['email'] ?? '')));
+        if ($email === '' || !GpConfig::isAdmin($email)) {
+            GpJson::error('FORBIDDEN', 'Administrator privileges required for this action.', 403);
+        }
+        $actor['is_admin'] = true;
+        return $actor;
+    }
+
     public static function requireActor(GpRequest $req): array
     {
         $actor = self::resolveActor($req);
@@ -170,13 +188,22 @@ final class GpAuth
     {
         $now = GpIds::now();
         $rows = [
-            ['USD', '$', '1'],
-            ['USDT', '₮', '1'],
             ['BDT', '৳', '122.5'],
-            ['INR', '₹', '88.4'],
-            ['PKR', '₨', '284.1'],
-            ['NPR', 'Rs', '141.2'],
-            ['EUR', '€', '0.92'],
+            ['USD', '
+        foreach ($rows as [$code, $symbol, $rate]) {
+            $exists = GpDb::one('SELECT id FROM gp_currency WHERE brand_id = ? AND code = ?', [$brandId, $code]);
+            if ($exists) {
+                continue;
+            }
+            GpDb::exec(
+                'INSERT INTO gp_currency (brand_id, code, symbol, rate, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+                [$brandId, $code, $symbol, $rate, $now, $now]
+            );
+        }
+    }
+}
+, '1'],
+            ['USDT', '₮', '1'],
         ];
         foreach ($rows as [$code, $symbol, $rate]) {
             $exists = GpDb::one('SELECT id FROM gp_currency WHERE brand_id = ? AND code = ?', [$brandId, $code]);

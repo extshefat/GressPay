@@ -12,9 +12,11 @@ import {
   Key,
   Settings,
   Smartphone,
+  ShieldCheck,
   X,
 } from "lucide-react";
 import { GpMark } from "@/components/brand/GpMark";
+import { User } from "@/lib/types/api";
 
 const NAV_ITEMS = [
   { href: "/dashboard/overview", label: "Overview", icon: LayoutDashboard },
@@ -30,11 +32,13 @@ const NAV_ITEMS = [
 export interface DashboardSidebarProps {
   mobileOpen?: boolean;
   onClose?: () => void;
+  user?: User | null;
 }
 
 export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   mobileOpen = false,
   onClose,
+  user,
 }) => {
   const pathname = usePathname();
 
@@ -66,7 +70,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
 
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
         {NAV_ITEMS.map((item) => {
-          const isActive = pathname.startsWith(item.href);
+          const isActive = pathname.startsWith(item.href) || pathname === item.href.replace("/dashboard", "");
           const Icon = item.icon;
 
           return (
@@ -85,6 +89,32 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
             </Link>
           );
         })}
+
+        {/* Server-Enforced Admin Authorization Navigation */}
+        {(user?.role === "admin" || user?.isAdmin) && (
+          <div className="pt-3 mt-3 border-t border-zinc-200 dark:border-zinc-800">
+            <div className="px-3 py-1 text-[10px] font-mono uppercase tracking-wider text-teal-600 dark:text-teal-400 font-semibold">
+              Platform Admin
+            </div>
+            <Link
+              href="/dashboard/admin"
+              onClick={onClose}
+              className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
+                pathname.startsWith("/admin") || pathname.startsWith("/dashboard/admin")
+                  ? "bg-teal-600 text-white shadow-sm"
+                  : "text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/40"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <ShieldCheck className="w-4 h-4" />
+                <span>Admin Console</span>
+              </div>
+              <span className="text-[9px] bg-teal-500/20 text-teal-700 dark:text-teal-300 px-1.5 py-0.5 rounded font-mono font-bold">
+                ROOT
+              </span>
+            </Link>
+          </div>
+        )}
       </nav>
 
       <div className="p-3 border-t border-zinc-200 dark:border-zinc-800">

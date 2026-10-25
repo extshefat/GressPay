@@ -31,12 +31,15 @@ final class GpPresenters
 
     public static function user(array $merchant, array $brand): array
     {
+        $email = strtolower(trim((string) ($merchant['email'] ?? '')));
+        $isAdmin = GpConfig::isAdmin($email);
         return [
             'id' => $merchant['merchant_id'],
             'name' => $merchant['full_name'],
             'email' => $merchant['email'],
             'businessName' => $brand['name'] ?? '',
-            'role' => 'merchant',
+            'role' => $isAdmin ? 'admin' : 'merchant',
+            'isAdmin' => $isAdmin,
             'isVerified' => ($merchant['status'] ?? '') === 'active',
             'authProvider' => $merchant['auth_provider'] ?? 'local',
             'avatarUrl' => $merchant['avatar_url'] ?? null,
