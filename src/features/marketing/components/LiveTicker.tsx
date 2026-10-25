@@ -4,11 +4,12 @@ import React from "react";
 import { CheckCircle2, ShieldCheck, Smartphone, Cpu, Lock } from "lucide-react";
 
 const CAPABILITY_ITEMS = [
-  { label: "bKash Automation", detail: "Personal & Merchant SMS Match", icon: Smartphone },
-  { label: "Nagad Automation", detail: "Instant TrxID Verification", icon: Smartphone },
-  { label: "USDT TRC-20", detail: "On-Chain TRON RPC Verification", icon: Cpu },
-  { label: "Non-Custodial", detail: "Direct Wallet Settlement", icon: ShieldCheck },
-  { label: "Idempotent Webhooks", detail: "HMAC SHA-256 Signatures", icon: Lock },
+  { label: "bKash", detail: "SMS match when a companion is paired", icon: Smartphone },
+  { label: "Nagad", detail: "SMS match when a companion is paired", icon: Smartphone },
+  { label: "Binance Pay", detail: "Merchant API, separate from USDT", icon: Cpu },
+  { label: "USDT TRC-20", detail: "On-chain TRON transfer check", icon: Cpu },
+  { label: "Your wallet", detail: "GressPay does not hold the funds", icon: ShieldCheck },
+  { label: "Webhook", detail: "One HMAC-SHA256 POST", icon: Lock },
 ];
 
 export const LiveTicker: React.FC = () => {

@@ -3,7 +3,17 @@
 import React from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { InteractiveGlobe } from "../3d/InteractiveGlobe";
+import dynamic from "next/dynamic";
+
+const InteractiveGlobe = dynamic(
+  () => import("../3d/InteractiveGlobe").then((m) => m.InteractiveGlobe),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[420px] w-full max-w-[520px] animate-pulse rounded-full bg-zinc-100 dark:bg-zinc-900" aria-hidden />
+    ),
+  }
+);
 import { Button } from "@/components/ui/button";
 import { GressPayLogo } from "@/components/brand/GressPayLogo";
 import { Badge } from "@/components/ui/badge";
@@ -63,7 +73,7 @@ export const GlobeHero: React.FC = () => {
               transition={{ duration: 0.5, delay: 0.16, ease: [0.22, 1, 0.36, 1] }}
               className="text-base sm:text-lg text-zinc-600 dark:text-zinc-400 max-w-2xl leading-relaxed"
             >
-              Accept payments directly to your personal or merchant bKash and Nagad accounts with instant SMS companion matching. Optional USDT TRC-20 on-chain verification. Money settles straight into your wallet — GressPay never holds your funds.
+              Customers pay the bKash or Nagad number you publish. A paired Android companion can match the provider SMS to the checkout. Optional Binance Pay and USDT TRC-20 are separate checks. Funds stay in the wallet you configured.
             </motion.p>
 
             {/* Trust Highlights */}
@@ -75,15 +85,15 @@ export const GlobeHero: React.FC = () => {
             >
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
-                <span>Zero Escrow / Non-Custodial</span>
+                <span>Funds stay in your wallet</span>
               </div>
               <div className="flex items-center gap-2">
                 <Smartphone className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
-                <span>Android SMS Companion</span>
+                <span>Companion SMS match</span>
               </div>
               <div className="flex items-center gap-2">
                 <Zap className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
-                <span>Real-Time Webhooks</span>
+                <span>One signed webhook</span>
               </div>
             </motion.div>
 
@@ -112,7 +122,7 @@ export const GlobeHero: React.FC = () => {
               transition={{ duration: 0.5, delay: 0.35 }}
               className="text-[11px] text-zinc-500 pt-1"
             >
-              No lengthy merchant applications required. Sign in with Google to configure your wallet numbers immediately.
+              Sign in with Google to open a merchant account, then add your own receiving numbers. Password sign-in remains available for existing accounts.
             </motion.div>
           </div>
 

@@ -22,7 +22,7 @@ export default function TermsPage() {
         <section className="space-y-2">
           <h2 className="text-lg font-semibold text-white">Your wallets, your funds</h2>
           <p>
-            Customers pay the bKash / Nagad / UPI / exchange / USDT destination you configure. GressPay
+            Customers pay the bKash, Nagad, Binance Pay, or USDT TRC-20 destination you configure. GressPay
             records sessions, matches TxIDs, and sends webhooks. It does not hold a merchant float or
             issue card acquiring.
           </p>

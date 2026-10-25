@@ -303,7 +303,7 @@ final class GpPresenters
             'returnUrl' => $returnUrl,
             'merchantName' => $brand['name'] ?? 'GressPay Merchant',
             'merchantLogo' => null,
-            'merchantVerified' => true,
+            'merchantVerified' => false,
             'orderTitle' => $meta['orderTitle'] ?? ($link['title'] ?? 'Payment'),
             'orderDescription' => $meta['orderDescription'] ?? ($link['description'] ?? ''),
             'amount' => self::num($txn['amount']),

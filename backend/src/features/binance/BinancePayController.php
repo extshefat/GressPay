@@ -205,7 +205,8 @@ final class BinancePayController
 
         $data = $q['data']['data'] ?? $q['data'] ?? [];
         $status = strtoupper((string) ($data['status'] ?? ''));
-        $paidAmount = trim((string) ($data['orderAmount'] ?? ''));
+        $amountResult = BinancePayClient::resolvePaidAmount(is_array($data) ? $data : []);
+        $paidAmount = $amountResult['ok'] ? (string) $amountResult['amount'] : '';
         $currency = strtoupper(trim((string) ($data['currency'] ?? '')));
         $tradeNo = (string) ($data['merchantTradeNo'] ?? '');
 
@@ -222,7 +223,7 @@ final class BinancePayController
             GpJson::error('PROVIDER_MISMATCH', 'Currency mismatch.', 409);
         }
         if ($paidAmount === '') {
-            GpJson::error('PROVIDER_MISMATCH', 'Provider orderAmount missing.', 409);
+            GpJson::error('PROVIDER_MISMATCH', (string) ($amountResult['error'] ?? 'Provider amount missing.'), 409);
         }
         $expected = GpMoney::sanitize((string) $order['amount'], 8);
         $got = GpMoney::sanitize($paidAmount, 8);
@@ -318,6 +319,10 @@ final class BinancePayController
         if ($sn === '' || $sn !== $creds['certificateSn']) {
             GpJson::error('INVALID_SIGNATURE', 'Certificate SN mismatch.', 401);
         }
+        // Outbound Merchant API calls use HMAC-SHA512. Official webhook examples
+        // sign with Binance's RSA certificate instead. This build still checks the
+        // merchant HMAC, so a real RSA callback is rejected here and does not
+        // mark the session paid. Completion still requires a successful order query.
         if (!BinancePayClient::verifyCallbackSignature($timestamp, $nonce, $raw, $signature, $creds['secret'])) {
             GpJson::error('INVALID_SIGNATURE', 'Callback signature rejected.', 401);
         }

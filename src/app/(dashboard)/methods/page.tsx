@@ -18,7 +18,6 @@ import {
   Trash2,
   ImageIcon,
   ShieldCheck,
-  CheckCircle2,
 } from "lucide-react";
 
 const METHOD_OPTIONS = [
@@ -27,7 +26,13 @@ const METHOD_OPTIONS = [
   { code: "usdt_trc20", label: "USDT TRC-20 (TRON Blockchain)" },
 ];
 
-function readinessBadge(r: string): { label: string; variant: "emerald" | "amber" | "slate" | "rose" } {
+function readinessBadge(method: string, r: string): { label: string; variant: "emerald" | "amber" | "slate" | "rose" } {
+  if ((method === "bkash" || method === "nagad") && r === "live_ready") {
+    return { label: "Number set · SMS required", variant: "amber" };
+  }
+  if (method === "usdt_trc20" && r === "live_ready") {
+    return { label: "Address set · chain check", variant: "emerald" };
+  }
   switch (r) {
     case "live_ready":
       return { label: "Live-ready", variant: "emerald" };
@@ -122,7 +127,7 @@ export default function GatewaysPage() {
         await api.updateGateway(editing.gatewayId, {
           displayName: formName,
           account: formAccount,
-          account_type: formAccountType,
+          accountType: formAccountType,
           instructions: formInstructions,
         });
       } else {
@@ -130,7 +135,7 @@ export default function GatewaysPage() {
           methodCode: formMethod,
           displayName: formName || METHOD_OPTIONS.find((m) => m.code === formMethod)?.label,
           account: formAccount,
-          account_type: formAccountType,
+          accountType: formAccountType,
           instructions: formInstructions,
         });
       }
@@ -229,7 +234,7 @@ export default function GatewaysPage() {
             Payment Gateways &amp; Destinations
           </h1>
           <p className="text-xs text-zinc-500 mt-1">
-            Configure bKash numbers, Nagad numbers, and TRON USDT addresses for automated checkout.
+            Bangladesh numbers and USDT addresses are separate from Binance Pay Merchant API credentials.
           </p>
         </div>
         <div className="flex gap-2">
@@ -275,9 +280,21 @@ export default function GatewaysPage() {
           No gateways configured yet. Click "Add Destination" above to set up your bKash, Nagad, or USDT wallet.
         </Card>
       ) : (
-        <div className="space-y-2" role="list">
-          {gateways.map((g, index) => {
-            const rb = readinessBadge(g.readiness);
+        <div className="space-y-6">
+          {[
+            { title: "Bangladesh MFS", hint: "bKash and Nagad complete on the live ledger only when a paired companion posts a matching SMS. Account type is a label, not a provider API.", items: gateways.filter((g) => g.methodCode === "bkash" || g.methodCode === "nagad") },
+            { title: "USDT TRC-20", hint: "TRON network only. Confirm the address before you enable it. This is not a Binance Pay receipt.", items: gateways.filter((g) => g.methodCode === "usdt_trc20") },
+            { title: "Other saved rows", hint: "Older catalog rows stay listed so they are not hidden. They are not part of the Bangladesh-first checkout.", items: gateways.filter((g) => !["bkash", "nagad", "usdt_trc20"].includes(g.methodCode)) },
+          ].filter((group) => group.items.length > 0).map((group) => (
+          <section key={group.title} className="space-y-2">
+            <div>
+              <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{group.title}</h2>
+              <p className="text-[11px] text-zinc-500">{group.hint}</p>
+            </div>
+            <div className="space-y-2" role="list">
+          {group.items.map((g) => {
+            const index = gateways.findIndex((row) => row.gatewayId === g.gatewayId);
+            const rb = readinessBadge(g.methodCode, g.readiness);
             return (
               <Card key={g.gatewayId} className="p-4 flex flex-col sm:flex-row sm:items-center gap-3 border-zinc-200 dark:border-zinc-800" role="listitem">
                 <div className="flex-1 min-w-0 space-y-1">
@@ -288,7 +305,7 @@ export default function GatewaysPage() {
                       <Badge variant="slate" className="text-[10px] uppercase">{g.accountType}</Badge>
                     )}
                     <Badge variant={g.enabled ? "emerald" : "slate"} className="text-[10px]">
-                      {g.enabled ? "Active" : "Disabled"}
+                      {g.enabled ? "Enabled" : "Disabled"}
                     </Badge>
                     <Badge variant={rb.variant} className="text-[10px]">{rb.label}</Badge>
                   </div>
@@ -333,8 +350,21 @@ export default function GatewaysPage() {
               </Card>
             );
           })}
+            </div>
+          </section>
+          ))}
         </div>
       )}
+
+      <Card id="binance-pay" className="p-5 space-y-2 border-zinc-200 dark:border-zinc-800">
+        <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Binance Pay Merchant API</h2>
+        <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+          This is not a Spot or trading API key, and it is not the same check as USDT TRC-20. Save the Merchant API key, secret, and certificate serial in settings. Values are write-only and encrypted for this brand. A saved gateway row without those credentials is not live-ready.
+        </p>
+        <Link href="/dashboard/settings#binance-pay" className="text-xs font-medium text-teal-700 underline dark:text-teal-300">
+          Open Binance Pay credential form
+        </Link>
+      </Card>
 
       {showForm && (
         <Card className="p-6 space-y-4 border-teal-200/50 dark:border-teal-800/40">
@@ -379,6 +409,9 @@ export default function GatewaysPage() {
                   <option value="agent">Agent Account (Cash In)</option>
                   <option value="merchant">Merchant Account (Payment)</option>
                 </select>
+                <span className="block text-[11px] font-normal text-zinc-500">
+                  This label is shown with your instructions. It does not connect an official bKash or Nagad API.
+                </span>
               </label>
             )}
 
@@ -386,7 +419,7 @@ export default function GatewaysPage() {
               label={formMethod === "usdt_trc20" ? "TRON USDT Address (Base58 starting with T)" : "Your Wallet Phone Number"}
               value={formAccount}
               onChange={(e) => setFormAccount(e.target.value)}
-              placeholder={formMethod === "usdt_trc20" ? "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t" : "017XXXXXXXX"}
+              placeholder={formMethod === "usdt_trc20" ? "T followed by your TRON address" : "017XXXXXXXX"}
               className="font-mono text-xs"
               required
             />
@@ -445,7 +478,7 @@ export default function GatewaysPage() {
       )}
 
       <p className="text-[11px] text-zinc-400">
-        bKash and Nagad companion SMS matching operates automatically in the background. Pair your phone via{" "}
+        Live bKash and Nagad checks need a paired phone. Open{" "}
         <Link href="/dashboard/devices" className="underline text-teal-600 dark:text-teal-400">
           Companion devices
         </Link>

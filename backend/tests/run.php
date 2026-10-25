@@ -488,5 +488,22 @@ assert_true(
     'Google auth URL keeps the merchant redirect_uri'
 );
 
+$feeOnly = BinancePayClient::resolvePaidAmount(['totalFee' => '12.50000000']);
+assert_true(
+    ($feeOnly['ok'] ?? false) === true && ($feeOnly['amount'] ?? '') === GpMoney::sanitize('12.5', 8),
+    'Query totalFee is accepted as the paid amount'
+);
+$bothAmounts = BinancePayClient::resolvePaidAmount(['totalFee' => '1.00', 'orderAmount' => '1.00000000']);
+assert_true(($bothAmounts['ok'] ?? false) === true, 'Matching totalFee and orderAmount accepted');
+$clash = BinancePayClient::resolvePaidAmount(['totalFee' => '1.00', 'orderAmount' => '2.00']);
+assert_true(($clash['ok'] ?? false) === false, 'Conflicting provider amounts rejected');
+$missingAmount = BinancePayClient::resolvePaidAmount(['status' => 'PAID']);
+assert_true(($missingAmount['ok'] ?? false) === false, 'Missing provider amount rejected');
+$legacyAmount = BinancePayClient::resolvePaidAmount(['orderAmount' => '3.25']);
+assert_true(
+    ($legacyAmount['ok'] ?? false) === true && ($legacyAmount['amount'] ?? '') === GpMoney::sanitize('3.25', 8),
+    'orderAmount is used only when totalFee is absent'
+);
+
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

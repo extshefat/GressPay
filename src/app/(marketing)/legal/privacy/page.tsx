@@ -26,7 +26,7 @@ export default function PrivacyPage() {
           <ul className="list-disc pl-5 space-y-1">
             <li>Merchant account: name, email, password hash, business name</li>
             <li>API key prefixes and hashed secrets; webhook URL and signing secret</li>
-            <li>Payment method options you publish (wallet numbers, UPI VPA, USDT address)</li>
+            <li>Payment destinations you publish (bKash or Nagad numbers, Binance Pay is stored server-side, USDT TRC-20 address)</li>
             <li>Checkout sessions: amount, currency, method, customer contact if provided, TxID</li>
             <li>Optional companion device tokens for SMS match</li>
           </ul>

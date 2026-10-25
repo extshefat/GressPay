@@ -40,10 +40,10 @@ export default function FeesPage() {
             02
           </div>
           <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
-            Verification Credits
+            Plans are not public prices
           </h3>
           <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-            Platform usage is based on simple verification allowances (starter trial included). Manage plans, quota extensions, and credit grants inside your console.
+            Subscription prices are not listed here. An administrator can record plans and credit balances. Those balances are not deducted when a checkout or API call runs.
           </p>
         </Card>
 
@@ -69,7 +69,7 @@ export default function FeesPage() {
           </h2>
         </div>
         <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
-          Custom subscription packages and enterprise credit allotments are tailored to merchant throughput and managed directly by administrators. Every merchant account receives an automated starter tier upon initial sign-in, enabling instant testing in both Sandbox and Live ledger modes.
+          Plan rows and credit adjustments are admin records. They are not a card checkout, and signing in does not start a paid subscription. Test and live payment ledgers stay separate regardless of any plan row.
         </p>
 
         <div className="flex flex-wrap items-center gap-3 pt-2">

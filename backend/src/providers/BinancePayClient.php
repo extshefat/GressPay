@@ -161,4 +161,30 @@ final class BinancePayClient
             'merchantTradeNo' => $merchantTradeNo,
         ]);
     }
+
+    /**
+     * Query Order documents totalFee as the paid amount. orderAmount is accepted
+     * only when totalFee is absent or the two values match. Missing or conflicting
+     * amounts must not be treated as paid.
+     *
+     * @param array<string,mixed> $data
+     * @return array{ok:bool,amount?:string,error?:string}
+     */
+    public static function resolvePaidAmount(array $data): array
+    {
+        $fee = trim((string) ($data['totalFee'] ?? ''));
+        $order = trim((string) ($data['orderAmount'] ?? ''));
+        if ($fee === '' && $order === '') {
+            return ['ok' => false, 'error' => 'Provider amount missing.'];
+        }
+        if ($fee !== '' && $order !== '') {
+            $feeAmount = GpMoney::sanitize($fee, 8);
+            $orderAmount = GpMoney::sanitize($order, 8);
+            if (!GpMoney::withinTolerance($feeAmount, $orderAmount, '0', 8)) {
+                return ['ok' => false, 'error' => 'Provider totalFee and orderAmount disagree.'];
+            }
+            return ['ok' => true, 'amount' => $feeAmount];
+        }
+        return ['ok' => true, 'amount' => GpMoney::sanitize($fee !== '' ? $fee : $order, 8)];
+    }
 }

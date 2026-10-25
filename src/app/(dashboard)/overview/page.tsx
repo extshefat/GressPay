@@ -193,7 +193,7 @@ export default function OverviewPage() {
           title="Settlement Success Rate"
           value={metrics ? `${metrics.successRate.toFixed(1)}%` : "0.0%"}
           icon={<CheckCircle2 className="w-4 h-4 text-emerald-500" />}
-          change={{ value: "99.8% SLA", trend: "up" }}
+          subtitle="Completed sessions divided by sessions in range"
           loading={isLoading}
         />
       </div>

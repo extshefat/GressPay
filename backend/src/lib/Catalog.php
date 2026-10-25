@@ -15,6 +15,7 @@ final class GpCatalog
             self::row('bkash', 'bkash-personal', 'bKash (Direct Wallet + SMS Match)', 'BD', 'BDT', 'mfs', 'automation', true, true, 1.2, 50, 25000),
             self::row('nagad', 'nagad-personal', 'Nagad (Direct Wallet + SMS Match)', 'BD', 'BDT', 'mfs', 'automation', true, true, 1.0, 50, 25000),
             self::row('usdt_trc20', 'usdt-trc20', 'USDT TRC-20 (TRON On-Chain)', 'GLOBAL', 'USDT', 'crypto', 'onchain', true, true, 0.0, 1, 100000),
+            self::row('binance_pay', 'binance-personal', 'Binance Pay (Merchant API)', 'GLOBAL', 'USDT', 'crypto', 'binance_pay_merchant', true, false, 0.0, 1, 100000),
         ];
     }
 

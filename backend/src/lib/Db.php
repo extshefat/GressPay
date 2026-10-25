@@ -569,12 +569,11 @@ final class GpDb
                     'price_bdt' => 0.00,
                     'credit_allowance' => 100,
                     'is_free' => 1,
-                    'description' => 'Free tier for indie hackers and local shops to test bKash and Nagad automation.',
+                    'description' => 'Admin record only. Credits on this row are not deducted when a checkout runs.',
                     'features_json' => json_encode([
-                        'bKash & Nagad SMS Companion matching',
-                        '100 automated verification credits',
-                        'Standard webhooks & HMAC signatures',
-                        'Non-custodial direct merchant settlement',
+                        'bKash and Nagad SMS match when a companion is paired',
+                        'Credit balance is a ledger entry, not an enforced quota',
+                        'One HMAC webhook attempt after a paid session',
                     ], JSON_UNESCAPED_SLASHES),
                 ],
                 [
@@ -584,13 +583,11 @@ final class GpDb
                     'price_bdt' => 1499.00,
                     'credit_allowance' => 2500,
                     'is_free' => 0,
-                    'description' => 'For growing Bangladeshi businesses needing high throughput and crypto rails.',
+                    'description' => 'Admin record only. Optional USDT and Binance Pay still depend on merchant setup, not this plan.',
                     'features_json' => json_encode([
-                        'Everything in Starter',
-                        '2,500 verification credits / month',
-                        'bKash, Nagad + USDT TRC-20 on-chain rail',
-                        'High-concurrency companion webhook delivery',
-                        'Multiple payment destinations',
+                        'Same verification paths as Starter',
+                        'USDT TRC-20 and Binance Pay stay optional and separately configured',
+                        'Credit balance is not charged per API call',
                     ], JSON_UNESCAPED_SLASHES),
                 ],
                 [
@@ -600,21 +597,19 @@ final class GpDb
                     'price_bdt' => 4999.00,
                     'credit_allowance' => 15000,
                     'is_free' => 0,
-                    'description' => 'Dedicated throughput and SLA for high-volume merchants and platforms.',
+                    'description' => 'Admin record only. This plan does not add a webhook worker, an SLA, or support staff.',
                     'features_json' => json_encode([
-                        'Everything in Growth',
-                        '15,000 verification credits / month',
-                        'Dedicated companion webhook worker',
-                        'Multi-device companion redundancy',
-                        'Priority Telegram & email support',
+                        'Same payment checks as other plans',
+                        'No automatic webhook retry is included',
+                        'Credit balance is not enforced on checkout',
                     ], JSON_UNESCAPED_SLASHES),
                 ],
             ];
 
             $stmt = self::pdo()->prepare(
                 "INSERT INTO gp_plans (
-                    plan_id, name, code, price_bdt, credit_allowance, is_free, is_active, description, features_json, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)"
+                    plan_id, name, code, description, price_bdt, billing_cycle, credit_allowance, features_json, is_free, status, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, 'monthly', ?, ?, ?, 'active', ?, ?)"
             );
 
             foreach ($plans as $p) {
@@ -622,11 +617,11 @@ final class GpDb
                     $p['plan_id'],
                     $p['name'],
                     $p['code'],
+                    $p['description'],
                     $p['price_bdt'],
                     $p['credit_allowance'],
-                    $p['is_free'],
-                    $p['description'],
                     $p['features_json'],
+                    $p['is_free'],
                     $now,
                     $now,
                 ]);

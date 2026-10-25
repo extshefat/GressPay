@@ -88,7 +88,7 @@ Body: `{ "reason": "…" }` (min 8 chars). Audited in metadata. **Blocked** for 
 
 ## Webhooks
 
-Signed HMAC-SHA256 of raw body (`X-GressPay-Signature`), stable `eventId`, HTTPS-only destinations, private IP blocked after DNS. Retries logged in `gp_webhook_deliveries`.
+Signed HMAC-SHA256 of the raw body (`X-GressPay-Signature`), stable `eventId`, HTTPS-only destinations, private IP blocked after DNS. `GpWebhook::dispatch()` performs one attempt and logs it with `attempt = 1`. There is no retry worker.
 
 ---
 
@@ -96,7 +96,17 @@ Signed HMAC-SHA256 of raw body (`X-GressPay-Signature`), stable `eventId`, HTTPS
 
 Required when `APP_ENV=production`: `JWT_SECRET`, `APP_ENCRYPTION_KEY`, MySQL `DB_PASS` (≥32 chars recommended).  
 **Platform env:** `GRESSPAY_CRYPTO_ALLOWED`, `BINANCE_PAY_API_BASE`, `TRON_API_BASE`, `TRON_API_KEY`, `USDT_TRC20_CONTRACT`, `USDT_CONFIRMATIONS`, optional Cloudflare `R2_*` (API only).  
-**Merchant (dashboard/DB):** gateway instances in `gp_gateways` (destinations + QR metadata); Binance key/secret/SN sealed per brand — never in `.env`, never returned on GET. QR **bytes** in private R2 only.
+**Merchant (dashboard/DB):** gateway instances in `gp_gateways` (destinations + QR metadata); Binance Pay Merchant API key, secret, and certificate serial sealed per brand — never in `.env`, never returned on GET. These are not Spot trading keys. QR **bytes** in private R2 only.
+
+## Binance Pay vs USDT TRC-20
+
+Binance Pay create uses `POST /binancepay/openapi/v2/order` and stores `prepayId` / `checkoutUrl`. Reconciliation reads Query Order `data.totalFee` ([query order](https://developers.binance.com/docs/binance-pay/api-order-query)). `orderAmount` is accepted only when `totalFee` is absent or both amounts match. A missing or conflicting amount does not mark the session paid. Currency, `merchantTradeNo`, and status `PAID` are still required.
+
+Outbound requests are HMAC-SHA512 over `timestamp\nnonce\nbody\n` ([common rules](https://developers.binance.com/docs/binance-pay/api-common)). Official webhook examples verify RSA-SHA256 with Binance's certificate ([example](https://github.com/binance/binance-pay-signature-examples/blob/master/python/webhook.py)). This build still checks the merchant HMAC on callbacks, so an RSA callback is rejected. The callback body is never treated as proof; a successful order query is required. Create still sends `goodsDetails` on the v2 path. The current v2 document shows a `goods` object ([create order v2](https://developers.binance.com/docs/binance-pay/api-order-create-v2)), and the public query path is `/binancepay/openapi/order/query` rather than `/v2/order/query`. Those request shapes are unchanged until a sandbox call is allowed.
+
+USDT TRC-20 is a TronGrid transfer check: contract, recipient, exact amount, and `USDT_CONFIRMATIONS`. A pasted hash or screenshot does not complete the live ledger. A payment into a Binance deposit address is not a Binance Pay order.
+
+Admin routes exist under `/api/v1/admin` and require `ADMIN_EMAIL` or `ADMIN_EMAILS` on the server. An empty allowlist fails closed. There is no hardcoded administrator. Plan and credit rows are admin records. Credits are not decremented when a checkout or API call runs.
 
 ## Gateways (multi-instance) + QR upload
 

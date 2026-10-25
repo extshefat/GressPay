@@ -257,8 +257,7 @@ final class GpConfig
     {
         $raw = trim(self::get('ADMIN_EMAIL', self::get('ADMIN_EMAILS', '')));
         if ($raw === '') {
-            // Default configured platform operator emails.
-            return ['ownerofext@gmail.com', 'measahin9@gmail.com', 'tradershefat8@gmail.com'];
+            return [];
         }
         $emails = [];
         foreach (explode(',', $raw) as $part) {
