@@ -22,4 +22,5 @@ backend/storage/*.log
 Thumbs.db
 .idea/
 .vscode/
+.cursor/
 *.swp
