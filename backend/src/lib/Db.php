@@ -552,6 +552,90 @@ final class GpDb
         }
     }
 
+    private static function seedDefaultPlans(): void
+    {
+        try {
+            $existing = self::one("SELECT COUNT(*) as c FROM gp_plans");
+            if ((int)($existing['c'] ?? 0) > 0) {
+                return;
+            }
+
+            $now = GpIds::now();
+            $plans = [
+                [
+                    'plan_id' => 'plan_starter_free',
+                    'name' => 'Starter Free',
+                    'code' => 'starter_free',
+                    'price_bdt' => 0.00,
+                    'credit_allowance' => 100,
+                    'is_free' => 1,
+                    'description' => 'Free tier for indie hackers and local shops to test bKash and Nagad automation.',
+                    'features_json' => json_encode([
+                        'bKash & Nagad SMS Companion matching',
+                        '100 automated verification credits',
+                        'Standard webhooks & HMAC signatures',
+                        'Non-custodial direct merchant settlement',
+                    ], JSON_UNESCAPED_SLASHES),
+                ],
+                [
+                    'plan_id' => 'plan_growth_business',
+                    'name' => 'Growth Business',
+                    'code' => 'growth_business',
+                    'price_bdt' => 1499.00,
+                    'credit_allowance' => 2500,
+                    'is_free' => 0,
+                    'description' => 'For growing Bangladeshi businesses needing high throughput and crypto rails.',
+                    'features_json' => json_encode([
+                        'Everything in Starter',
+                        '2,500 verification credits / month',
+                        'bKash, Nagad + USDT TRC-20 on-chain rail',
+                        'High-concurrency companion webhook delivery',
+                        'Multiple payment destinations',
+                    ], JSON_UNESCAPED_SLASHES),
+                ],
+                [
+                    'plan_id' => 'plan_enterprise_scale',
+                    'name' => 'Enterprise Scale',
+                    'code' => 'enterprise_scale',
+                    'price_bdt' => 4999.00,
+                    'credit_allowance' => 15000,
+                    'is_free' => 0,
+                    'description' => 'Dedicated throughput and SLA for high-volume merchants and platforms.',
+                    'features_json' => json_encode([
+                        'Everything in Growth',
+                        '15,000 verification credits / month',
+                        'Dedicated companion webhook worker',
+                        'Multi-device companion redundancy',
+                        'Priority Telegram & email support',
+                    ], JSON_UNESCAPED_SLASHES),
+                ],
+            ];
+
+            $stmt = self::pdo()->prepare(
+                "INSERT INTO gp_plans (
+                    plan_id, name, code, price_bdt, credit_allowance, is_free, is_active, description, features_json, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)"
+            );
+
+            foreach ($plans as $p) {
+                $stmt->execute([
+                    $p['plan_id'],
+                    $p['name'],
+                    $p['code'],
+                    $p['price_bdt'],
+                    $p['credit_allowance'],
+                    $p['is_free'],
+                    $p['description'],
+                    $p['features_json'],
+                    $now,
+                    $now,
+                ]);
+            }
+        } catch (Throwable $e) {
+            error_log('[GpDb] seedDefaultPlans failed: ' . $e->getMessage());
+        }
+    }
+
     /** Idempotent: one gateway per brand+method when methods.options has a destination and no gateway yet. */
     private static function backfillGatewaysFromMethods(): void
     {
