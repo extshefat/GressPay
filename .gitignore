@@ -1,0 +1,25 @@
+# Dependencies & build (reinstall with npm ci / npm install)
+node_modules/
+.next/
+out/
+dist/
+*.tsbuildinfo
+
+# Secrets — keep only .env.example
+.env
+.env.local
+.env.*.local
+backend/.env
+
+# Local PHP SQLite / logs
+backend/storage/*.sqlite
+backend/storage/*.sqlite-*
+backend/storage/*.log
+*.log
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

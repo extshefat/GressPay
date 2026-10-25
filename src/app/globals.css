@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Offline-safe stacks (no Google Fonts network fetch at build). */
+    --font-sora: "Segoe UI", "Helvetica Neue", ui-sans-serif, system-ui, sans-serif;
+    --font-ibm-plex-mono: "Cascadia Mono", "Consolas", ui-monospace, monospace;
+    --bg-page: #ffffff;
+    --bg-surface: #f8fafc;
+    --bg-card: #ffffff;
+    --bg-muted: #f1f5f9;
+    --border-color: #e2e8f0;
+    --border-subtle: #f1f5f9;
+    --text-primary: #09090b;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+    --accent-primary: #0f766e;
+    --accent-contrast: #ffffff;
+    --accent-soft: rgba(15, 118, 110, 0.12);
+  }
+
+  .dark {
+    --bg-page: #09090b;
+    --bg-surface: #111115;
+    --bg-card: #16161a;
+    --bg-muted: #202026;
+    --border-color: #27272a;
+    --border-subtle: #323238;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --accent-primary: #2dd4bf;
+    --accent-contrast: #042f2e;
+    --accent-soft: rgba(45, 212, 191, 0.14);
+  }
+}
+
+body {
+  color: var(--text-primary);
+  background: var(--bg-page);
+  font-family: var(--font-sora), system-ui, sans-serif;
+  overflow-x: hidden;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+/* Custom minimal scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-page);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+::selection {
+  background: var(--accent-primary);
+  color: var(--accent-contrast);
+}
+
+/* Print styling for invoices */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  header,
+  aside,
+  nav,
+  button {
+    display: none !important;
+  }
+  #printable-invoice {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 24px;
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+  #printable-invoice * {
+    color: #111827 !important;
+  }
+}

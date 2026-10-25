@@ -1,0 +1,64 @@
+name: Verify
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  web:
+    name: Next.js tsc + live build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: GressPay- Web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: GressPay- Web/package-lock.json
+      - run: npm ci || npm install
+      - run: npx tsc --noEmit
+      - run: npm run build
+        env:
+          NEXT_PUBLIC_DATA_SOURCE: live
+
+  php:
+    name: PHP unit tests
+    runs-on: ubuntu-latest
+    container:
+      image: php:8.2-cli-alpine
+    defaults:
+      run:
+        working-directory: GressPay- Web/backend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install extensions
+        run: |
+          apk add --no-cache $PHPIZE_DEPS icu-dev curl-dev
+          docker-php-ext-install bcmath
+      - name: Run tests
+        run: php tests/run.php
+
+  android:
+    name: Android unit tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: GressPay-App
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Accept licenses
+        run: yes | sdkmanager --licenses >/dev/null || true
+      - name: Unit tests
+        run: chmod +x gradlew && ./gradlew test --tests com.gresspay.companion.sms.PaymentSmsParserTest --stacktrace
+      - name: Assemble debug
+        run: ./gradlew assembleDebug --stacktrace
