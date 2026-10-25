@@ -189,20 +189,7 @@ final class GpAuth
         $now = GpIds::now();
         $rows = [
             ['BDT', '৳', '122.5'],
-            ['USD', '
-        foreach ($rows as [$code, $symbol, $rate]) {
-            $exists = GpDb::one('SELECT id FROM gp_currency WHERE brand_id = ? AND code = ?', [$brandId, $code]);
-            if ($exists) {
-                continue;
-            }
-            GpDb::exec(
-                'INSERT INTO gp_currency (brand_id, code, symbol, rate, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-                [$brandId, $code, $symbol, $rate, $now, $now]
-            );
-        }
-    }
-}
-, '1'],
+            ['USD', '$', '1'],
             ['USDT', '₮', '1'],
         ];
         foreach ($rows as [$code, $symbol, $rate]) {
