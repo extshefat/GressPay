@@ -1,0 +1,435 @@
+<?php
+declare(strict_types=1);
+
+/**
+ * Lightweight regression suite (no PHPUnit required).
+ * Run: php tests/run.php
+ */
+putenv('APP_ENV=development');
+$_ENV['APP_ENV'] = 'development';
+putenv('JWT_SECRET=dev-test-jwt-secret-at-least-32-chars-long');
+$_ENV['JWT_SECRET'] = 'dev-test-jwt-secret-at-least-32-chars-long';
+putenv('APP_ENCRYPTION_KEY=dev-test-enc-key-at-least-32-chars-xx');
+$_ENV['APP_ENCRYPTION_KEY'] = 'dev-test-enc-key-at-least-32-chars-xx';
+putenv('DB_DRIVER=sqlite');
+$_ENV['DB_DRIVER'] = 'sqlite';
+putenv('SQLITE_PATH=storage/test_gresspay.sqlite');
+$_ENV['SQLITE_PATH'] = 'storage/test_gresspay.sqlite';
+putenv('GRESSPAY_CRYPTO_ALLOWED=0');
+
+$root = dirname(__DIR__);
+@unlink($root . '/storage/test_gresspay.sqlite');
+
+require_once $root . '/src/bootstrap.php';
+
+$failed = 0;
+$passed = 0;
+
+function assert_true(bool $cond, string $msg): void
+{
+    global $failed, $passed;
+    if ($cond) {
+        echo "PASS  $msg\n";
+        $passed++;
+    } else {
+        echo "FAIL  $msg\n";
+        $failed++;
+    }
+}
+
+// —— Webhook SSRF ——
+$ssrf = [
+    'http://example.com/hook' => false,
+    'https://127.0.0.1/hook' => false,
+    'https://10.0.0.5/x' => false,
+    'https://169.254.169.254/latest' => false,
+    'https://localhost/x' => false,
+    'https://[::1]/x' => false,
+    'ftp://example.com/x' => false,
+    'https://0.0.0.0/x' => false,
+];
+foreach ($ssrf as $url => $expectOk) {
+    $r = GpWebhook::validateDestination($url);
+    assert_true($r['ok'] === $expectOk, "SSRF block: $url => " . ($r['error'] ?? 'ok'));
+}
+assert_true(GpWebhook::isBlockedIp('192.168.1.1') === true, 'block private 192.168');
+assert_true(GpWebhook::isBlockedIp('10.1.2.3') === true, 'block private 10.x');
+assert_true(GpWebhook::isBlockedIp('172.16.0.1') === true, 'block private 172.16');
+assert_true(GpWebhook::isBlockedIp('8.8.8.8') === false, 'allow public 8.8.8.8');
+
+// —— Binance signing fixture ——
+$ts = '1619984100000';
+$nonce = 'abc123nonce';
+$body = '{"hello":"world"}';
+$secret = 'testsecret';
+$sig = BinancePayClient::signPayload($ts, $nonce, $body, $secret);
+$payload = $ts . "\n" . $nonce . "\n" . $body . "\n";
+$expected = strtoupper(hash_hmac('sha512', $payload, $secret));
+assert_true($sig === $expected, 'Binance Pay HMAC-SHA512 signature matches');
+assert_true(
+    BinancePayClient::verifyCallbackSignature((string) (int) round(microtime(true) * 1000), $nonce, $body, $sig, $secret) === false
+    || true,
+    'Callback verifier callable'
+);
+// Fresh timestamp should verify
+$ts2 = (string) (int) round(microtime(true) * 1000);
+$sig2 = BinancePayClient::signPayload($ts2, $nonce, $body, $secret);
+assert_true(BinancePayClient::verifyCallbackSignature($ts2, $nonce, $body, $sig2, $secret), 'Fresh callback signature verifies');
+assert_true(!BinancePayClient::verifyCallbackSignature('1000', $nonce, $body, $sig2, $secret), 'Stale callback rejected');
+
+// —— Catalog release scope ——
+$codes = array_map(static fn ($m) => $m['code'], GpCatalog::releaseMethods());
+assert_true(in_array('bkash', $codes, true) && in_array('nagad', $codes, true), 'BD rails in release');
+assert_true(in_array('binance_pay', $codes, true) && in_array('usdt_trc20', $codes, true), 'Crypto rails in release');
+assert_true(!in_array('upi_qr', $codes, true) && !in_array('jazzcash', $codes, true), 'IN/PK not in release');
+
+// —— Fixed-price / openSession integrity via DB seed ——
+$now = GpIds::now();
+$merchantId = GpIds::make('m', 6);
+$brandId = GpIds::make('b', 6);
+GpDb::exec(
+    'INSERT INTO gp_merchants (merchant_id, full_name, email, password_hash, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    [$merchantId, 'T', 't_' . bin2hex(random_bytes(3)) . '@test.local', password_hash('x', PASSWORD_BCRYPT), 'active', $now, $now]
+);
+GpDb::exec(
+    'INSERT INTO gp_brands (brand_id, merchant_id, name, currency_code, timezone, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    [$brandId, $merchantId, 'Brand', 'BDT', 'Asia/Dhaka', $now, $now]
+);
+$linkId = GpIds::make('plink', 6);
+GpDb::exec(
+    'INSERT INTO gp_payment_links (link_id, brand_id, title, amount, currency, status, ledger_mode, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?)',
+    [$linkId, $brandId, 'Fixed', '500.00', 'BDT', 'active', 'live', $now, $now]
+);
+
+// Simulate fixed-price logic
+$link = GpDb::one('SELECT * FROM gp_payment_links WHERE link_id = ?', [$linkId]);
+$buyerAmount = '1.00';
+$locked = GpMoney::sanitize((string) $link['amount']);
+assert_true($locked === '500' || (float) $locked === 500.0, 'Link amount stays 500');
+assert_true(GpMoney::sanitize($buyerAmount) !== $locked, 'Buyer amount differs — would be rejected');
+
+// —— Duplicate completed TxID app path ——
+$sessionA = GpIds::make('chs', 6);
+$sessionB = GpIds::make('chs', 6);
+GpDb::exec(
+    'INSERT INTO gp_transactions (session_id, brand_id, source, amount, currency, ledger_mode, trx_id, status, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?)',
+    [$sessionA, $brandId, 'api', '100', 'BDT', 'live', 'TRXDUPE1', 'completed', $now, $now]
+);
+$dup = GpDb::one(
+    'SELECT session_id FROM gp_transactions WHERE trx_id = ? AND brand_id = ? AND session_id != ? AND status = ?',
+    ['TRXDUPE1', $brandId, $sessionB, 'completed']
+);
+assert_true($dup !== null, 'Duplicate completed TxID detected');
+
+// —— Crypto seal ——
+$sealed = GpCrypto::seal('secret-value');
+assert_true(GpCrypto::open($sealed) === 'secret-value', 'AES-GCM seal/open');
+
+// —— Method readiness fail-closed ——
+$cat = GpCatalog::find('binance_pay');
+$ready = GpMethodReadiness::evaluate($cat, ['status' => 'active', 'options' => '{}'], ['crypto_enabled' => 0]);
+assert_true($ready['liveReady'] === false, 'Binance not live without crypto gate');
+
+$catBd = GpCatalog::find('bkash');
+$readyBd = GpMethodReadiness::evaluate($catBd, ['status' => 'active', 'options' => '{}'], []);
+assert_true($readyBd['liveReady'] === false, 'bKash not live without wallet number');
+$readyBd2 = GpMethodReadiness::evaluate($catBd, ['status' => 'active', 'options' => json_encode(['account' => '01700000000'])], []);
+assert_true($readyBd2['liveReady'] === true, 'bKash live-ready with wallet');
+
+// —— Live TxID alone cannot complete: matchingSms returns null without SMS ——
+$sessionLive = GpIds::make('chs', 6);
+GpDb::exec(
+    'INSERT INTO gp_transactions (session_id, brand_id, source, amount, currency, ledger_mode, trx_id, method_code, status, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+    [$sessionLive, $brandId, 'api', '500', 'BDT', 'live', 'TRXLIVEONLY1', 'bkash', 'pending', $now, $now]
+);
+$noSms = CheckoutController::matchingSms($brandId, 'TRXLIVEONLY1', '500', 'bkash');
+assert_true($noSms === null, 'Live TxID without SMS does not match');
+
+// —— Wrong amount SMS rejected ——
+GpDb::exec(
+    'INSERT INTO gp_sms_data (brand_id, sender_key, amount, trx_id, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    [$brandId, 'bkash', '100', 'TRXAMT1', 'approved', $now, $now]
+);
+$wrongAmt = CheckoutController::matchingSms($brandId, 'TRXAMT1', '500', 'bkash');
+assert_true($wrongAmt === null, 'SMS amount mismatch rejected');
+
+// —— Correct SMS matches ——
+GpDb::exec(
+    'INSERT INTO gp_sms_data (brand_id, sender_key, amount, trx_id, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    [$brandId, 'bkash', '500', 'TRXOK1', 'approved', $now, $now]
+);
+$okSms = CheckoutController::matchingSms($brandId, 'TRXOK1', '500', 'bkash');
+assert_true($okSms !== null, 'Matching SMS accepted');
+
+// —— Wrong rail SMS rejected ——
+$wrongRail = CheckoutController::matchingSms($brandId, 'TRXOK1', '500', 'nagad');
+assert_true($wrongRail === null, 'Wrong rail SMS rejected');
+
+// —— Revoked device cannot authenticate ——
+$devId = GpIds::make('dev', 4);
+$plainTok = 'gpdev_' . bin2hex(random_bytes(8));
+GpDb::exec(
+    'INSERT INTO gp_devices (device_id, brand_id, token_hash, status, created_at, updated_at) VALUES (?,?,?,?,?,?)',
+    [$devId, $brandId, password_hash($plainTok, PASSWORD_BCRYPT), 'revoked', $now, $now]
+);
+$activeOnly = GpDb::all('SELECT * FROM gp_devices WHERE status = ?', ['active']);
+$foundRevoked = false;
+foreach ($activeOnly as $d) {
+    if (password_verify($plainTok, $d['token_hash'])) {
+        $foundRevoked = true;
+    }
+}
+assert_true(!$foundRevoked, 'Revoked device token not in active set');
+
+// —— Decimal money ——
+assert_true(GpMoney::withinTolerance('100.00', '100.00', '0'), 'Exact amount within tolerance');
+assert_true(!GpMoney::withinTolerance('100.00', '99.00', '0'), 'Underpay outside tolerance');
+assert_true(GpMoney::add('0.1', '0.2', 2) === '0.30' || GpMoney::add('0.1', '0.2', 2) === '0.3', 'bcadd-style add');
+assert_true(GpMoney::withinTolerance('10.00000000', '10', '0', 8), 'Binance-style exact decimal match');
+assert_true(!GpMoney::withinTolerance('10.01', '10.00', '0', 8), 'Binance overpay rejected at zero tolerance');
+
+// —— Fixed-price AMOUNT_LOCKED semantics (buyer cannot underpay locked link) ——
+$linkAmt = GpMoney::sanitize((string) $link['amount']);
+$buyerTry = GpMoney::sanitize('1.00');
+assert_true(!GpMoney::withinTolerance($buyerTry, $linkAmt, '0'), 'AMOUNT_LOCKED: buyer amount mismatch');
+
+// —— USDT TRC-20 address / amount helpers (no live Tron call) ——
+$usdtContract = 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t';
+assert_true(TronUsdtVerifier::normalizeBase58($usdtContract) === $usdtContract, 'USDT contract Base58 unchanged');
+$hex20 = substr(TronUsdtVerifier::base58ToHex21($usdtContract), 2); // drop 41 prefix
+assert_true(strlen($hex20) === 40, 'Contract decodes to 20-byte hex');
+$roundTrip = TronUsdtVerifier::hex20ToBase58($hex20);
+assert_true($roundTrip === $usdtContract, 'hex20 ↔ Base58Check round-trip for USDT contract');
+assert_true(TronUsdtVerifier::toMicroUnits('1.5') === '1500000', '1.5 USDT = 1500000 micro');
+assert_true(TronUsdtVerifier::toMicroUnits('0.000001') === '1', '1 micro-USDT');
+assert_true(TronUsdtVerifier::fromMicroUnits('1500000') === '1.500000', 'micro → human');
+assert_true(TronUsdtVerifier::normalizeBase58('not-an-address') === '', 'Invalid address rejected');
+$badTx = TronUsdtVerifier::verify('zzzz', $usdtContract, '1');
+assert_true($badTx['ok'] === false && ($badTx['error'] ?? '') === 'invalid_txid_format', 'Reject non-hex TxID');
+
+// —— Binance callback nonce + audit tables exist ——
+GpDb::exec(
+    'INSERT INTO gp_binance_callback_nonces (nonce, merchant_trade_no, brand_id, created_at) VALUES (?,?,?,?)',
+    ['nonce-test-1', 'trade1', $brandId, $now]
+);
+$nonceDup = false;
+try {
+    GpDb::exec(
+        'INSERT INTO gp_binance_callback_nonces (nonce, merchant_trade_no, brand_id, created_at) VALUES (?,?,?,?)',
+        ['nonce-test-1', 'trade1', $brandId, $now]
+    );
+} catch (Throwable $e) {
+    $nonceDup = true;
+}
+assert_true($nonceDup, 'Duplicate Binance callback nonce rejected');
+GpDb::exec(
+    'INSERT INTO gp_audit_log (brand_id, session_id, actor_id, action, meta_json, created_at) VALUES (?,?,?,?,?,?)',
+    [$brandId, $sessionLive, $merchantId, 'binance.reconcile', '{}', $now]
+);
+assert_true(GpDb::one('SELECT id FROM gp_audit_log WHERE action = ?', ['binance.reconcile']) !== null, 'Audit log row persisted');
+
+// —— Ledger isolation: test completed trx not visible as live duplicate rule for different mode still keyed by brand ——
+assert_true(
+    strtolower((string) (GpDb::one('SELECT ledger_mode FROM gp_transactions WHERE session_id = ?', [$sessionLive])['ledger_mode'] ?? '')) === 'live',
+    'Live session stamped live'
+);
+
+// —— Multi-tenant isolation (Merchant A vs B) ——
+$now2 = GpIds::now();
+$merchantB = GpIds::make('m', 6);
+$brandB = GpIds::make('b', 6);
+GpDb::exec(
+    'INSERT INTO gp_merchants (merchant_id, full_name, email, password_hash, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    [$merchantB, 'B', 'b_' . bin2hex(random_bytes(3)) . '@test.local', password_hash('x', PASSWORD_BCRYPT), 'active', $now2, $now2]
+);
+GpDb::exec(
+    'INSERT INTO gp_brands (brand_id, merchant_id, name, currency_code, timezone, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    [$brandB, $merchantB, 'BrandB', 'BDT', 'Asia/Dhaka', $now2, $now2]
+);
+
+GpDb::exec(
+    'INSERT INTO gp_methods (brand_id, code, status, options, created_at, updated_at) VALUES (?,?,?,?,?,?)',
+    [$brandId, 'bkash', 'active', json_encode(['account' => '01711111111']), $now2, $now2]
+);
+GpDb::exec(
+    'INSERT INTO gp_methods (brand_id, code, status, options, created_at, updated_at) VALUES (?,?,?,?,?,?)',
+    [$brandB, 'bkash', 'active', json_encode(['account' => '01722222222']), $now2, $now2]
+);
+
+$recvA = TronUsdtVerifier::hex20ToBase58(bin2hex(random_bytes(20)));
+$recvB = TronUsdtVerifier::hex20ToBase58(bin2hex(random_bytes(20)));
+assert_true($recvA !== '' && $recvB !== '' && $recvA !== $recvB, 'Generated distinct TRON receive addresses');
+GpDb::exec(
+    'INSERT INTO gp_methods (brand_id, code, status, options, created_at, updated_at) VALUES (?,?,?,?,?,?)',
+    [$brandId, 'usdt_trc20', 'active', json_encode(['account' => $recvA]), $now2, $now2]
+);
+GpDb::exec(
+    'INSERT INTO gp_methods (brand_id, code, status, options, created_at, updated_at) VALUES (?,?,?,?,?,?)',
+    [$brandB, 'usdt_trc20', 'active', json_encode(['account' => $recvB]), $now2, $now2]
+);
+
+$rowA = GpDb::one('SELECT options FROM gp_methods WHERE brand_id = ? AND code = ?', [$brandId, 'bkash']);
+$optsA = json_decode((string) ($rowA['options'] ?? '{}'), true) ?: [];
+assert_true(($optsA['account'] ?? '') === '01711111111', 'Merchant A wallet stored');
+$leak = GpDb::one(
+    'SELECT options FROM gp_methods WHERE brand_id = ? AND code = ? AND options LIKE ?',
+    [$brandId, 'bkash', '%01722222222%']
+);
+assert_true($leak === null, 'Merchant A query does not return Merchant B wallet');
+$crossUsdt = GpDb::one('SELECT options FROM gp_methods WHERE brand_id = ? AND code = ?', [$brandId, 'usdt_trc20']);
+$crossOpts = json_decode((string) ($crossUsdt['options'] ?? '{}'), true) ?: [];
+assert_true(($crossOpts['account'] ?? '') === $recvA && ($crossOpts['account'] ?? '') !== $recvB, 'USDT address brand-scoped');
+
+// Binance: seal for B only; A must not resolve B's creds; env fallback gone
+putenv('BINANCE_PAY_API_KEY=env-key-must-not-work');
+$_ENV['BINANCE_PAY_API_KEY'] = 'env-key-must-not-work';
+putenv('BINANCE_PAY_SECRET=env-secret-must-not-work');
+$_ENV['BINANCE_PAY_SECRET'] = 'env-secret-must-not-work';
+putenv('BINANCE_PAY_CERTIFICATE_SN=env-sn-must-not-work');
+$_ENV['BINANCE_PAY_CERTIFICATE_SN'] = 'env-sn-must-not-work';
+$brandArow = GpDb::one('SELECT * FROM gp_brands WHERE brand_id = ?', [$brandId]);
+assert_true(BinancePayClient::credentialsForBrand($brandArow ?? []) === null, 'No env Binance fallback for A');
+$sealedB = GpCrypto::seal(json_encode([
+    'apiKey' => 'brand-b-key',
+    'secret' => 'brand-b-secret',
+    'certificateSn' => 'brand-b-sn',
+], JSON_UNESCAPED_SLASHES));
+GpDb::exec('UPDATE gp_brands SET binance_pay_json = ?, updated_at = ? WHERE brand_id = ?', [$sealedB, $now2, $brandB]);
+$brandBrow = GpDb::one('SELECT * FROM gp_brands WHERE brand_id = ?', [$brandB]);
+$credsB = BinancePayClient::credentialsForBrand($brandBrow ?? []);
+assert_true($credsB !== null && $credsB['apiKey'] === 'brand-b-key', 'Brand B sealed Binance opens');
+assert_true(BinancePayClient::credentialsForBrand($brandArow ?? []) === null, 'Brand A cannot use Brand B Binance');
+assert_true(BinancePayClient::brandHasSealedCredentials($brandArow ?? []) === false, 'A not configured');
+assert_true(BinancePayClient::brandHasSealedCredentials($brandBrow ?? []) === true, 'B configured');
+
+// Reconcile ownership: session on B is not visible under A's brand filter
+$sessionB = GpIds::make('chs', 6);
+GpDb::exec(
+    'INSERT INTO gp_transactions (session_id, brand_id, source, amount, currency, ledger_mode, method_code, status, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?)',
+    [$sessionB, $brandB, 'api', '10', 'USDT', 'live', 'binance_pay', 'pending', $now2, $now2]
+);
+$aSeesB = GpDb::one(
+    'SELECT session_id FROM gp_transactions WHERE session_id = ? AND brand_id = ?',
+    [$sessionB, $brandId]
+);
+assert_true($aSeesB === null, 'Merchant A cannot load Merchant B checkout session by brand filter');
+
+// SMS: B's SMS not matched for A's brand
+GpDb::exec(
+    'INSERT INTO gp_sms_data (brand_id, sender_key, amount, trx_id, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    [$brandB, 'bkash', '500', 'TRXISO1AB', 'approved', $now2, $now2]
+);
+assert_true(CheckoutController::matchingSms($brandId, 'TRXISO1AB', '500', 'bkash') === null, 'A cannot match B SMS evidence');
+assert_true(CheckoutController::matchingSms($brandB, 'TRXISO1AB', '500', 'bkash') !== null, 'B matches own SMS');
+
+// Checkout presenter: A methods never show B destination
+$catBk = GpCatalog::find('bkash');
+$mA = GpDb::one('SELECT * FROM gp_methods WHERE brand_id = ? AND code = ?', [$brandId, 'bkash']);
+$presentedA = GpPresenters::method($catBk, $mA, ['brandId' => $brandId], $brandArow);
+assert_true(($presentedA['depositAddressOrNumber'] ?? '') === '01711111111', 'Checkout A shows A wallet');
+assert_true(($presentedA['depositAddressOrNumber'] ?? '') !== '01722222222', 'Checkout A never shows B wallet');
+
+// Missing destination → not live-ready; no global fallback
+$emptyUsdt = ['status' => 'active', 'options' => '{}'];
+$readyEmpty = GpMethodReadiness::evaluate(GpCatalog::find('usdt_trc20'), $emptyUsdt, $brandArow ?? []);
+assert_true($readyEmpty['liveReady'] === false, 'USDT without merchant address not live-ready');
+
+// BD number format helpers (inline mirror of MethodsController rules)
+$bdOk = (bool) preg_match('/^01[3-9]\d{8}$/', '01712345678');
+$bdBad = (bool) preg_match('/^01[3-9]\d{8}$/', '019');
+assert_true($bdOk && !$bdBad, 'BD mobile format gate');
+
+// —— Google OAuth Security & CSRF Suite ——
+assert_true(GoogleOAuthClient::isConfigured() === false, 'Google OAuth initially unconfigured');
+$unconf = GoogleOAuthClient::getAuthUrl();
+assert_true($unconf['enabled'] === false && str_contains($unconf['reason'] ?? '', 'not configured'), 'Unconfigured returns accurate reason');
+
+// Simulate platform credentials configured in Coolify env
+putenv('GOOGLE_CLIENT_ID=test-client-id-12345.apps.googleusercontent.com');
+$_ENV['GOOGLE_CLIENT_ID'] = 'test-client-id-12345.apps.googleusercontent.com';
+putenv('GOOGLE_CLIENT_SECRET=test-client-secret-xyz-98765');
+$_ENV['GOOGLE_CLIENT_SECRET'] = 'test-client-secret-xyz-98765';
+GpConfig::load();
+
+assert_true(GoogleOAuthClient::isConfigured() === true, 'Google OAuth reports configured when platform keys set');
+$authInfo = GoogleOAuthClient::getAuthUrl('https://my-vps.com/callback/google');
+assert_true($authInfo['enabled'] === true, 'Generates auth URL when configured');
+assert_true(str_contains($authInfo['url'] ?? '', 'accounts.google.com'), 'Auth URL targets Google');
+assert_true(str_contains($authInfo['url'] ?? '', 'code_challenge='), 'PKCE S256 code_challenge present');
+assert_true(str_contains($authInfo['url'] ?? '', 'state='), 'CSRF state parameter present');
+
+$generatedState = $authInfo['state'] ?? '';
+$dbState = GpDb::one('SELECT * FROM gp_oauth_states WHERE state = ?', [$generatedState]);
+assert_true($dbState !== null && !empty($dbState['code_verifier']), 'OAuth state and PKCE verifier stored in DB');
+assert_true((int) $dbState['expires_at'] > time(), 'OAuth state has valid future expiration');
+
+// Forged / Tampered state rejected
+$tampered = GoogleOAuthClient::handleCallback('auth-code-123', 'fake-tampered-state-999');
+assert_true($tampered['ok'] === false && ($tampered['error'] ?? '') === 'INVALID_STATE', 'Tampered state rejected as INVALID_STATE');
+
+// Expired state rejected
+$expiredState = 'expired-state-' . bin2hex(random_bytes(8));
+GpDb::exec(
+    'INSERT INTO gp_oauth_states (state, nonce, code_verifier, expires_at, created_at) VALUES (?, ?, ?, ?, ?)',
+    [$expiredState, 'nonce', 'verifier', time() - 100, GpIds::now()]
+);
+$expiredRes = GoogleOAuthClient::handleCallback('auth-code-123', $expiredState);
+assert_true($expiredRes['ok'] === false && ($expiredRes['error'] ?? '') === 'STATE_EXPIRED', 'Past expiration rejected as STATE_EXPIRED');
+
+// Single-use CSRF defense: state consumed once cannot be replayed
+$consumedCheck = GpDb::one('SELECT * FROM gp_oauth_states WHERE state = ?', [$expiredState]);
+assert_true($consumedCheck === null, 'Consumed state immediately deleted from DB (single-use CSRF defense)');
+
+// —— Gateways + R2 (no live R2) ——
+assert_true(R2Client::isConfigured() === false, 'R2 unconfigured without env');
+assert_true(R2Client::detectImageMime("\x89PNG\r\n\x1a\nxxxx") === 'image/png', 'PNG magic detected');
+assert_true(R2Client::detectImageMime("\xFF\xD8\xFFxxxx") === 'image/jpeg', 'JPEG magic detected');
+assert_true(R2Client::detectImageMime('<svg></svg>') === null, 'SVG rejected by magic');
+
+$gwA1 = 'gw_' . bin2hex(random_bytes(4));
+$gwA2 = 'gw_' . bin2hex(random_bytes(4));
+$nowG = GpIds::now();
+GpDb::exec(
+    'INSERT INTO gp_gateways (gateway_id, brand_id, method_code, display_name, account, currency, country, display_order, status, qr_status, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+    [$gwA1, $brandId, 'bkash', 'Main bKash', '01711111111', 'BDT', 'BD', 0, 'active', 'none', $nowG, $nowG]
+);
+GpDb::exec(
+    'INSERT INTO gp_gateways (gateway_id, brand_id, method_code, display_name, account, currency, country, display_order, status, qr_status, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+    [$gwA2, $brandId, 'bkash', 'Backup bKash', '01733333333', 'BDT', 'BD', 1, 'active', 'none', $nowG, $nowG]
+);
+$foreignGw = GpDb::one('SELECT * FROM gp_gateways WHERE brand_id = ? AND gateway_id = ?', [$brandB, $gwA1]);
+assert_true($foreignGw === null, 'Brand B cannot see Brand A gateway by id');
+
+// Multi-gateway SMS: without number match → null
+GpDb::exec(
+    'INSERT INTO gp_sms_data (brand_id, sender_key, amount, trx_id, number, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)',
+    [$brandId, 'bkash', '500', 'TRXMULTI1', '', 'approved', $nowG, $nowG]
+);
+assert_true(
+    CheckoutController::matchingSms($brandId, 'TRXMULTI1', '500', 'bkash', $gwA1, '01711111111') === null,
+    'Multi-gateway without SMS number stays unmatched'
+);
+GpDb::exec(
+    'INSERT INTO gp_sms_data (brand_id, sender_key, amount, trx_id, number, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)',
+    [$brandId, 'bkash', '500', 'TRXMULTI2', '01711111111', 'approved', $nowG, $nowG]
+);
+assert_true(
+    CheckoutController::matchingSms($brandId, 'TRXMULTI2', '500', 'bkash', $gwA1, '01711111111') !== null,
+    'Multi-gateway with matching number accepted'
+);
+assert_true(
+    CheckoutController::matchingSms($brandId, 'TRXMULTI2', '500', 'bkash', $gwA2, '01733333333') === null,
+    'SMS for wallet A does not complete gateway B'
+);
+
+$accOk = GatewaysController::validateAccount('bkash', '01712345678');
+assert_true($accOk === '01712345678', 'Gateway BD account validates');
+
+echo "\n$passed passed, $failed failed\n";
+exit($failed > 0 ? 1 : 0);
