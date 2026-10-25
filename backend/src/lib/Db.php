@@ -161,6 +161,21 @@ final class GpDb
             }
         }
 
+        $rateLimit = self::$driver === 'mysql'
+            ? "CREATE TABLE IF NOT EXISTS gp_rate_limit (
+                id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                bucket VARCHAR(80) NOT NULL UNIQUE,
+                window_start INT NOT NULL,
+                hit_count INT NOT NULL DEFAULT 0
+              ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+            : "CREATE TABLE IF NOT EXISTS gp_rate_limit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                bucket VARCHAR(80) NOT NULL UNIQUE,
+                window_start INTEGER NOT NULL,
+                hit_count INTEGER NOT NULL DEFAULT 0
+              )";
+        self::pdo()->exec($rateLimit);
+
         $oauthStates = self::$driver === 'mysql'
             ? "CREATE TABLE IF NOT EXISTS gp_oauth_states (
                 id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,

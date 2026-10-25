@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import { GressPayLogo } from "@/components/brand/GressPayLogo";
 
 export const Footer: React.FC = () => {
   return (
@@ -7,12 +8,7 @@ export const Footer: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8 pb-12 border-b border-void-border/60">
           <div className="col-span-2 space-y-4">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center font-bold text-white text-sm">
-                GP
-              </div>
-              <span className="text-lg font-bold text-white tracking-tight">GressPay</span>
-            </div>
+            <GressPayLogo variant="white" size="sm" />
             <p className="text-xs text-slate-400 max-w-sm leading-relaxed">
               Merchant payment gateway for Bangladesh, India, Pakistan, Nepal, and USDT. Funds go to
               the wallets you publish. GressPay records, confirms, and notifies.

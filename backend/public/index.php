@@ -15,12 +15,17 @@ try {
     GpRouter::dispatch();
 } catch (Throwable $e) {
     error_log('GressPay: ' . $e->getMessage());
+    $detail = trim(preg_replace('/\s+/', ' ', $e->getMessage()) ?? '');
+    if (strlen($detail) > 240) {
+        $detail = substr($detail, 0, 240) . '…';
+    }
+    $message = $detail !== '' ? $detail : 'Unexpected error.';
     http_response_code(500);
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode([
         'error' => [
             'code' => 'SERVER_ERROR',
-            'message' => 'Unexpected error.',
+            'message' => $message,
         ],
     ], JSON_UNESCAPED_SLASHES);
 }
