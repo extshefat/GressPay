@@ -42,6 +42,7 @@ spl_autoload_register(static function (string $class): void {
         'WebhooksController' => GRESSPAY_SRC . '/features/webhooks/WebhooksController.php',
         'CompanionController' => GRESSPAY_SRC . '/features/companion/CompanionController.php',
         'BinancePayController' => GRESSPAY_SRC . '/features/binance/BinancePayController.php',
+        'AdminController' => GRESSPAY_SRC . '/features/admin/AdminController.php',
     ];
     if (isset($map[$class])) {
         require_once $map[$class];
