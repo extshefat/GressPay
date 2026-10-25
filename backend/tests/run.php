@@ -431,5 +431,62 @@ assert_true(
 $accOk = GatewaysController::validateAccount('bkash', '01712345678');
 assert_true($accOk === '01712345678', 'Gateway BD account validates');
 
+// Google sign-in reads redirect_uri from the query string. A missing query()
+// method fatals the live login button with "Call to undefined method GpRequest::query()".
+$_GET['redirect_uri'] = 'https://gresspay.extxcheats.com/callback/google';
+$_SERVER['REQUEST_METHOD'] = 'GET';
+$queryReq = new GpRequest(['auth', 'google', 'url']);
+assert_true(
+    $queryReq->query('redirect_uri', '') === 'https://gresspay.extxcheats.com/callback/google',
+    'GpRequest::query reads redirect_uri for Google sign-in'
+);
+assert_true($queryReq->query('missing_key', 'none') === 'none', 'GpRequest::query returns the default');
+unset($_GET['redirect_uri']);
+
+$queryDb = sys_get_temp_dir() . '/gresspay_query_' . getmypid() . '.sqlite';
+@unlink($queryDb);
+$queryScript = tempnam(sys_get_temp_dir(), 'gpurl');
+$rootPhp = addslashes($root);
+$dbPhp = addslashes($queryDb);
+file_put_contents($queryScript, <<<PHP
+<?php
+declare(strict_types=1);
+putenv('APP_ENV=development');
+\$_ENV['APP_ENV'] = 'development';
+putenv('JWT_SECRET=dev-test-jwt-secret-at-least-32-chars-long');
+\$_ENV['JWT_SECRET'] = 'dev-test-jwt-secret-at-least-32-chars-long';
+putenv('APP_ENCRYPTION_KEY=dev-test-enc-key-at-least-32-chars-xx');
+\$_ENV['APP_ENCRYPTION_KEY'] = 'dev-test-enc-key-at-least-32-chars-xx';
+putenv('DB_DRIVER=sqlite');
+\$_ENV['DB_DRIVER'] = 'sqlite';
+putenv('SQLITE_PATH={$dbPhp}');
+\$_ENV['SQLITE_PATH'] = '{$dbPhp}';
+putenv('GOOGLE_CLIENT_ID=test-client.apps.googleusercontent.com');
+\$_ENV['GOOGLE_CLIENT_ID'] = 'test-client.apps.googleusercontent.com';
+putenv('GOOGLE_CLIENT_SECRET=test-client-secret-xyz');
+\$_ENV['GOOGLE_CLIENT_SECRET'] = 'test-client-secret-xyz';
+require '{$rootPhp}/src/bootstrap.php';
+\$_GET['redirect_uri'] = 'https://gresspay.extxcheats.com/callback/google';
+\$_SERVER['REQUEST_METHOD'] = 'GET';
+\$req = new GpRequest(['auth', 'google', 'url']);
+AuthController::googleUrl(\$req);
+PHP);
+$queryOut = [];
+$queryCode = 0;
+exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($queryScript) . ' 2>&1', $queryOut, $queryCode);
+@unlink($queryScript);
+@unlink($queryDb);
+$queryBody = implode("\n", $queryOut);
+$queryJson = json_decode($queryBody, true);
+$expectedRedirect = 'redirect_uri=' . rawurlencode('https://gresspay.extxcheats.com/callback/google');
+assert_true(
+    $queryCode === 0 && is_array($queryJson) && ($queryJson['enabled'] ?? false) === true,
+    'GET auth/google/url returns JSON instead of a query() fatal: ' . $queryBody
+);
+assert_true(
+    is_array($queryJson) && str_contains((string) ($queryJson['url'] ?? ''), $expectedRedirect),
+    'Google auth URL keeps the merchant redirect_uri'
+);
+
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

@@ -28,6 +28,11 @@ final class GpRequest
         return $this->body[$key] ?? $_GET[$key] ?? $default;
     }
 
+    public function query(string $key, mixed $default = null): mixed
+    {
+        return $_GET[$key] ?? $default;
+    }
+
     public function bearer(): ?string
     {
         $header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
