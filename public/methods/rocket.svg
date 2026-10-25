@@ -1,0 +1,8 @@
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <rect width="64" height="64" rx="14" fill="#8C3494"/>
+  <path d="M32 16L39 26H25L32 16Z" fill="#FFFFFF"/>
+  <path d="M28 26H36V36H28V26Z" fill="#FFFFFF"/>
+  <path d="M26 36L22 42H42L38 36H26Z" fill="#FFC107"/>
+  <text x="32" y="56" text-anchor="middle" fill="#FFFFFF" font-size="9" font-family="sans-serif" font-weight="bold">Rocket</text>
+</svg>
