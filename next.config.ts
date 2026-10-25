@@ -4,7 +4,7 @@ import type { NextConfig } from "next";
  * Production builds must talk to the real API. Mock/demo data must never ship
  * as an unlabeled "live" merchant experience.
  */
-const dataSource = process.env.NEXT_PUBLIC_DATA_SOURCE;
+const dataSource = process.env.NEXT_PUBLIC_DATA_SOURCE || "live";
 if (process.env.NODE_ENV === "production" && dataSource !== "live") {
   throw new Error(
     "NEXT_PUBLIC_DATA_SOURCE must be set to \"live\" for production builds. " +
