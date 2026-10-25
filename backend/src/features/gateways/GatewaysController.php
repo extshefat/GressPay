@@ -132,7 +132,7 @@ final class GatewaysController
                 $actor['brand_id'],
                 $methodCode,
                 $displayName,
-                trim((string) $req->input('accountType', 'personal')) ?: 'personal',
+                self::accountType($req),
                 $account !== '' ? $account : null,
                 strtoupper((string) $req->input('currency', $cat['currency'] ?? 'BDT')),
                 strtoupper((string) $req->input('country', $cat['country'] ?? 'BD')),
@@ -192,7 +192,7 @@ final class GatewaysController
              WHERE brand_id = ? AND gateway_id = ?',
             [
                 $displayName,
-                trim((string) $req->input('accountType', $gw['account_type'] ?? 'personal')) ?: 'personal',
+                self::accountType($req, (string) ($gw['account_type'] ?? 'personal')),
                 $account !== '' ? $account : null,
                 strtoupper((string) $req->input('currency', $gw['currency'] ?? 'BDT')),
                 strtoupper((string) $req->input('country', $gw['country'] ?? 'BD')),
@@ -457,6 +457,12 @@ final class GatewaysController
         return $out;
     }
 
+    private static function accountType(GpRequest $req, string $fallback = 'personal'): string
+    {
+        $raw = strtolower(trim((string) $req->input('accountType', $req->input('account_type', $fallback))));
+        return in_array($raw, ['personal', 'agent', 'merchant'], true) ? $raw : 'personal';
+    }
+
     /** @param array<string,mixed> $gw */
     public static function readiness(array $gw): string
     {
@@ -466,8 +472,19 @@ final class GatewaysController
         $qr = (string) ($gw['qr_status'] ?? 'none');
 
         if ($method === 'binance_pay') {
-            // Credentials live on brand; gateway is display/enable only.
-            return $status === 'active' ? 'ready_test' : 'disabled';
+            if ($status !== 'active') {
+                return 'disabled';
+            }
+            $brand = GpDb::one('SELECT * FROM gp_brands WHERE brand_id = ?', [(string) ($gw['brand_id'] ?? '')]);
+            if (!is_array($brand) || !BinancePayClient::brandHasSealedCredentials($brand)) {
+                return 'setup_incomplete';
+            }
+            $cat = GpCatalog::find('binance_pay');
+            if (!is_array($cat)) {
+                return 'needs_attention';
+            }
+            $ready = GpMethodReadiness::evaluate($cat, ['status' => 'active', 'options' => '{}'], $brand);
+            return !empty($ready['liveReady']) ? 'live_ready' : 'needs_attention';
         }
         if ($account === '') {
             return 'setup_incomplete';

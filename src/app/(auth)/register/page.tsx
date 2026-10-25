@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
@@ -37,7 +37,43 @@ export default function RegisterPage() {
   const [agreeTerms, setAgreeTerms] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [googleEnabled, setGoogleEnabled] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    api
+      .getAuthProviders()
+      .then((data) => {
+        if (alive && data.google) setGoogleEnabled(data.google.enabled);
+      })
+      .catch(() => {
+        if (alive) setGoogleEnabled(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const handleGoogleSignIn = async () => {
+    if (!googleEnabled) return;
+    setIsGoogleLoading(true);
+    setError(null);
+    try {
+      const redirectUri = `${window.location.origin}/callback/google`;
+      const res = await api.getGoogleAuthUrl(redirectUri);
+      if (res.enabled && res.url) {
+        window.location.href = res.url;
+        return;
+      }
+      setError(res.reason || "Google sign-in is not configured on this instance.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to start Google sign-in.");
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
 
   const steps = [
     { id: 1, title: "Account", description: "Merchant details" },
@@ -99,12 +135,29 @@ export default function RegisterPage() {
             Open Your Merchant Account
           </h1>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Automated MFS settlement and global crypto checkout in minutes
+            Google creates the merchant account. Password registration stays for accounts that need it.
           </p>
         </div>
 
         {/* Stepper Card */}
         <Card className="p-6 sm:p-8 shadow-xl bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
+          {googleEnabled && currentStep === 0 && (
+            <div className="mb-6 space-y-3">
+              <Button
+                type="button"
+                size="lg"
+                className="w-full"
+                isLoading={isGoogleLoading}
+                onClick={handleGoogleSignIn}
+              >
+                Continue with Google
+              </Button>
+              <p className="text-center text-[11px] text-zinc-500">
+                First Google sign-in opens a merchant and brand. Use the password form below if you already have a password account.
+              </p>
+            </div>
+          )}
+
           <div className="mb-8">
             <Stepper steps={steps} activeStep={currentStep} />
           </div>
@@ -181,7 +234,7 @@ export default function RegisterPage() {
                   Select Initial Payment Rails
                 </h3>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                  Choose which payment methods to activate for your checkout. You can modify these settings anytime.
+                  This list is a reminder only. It is not saved, and it does not turn a method on. Add numbers and credentials after sign-in.
                 </p>
               </div>
 

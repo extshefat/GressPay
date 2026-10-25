@@ -10,17 +10,13 @@ interface NodePoint {
 }
 
 /**
- * Polished HTML5 Canvas Earth visualization.
- * Features:
- * - Prominent Bangladesh central hub (Dhaka) with radiant pulse waves.
- * - Global network arcs connecting to international crypto and data hubs (Singapore, Dubai, London, Frankfurt, Tokyo).
- * - Animated travelling photon pulses along connection arcs.
- * - Full prefers-reduced-motion support (stops rotation and particle animations).
- * - High-DPI canvas rendering and dark/light mode elegance.
+ * Canvas Earth. Land comes from public/brand/earth-land.png (Natural Earth, public domain).
+ * Arcs are illustrative coordinates, not live payments.
  */
 export function InteractiveGlobe({ className = "" }: { className?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const [canvasReady, setCanvasReady] = useState(true);
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -34,55 +30,69 @@ export function InteractiveGlobe({ className = "" }: { className?: string }) {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    if (!ctx) {
+      setCanvasReady(false);
+      return;
+    }
 
     let animationFrameId = 0;
-    let rotationAngle = 70; // Start with South Asia / Bangladesh nicely centered
+    let visible = true;
+    let rotationAngle = -90.41;
     let pulsePhase = 0;
+    let land: ImageData | null = null;
 
-    // Network Hub Nodes
     const nodes: NodePoint[] = [
-      { name: "Dhaka (Primary)", lat: 23.8103, lon: 90.4125, isPrimary: true },
+      { name: "Dhaka", lat: 23.8103, lon: 90.4125, isPrimary: true },
       { name: "Singapore", lat: 1.3521, lon: 103.8198 },
       { name: "Dubai", lat: 25.2048, lon: 55.2708 },
-      { name: "Frankfurt", lat: 50.1109, lon: 8.6821 },
       { name: "London", lat: 51.5074, lon: -0.1278 },
-      { name: "Tokyo", lat: 35.6762, lon: 139.6503 },
     ];
-
-    // Connection Arcs between Bangladesh and Global Hubs
     const arcs = [
-      { from: 0, to: 1 }, // Dhaka -> Singapore
-      { from: 0, to: 2 }, // Dhaka -> Dubai
-      { from: 0, to: 3 }, // Dhaka -> Frankfurt
-      { from: 0, to: 4 }, // Dhaka -> London
-      { from: 0, to: 5 }, // Dhaka -> Tokyo
+      { from: 0, to: 1 },
+      { from: 0, to: 2 },
+      { from: 0, to: 3 },
     ];
-
-    // Particles travelling along arcs
     const particles = arcs.map((_, i) => ({
-      arcIndex: i,
-      progress: (i * 0.2) % 1.0,
-      speed: 0.006 + (i % 3) * 0.002,
+      progress: (i * 0.28) % 1,
+      speed: 0.004 + i * 0.001,
     }));
+
+    const mask = new Image();
+    mask.src = "/brand/earth-land.png";
+    mask.onload = () => {
+      const scratch = document.createElement("canvas");
+      scratch.width = mask.naturalWidth;
+      scratch.height = mask.naturalHeight;
+      const sctx = scratch.getContext("2d");
+      if (!sctx) return;
+      sctx.drawImage(mask, 0, 0);
+      land = sctx.getImageData(0, 0, scratch.width, scratch.height);
+      drawFrame();
+    };
+
+    const isLand = (lat: number, lon: number) => {
+      if (!land) return false;
+      const wrapped = ((lon + 180) % 360 + 360) % 360;
+      const x = Math.min(land.width - 1, Math.max(0, Math.floor((wrapped / 360) * land.width)));
+      const y = Math.min(land.height - 1, Math.max(0, Math.floor(((90 - lat) / 180) * land.height)));
+      return land.data[(y * land.width + x) * 4] > 128;
+    };
 
     const resize = () => {
       const parent = canvas.parentElement;
       const w = parent?.clientWidth || 480;
       const h = parent?.clientHeight || 420;
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-
-      canvas.width = w * dpr;
-      canvas.height = h * dpr;
+      const mobile = w < 640;
+      const dpr = Math.min(window.devicePixelRatio || 1, mobile ? 1.25 : 1.75);
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
       canvas.style.width = `${w}px`;
       canvas.style.height = `${h}px`;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
-
     resize();
     window.addEventListener("resize", resize);
 
-    // 3D Spherical to 2D projection
     const project = (lat: number, lon: number, rot: number, radius: number, cx: number, cy: number) => {
       const lambda = ((lon + rot) * Math.PI) / 180;
       const phi = (lat * Math.PI) / 180;
@@ -92,7 +102,7 @@ export function InteractiveGlobe({ className = "" }: { className?: string }) {
       return { x: cx + x, y: cy + y, z };
     };
 
-    const render = () => {
+    const drawFrame = () => {
       const w = canvas.clientWidth;
       const h = canvas.clientHeight;
       const cx = w / 2;
@@ -100,180 +110,175 @@ export function InteractiveGlobe({ className = "" }: { className?: string }) {
       const radius = Math.min(w, h) * 0.38;
       const isDark = document.documentElement.classList.contains("dark");
 
-      if (!reducedMotion) {
-        rotationAngle = (rotationAngle + 0.15) % 360;
-        pulsePhase = (pulsePhase + 0.04) % (Math.PI * 2);
-      }
-
       ctx.clearRect(0, 0, w, h);
 
-      // Outer Glow Atmosphere
-      const glowGrad = ctx.createRadialGradient(cx, cy, radius * 0.85, cx, cy, radius * 1.25);
-      glowGrad.addColorStop(0, isDark ? "rgba(20, 184, 166, 0.16)" : "rgba(13, 148, 136, 0.12)");
-      glowGrad.addColorStop(1, "transparent");
-      ctx.fillStyle = glowGrad;
+      const glow = ctx.createRadialGradient(cx, cy, radius * 0.9, cx, cy, radius * 1.22);
+      glow.addColorStop(0, isDark ? "rgba(45, 212, 191, 0.22)" : "rgba(15, 118, 110, 0.16)");
+      glow.addColorStop(1, "transparent");
+      ctx.fillStyle = glow;
       ctx.beginPath();
-      ctx.arc(cx, cy, radius * 1.25, 0, Math.PI * 2);
+      ctx.arc(cx, cy, radius * 1.22, 0, Math.PI * 2);
       ctx.fill();
 
-      // Globe Base Sphere
-      const sphereGrad = ctx.createRadialGradient(cx - radius * 0.3, cy - radius * 0.3, radius * 0.1, cx, cy, radius);
-      sphereGrad.addColorStop(0, isDark ? "#18181b" : "#fcfcfd");
-      sphereGrad.addColorStop(0.7, isDark ? "#09090b" : "#f4f4f5");
-      sphereGrad.addColorStop(1, isDark ? "#040405" : "#e4e4e7");
+      const ocean = ctx.createRadialGradient(cx - radius * 0.35, cy - radius * 0.35, radius * 0.15, cx, cy, radius);
+      ocean.addColorStop(0, isDark ? "#1e3a4c" : "#d7ebe8");
+      ocean.addColorStop(0.72, isDark ? "#0c1c28" : "#b7d4cf");
+      ocean.addColorStop(1, isDark ? "#071018" : "#8fb8b2");
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.fillStyle = ocean;
+      ctx.fill();
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.clip();
+
+      const pixel = radius < 150 ? 3 : 2;
+      const landColor = isDark ? "#4d8a68" : "#1f6b4a";
+      ctx.fillStyle = landColor;
+      for (let sy = -radius; sy <= radius; sy += pixel) {
+        const rowWidth = Math.sqrt(Math.max(0, radius * radius - sy * sy));
+        for (let sx = -rowWidth; sx <= rowWidth; sx += pixel) {
+          const sz = Math.sqrt(Math.max(0, radius * radius - sx * sx - sy * sy));
+          const phi = Math.asin(Math.max(-1, Math.min(1, -sy / radius)));
+          const lambda = Math.atan2(sx, sz);
+          const lat = (phi * 180) / Math.PI;
+          const lon = (lambda * 180) / Math.PI - rotationAngle;
+          if (!isLand(lat, lon)) continue;
+          const light = 0.62 + (sz / radius) * 0.38;
+          ctx.globalAlpha = light;
+          ctx.fillRect(cx + sx, cy + sy, pixel, pixel);
+        }
+      }
+      ctx.globalAlpha = 1;
+
+      const shade = ctx.createRadialGradient(cx - radius * 0.4, cy - radius * 0.45, radius * 0.1, cx, cy, radius);
+      shade.addColorStop(0, "rgba(255,255,255,0.16)");
+      shade.addColorStop(0.55, "rgba(255,255,255,0)");
+      shade.addColorStop(1, isDark ? "rgba(0,0,0,0.45)" : "rgba(0,30,28,0.22)");
+      ctx.fillStyle = shade;
+      ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+      ctx.restore();
 
       ctx.beginPath();
       ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-      ctx.fillStyle = sphereGrad;
-      ctx.fill();
-      ctx.strokeStyle = isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)";
-      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = isDark ? "rgba(153, 246, 228, 0.35)" : "rgba(15, 118, 110, 0.35)";
+      ctx.lineWidth = 1.4;
       ctx.stroke();
 
-      // Latitudinal Wireframe Rings
-      const ringLatitudes = [-45, -20, 0, 20, 45];
-      for (const lat of ringLatitudes) {
-        const phi = (lat * Math.PI) / 180;
-        const ringRadius = radius * Math.cos(phi);
-        const ringY = cy - radius * Math.sin(phi);
-
-        ctx.beginPath();
-        ctx.ellipse(cx, ringY, Math.max(2, ringRadius), Math.max(1, ringRadius * 0.26), 0, 0, Math.PI * 2);
-        ctx.strokeStyle = isDark ? "rgba(20, 184, 166, 0.14)" : "rgba(13, 148, 136, 0.12)";
-        ctx.lineWidth = 1;
-        ctx.stroke();
-      }
-
-      // Longitudinal Rings
-      for (let lon = 0; lon < 360; lon += 45) {
-        ctx.beginPath();
-        let first = true;
-        for (let lat = -90; lat <= 90; lat += 10) {
-          const pt = project(lat, lon, rotationAngle, radius, cx, cy);
-          if (pt.z >= 0) {
-            if (first) {
-              ctx.moveTo(pt.x, pt.y);
-              first = false;
-            } else {
-              ctx.lineTo(pt.x, pt.y);
-            }
-          } else {
-            first = true;
-          }
-        }
-        ctx.strokeStyle = isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.05)";
-        ctx.lineWidth = 0.8;
-        ctx.stroke();
-      }
-
-      // Draw Arcs & Network Pulses
-      const projectedNodes = nodes.map((n) => project(n.lat, n.lon, rotationAngle, radius, cx, cy));
-
+      const projected = nodes.map((n) => project(n.lat, n.lon, rotationAngle, radius, cx, cy));
       arcs.forEach((arc, arcIdx) => {
-        const p1 = projectedNodes[arc.from];
-        const p2 = projectedNodes[arc.to];
-
-        // Draw if at least one node is on front hemisphere
-        if (p1.z >= -radius * 0.3 || p2.z >= -radius * 0.3) {
-          const midX = (p1.x + p2.x) / 2;
-          const midY = (p1.y + p2.y) / 2;
-          // Arc curvature outward from globe center
-          const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
-          const bend = dist * 0.28;
-          const ctrlX = midX + (midX - cx) * 0.2;
-          const ctrlY = midY - bend;
-
+        const p1 = projected[arc.from];
+        const p2 = projected[arc.to];
+        if (p1.z < -radius * 0.15 && p2.z < -radius * 0.15) return;
+        const midX = (p1.x + p2.x) / 2;
+        const midY = (p1.y + p2.y) / 2;
+        const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+        const ctrlX = midX + (midX - cx) * 0.15;
+        const ctrlY = midY - dist * 0.22;
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.quadraticCurveTo(ctrlX, ctrlY, p2.x, p2.y);
+        ctx.strokeStyle = isDark ? "rgba(94, 234, 212, 0.7)" : "rgba(15, 118, 110, 0.7)";
+        ctx.lineWidth = 1.4;
+        ctx.setLineDash([3, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        if (!reducedMotion) {
+          const particle = particles[arcIdx];
+          particle.progress = (particle.progress + particle.speed) % 1;
+          const t = particle.progress;
+          const partX = (1 - t) * (1 - t) * p1.x + 2 * (1 - t) * t * ctrlX + t * t * p2.x;
+          const partY = (1 - t) * (1 - t) * p1.y + 2 * (1 - t) * t * ctrlY + t * t * p2.y;
           ctx.beginPath();
-          ctx.moveTo(p1.x, p1.y);
-          ctx.quadraticCurveTo(ctrlX, ctrlY, p2.x, p2.y);
-          ctx.strokeStyle = isDark
-            ? "rgba(45, 212, 191, 0.35)"
-            : "rgba(15, 118, 110, 0.3)";
-          ctx.lineWidth = 1.6;
-          ctx.setLineDash([4, 4]);
+          ctx.arc(partX, partY, 2.2, 0, Math.PI * 2);
+          ctx.fillStyle = isDark ? "#99f6e4" : "#0f766e";
+          ctx.fill();
+        }
+      });
+
+      projected.forEach((pt, i) => {
+        if (pt.z < 0) return;
+        const node = nodes[i];
+        if (node.isPrimary) {
+          const wave = reducedMotion ? 8 : 6 + Math.sin(pulsePhase) * 4;
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, wave + 3, 0, Math.PI * 2);
+          ctx.strokeStyle = isDark ? "rgba(153, 246, 228, 0.7)" : "rgba(15, 118, 110, 0.65)";
           ctx.stroke();
-          ctx.setLineDash([]);
-
-          // Animated photon particle travelling along arc
-          if (!reducedMotion) {
-            const particle = particles[arcIdx];
-            particle.progress = (particle.progress + particle.speed) % 1.0;
-            const t = particle.progress;
-            // Quadratic Bezier interpolation: B(t) = (1-t)^2*P0 + 2(1-t)t*P1 + t^2*P2
-            const partX = (1 - t) * (1 - t) * p1.x + 2 * (1 - t) * t * ctrlX + t * t * p2.x;
-            const partY = (1 - t) * (1 - t) * p1.y + 2 * (1 - t) * t * ctrlY + t * t * p2.y;
-
-            ctx.beginPath();
-            ctx.arc(partX, partY, 2.5, 0, Math.PI * 2);
-            ctx.fillStyle = isDark ? "#5eead4" : "#0d9488";
-            ctx.shadowColor = isDark ? "#2dd4bf" : "#14b8a6";
-            ctx.shadowBlur = 8;
-            ctx.fill();
-            ctx.shadowBlur = 0;
-          }
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, 4.5, 0, Math.PI * 2);
+          ctx.fillStyle = "#0f766e";
+          ctx.fill();
+          ctx.font = "bold 11px ui-sans-serif, system-ui, sans-serif";
+          ctx.fillStyle = isDark ? "#ccfbf1" : "#134e4a";
+          ctx.fillText("Dhaka", pt.x + 8, pt.y - 6);
+        } else {
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
+          ctx.fillStyle = isDark ? "#e4e4e7" : "#3f3f46";
+          ctx.fill();
+          ctx.font = "10px ui-sans-serif, system-ui, sans-serif";
+          ctx.fillStyle = isDark ? "rgba(244,244,245,0.86)" : "rgba(24,24,27,0.8)";
+          ctx.fillText(node.name, pt.x + 6, pt.y + 3);
         }
       });
-
-      // Draw Nodes
-      projectedNodes.forEach((pt, i) => {
-        if (pt.z >= 0) {
-          const node = nodes[i];
-          if (node.isPrimary) {
-            // Bangladesh Primary Radiant Node
-            const waveRadius = 6 + Math.sin(pulsePhase) * 5;
-            ctx.beginPath();
-            ctx.arc(pt.x, pt.y, waveRadius + 4, 0, Math.PI * 2);
-            ctx.strokeStyle = isDark ? "rgba(45, 212, 191, 0.4)" : "rgba(13, 148, 136, 0.4)";
-            ctx.lineWidth = 1.5;
-            ctx.stroke();
-
-            ctx.beginPath();
-            ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2);
-            ctx.fillStyle = isDark ? "#2dd4bf" : "#0f766e";
-            ctx.fill();
-
-            // Core center
-            ctx.beginPath();
-            ctx.arc(pt.x, pt.y, 2.5, 0, Math.PI * 2);
-            ctx.fillStyle = "#ffffff";
-            ctx.fill();
-
-            // Label for Bangladesh
-            ctx.font = "bold 10px monospace";
-            ctx.fillStyle = isDark ? "#5eead4" : "#0f766e";
-            ctx.fillText("BANGLADESH (HQ)", pt.x + 9, pt.y - 7);
-          } else {
-            // Secondary Global Nodes
-            ctx.beginPath();
-            ctx.arc(pt.x, pt.y, 3.2, 0, Math.PI * 2);
-            ctx.fillStyle = isDark ? "#a1a1aa" : "#71717a";
-            ctx.fill();
-
-            ctx.font = "9px sans-serif";
-            ctx.fillStyle = isDark ? "rgba(244, 244, 245, 0.75)" : "rgba(39, 39, 42, 0.75)";
-            ctx.fillText(node.name, pt.x + 6, pt.y + 3);
-          }
-        }
-      });
-
-      animationFrameId = requestAnimationFrame(render);
     };
 
-    render();
+    const loop = () => {
+      if (!visible) {
+        animationFrameId = 0;
+        return;
+      }
+      if (!reducedMotion) {
+        rotationAngle = (rotationAngle + 0.12) % 360;
+        pulsePhase = (pulsePhase + 0.04) % (Math.PI * 2);
+      }
+      drawFrame();
+      animationFrameId = reducedMotion ? 0 : requestAnimationFrame(loop);
+    };
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        visible = entry.isIntersecting;
+        if (visible && !animationFrameId) loop();
+        if (!visible && animationFrameId) {
+          cancelAnimationFrame(animationFrameId);
+          animationFrameId = 0;
+        }
+      },
+      { threshold: 0.05 }
+    );
+    observer.observe(canvas);
+    const themeObserver = new MutationObserver(() => {
+      if (reducedMotion) drawFrame();
+    });
+    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    loop();
 
     return () => {
-      cancelAnimationFrame(animationFrameId);
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+      observer.disconnect();
+      themeObserver.disconnect();
       window.removeEventListener("resize", resize);
     };
   }, [reducedMotion]);
 
   return (
-    <div className={`relative flex flex-col items-center justify-center ${className}`}>
-      <canvas ref={canvasRef} className="w-full h-full max-w-[520px] max-h-[460px]" aria-hidden />
-      <div className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 mt-2 flex items-center gap-2">
-        <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
-        <span>Conceptual payment routing & verification networks</span>
-      </div>
+    <div className={`relative flex h-[420px] w-full max-w-[520px] flex-col items-center justify-center ${className}`}>
+      {canvasReady ? (
+        <canvas ref={canvasRef} className="h-full w-full" role="img" aria-label="Illustrated Earth centered on Dhaka" />
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src="/brand/earth-land.png"
+          alt="Equirectangular land map used when canvas is unavailable"
+          className="h-64 w-64 rounded-full object-cover"
+        />
+      )}
+      <p className="mt-2 text-center text-[11px] font-mono text-zinc-500 dark:text-zinc-400">
+        Illustrative payment routes. Not live transaction data.
+      </p>
     </div>
   );
 }

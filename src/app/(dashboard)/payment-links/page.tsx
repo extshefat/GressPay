@@ -144,7 +144,7 @@ export default function PaymentLinksPage() {
         <EmptyState
           icon={<Link2 className="w-6 h-6 text-zinc-400" />}
           title="No payment links created yet"
-          description="Create your first hosted payment link to start receiving funds instantly across bKash, Nagad, Binance Pay, or USDT."
+          description="Create a hosted link. Customers pay the destination you configured. The session is paid only after server-side evidence."
           action={
             <Button size="sm" variant="primary" onClick={() => setIsModalOpen(true)}>
               Create First Link

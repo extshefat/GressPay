@@ -11,11 +11,11 @@ export const Footer: React.FC = () => {
           <div className="col-span-2 space-y-4">
             <GressPayLogo variant="white" size="sm" />
             <p className="text-xs text-zinc-400 max-w-sm leading-relaxed">
-              Automated payment verification platform for Bangladesh and optional USDT TRC-20 on-chain settlements. Direct-to-wallet architecture. Funds settle into your own accounts without GressPay intermediary escrow.
+              Bangladesh payment verification for wallets you configure. Optional Binance Pay and USDT TRC-20 are separate. GressPay does not hold the funds.
             </p>
             <div className="flex items-center gap-1.5 text-zinc-400 font-medium">
               <ShieldCheck className="w-3.5 h-3.5 text-teal-400" />
-              <span>Non-Custodial · Direct Settlement</span>
+              <span>Funds stay in the wallets you publish</span>
             </div>
           </div>
 
@@ -26,12 +26,12 @@ export const Footer: React.FC = () => {
             <ul className="space-y-2">
               <li>
                 <Link href="/services" className="hover:text-teal-400 transition-colors">
-                  bKash Personal & Merchant
+                  bKash number (SMS match)
                 </Link>
               </li>
               <li>
                 <Link href="/services" className="hover:text-teal-400 transition-colors">
-                  Nagad Personal & Merchant
+                  Nagad number (SMS match)
                 </Link>
               </li>
               <li>
@@ -53,8 +53,8 @@ export const Footer: React.FC = () => {
                 </Link>
               </li>
               <li>
-                <Link href="/developers#crypto" className="hover:text-teal-400 transition-colors">
-                  On-Chain Verification RPC
+                <Link href="/services" className="hover:text-teal-400 transition-colors">
+                  Binance Pay Merchant API
                 </Link>
               </li>
             </ul>
@@ -72,7 +72,7 @@ export const Footer: React.FC = () => {
               </li>
               <li>
                 <Link href="/fees" className="hover:text-teal-400 transition-colors">
-                  Pricing & Automation
+                  Fees and plans
                 </Link>
               </li>
               <li>

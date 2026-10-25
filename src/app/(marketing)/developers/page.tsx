@@ -30,7 +30,7 @@ export default function DevelopersPage() {
 // GressPay PHP Server-Side Integration (PHP 8.1+)
 // NEVER expose your secret API key in browser JavaScript or client templates.
 
-$apiKey = getenv('GRESSPAY_API_KEY') ?: 'gp_live_sk_...';
+$apiKey = getenv('GRESSPAY_API_KEY') ?: 'gp_live_...';
 $baseUrl = 'https://api.yourdomain.com'; // Your GressPay instance URL
 
 function createGressPayCheckout(float $amount, string $currency, string $orderId, string $customerEmail): array
@@ -104,7 +104,7 @@ function verifyPaymentStatus(string $sessionId): array
 
 import crypto from 'node:crypto';
 
-const API_KEY = process.env.GRESSPAY_API_KEY; // 'gp_live_sk_...'
+const API_KEY = process.env.GRESSPAY_API_KEY; // 'gp_live_...'
 const BASE_URL = process.env.GRESSPAY_URL || 'https://api.yourdomain.com';
 const WEBHOOK_SECRET = process.env.GRESSPAY_WEBHOOK_SECRET;
 
@@ -172,7 +172,7 @@ import hmac
 import hashlib
 import requests
 
-API_KEY = os.environ.get("GRESSPAY_API_KEY", "gp_live_sk_...")
+API_KEY = os.environ.get("GRESSPAY_API_KEY", "gp_live_...")
 BASE_URL = os.environ.get("GRESSPAY_URL", "https://api.yourdomain.com")
 WEBHOOK_SECRET = os.environ.get("GRESSPAY_WEBHOOK_SECRET", "")
 
@@ -262,7 +262,7 @@ def verify_payment_status(session_id: str) -> dict:
                     type: "object",
                     properties: {
                       sessionId: { type: "string", example: "chs_98218a" },
-                      payUrl: { type: "string", example: "https://gresspay.com/pay/chs_98218a" },
+                      payUrl: { type: "string", example: "https://your-domain.com/pay/chs_example" },
                       amount: { type: "number" },
                       currency: { type: "string" },
                       status: { type: "string", example: "PENDING" },
@@ -317,7 +317,7 @@ def verify_payment_status(session_id: str) -> dict:
             Developer Documentation
           </Badge>
           <Badge variant="slate">v1.0 REST API</Badge>
-          <Badge variant="emerald">Free Beta</Badge>
+          <Badge variant="slate">English reference</Badge>
         </div>
         <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-100">
           GressPay Integration Reference
@@ -387,11 +387,11 @@ def verify_payment_status(session_id: str) -> dict:
               </Card>
               <Card className="p-4 bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 space-y-1">
                 <span className="font-mono text-xs font-bold text-zinc-900 dark:text-zinc-100">Live API Key</span>
-                <p className="font-mono text-[11px] text-zinc-500">gp_live_sk_...</p>
+                <p className="font-mono text-[11px] text-zinc-500">gp_live_...</p>
               </Card>
               <Card className="p-4 bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 space-y-1">
                 <span className="font-mono text-xs font-bold text-zinc-900 dark:text-zinc-100">Test API Key</span>
-                <p className="font-mono text-[11px] text-zinc-500">gp_test_sk_...</p>
+                <p className="font-mono text-[11px] text-zinc-500">gp_test_...</p>
               </Card>
             </div>
           </section>
@@ -421,7 +421,7 @@ def verify_payment_status(session_id: str) -> dict:
               Send your secret key in the <code className="font-mono text-xs">Authorization</code> header using the Bearer scheme, or via <code className="font-mono text-xs">X-GressPay-Key</code>:
             </p>
             <pre className="p-4 rounded-xl bg-zinc-950 text-xs font-mono text-zinc-300 border border-zinc-800 overflow-x-auto">
-{`Authorization: Bearer gp_live_sk_948192ab3c4d5e...
+{`Authorization: Bearer gp_live_948192ab3c4d5e...
 Content-Type: application/json`}
             </pre>
           </section>
@@ -436,7 +436,7 @@ Content-Type: application/json`}
             </p>
             <pre className="p-4 rounded-xl bg-zinc-950 text-xs font-mono text-zinc-300 border border-zinc-800 overflow-x-auto leading-relaxed">
 {`curl -X POST https://your-domain.com/api/v1/checkout/create \\
-  -H "Authorization: Bearer gp_live_sk_..." \\
+  -H "Authorization: Bearer gp_live_..." \\
   -H "Content-Type: application/json" \\
   -d '{
     "amount": 2500,
@@ -460,7 +460,7 @@ Content-Type: application/json`}
             </p>
             <pre className="p-4 rounded-xl bg-zinc-950 text-xs font-mono text-zinc-300 border border-zinc-800 overflow-x-auto leading-relaxed">
 {`curl -X POST https://your-domain.com/api/v1/checkout/verify-payment \\
-  -H "Authorization: Bearer gp_live_sk_..." \\
+  -H "Authorization: Bearer gp_live_..." \\
   -H "Content-Type: application/json" \\
   -d '{ "sessionId": "chs_98218a" }'`}
             </pre>
@@ -539,24 +539,24 @@ Content-Type: application/json`}
                     <td className="p-3">Missing or invalid API key. Verify Bearer token format.</td>
                   </tr>
                   <tr>
-                    <td className="p-3 font-mono font-bold text-rose-600 dark:text-rose-400">FORBIDDEN_SCOPE</td>
+                    <td className="p-3 font-mono font-bold text-rose-600 dark:text-rose-400">FORBIDDEN</td>
                     <td className="p-3 font-mono">403</td>
-                    <td className="p-3">API key lacks the required permission scope (e.g. create_payment).</td>
+                    <td className="p-3">The API key is missing the scope this route requires.</td>
                   </tr>
                   <tr>
-                    <td className="p-3 font-mono font-bold text-rose-600 dark:text-rose-400">DUPLICATE_TXID</td>
+                    <td className="p-3 font-mono font-bold text-rose-600 dark:text-rose-400">DUPLICATE_TRX</td>
                     <td className="p-3 font-mono">409</td>
-                    <td className="p-3">Transaction identifier was already settled. Prevents double-spending.</td>
+                    <td className="p-3">That TrxID or chain hash is already used on this brand.</td>
                   </tr>
                   <tr>
                     <td className="p-3 font-mono font-bold text-rose-600 dark:text-rose-400">RATE_LIMITED</td>
                     <td className="p-3 font-mono">429</td>
-                    <td className="p-3">Exceeded 60 requests/minute. Implement exponential backoff.</td>
+                    <td className="p-3">That route&apos;s limiter rejected the request. Limits differ by action.</td>
                   </tr>
                   <tr>
-                    <td className="p-3 font-mono font-bold text-rose-600 dark:text-rose-400">METHOD_UNAVAILABLE</td>
-                    <td className="p-3 font-mono">422</td>
-                    <td className="p-3">Merchant has not saved receiving wallet details or operator gate is closed.</td>
+                    <td className="p-3 font-mono font-bold text-rose-600 dark:text-rose-400">PROVIDER_NOT_READY</td>
+                    <td className="p-3 font-mono">503</td>
+                    <td className="p-3">Binance Pay credentials or the crypto gate are not ready. No provider order was completed.</td>
                   </tr>
                 </tbody>
               </table>
@@ -573,28 +573,28 @@ Content-Type: application/json`}
                 <Badge variant="cyan" size="sm">bKash & Nagad</Badge>
                 <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">SMS Companion Matching</h3>
                 <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                  Funds settle directly to your merchant wallet. GressPay Companion APK on your phone parses carrier receipt SMS and matches amount + TrxID within 2-3s.
+                  The customer pays your number. A paired companion posts the provider SMS. Live checkout completes only when brand, rail, amount, and TrxID match. A pasted TrxID alone does not.
                 </p>
               </Card>
               <Card className="p-5 bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 space-y-2">
                 <Badge variant="emerald" size="sm">Binance Pay</Badge>
                 <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Merchant Open API</h3>
                 <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                  Official server-to-server merchant order creation and checkout redirect. Off-chain crypto settlement with zero chargebacks.
+                  Merchant API credentials only. These are not Spot trading keys. The server creates an order and marks it paid only after a query returns PAID with totalFee (or a matching orderAmount) and the same merchantTradeNo. A TRON transfer is not this flow. Official webhooks are RSA-signed; this build still checks merchant HMAC and will reject a real RSA callback until that check is added.
                 </p>
               </Card>
               <Card className="p-5 bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 space-y-2">
                 <Badge variant="emerald" size="sm">USDT TRC-20</Badge>
                 <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">TRON On-Chain Verification</h3>
                 <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                  Direct blockchain smart-contract verification on TRON network. Requires 20 block confirmations before settling to merchant ledger.
+                  Separate from Binance Pay. TronGrid must show the configured USDT contract, your address, the exact amount, and the confirmation count from USDT_CONFIRMATIONS (default 20). A hash without those checks does not complete a live session.
                 </p>
               </Card>
               <Card className="p-5 bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 space-y-2">
-                <Badge variant="slate" size="sm">Free Beta Policy</Badge>
-                <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">0% Platform Commission</h3>
+                <Badge variant="slate" size="sm">Webhook</Badge>
+                <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">One signed POST</h3>
                 <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                  Initial beta release has zero GressPay platform fees. You pay only standard carrier MFS cash-out or native TRON blockchain gas fees.
+                  payment.completed sends one HTTPS POST. X-GressPay-Signature is HMAC-SHA256 of the raw body. The delivery is logged once. This build does not retry on its own.
                 </p>
               </Card>
             </div>

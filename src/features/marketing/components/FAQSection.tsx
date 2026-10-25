@@ -16,17 +16,17 @@ export const FAQSection: React.FC = () => {
     {
       question: "How does bKash and Nagad verification work without official aggregator contracts?",
       answer:
-        "Customers send payment directly to your designated personal or merchant wallet number. Once the transaction completes, their phone receives an official SMS from bKash or Nagad. Our GressPay Android Companion running on your phone reads incoming provider SMS notifications in real time, parses the exact amount and Transaction ID (TrxID), and cryptographically matches it with the pending checkout session within 2-3 seconds.",
+        "The customer sends money to the bKash or Nagad number you saved. The Android companion on a phone you paired reads the provider SMS and posts the amount and TrxID. The server completes the live checkout only when that SMS matches the same brand, rail, TrxID, and amount. A typed TrxID without a matching SMS stays pending. The account type you pick is a label for your instructions, not an official provider API.",
     },
     {
       question: "Does GressPay hold or escrow our merchant money?",
       answer:
-        "No. GressPay operates on a strictly non-custodial direct-to-wallet principle. All fiat funds land instantly in your personal or merchant bKash/Nagad wallet, and USDT settles straight to your TRON address. GressPay provides automation and verification signals only.",
+        "No. The customer pays the bKash number, Nagad number, Binance Pay checkout, or TRON address you configured. GressPay records whether the evidence matched. It does not hold, settle, or move those funds.",
     },
     {
       question: "How does USDT TRC-20 verification work on GressPay?",
       answer:
-        "USDT TRC-20 uses native TRON blockchain RPC queries via TronGrid. When your customer sends USDT to your TRON wallet address and submits the 64-character transaction hash, GressPay inspects the on-chain transfer events, verifies the recipient Base58 address matches your wallet, checks the exact 6-decimal micro-USDT amount, and verifies the required block depth before marking the checkout paid.",
+        "This is separate from Binance Pay. The customer sends USDT on TRON to the address you saved and submits the transaction hash. The server asks TronGrid for the transfer, then checks the token contract, recipient, exact amount, and the configured confirmation count. A hash that fails those checks does not mark the live checkout paid. A test-ledger session can simulate this and is not a chain payment.",
     },
     {
       question: "Is my Android device secure? What permissions does the companion app require?",
@@ -41,17 +41,17 @@ export const FAQSection: React.FC = () => {
     {
       question: "How does GressPay prevent duplicate transaction and replay attacks?",
       answer:
-        "Every transaction identifier (bKash/Nagad TrxID or TRON TxID) is strictly unique and indexed in the immutable database. Once a TrxID has been verified and settled against an order, any subsequent attempt to submit that same identifier—whether on the same store or across different merchant accounts—is instantly rejected as duplicate.",
+        "A completed bKash, Nagad, or TRON identifier cannot be used again for another checkout in the same brand. The check is per brand, not a global block across every merchant on the platform.",
     },
     {
       question: "How does Sandbox mode differ from Live mode?",
       answer:
-        "Sandbox mode lets you test the entire end-to-end checkout flow without moving real funds. When making API requests with `gp_test_` keys or using the dashboard with `X-GressPay-Mode: test`, test transactions simulate instant SMS matches and webhook deliveries. Your live ledger balance is completely untouched.",
+        "A gp_test_ API key writes to the test ledger. On that ledger, bKash, Nagad, and USDT can be marked complete without a real SMS or chain transfer. Live keys do not do that. The two ledgers are stored separately.",
     },
     {
       question: "What is GressPay's webhook delivery and retry policy?",
       answer:
-        "When a transaction settles, GressPay fires an HTTP POST webhook to your configured endpoint with the `X-GressPay-Signature` HMAC header. If your endpoint does not respond with HTTP 200 within 5 seconds, GressPay automatically retries using an exponential backoff schedule (retries after 1m, 5m, 15m, 1h, and 6h) until acknowledged.",
+        "After a checkout is marked paid, GressPay sends one HTTPS POST with an HMAC-SHA256 X-GressPay-Signature over the raw body. The attempt is logged. There is no automatic retry schedule in this build. If your endpoint is down, the delivery stays logged and is not replayed on its own.",
     },
   ];
 
@@ -66,7 +66,7 @@ export const FAQSection: React.FC = () => {
             Frequently Asked Questions
           </h2>
           <p className="text-zinc-600 dark:text-zinc-400 text-sm sm:text-base leading-relaxed">
-            Everything you need to know about Bangladesh MFS companion automation, crypto settlements, and security guarantees.
+            How verification, wallets, and webhooks behave in this build.
           </p>
         </div>
 

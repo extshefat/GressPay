@@ -17,7 +17,7 @@ interface SupportedRail {
   verificationMechanism: string;
   feeInfo: string;
   features: string[];
-  status: "active" | "configurable";
+  statusLabel: string;
 }
 
 const SUPPORTED_RAILS: SupportedRail[] = [
@@ -28,15 +28,14 @@ const SUPPORTED_RAILS: SupportedRail[] = [
     type: "Personal, Agent & Merchant Numbers",
     currency: "BDT",
     settlement: "Direct to your own bKash account",
-    verificationMechanism: "Android SMS Companion matching 10-char TrxID + amount within 48h",
-    feeInfo: "Direct account to account (No GressPay holding)",
+    verificationMechanism: "Approved companion SMS with the same brand, rail, TrxID, and amount. A pasted TrxID alone does not complete a live checkout.",
+    feeInfo: "You receive the transfer in your own bKash account",
     features: [
-      "Real-time SMS notification matching",
-      "Customer pastes standard 10-character TrxID",
-      "Instant webhook dispatch to your server",
-      "Idempotent processing prevents duplicate submissions",
+      "Personal, Agent, or Merchant is a label you set, not an official bKash API",
+      "Live completion needs a paired Android companion and the provider SMS",
+      "Test ledger can simulate a match and is stored separately",
     ],
-    status: "active",
+    statusLabel: "SMS match",
   },
   {
     id: "nagad",
@@ -45,15 +44,30 @@ const SUPPORTED_RAILS: SupportedRail[] = [
     type: "Personal, Agent & Merchant Numbers",
     currency: "BDT",
     settlement: "Direct to your own Nagad account",
-    verificationMechanism: "Android SMS Companion matching 8-char TrxID + amount",
-    feeInfo: "Direct account to account (No GressPay holding)",
+    verificationMechanism: "Approved companion SMS with the same brand, rail, TrxID, and amount. Screenshots are not accepted as proof.",
+    feeInfo: "You receive the transfer in your own Nagad account",
     features: [
-      "Instant verification against incoming Nagad SMS",
-      "Personal and merchant wallet flexibility",
-      "Zero manual screenshot checking required",
-      "Live and sandbox testing ledger separation",
+      "Account type does not create a Nagad merchant integration",
+      "Live completion needs a paired Android companion and the provider SMS",
+      "Duplicate TrxIDs are rejected inside the same brand",
     ],
-    status: "active",
+    statusLabel: "SMS match",
+  },
+  {
+    id: "binance_pay",
+    name: "Binance Pay",
+    category: "crypto",
+    type: "Merchant API, not Spot trading",
+    currency: "USDT",
+    settlement: "Binance Pay checkout for the order GressPay creates",
+    verificationMechanism: "Server creates an order, then marks paid only after a provider query returns PAID with a matching amount and trade number.",
+    feeInfo: "Optional. Credentials stay encrypted on the server.",
+    features: [
+      "Needs Binance Pay Merchant API key, secret, and certificate serial",
+      "A payment to a Binance-owned address is not a Binance Pay order",
+      "Webhook callbacks are a signal. The server re-queries before completing.",
+    ],
+    statusLabel: "Optional",
   },
   {
     id: "usdt_trc20",
@@ -65,12 +79,11 @@ const SUPPORTED_RAILS: SupportedRail[] = [
     verificationMechanism: "On-chain TronGrid RPC verification (Contract, micro-units & block confirmations)",
     feeInfo: "Blockchain network fee only",
     features: [
-      "Automated verification of 64-character transaction hash",
-      "Exact amount comparison in micro-units (6 decimals)",
-      "Strict recipient Base58Check address matching",
-      "Configurable confirmation thresholds (default 20 blocks)",
+      "Separate from Binance Pay. A hash alone does not complete a live checkout.",
+      "Checks contract, recipient address, exact token amount, and confirmation count",
+      "Confirm the TRON network and address before you publish them",
     ],
-    status: "active",
+    statusLabel: "On-chain",
   },
 ];
 
@@ -89,13 +102,13 @@ export const CountryCoverage: React.FC = () => {
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto space-y-4">
           <Badge variant="emerald" className="font-mono text-[10px] uppercase">
-            Active Supported Rails
+            What this release checks
           </Badge>
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-zinc-900 dark:text-zinc-100 tracking-tight">
-            Built for Bangladesh. Ready for Global USDT.
+            Bangladesh wallets, then two optional crypto checks.
           </h2>
           <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 leading-relaxed">
-            GressPay focuses exclusively on real, production-verified payment rails. No speculative methods, no unverified regional stubs, and no custodial fund holding.
+            bKash and Nagad are SMS matches against your own numbers. Binance Pay and USDT TRC-20 are optional and use different evidence. India, Pakistan, and Nepal rails are not part of this release.
           </p>
 
           {/* Filter Pills */}
@@ -103,7 +116,7 @@ export const CountryCoverage: React.FC = () => {
             {[
               { id: "all", label: "All Supported Rails" },
               { id: "mfs", label: "Bangladesh MFS (bKash & Nagad)" },
-              { id: "crypto", label: "Crypto (USDT TRC-20)" },
+              { id: "crypto", label: "Binance Pay and USDT" },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -121,7 +134,7 @@ export const CountryCoverage: React.FC = () => {
         </div>
 
         {/* Rails Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {filteredRails.map((rail) => (
             <Card
               key={rail.id}
@@ -146,7 +159,7 @@ export const CountryCoverage: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                  <Badge variant="emerald">ACTIVE</Badge>
+                  <Badge variant="slate">{rail.statusLabel}</Badge>
                 </div>
 
                 <div className="space-y-2.5 pt-2 border-t border-zinc-100 dark:border-zinc-850 text-xs">

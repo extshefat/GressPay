@@ -19,7 +19,7 @@ export const CTASection: React.FC = () => {
         </h2>
 
         <p className="text-zinc-600 dark:text-zinc-400 text-sm sm:text-base max-w-2xl mx-auto leading-relaxed">
-          Verify bKash and Nagad payments in seconds without giving up 100% control of your funds. Zero paperwork — sign in with Google to configure your wallet destinations now.
+          Sign in with Google, publish the wallets you control, and pair a companion if you want live bKash or Nagad matching.
         </p>
 
         <div className="flex flex-wrap items-center justify-center gap-3 pt-4">

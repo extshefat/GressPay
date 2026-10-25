@@ -93,8 +93,8 @@ export default function SettingsPage() {
 
   const saveBinance = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiKey.trim() || !secret.trim()) {
-      setErrorMessage("Binance Pay API Key and Secret are required.");
+    if (!apiKey.trim() || !secret.trim() || !certificateSn.trim()) {
+      setErrorMessage("Binance Pay API key, secret, and certificate serial are all required.");
       return;
     }
 
@@ -231,21 +231,21 @@ export default function SettingsPage() {
       </Card>
 
       {/* Binance Pay Merchant API Card */}
-      <Card className="p-6 bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 space-y-4 shadow-xs">
+      <Card id="binance-pay" className="p-6 bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 space-y-4 shadow-xs">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
               Binance Pay Merchant Credentials
             </h3>
-            <Badge variant={binanceConfigured ? "emerald" : "amber"} size="sm" dot>
-              {binanceConfigured ? "Active & Encrypted" : "Not Configured"}
+            <Badge variant={binanceLiveReady ? "emerald" : "amber"} size="sm" dot>
+              {binanceLiveReady ? "Credentials stored · live checks allowed" : binanceConfigured ? "Stored · not live-ready" : "Not configured"}
             </Badge>
           </div>
-          <span className="text-[11px] font-mono text-zinc-400">Official Merchant Open API</span>
+          <span className="text-[11px] font-mono text-zinc-400">Merchant API, not Spot</span>
         </div>
 
         <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-          Provide your credentials from the Binance Merchant Portal. Secrets are encrypted with AES-256-GCM and never returned to the browser.
+          Use the API key, secret, and certificate serial from Binance Pay Merchant. Spot or trading keys will not create these orders. Fields are write-only. The server seals them for this brand and does not send them back. USDT TRC-20 uses a wallet address instead, on the destinations page.
         </p>
 
         <form onSubmit={saveBinance} className="space-y-4 pt-2">
@@ -264,7 +264,7 @@ export default function SettingsPage() {
           />
 
           <Input
-            label="Certificate Serial Number (Optional)"
+            label="Certificate serial number"
             placeholder="e.g. CERT_1048291"
             value={certificateSn}
             onChange={(e) => setCertificateSn(e.target.value)}

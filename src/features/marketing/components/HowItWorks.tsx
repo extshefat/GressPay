@@ -10,13 +10,13 @@ export const HowItWorks: React.FC = () => {
       num: "01",
       icon: <KeyRound className="w-5 h-5 text-teal-600 dark:text-teal-400" />,
       title: "Sign In & Configure",
-      desc: "Sign in with Google in one click. Input your own bKash, Nagad personal/agent numbers or your TRON USDT address. Zero paperwork required.",
+      desc: "Sign in with Google, or with a password if the account already has one. Add the bKash or Nagad number you control, and optionally a TRON address or Binance Pay Merchant API credentials.",
     },
     {
       num: "02",
       icon: <Smartphone className="w-5 h-5 text-teal-600 dark:text-teal-400" />,
       title: "Pair Android Companion",
-      desc: "Install the lightweight GressPay Companion APK on your phone. Pair via a reveal-once token to enable zero-downtime background SMS matching.",
+      desc: "Install the companion on an Android phone you control and pair it with a device token. Live bKash and Nagad checks use the provider SMS that phone receives. Without a paired device, those checkouts stay pending.",
     },
     {
       num: "03",
@@ -27,8 +27,8 @@ export const HowItWorks: React.FC = () => {
     {
       num: "04",
       icon: <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />,
-      title: "Automated Instant Settlement",
-      desc: "When a customer pays, GressPay verifies the TrxID in real time (via Companion SMS match or TRON blockchain), updates the ledger, and fires signed HMAC webhooks.",
+      title: "Evidence, then status",
+      desc: "The customer pays your wallet. GressPay marks the session paid only after a matching SMS, a Binance Pay order query, or a confirmed TRON transfer. It then sends one signed webhook. A return URL does not complete the payment.",
     },
   ];
 
@@ -43,7 +43,7 @@ export const HowItWorks: React.FC = () => {
             How GressPay Powers Your Payment Flow
           </h2>
           <p className="text-zinc-600 dark:text-zinc-400 text-sm sm:text-base leading-relaxed">
-            From Google sign-in to your first automated settlement in under three minutes. Funds go straight to your own account.
+            Customer payment, then evidence, then a status update. Funds go to the wallet you configured.
           </p>
         </div>
 

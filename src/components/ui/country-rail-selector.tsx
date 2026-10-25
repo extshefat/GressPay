@@ -17,7 +17,7 @@ export const SUPPORTED_RAILS: RailOption[] = [
   // First Release
   {
     code: "bkash",
-    name: "bKash Personal / Merchant",
+    name: "bKash (SMS match)",
     country: "Bangladesh",
     currency: "BDT",
     isFirstRelease: true,
@@ -25,7 +25,7 @@ export const SUPPORTED_RAILS: RailOption[] = [
   },
   {
     code: "nagad",
-    name: "Nagad Personal / Merchant",
+    name: "Nagad (SMS match)",
     country: "Bangladesh",
     currency: "BDT",
     isFirstRelease: true,
@@ -33,7 +33,7 @@ export const SUPPORTED_RAILS: RailOption[] = [
   },
   {
     code: "binance_pay",
-    name: "Binance Pay Official API",
+    name: "Binance Pay (Merchant API, optional)",
     country: "Global",
     currency: "USDT",
     isFirstRelease: true,
@@ -41,86 +41,13 @@ export const SUPPORTED_RAILS: RailOption[] = [
   },
   {
     code: "usdt_trc20",
-    name: "USDT TRC-20 Direct On-Chain",
+    name: "USDT TRC-20 (on-chain, optional)",
     country: "Global",
     currency: "USDT",
     isFirstRelease: true,
     type: "crypto",
   },
 
-  // Future Integrations (Catalog Preview)
-  {
-    code: "rocket",
-    name: "DBBL Rocket",
-    country: "Bangladesh",
-    currency: "BDT",
-    isFirstRelease: false,
-    type: "mobile_banking",
-  },
-  {
-    code: "upay",
-    name: "UCB Upay",
-    country: "Bangladesh",
-    currency: "BDT",
-    isFirstRelease: false,
-    type: "mobile_banking",
-  },
-  {
-    code: "cellfin",
-    name: "Islami Bank Cellfin",
-    country: "Bangladesh",
-    currency: "BDT",
-    isFirstRelease: false,
-    type: "mobile_banking",
-  },
-  {
-    code: "upi_qr",
-    name: "UPI Dynamic QR",
-    country: "India",
-    currency: "INR",
-    isFirstRelease: false,
-    type: "upi",
-  },
-  {
-    code: "phonepe",
-    name: "PhonePe PG / QR",
-    country: "India",
-    currency: "INR",
-    isFirstRelease: false,
-    type: "upi",
-  },
-  {
-    code: "easypaisa",
-    name: "Easypaisa Direct",
-    country: "Pakistan",
-    currency: "PKR",
-    isFirstRelease: false,
-    type: "wallet",
-  },
-  {
-    code: "jazzcash",
-    name: "JazzCash Direct",
-    country: "Pakistan",
-    currency: "PKR",
-    isFirstRelease: false,
-    type: "wallet",
-  },
-  {
-    code: "esewa",
-    name: "eSewa Nepal",
-    country: "Nepal",
-    currency: "NPR",
-    isFirstRelease: false,
-    type: "wallet",
-  },
-  {
-    code: "khalti",
-    name: "Khalti Digital Wallet",
-    country: "Nepal",
-    currency: "NPR",
-    isFirstRelease: false,
-    type: "wallet",
-  },
 ];
 
 export interface CountryRailSelectorProps {
@@ -138,7 +65,7 @@ export function CountryRailSelector({
 }: CountryRailSelectorProps) {
   const [selectedCountry, setSelectedCountry] = React.useState<string>("All");
 
-  const countries = ["All", "Bangladesh", "Global", "India", "Pakistan", "Nepal"];
+  const countries = ["All", "Bangladesh", "Global"];
 
   const filteredRails = SUPPORTED_RAILS.filter((rail) => {
     if (selectedCountry === "All") return true;
