@@ -148,6 +148,12 @@ final class GpDb
             'ALTER TABLE gp_sms_data ADD COLUMN idempotency_key VARCHAR(80)',
             'ALTER TABLE gp_brands ADD COLUMN binance_pay_json TEXT',
             'ALTER TABLE gp_brands ADD COLUMN crypto_enabled INTEGER NOT NULL DEFAULT 0',
+                        'ALTER TABLE gp_merchants ADD COLUMN role VARCHAR(16) NOT NULL DEFAULT \'merchant\'',
+            'ALTER TABLE gp_merchants ADD COLUMN status VARCHAR(16) NOT NULL DEFAULT \'active\'',
+            'ALTER TABLE gp_merchants ADD COLUMN plan_id VARCHAR(32) NOT NULL DEFAULT \'starter\'',
+            'ALTER TABLE gp_merchants ADD COLUMN plan_expires_at VARCHAR(32)',
+            'ALTER TABLE gp_plans ADD COLUMN device_limit INT NOT NULL DEFAULT 1',
+            'ALTER TABLE gp_plans ADD COLUMN method_limit INT NOT NULL DEFAULT 2',
             'ALTER TABLE gp_merchants ADD COLUMN google_id VARCHAR(64)',
             "ALTER TABLE gp_merchants ADD COLUMN auth_provider VARCHAR(20) NOT NULL DEFAULT 'local'",
             'ALTER TABLE gp_merchants ADD COLUMN avatar_url TEXT',
@@ -515,7 +521,82 @@ final class GpDb
               )";
         self::pdo()->exec($adminAuditTable);
 
+        $platformGatewaysTable = self::$driver === 'mysql'
+            ? "CREATE TABLE IF NOT EXISTS gp_platform_gateways (
+                id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                gateway_code VARCHAR(40) NOT NULL UNIQUE,
+                slug VARCHAR(60) NOT NULL,
+                display_name VARCHAR(120) NOT NULL,
+                category VARCHAR(20) NOT NULL DEFAULT 'mfs',
+                currency VARCHAR(8) NOT NULL DEFAULT 'BDT',
+                is_enabled INT NOT NULL DEFAULT 1,
+                display_order INT NOT NULL DEFAULT 0,
+                instructions TEXT NULL,
+                min_amount DECIMAL(20,8) NOT NULL DEFAULT 10,
+                max_amount DECIMAL(20,8) NOT NULL DEFAULT 100000,
+                created_at VARCHAR(32) NOT NULL,
+                updated_at VARCHAR(32) NOT NULL,
+                INDEX idx_gp_pg_cat (category),
+                INDEX idx_gp_pg_enabled (is_enabled)
+              ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+            : "CREATE TABLE IF NOT EXISTS gp_platform_gateways (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                gateway_code VARCHAR(40) NOT NULL UNIQUE,
+                slug VARCHAR(60) NOT NULL,
+                display_name VARCHAR(120) NOT NULL,
+                category VARCHAR(20) NOT NULL DEFAULT 'mfs',
+                currency VARCHAR(8) NOT NULL DEFAULT 'BDT',
+                is_enabled INTEGER NOT NULL DEFAULT 1,
+                display_order INTEGER NOT NULL DEFAULT 0,
+                instructions TEXT,
+                min_amount DECIMAL(20,8) NOT NULL DEFAULT 10,
+                max_amount DECIMAL(20,8) NOT NULL DEFAULT 100000,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+              )";
+        self::pdo()->exec($platformGatewaysTable);
+
+        $subscriptionPlansTable = self::$driver === 'mysql'
+            ? "CREATE TABLE IF NOT EXISTS gp_subscription_plans (
+                id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                plan_id VARCHAR(32) NOT NULL UNIQUE,
+                name VARCHAR(80) NOT NULL,
+                code VARCHAR(40) NOT NULL UNIQUE,
+                description TEXT NULL,
+                price_bdt DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+                billing_cycle VARCHAR(20) NOT NULL DEFAULT 'monthly',
+                credit_allowance INT NOT NULL DEFAULT 100,
+                device_limit INT NOT NULL DEFAULT 1,
+                method_limit INT NOT NULL DEFAULT 2,
+                features_json TEXT NULL,
+                is_free INT NOT NULL DEFAULT 0,
+                status VARCHAR(20) NOT NULL DEFAULT 'active',
+                created_at VARCHAR(32) NOT NULL,
+                updated_at VARCHAR(32) NOT NULL
+              ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+            : "CREATE TABLE IF NOT EXISTS gp_subscription_plans (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                plan_id VARCHAR(32) NOT NULL UNIQUE,
+                name VARCHAR(80) NOT NULL,
+                code VARCHAR(40) NOT NULL UNIQUE,
+                description TEXT,
+                price_bdt DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+                billing_cycle VARCHAR(20) NOT NULL DEFAULT 'monthly',
+                credit_allowance INTEGER NOT NULL DEFAULT 100,
+                device_limit INTEGER NOT NULL DEFAULT 1,
+                method_limit INTEGER NOT NULL DEFAULT 2,
+                features_json TEXT,
+                is_free INTEGER NOT NULL DEFAULT 0,
+                status VARCHAR(20) NOT NULL DEFAULT 'active',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+              )";
+        self::pdo()->exec($subscriptionPlansTable);
+
+
+        self::seedDefaultPlatformGateways();
         self::seedDefaultPlans();
+        self::autoPromoteSuperAdmins();
 
         self::backfillGatewaysFromMethods();
 
@@ -552,79 +633,170 @@ final class GpDb
         }
     }
 
+    private static function seedDefaultPlatformGateways(): void
+    {
+        try {
+            $count = (int) (self::one("SELECT COUNT(*) as c FROM gp_platform_gateways")['c'] ?? 0);
+            if ($count > 0) {
+                return;
+            }
+            $now = GpIds::now();
+            $gateways = [
+                ['bkash', 'bkash-personal', 'bKash Personal (Direct Wallet + SMS Match)', 'mfs', 'BDT', 1, 1, 10, 25000],
+                ['nagad', 'nagad-personal', 'Nagad Personal (Direct Wallet + SMS Match)', 'mfs', 'BDT', 1, 2, 10, 25000],
+                ['rocket', 'rocket-personal', 'Rocket Personal (Direct Wallet + SMS Match)', 'mfs', 'BDT', 1, 3, 10, 25000],
+                ['upay', 'upay-personal', 'Upay Personal (Direct Wallet + SMS Match)', 'mfs', 'BDT', 1, 4, 10, 25000],
+                ['cellfin', 'cellfin-personal', 'Cellfin IBBL (Smart Banking + SMS Match)', 'mfs', 'BDT', 1, 5, 10, 50000],
+                ['usdt_trc20', 'usdt-trc20', 'USDT TRC-20 (TRON Blockchain)', 'crypto', 'USDT', 1, 6, 1, 100000],
+                ['binance_pay', 'binance-personal', 'Binance Pay (Merchant API / QR)', 'crypto', 'USDT', 1, 7, 1, 100000],
+                ['bybit_pay', 'bybit-pay', 'Bybit Pay (Internal Transfer / UID)', 'crypto', 'USDT', 1, 8, 1, 100000],
+            ];
+            $stmt = self::pdo()->prepare(
+                "INSERT INTO gp_platform_gateways (gateway_code, slug, display_name, category, currency, is_enabled, display_order, min_amount, max_amount, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            );
+            foreach ($gateways as $g) {
+                $stmt->execute([
+                    $g[0], $g[1], $g[2], $g[3], $g[4], $g[5], $g[6], $g[7], $g[8], $now, $now
+                ]);
+            }
+        } catch (Throwable $e) {
+            error_log('[GpDb] seedDefaultPlatformGateways failed: ' . $e->getMessage());
+        }
+    }
+
+    private static function autoPromoteSuperAdmins(): void
+    {
+        try {
+            $admins = GpConfig::adminEmails();
+            if (empty($admins)) {
+                return;
+            }
+            $stmt = self::pdo()->prepare(
+                "UPDATE gp_merchants SET role = 'admin', plan_id = 'enterprise' WHERE LOWER(TRIM(email)) = ?"
+            );
+            foreach ($admins as $email) {
+                $stmt->execute([$email]);
+            }
+        } catch (Throwable $e) {
+            error_log('[GpDb] autoPromoteSuperAdmins note: ' . $e->getMessage());
+        }
+    }
+
     private static function seedDefaultPlans(): void
     {
         try {
-            $existing = self::one("SELECT COUNT(*) as c FROM gp_plans");
-            if ((int)($existing['c'] ?? 0) > 0) {
-                return;
-            }
-
             $now = GpIds::now();
             $plans = [
                 [
-                    'plan_id' => 'plan_starter_free',
-                    'name' => 'Starter Free',
-                    'code' => 'starter_free',
+                    'plan_id' => 'plan_starter',
+                    'name' => 'Starter',
+                    'code' => 'starter',
                     'price_bdt' => 0.00,
                     'credit_allowance' => 100,
+                    'device_limit' => 1,
+                    'method_limit' => 2,
                     'is_free' => 1,
-                    'description' => 'Admin record only. Credits on this row are not deducted when a checkout runs.',
+                    'description' => 'Essential payment automation for small businesses, personal stores, and developers.',
                     'features_json' => json_encode([
-                        'bKash and Nagad SMS match when a companion is paired',
-                        'Credit balance is a ledger entry, not an enforced quota',
-                        'One HMAC webhook attempt after a paid session',
+                        '1 Connected Android Companion Device',
+                        'Up to 2 Active Payment Destinations',
+                        '100 Monthly Transactions Included',
+                        'Standard Webhook HMAC Notifications',
+                        'Instant Direct-to-Wallet Settlement',
                     ], JSON_UNESCAPED_SLASHES),
                 ],
                 [
-                    'plan_id' => 'plan_growth_business',
-                    'name' => 'Growth Business',
-                    'code' => 'growth_business',
+                    'plan_id' => 'plan_pro',
+                    'name' => 'Pro Business',
+                    'code' => 'pro',
                     'price_bdt' => 1499.00,
                     'credit_allowance' => 2500,
+                    'device_limit' => 3,
+                    'method_limit' => 5,
                     'is_free' => 0,
-                    'description' => 'Admin record only. Optional USDT and Binance Pay still depend on merchant setup, not this plan.',
+                    'description' => 'High-throughput companion automation with multiple devices and Priority SLA.',
                     'features_json' => json_encode([
-                        'Same verification paths as Starter',
-                        'USDT TRC-20 and Binance Pay stay optional and separately configured',
-                        'Credit balance is not charged per API call',
+                        'Up to 3 Connected Android Devices',
+                        'Up to 5 Active Payment Gateways',
+                        '2,500 Monthly Transactions Included',
+                        'Priority Companion SMS Match Delivery',
+                        'All Bangladesh MFS + USDT TRC-20 Rails',
+                        'High-speed Webhook Retry Mechanism',
                     ], JSON_UNESCAPED_SLASHES),
                 ],
                 [
-                    'plan_id' => 'plan_enterprise_scale',
+                    'plan_id' => 'plan_enterprise',
                     'name' => 'Enterprise Scale',
-                    'code' => 'enterprise_scale',
+                    'code' => 'enterprise',
                     'price_bdt' => 4999.00,
                     'credit_allowance' => 15000,
+                    'device_limit' => 10,
+                    'method_limit' => 20,
                     'is_free' => 0,
-                    'description' => 'Admin record only. This plan does not add a webhook worker, an SLA, or support staff.',
+                    'description' => 'Maximum volume, dedicated companion workers, multi-device failover, and direct support.',
                     'features_json' => json_encode([
-                        'Same payment checks as other plans',
-                        'No automatic webhook retry is included',
-                        'Credit balance is not enforced on checkout',
+                        'Up to 10 Connected Android Devices',
+                        'Up to 20 Active Payment Gateways',
+                        '15,000 Monthly Transactions Included',
+                        'Multi-device Failover & Load Balancing',
+                        'Dedicated Companion Worker Thread',
+                        'Priority Telegram & Direct Channel Support',
+                    ], JSON_UNESCAPED_SLASHES),
+                ],
+                [
+                    'plan_id' => 'plan_lifetime',
+                    'name' => 'Lifetime Unlimited',
+                    'code' => 'lifetime',
+                    'price_bdt' => 14999.00,
+                    'credit_allowance' => 999999,
+                    'device_limit' => 25,
+                    'method_limit' => 50,
+                    'is_free' => 0,
+                    'description' => 'One-time investment for lifetime commercial access with maximum limits.',
+                    'features_json' => json_encode([
+                        'Up to 25 Connected Android Devices',
+                        'Up to 50 Active Payment Gateways',
+                        'Unlimited Automated Transactions',
+                        'Full MFS + Crypto Gateway Suite',
+                        'Lifetime Access with Zero Monthly Fees',
                     ], JSON_UNESCAPED_SLASHES),
                 ],
             ];
 
-            $stmt = self::pdo()->prepare(
+            $insertPlan = self::pdo()->prepare(
                 "INSERT INTO gp_plans (
-                    plan_id, name, code, description, price_bdt, billing_cycle, credit_allowance, features_json, is_free, status, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, 'monthly', ?, ?, ?, 'active', ?, ?)"
+                    plan_id, name, code, description, price_bdt, billing_cycle, credit_allowance, device_limit, method_limit, features_json, is_free, status, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, 'monthly', ?, ?, ?, ?, ?, 'active', ?, ?)"
+            );
+
+            $insertSubPlan = self::pdo()->prepare(
+                "INSERT INTO gp_subscription_plans (
+                    plan_id, name, code, description, price_bdt, billing_cycle, credit_allowance, device_limit, method_limit, features_json, is_free, status, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, 'monthly', ?, ?, ?, ?, ?, 'active', ?, ?)"
             );
 
             foreach ($plans as $p) {
-                $stmt->execute([
-                    $p['plan_id'],
-                    $p['name'],
-                    $p['code'],
-                    $p['description'],
-                    $p['price_bdt'],
-                    $p['credit_allowance'],
-                    $p['features_json'],
-                    $p['is_free'],
-                    $now,
-                    $now,
-                ]);
+                $exists = self::one("SELECT id FROM gp_plans WHERE code = ? OR plan_id = ?", [$p['code'], $p['plan_id']]);
+                if (!$exists) {
+                    $insertPlan->execute([
+                        $p['plan_id'], $p['name'], $p['code'], $p['description'], $p['price_bdt'],
+                        $p['credit_allowance'], $p['device_limit'], $p['method_limit'], $p['features_json'], $p['is_free'], $now, $now
+                    ]);
+                } else {
+                    self::exec(
+                        "UPDATE gp_plans SET name = ?, description = ?, price_bdt = ?, credit_allowance = ?, device_limit = ?, method_limit = ?, features_json = ?, is_free = ?, updated_at = ? WHERE id = ?",
+                        [$p['name'], $p['description'], $p['price_bdt'], $p['credit_allowance'], $p['device_limit'], $p['method_limit'], $p['features_json'], $p['is_free'], $now, $exists['id']]
+                    );
+                }
+
+                $subExists = self::one("SELECT id FROM gp_subscription_plans WHERE code = ? OR plan_id = ?", [$p['code'], $p['plan_id']]);
+                if (!$subExists) {
+                    $insertSubPlan->execute([
+                        $p['plan_id'], $p['name'], $p['code'], $p['description'], $p['price_bdt'],
+                        $p['credit_allowance'], $p['device_limit'], $p['method_limit'], $p['features_json'], $p['is_free'], $now, $now
+                    ]);
+                }
             }
         } catch (Throwable $e) {
             error_log('[GpDb] seedDefaultPlans failed: ' . $e->getMessage());

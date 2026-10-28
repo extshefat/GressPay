@@ -20,9 +20,7 @@ final class MethodsController
             }
             $list = [];
             foreach (GpCatalog::methods() as $cat) {
-                if (empty($cat['releaseScope'])) {
-                    continue;
-                }
+                if (!GpCatalog::isPlatformEnabled($cat['code'])) { continue; }
                 $list[] = GpPresenters::method($cat, $map[$cat['code']] ?? null, ['brandId' => $actor['brand_id']], $brand);
             }
             GpJson::send(['methods' => $list]);
@@ -35,9 +33,7 @@ final class MethodsController
         if ($cat === null) {
             GpJson::error('UNKNOWN_METHOD', 'Unknown payment method.');
         }
-        if (empty($cat['releaseScope'])) {
-            GpJson::error('METHOD_DISABLED', 'This method is out of scope for the current release.');
-        }
+        if (!GpCatalog::isPlatformEnabled($code)) { GpJson::error('METHOD_DISABLED', 'This payment method has been disabled platform-wide.'); }
 
         $enable = null;
         if ($req->method === 'PUT' || $req->method === 'POST') {

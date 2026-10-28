@@ -31,6 +31,15 @@ final class AdminController
                 'POST' => self::assignSubscription($actor, $req),
                 default => GpJson::error('METHOD_NOT_ALLOWED', 'Method not allowed.', 405),
             },
+                        'gateways' => match ($req->method) {
+                'GET' => self::listPlatformGateways(),
+                'POST' => match ($sub) {
+                    'toggle' => self::togglePlatformGateway($actor, $id),
+                    default => self::updatePlatformGateway($actor, $id, $req),
+                },
+                'PUT' => self::updatePlatformGateway($actor, $id, $req),
+                default => GpJson::error('METHOD_NOT_ALLOWED', 'Method not allowed.', 405),
+            },
             'audit' => match ($req->method) {
                 'GET' => self::listAuditLogs(),
                 default => GpJson::error('METHOD_NOT_ALLOWED', 'Method not allowed.', 405),
@@ -434,6 +443,71 @@ final class AdminController
         }
 
         GpJson::send(['auditLogs' => $out]);
+    }
+
+    private static function listPlatformGateways(): never
+    {
+        $rows = GpDb::all('SELECT * FROM gp_platform_gateways ORDER BY display_order ASC, id ASC');
+        GpJson::send(['gateways' => $rows]);
+    }
+
+    private static function togglePlatformGateway(array $actor, string $codeOrId): never
+    {
+        $gw = GpDb::one('SELECT * FROM gp_platform_gateways WHERE gateway_code = ? OR id = ?', [$codeOrId, $codeOrId]);
+        if (!$gw) {
+            GpJson::error('NOT_FOUND', 'Platform gateway not found.', 404);
+        }
+        $newStatus = ((int) $gw['is_enabled']) === 1 ? 0 : 1;
+        GpDb::exec('UPDATE gp_platform_gateways SET is_enabled = ?, updated_at = ? WHERE id = ?', [
+            $newStatus,
+            GpIds::now(),
+            $gw['id'],
+        ]);
+        self::logAudit(
+            $actor['email'],
+            'platform_gateway',
+            $gw['gateway_code'],
+            $newStatus === 1 ? 'enable_platform_gateway' : 'disable_platform_gateway',
+            ['gateway' => $gw['gateway_code'], 'is_enabled' => $newStatus]
+        );
+        GpJson::send(['ok' => true, 'gateway_code' => $gw['gateway_code'], 'is_enabled' => $newStatus]);
+    }
+
+    private static function updatePlatformGateway(array $actor, string $codeOrId, GpRequest $req): never
+    {
+        $gw = GpDb::one('SELECT * FROM gp_platform_gateways WHERE gateway_code = ? OR id = ?', [$codeOrId, $codeOrId]);
+        if (!$gw) {
+            GpJson::error('NOT_FOUND', 'Platform gateway not found.', 404);
+        }
+        $displayName = (string) $req->input('display_name', $gw['display_name']);
+        $instructions = (string) $req->input('instructions', $gw['instructions'] ?? '');
+        $minAmount = (float) $req->input('min_amount', $gw['min_amount']);
+        $maxAmount = (float) $req->input('max_amount', $gw['max_amount']);
+        $displayOrder = (int) $req->input('display_order', $gw['display_order']);
+        $isEnabled = $req->input('is_enabled', null);
+        $enabledVal = $isEnabled !== null ? ($isEnabled ? 1 : 0) : (int) $gw['is_enabled'];
+
+        GpDb::exec(
+            'UPDATE gp_platform_gateways SET display_name = ?, instructions = ?, min_amount = ?, max_amount = ?, display_order = ?, is_enabled = ?, updated_at = ? WHERE id = ?',
+            [$displayName, $instructions, $minAmount, $maxAmount, $displayOrder, $enabledVal, GpIds::now(), $gw['id']]
+        );
+
+        self::logAudit(
+            $actor['email'],
+            'platform_gateway',
+            $gw['gateway_code'],
+            'update_platform_gateway',
+            ['gateway' => $gw['gateway_code'], 'is_enabled' => $enabledVal, 'min' => $minAmount, 'max' => $maxAmount]
+        );
+
+        GpJson::send(['ok' => true, 'gateway' => array_merge($gw, [
+            'display_name' => $displayName,
+            'instructions' => $instructions,
+            'min_amount' => $minAmount,
+            'max_amount' => $maxAmount,
+            'display_order' => $displayOrder,
+            'is_enabled' => $enabledVal,
+        ])]);
     }
 
     private static function logAudit(string $actorEmail, string $targetType, string $targetId, string $action, array $details): void

@@ -213,25 +213,32 @@ final class GoogleOAuthClient
                 // 2. Existing merchant by email
                 $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE email = ?', [$email]);
                 if ($merchant !== null) {
-                    // Safe account link
+                    $isAdmin = GpConfig::isAdmin($email) || (($merchant['role'] ?? '') === 'admin');
+                    $role = $isAdmin ? 'admin' : ($merchant['role'] ?? 'merchant');
+                    $planId = $isAdmin ? 'enterprise' : ($merchant['plan_id'] ?? 'starter');
                     GpDb::exec(
-                        'UPDATE gp_merchants SET google_id = ?, avatar_url = COALESCE(avatar_url, ?), google_email_verified = 1, updated_at = ? WHERE merchant_id = ?',
-                        [$googleId, $picture, $now, $merchant['merchant_id']]
+                        'UPDATE gp_merchants SET google_id = ?, avatar_url = COALESCE(avatar_url, ?), google_email_verified = 1, role = ?, plan_id = ?, updated_at = ? WHERE merchant_id = ?',
+                        [$googleId, $picture, $role, $planId, $now, $merchant['merchant_id']]
                     );
+                    $merchant['role'] = $role;
+                    $merchant['plan_id'] = $planId;
                     $merchant['google_id'] = $googleId;
                     $merchant['avatar_url'] = $picture;
                 } else {
                     // 3. New registration
                     $isNew = true;
+                    $isAdmin = GpConfig::isAdmin($email);
+                    $role = $isAdmin ? 'admin' : 'merchant';
+                    $planId = $isAdmin ? 'enterprise' : 'starter';
                     $merchantId = GpIds::make('mrc', 8);
                     $brandId = GpIds::make('brd', 8);
                     $webhookSecret = 'gpwh_' . bin2hex(random_bytes(24));
                     $brandName = $fullName !== '' ? $fullName . ' Store' : 'GressPay Merchant';
 
                     GpDb::exec(
-                        'INSERT INTO gp_merchants (merchant_id, full_name, email, password_hash, google_id, auth_provider, avatar_url, google_email_verified, status, created_at, updated_at)
-                         VALUES (?, ?, ?, NULL, ?, ?, ?, 1, ?, ?, ?)',
-                        [$merchantId, $fullName, $email, $googleId, 'google', $picture, 'active', $now, $now]
+                        'INSERT INTO gp_merchants (merchant_id, full_name, email, password_hash, role, status, plan_id, google_id, auth_provider, avatar_url, google_email_verified, created_at, updated_at)
+                         VALUES (?, ?, ?, NULL, ?, 'active', ?, ?, 'google', ?, 1, ?, ?)',
+                        [$merchantId, $fullName, $email, $role, $planId, $googleId, $picture, $now, $now]
                     );
 
                     GpDb::exec(
@@ -268,6 +275,12 @@ final class GoogleOAuthClient
             ];
         }
 
+        $isAdmin = GpConfig::isAdmin($merchant['email']) || (($merchant['role'] ?? '') === 'admin');
+        if ($isAdmin && (($merchant['role'] ?? '') !== 'admin' || ($merchant['plan_id'] ?? '') !== 'enterprise')) {
+            GpDb::exec("UPDATE gp_merchants SET role = 'admin', plan_id = 'enterprise' WHERE merchant_id = ?", [$merchant['merchant_id']]);
+            $merchant['role'] = 'admin';
+            $merchant['plan_id'] = 'enterprise';
+        }
         if ($merchant['status'] !== 'active') {
             return [
                 'ok' => false,
@@ -281,6 +294,9 @@ final class GoogleOAuthClient
             'sub' => $merchant['merchant_id'],
             'brand' => $brand['brand_id'] ?? '',
             'email' => $merchant['email'],
+            'role' => $merchant['role'] ?? 'merchant',
+            'is_admin' => ($merchant['role'] ?? '') === 'admin' || GpConfig::isAdmin($merchant['email']),
+            'plan_id' => $merchant['plan_id'] ?? 'starter',
         ]);
 
         return [

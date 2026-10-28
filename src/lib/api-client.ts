@@ -26,6 +26,7 @@ import {
   AdminSubscription,
   AdminAuditLog,
   AdminStats,
+  PlatformGateway,
 } from "./types/api";
 import { METHOD_THEMES } from "./method-theme";
 
@@ -802,6 +803,30 @@ class ApiClient {
 
   async getAdminAuditLogs(): Promise<{ auditLogs: AdminAuditLog[] }> {
     return this.request<{ auditLogs: AdminAuditLog[] }>("/api/v1/admin/audit");
+  }
+
+  async getAdminPlatformGateways(): Promise<{ gateways: PlatformGateway[] }> {
+    return this.request<{ gateways: PlatformGateway[] }>("/api/v1/admin/gateways");
+  }
+
+  async toggleAdminPlatformGateway(codeOrId: string): Promise<{ ok: boolean; gateway_code: string; is_enabled: number }> {
+    return this.request<{ ok: boolean; gateway_code: string; is_enabled: number }>(
+      `/api/v1/admin/gateways/${codeOrId}/toggle`,
+      { method: "POST" }
+    );
+  }
+
+  async updateAdminPlatformGateway(
+    codeOrId: string,
+    payload: Partial<PlatformGateway>
+  ): Promise<{ ok: boolean; gateway: PlatformGateway }> {
+    return this.request<{ ok: boolean; gateway: PlatformGateway }>(
+      `/api/v1/admin/gateways/${codeOrId}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      }
+    );
   }
 }
 

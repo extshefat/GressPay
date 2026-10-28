@@ -98,6 +98,9 @@ final class AuthController
         }
 
         $now = GpIds::now();
+        $isAdmin = GpConfig::isAdmin($email);
+        $role = $isAdmin ? 'admin' : 'merchant';
+        $planId = $isAdmin ? 'enterprise' : 'starter';
         $merchantId = GpIds::make('mrc', 8);
         $brandId = GpIds::make('brd', 8);
         $webhookSecret = 'gpwh_' . bin2hex(random_bytes(24));
@@ -107,9 +110,9 @@ final class AuthController
 
         try {
             GpDb::exec(
-                'INSERT INTO gp_merchants (merchant_id, full_name, email, password_hash, auth_provider, status, created_at, updated_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                [$merchantId, $name, $email, password_hash($password, PASSWORD_BCRYPT), 'local', 'active', $now, $now]
+                'INSERT INTO gp_merchants (merchant_id, full_name, email, password_hash, role, status, plan_id, auth_provider, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [$merchantId, $name, $email, password_hash($password, PASSWORD_BCRYPT), $role, 'active', $planId, 'local', $now, $now]
             );
             GpDb::exec(
                 'INSERT INTO gp_brands (brand_id, merchant_id, name, currency_code, timezone, webhook_secret, created_at, updated_at)
@@ -137,9 +140,9 @@ final class AuthController
             GpJson::error('TRANSACTION_FAILED', 'Account creation could not be completed. Rolled back.', 500);
         }
 
-        $token = GpJwt::encode(['sub' => $merchantId, 'brand' => $brandId, 'email' => $email]);
+        $token = GpJwt::encode(['sub' => $merchantId, 'brand' => $brandId, 'email' => $email, 'role' => $role, 'is_admin' => $isAdmin, 'plan_id' => $planId]);
         $user = GpPresenters::user(
-            ['merchant_id' => $merchantId, 'full_name' => $name, 'email' => $email, 'status' => 'active', 'created_at' => $now],
+            ['merchant_id' => $merchantId, 'full_name' => $name, 'email' => $email, 'role' => $role, 'status' => 'active', 'plan_id' => $planId, 'created_at' => $now],
             ['name' => $brandName]
         );
 
@@ -173,11 +176,20 @@ final class AuthController
         if ($row['status'] !== 'active') {
             GpJson::error('SUSPENDED', 'This account is not active.', 403);
         }
+        $isAdmin = GpConfig::isAdmin($row['email']) || (($row['role'] ?? '') === 'admin');
+        if ($isAdmin && (($row['role'] ?? '') !== 'admin' || ($row['plan_id'] ?? '') !== 'enterprise')) {
+            GpDb::exec("UPDATE gp_merchants SET role = 'admin', plan_id = 'enterprise' WHERE merchant_id = ?", [$row['merchant_id']]);
+            $row['role'] = 'admin';
+            $row['plan_id'] = 'enterprise';
+        }
         $brand = GpDb::one('SELECT * FROM gp_brands WHERE merchant_id = ?', [$row['merchant_id']]);
         $token = GpJwt::encode([
             'sub' => $row['merchant_id'],
             'brand' => $brand['brand_id'] ?? '',
             'email' => $row['email'],
+            'role' => $isAdmin ? 'admin' : ($row['role'] ?? 'merchant'),
+            'is_admin' => $isAdmin,
+            'plan_id' => $isAdmin ? 'enterprise' : ($row['plan_id'] ?? 'starter'),
         ]);
         GpJson::send([
             'token' => $token,
@@ -193,6 +205,15 @@ final class AuthController
         }
         $actor = GpAuth::requireActor($req);
         $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$actor['merchant_id']]);
+        if ($merchant) {
+            $email = strtolower(trim((string) ($merchant['email'] ?? '')));
+            $isAdmin = GpConfig::isAdmin($email) || (($merchant['role'] ?? '') === 'admin');
+            if ($isAdmin && (($merchant['role'] ?? '') !== 'admin' || ($merchant['plan_id'] ?? '') !== 'enterprise')) {
+                GpDb::exec("UPDATE gp_merchants SET role = 'admin', plan_id = 'enterprise' WHERE merchant_id = ?", [$merchant['merchant_id']]);
+                $merchant['role'] = 'admin';
+                $merchant['plan_id'] = 'enterprise';
+            }
+        }
         $brand = GpDb::one('SELECT * FROM gp_brands WHERE brand_id = ?', [$actor['brand_id']]);
         GpJson::send(['user' => GpPresenters::user($merchant, $brand)]);
     }

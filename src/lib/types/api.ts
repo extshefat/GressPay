@@ -11,6 +11,11 @@ export interface User {
   businessName: string;
   role: UserRole;
   isAdmin?: boolean;
+  is_admin?: boolean;
+  planId?: string;
+  plan_id?: string;
+  planExpiresAt?: string | null;
+  status?: string;
   isVerified: boolean;
   avatarUrl?: string;
   createdAt: string;
@@ -312,11 +317,29 @@ export interface AdminPlan {
   priceBdt: number;
   billingCycle: string;
   creditAllowance: number;
+  deviceLimit?: number;
+  methodLimit?: number;
   features: string[];
   isFree: boolean;
   status: "active" | "archived" | "disabled";
   createdAt: string;
   updatedAt: string;
+}
+
+export interface PlatformGateway {
+  id: number;
+  gateway_code: string;
+  slug: string;
+  display_name: string;
+  category: "mfs" | "crypto";
+  currency: string;
+  is_enabled: number;
+  display_order: number;
+  instructions?: string | null;
+  min_amount: number;
+  max_amount: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AdminSubscription {

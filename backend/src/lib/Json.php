@@ -27,7 +27,7 @@ final class GpJson
         } elseif ($star) {
             header('Access-Control-Allow-Origin: *');
         }
-        header('Access-Control-Allow-Headers: Authorization, Content-Type, X-GressPay-Key, X-GressPay-Device');
+        header('Access-Control-Allow-Headers: Authorization, Content-Type, X-GressPay-Key, X-API-Key, X-Device-Token, X-GressPay-Device, X-GressPay-Mode, X-GressPay-Brand');
         header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
         if (strtoupper($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
             http_response_code(204);

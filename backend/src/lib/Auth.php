@@ -19,6 +19,13 @@ final class GpAuth
             if ($merchant === null) {
                 return null;
             }
+            $email = strtolower(trim((string) ($merchant['email'] ?? '')));
+            $isAdmin = GpConfig::isAdmin($email) || (($merchant['role'] ?? '') === 'admin');
+            if ($isAdmin && (($merchant['role'] ?? '') !== 'admin' || ($merchant['plan_id'] ?? '') !== 'enterprise')) {
+                GpDb::exec("UPDATE gp_merchants SET role = 'admin', plan_id = 'enterprise' WHERE merchant_id = ?", [$merchant['merchant_id']]);
+                $merchant['role'] = 'admin';
+                $merchant['plan_id'] = 'enterprise';
+            }
             $brand = GpDb::one('SELECT * FROM gp_brands WHERE merchant_id = ?', [$merchant['merchant_id']]);
             if ($brand === null) {
                 return null;
@@ -28,6 +35,9 @@ final class GpAuth
                 'merchant_id' => $merchant['merchant_id'],
                 'brand_id' => $brand['brand_id'],
                 'email' => $merchant['email'],
+                'role' => $isAdmin ? 'admin' : ($merchant['role'] ?? 'merchant'),
+                'is_admin' => $isAdmin,
+                'plan_id' => $isAdmin ? 'enterprise' : ($merchant['plan_id'] ?? 'starter'),
                 'mode' => $mode,
                 'auth' => 'jwt',
                 'scopes' => self::allScopes(),
@@ -36,7 +46,7 @@ final class GpAuth
 
         $rawKey = $bearer;
         if ($rawKey === null || $rawKey === '') {
-            $rawKey = $_SERVER['HTTP_X_GRESSPAY_KEY'] ?? null;
+            $rawKey = $_SERVER['HTTP_X_GRESSPAY_KEY'] ?? $_SERVER['HTTP_X_API_KEY'] ?? null;
         }
         if (!is_string($rawKey) || $rawKey === '') {
             return null;
@@ -134,10 +144,12 @@ final class GpAuth
     {
         $actor = self::requireActor($req);
         $email = strtolower(trim((string) ($actor['email'] ?? '')));
-        if ($email === '' || !GpConfig::isAdmin($email)) {
+        $isAdmin = GpConfig::isAdmin($email) || (($actor['role'] ?? '') === 'admin');
+        if (!$isAdmin) {
             GpJson::error('FORBIDDEN', 'Administrator privileges required for this action.', 403);
         }
         $actor['is_admin'] = true;
+        $actor['role'] = 'admin';
         return $actor;
     }
 

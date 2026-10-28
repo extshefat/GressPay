@@ -39,7 +39,7 @@ final class GpConfig
             }
         }
         // Overlay actual getenv for critical keys (Docker/K8s).
-        foreach (['APP_ENV', 'JWT_SECRET', 'DB_PASS', 'APP_ENCRYPTION_KEY', 'GRESSPAY_CRYPTO_ALLOWED'] as $k) {
+        foreach (['APP_ENV', 'JWT_SECRET', 'DB_PASS', 'APP_ENCRYPTION_KEY', 'GRESSPAY_CRYPTO_ALLOWED', 'ADMIN_EMAIL', 'ADMIN_EMAILS'] as $k) {
             $g = getenv($k);
             if ($g !== false && $g !== '') {
                 self::$env[$k] = $g;
@@ -255,7 +255,7 @@ final class GpConfig
      */
     public static function adminEmails(): array
     {
-        $raw = trim(self::get('ADMIN_EMAIL', self::get('ADMIN_EMAILS', '')));
+        $raw = trim(trim(self::get('ADMIN_EMAIL', '')) . ',' . trim(self::get('ADMIN_EMAILS', '')), ',');
         if ($raw === '') {
             return [];
         }
