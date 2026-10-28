@@ -1,10 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="gp_teal">#0F766E</color>
-    <color name="gp_teal_dark">#0D9488</color>
-    <color name="gp_zinc_950">#09090B</color>
-    <color name="gp_zinc_100">#F4F4F5</color>
-    <color name="gp_zinc_500">#71717A</color>
+    <color name="gp_black">#09090B</color>
     <color name="gp_white">#FFFFFF</color>
-    <color name="gp_error">#DC2626</color>
+    <color name="gp_zinc_950">#09090B</color>
+    <color name="gp_zinc_900">#18181B</color>
+    <color name="gp_zinc_800">#27272A</color>
+    <color name="gp_zinc_700">#3F3F46</color>
+    <color name="gp_zinc_500">#71717A</color>
+    <color name="gp_zinc_400">#A1A1AA</color>
+    <color name="gp_zinc_300">#D4D4D8</color>
+    <color name="gp_zinc_200">#E4E4E7</color>
+    <color name="gp_zinc_100">#F4F4F5</color>
+    <color name="gp_zinc_50">#FAFAFA</color>
+    <color name="gp_emerald">#10B981</color>
+    <color name="gp_amber">#F59E0B</color>
+    <color name="gp_error">#EF4444</color>
+    <!-- Legacy aliases -->
+    <color name="gp_teal">#09090B</color>
+    <color name="gp_teal_dark">#18181B</color>
 </resources>

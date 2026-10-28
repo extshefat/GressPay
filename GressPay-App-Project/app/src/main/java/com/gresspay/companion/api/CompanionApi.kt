@@ -24,6 +24,20 @@ class CompanionApi(
         }
     }
 
+    fun ping(deviceToken: String): Boolean {
+        val url = "$baseUrl/api/v1/health"
+        val req = Request.Builder()
+            .url(url)
+            .header("Authorization", "Bearer $deviceToken")
+            .get()
+            .build()
+        return try {
+            client.newCall(req).execute().use { it.isSuccessful }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     fun registerDevice(merchantApiKey: String): RegisterResult {
         val url = "$baseUrl/api/v1/companion/register"
         val body = "{}".toRequestBody(JSON)

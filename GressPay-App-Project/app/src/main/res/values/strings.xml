@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">GressPay Companion</string>
-    <string name="notification_channel_name">SMS matching</string>
-    <string name="notification_channel_desc">Keeps payment SMS matching active while you are logged in.</string>
-    <string name="notification_title">GressPay matching on</string>
-    <string name="notification_text">Listening for payment confirmation SMS only. Full inbox is never uploaded.</string>
-    <string name="consent_title">Privacy: what we upload</string>
-    <string name="consent_body">With your opt-in, GressPay Companion listens for new bKash and Nagad payment SMS only (RECEIVE_SMS). It extracts sender rail, amount, and TxID — never the full message body or your inbox. Data is sent over HTTPS to your GressPay server so pending checkouts can be matched. Unrelated SMS are ignored. Turn off matching anytime or clear the device token to stop uploads. This is not an official bKash/Nagad merchant app.</string>
-    <string name="privacy_stop_hint">Disable matching or clear the device token to stop evidence uploads immediately.</string>
+    <string name="notification_channel_name">Payment Verification Node</string>
+    <string name="notification_channel_desc">Maintains high-priority listening for payment receipt SMS.</string>
+    <string name="notification_title">GressPay Verification Node Active</string>
+    <string name="notification_text">Automated listener active for bKash, Nagad, Rocket, Upay, and Cellfin receipts.</string>
+    <string name="consent_title">Non-Custodial Privacy &amp; Consent</string>
+    <string name="consent_body">With your consent, GressPay Companion monitors incoming payment confirmation SMS for bKash, Nagad, Rocket, Upay, and Cellfin. It parses sender rail, amount, and TrxID — personal messages and full inbox data are never uploaded or stored. Data is delivered securely over TLS to your GressPay platform to automate order settlements.</string>
+    <string name="privacy_stop_hint">Toggle off matching or clear credentials at any time to immediately suspend automated sync.</string>
 </resources>
