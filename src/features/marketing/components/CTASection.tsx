@@ -23,9 +23,9 @@ export const CTASection: React.FC = () => {
         </p>
 
         <div className="flex flex-wrap items-center justify-center gap-3 pt-4">
-          <Link href="/login">
+          <Link href="/register">
             <Button size="lg" variant="primary" rightIcon={<ArrowRight className="w-4 h-4" />}>
-              Get Started with Google
+              Sign up
             </Button>
           </Link>
           <Link href="/developers">

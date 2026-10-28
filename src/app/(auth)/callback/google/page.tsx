@@ -50,14 +50,8 @@ function GoogleCallbackContent() {
         if (alive) {
           setStatus("success");
           setTimeout(() => {
-            if (res.user?.role === "admin" || res.user?.isAdmin) {
-              router.push("/dashboard/admin");
-            } else if (res.isNew) {
-              router.push("/dashboard/methods?onboarding=1");
-            } else {
-              router.push("/dashboard/overview");
-            }
-          }, 1000);
+            router.push("/dashboard/overview");
+          }, 600);
         }
       } catch (err: unknown) {
         if (alive) {

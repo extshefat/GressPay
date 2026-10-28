@@ -196,7 +196,9 @@ final class GpPresenters
             $sep = str_contains($returnUrl, '?') ? '&' : '?';
             $redirectUrl = $returnUrl . $sep . http_build_query([
                 'session_id' => $row['session_id'],
-                'status' => 'COMPLETED',
+                'order_id' => (string) ($meta['orderId'] ?? ''),
+                'status' => 'completed',
+                'trx_id' => (string) ($row['trx_id'] ?? ''),
             ]);
         }
         return [
@@ -298,8 +300,10 @@ final class GpPresenters
         $returnUrl = isset($meta['returnUrl']) && is_string($meta['returnUrl']) ? $meta['returnUrl'] : null;
         return [
             'sessionId' => $txn['session_id'],
+            'session_id' => $txn['session_id'],
             'linkId' => $link['link_id'] ?? $txn['session_id'],
             'payUrl' => $payUrl,
+            'payment_url' => $payUrl,
             'returnUrl' => $returnUrl,
             'merchantName' => $brand['name'] ?? 'GressPay Merchant',
             'merchantLogo' => null,

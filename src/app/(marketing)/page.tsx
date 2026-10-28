@@ -8,6 +8,7 @@ import { SecuritySection } from "@/features/marketing/components/SecuritySection
 import { RatesCalculator } from "@/features/marketing/components/RatesCalculator";
 import { DeveloperPreview } from "@/features/marketing/components/DeveloperPreview";
 import { FAQSection } from "@/features/marketing/components/FAQSection";
+import { PricingPlans } from "@/features/marketing/components/PricingPlans";
 import { CTASection } from "@/features/marketing/components/CTASection";
 
 export default function HomePage() {
@@ -22,6 +23,7 @@ export default function HomePage() {
       <SecuritySection />
       <RatesCalculator />
       <DeveloperPreview />
+      <PricingPlans />
       <FAQSection />
       <CTASection />
     </>

@@ -12,6 +12,69 @@ final class GoogleOAuthClient
     private const TOKEN_URL = 'https://oauth2.googleapis.com/token';
     private const USERINFO_URL = 'https://openidconnect.googleapis.com/v1/userinfo';
 
+    public static function resolveRedirectUri(?string $customRedirectUri = null): string
+    {
+        $custom = trim((string) $customRedirectUri);
+        $configured = trim(GpConfig::get('GOOGLE_REDIRECT_URI', ''));
+        $origin = self::requestOrigin();
+        if ($custom !== '' && self::isPublicHttps($custom)) {
+            return $custom;
+        }
+        if ($configured !== '' && self::isPublicHttps($configured)) {
+            return $configured;
+        }
+        if ($origin !== '') {
+            return $origin . '/callback/google';
+        }
+        $appUrl = rtrim(GpConfig::get('APP_URL', ''), '/');
+        if ($appUrl !== '' && self::isPublicHttps($appUrl)) {
+            return $appUrl . '/callback/google';
+        }
+        if ($custom !== '') {
+            return $custom;
+        }
+        if ($configured !== '') {
+            return $configured;
+        }
+        return ($appUrl !== '' ? $appUrl : 'http://localhost:3000') . '/callback/google';
+    }
+
+    private static function requestOrigin(): string
+    {
+        $origin = trim((string) ($_SERVER['HTTP_ORIGIN'] ?? ''));
+        if (self::isPublicHttps($origin)) {
+            return rtrim($origin, '/');
+        }
+        $host = trim((string) ($_SERVER['HTTP_X_FORWARDED_HOST'] ?? $_SERVER['HTTP_HOST'] ?? ''));
+        $host = trim(explode(',', $host)[0]);
+        if ($host === '' || self::isLocalHost($host)) {
+            return '';
+        }
+        $proto = strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''));
+        if ($proto !== 'https' && $proto !== 'http') {
+            $proto = 'https';
+        }
+        return $proto . '://' . $host;
+    }
+
+    private static function isPublicHttps(string $url): bool
+    {
+        if ($url === '' || !filter_var($url, FILTER_VALIDATE_URL)) {
+            return false;
+        }
+        $parts = parse_url($url);
+        $host = strtolower((string) ($parts['host'] ?? ''));
+        $scheme = strtolower((string) ($parts['scheme'] ?? ''));
+        return $scheme === 'https' && $host !== '' && !self::isLocalHost($host);
+    }
+
+    private static function isLocalHost(string $host): bool
+    {
+        $host = strtolower(trim($host));
+        $host = explode(':', $host)[0];
+        return in_array($host, ['localhost', '127.0.0.1', '0.0.0.0', '::1'], true);
+    }
+
     public static function isConfigured(): bool
     {
         $clientId = trim(GpConfig::get('GOOGLE_CLIENT_ID', ''));
@@ -32,11 +95,7 @@ final class GoogleOAuthClient
         }
 
         $clientId = GpConfig::get('GOOGLE_CLIENT_ID');
-        $redirectUri = $customRedirectUri ?: GpConfig::get('GOOGLE_REDIRECT_URI', '');
-        if ($redirectUri === '') {
-            $appUrl = rtrim(GpConfig::get('APP_URL', 'http://localhost:3000'), '/');
-            $redirectUri = $appUrl . '/callback/google';
-        }
+        $redirectUri = self::resolveRedirectUri($customRedirectUri);
 
         $state = bin2hex(random_bytes(24));
         $nonce = bin2hex(random_bytes(24));

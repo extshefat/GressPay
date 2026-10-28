@@ -18,6 +18,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
+import { IntegrationSnippets } from "@/features/developers/IntegrationSnippets";
 
 export default function ApiKeysPage() {
   const { success, error: toastError } = useToast();
@@ -66,6 +67,7 @@ export default function ApiKeysPage() {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
+      <IntegrationSnippets />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

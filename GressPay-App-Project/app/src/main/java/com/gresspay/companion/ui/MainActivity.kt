@@ -27,10 +27,11 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { result ->
         val granted = result[Manifest.permission.RECEIVE_SMS] == true
-        if (!granted) {
+        val notificationsOk = Build.VERSION.SDK_INT < 33 || result[Manifest.permission.POST_NOTIFICATIONS] == true
+        if (!granted || !notificationsOk) {
             prefs.matchingEnabled = false
             binding.switchMatching.isChecked = false
-            setStatus("SMS permission denied — matching off")
+            setStatus("SMS or notification permission denied — matching off")
             SmsMatchService.stop(this)
             return@registerForActivityResult
         }

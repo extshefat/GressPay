@@ -515,6 +515,32 @@ final class GpDb
               )";
         self::pdo()->exec($adminAuditTable);
 
+        $platformFlags = self::$driver === 'mysql'
+            ? "CREATE TABLE IF NOT EXISTS gp_platform_flags (
+                flag_key VARCHAR(64) NOT NULL PRIMARY KEY,
+                enabled INT NOT NULL DEFAULT 1,
+                updated_at VARCHAR(32) NOT NULL
+              ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+            : "CREATE TABLE IF NOT EXISTS gp_platform_flags (
+                flag_key VARCHAR(64) NOT NULL PRIMARY KEY,
+                enabled INTEGER NOT NULL DEFAULT 1,
+                updated_at TEXT NOT NULL
+              )";
+        self::pdo()->exec($platformFlags);
+
+        $adminOverrides = self::$driver === 'mysql'
+            ? "CREATE TABLE IF NOT EXISTS gp_admin_overrides (
+                email VARCHAR(190) NOT NULL PRIMARY KEY,
+                allowed INT NOT NULL DEFAULT 0,
+                updated_at VARCHAR(32) NOT NULL
+              ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+            : "CREATE TABLE IF NOT EXISTS gp_admin_overrides (
+                email VARCHAR(190) NOT NULL PRIMARY KEY,
+                allowed INTEGER NOT NULL DEFAULT 0,
+                updated_at TEXT NOT NULL
+              )";
+        self::pdo()->exec($adminOverrides);
+
         self::seedDefaultPlans();
 
         self::backfillGatewaysFromMethods();

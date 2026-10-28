@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/lib/theme";
 import { ToastProvider } from "@/components/ui/toast";
-import { DemoBanner } from "@/components/DemoBanner";
 
 export const metadata: Metadata = {
   title: "GressPay — Bangladesh MFS, Binance Pay & USDT",
@@ -43,7 +42,6 @@ export default function RootLayout({
       <body className="min-h-screen bg-void font-sans text-zinc-900 dark:text-zinc-100 antialiased">
         <ThemeProvider>
           <ToastProvider>
-            <DemoBanner />
             {children}
           </ToastProvider>
         </ThemeProvider>

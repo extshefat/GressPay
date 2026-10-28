@@ -104,9 +104,9 @@ export const GlobeHero: React.FC = () => {
               transition={{ duration: 0.5, delay: 0.28, ease: [0.22, 1, 0.36, 1] }}
               className="flex flex-wrap items-center gap-3 pt-2"
             >
-              <Link href="/login">
+              <Link href="/register">
                 <Button size="lg" variant="primary" rightIcon={<ArrowRight className="w-4 h-4" />}>
-                  Get Started with Google
+                  Sign up
                 </Button>
               </Link>
               <Link href="/developers">

@@ -39,7 +39,7 @@ final class GpConfig
             }
         }
         // Overlay actual getenv for critical keys (Docker/K8s).
-        foreach (['APP_ENV', 'JWT_SECRET', 'DB_PASS', 'APP_ENCRYPTION_KEY', 'GRESSPAY_CRYPTO_ALLOWED'] as $k) {
+        foreach (['APP_ENV', 'APP_URL', 'JWT_SECRET', 'DB_PASS', 'DB_PASSWORD', 'APP_ENCRYPTION_KEY', 'GRESSPAY_CRYPTO_ALLOWED', 'ADMIN_EMAIL', 'ADMIN_EMAILS', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI'] as $k) {
             $g = getenv($k);
             if ($g !== false && $g !== '') {
                 self::$env[$k] = $g;
@@ -49,7 +49,27 @@ final class GpConfig
 
     public static function get(string $key, string $default = ''): string
     {
-        return self::$env[$key] ?? $default;
+        $value = self::$env[$key] ?? '';
+        if ($value === '') {
+            $aliases = [
+                'DB_NAME' => ['DB_DATABASE'],
+                'DB_USER' => ['DB_USERNAME'],
+                'DB_PASS' => ['DB_PASSWORD'],
+                'DB_DRIVER' => ['DB_CONNECTION'],
+                'SQLITE_PATH' => ['DB_SQLITE_PATH'],
+            ];
+            foreach ($aliases[$key] ?? [] as $alt) {
+                $candidate = self::$env[$alt] ?? '';
+                if ($candidate !== '') {
+                    $value = $candidate;
+                    break;
+                }
+            }
+        }
+        if ($key === 'DB_DRIVER' && $value !== '') {
+            $value = strtolower($value) === 'sqlite' ? 'sqlite' : 'mysql';
+        }
+        return $value !== '' ? $value : $default;
     }
 
     public static function isProduction(): bool
@@ -274,6 +294,14 @@ final class GpConfig
         $email = strtolower(trim($email));
         if ($email === '') {
             return false;
+        }
+        try {
+            $row = GpDb::one('SELECT allowed FROM gp_admin_overrides WHERE email = ?', [$email]);
+            if (is_array($row)) {
+                return (int) ($row['allowed'] ?? 0) === 1;
+            }
+        } catch (Throwable $e) {
+            // Table is created on boot. Fall through to the environment allowlist.
         }
         return in_array($email, self::adminEmails(), true);
     }

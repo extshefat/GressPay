@@ -11,7 +11,7 @@ import { ArrowRight, LayoutDashboard, LogOut, Menu, X } from "lucide-react";
 
 const LINKS = [
   { href: "/services", label: "Services" },
-  { href: "/fees", label: "Fees" },
+  { href: "/fees", label: "Pricing" },
   { href: "/developers", label: "Developers" },
   { href: "/help", label: "Help" },
 ];
@@ -78,9 +78,9 @@ export function Navbar() {
                   Log in
                 </Button>
               </Link>
-              <Link href="/login">
+              <Link href="/register">
                 <Button size="sm" rightIcon={<ArrowRight className="w-4 h-4" />}>
-                  Get started
+                  Sign up
                 </Button>
               </Link>
             </>
@@ -113,9 +113,9 @@ export function Navbar() {
                 </Button>
               </Link>
             ) : (
-              <Link href="/login" className="flex-1" onClick={() => setOpen(false)}>
+              <Link href="/register" className="flex-1" onClick={() => setOpen(false)}>
                 <Button className="w-full" size="sm">
-                  Get started
+                  Sign up
                 </Button>
               </Link>
             )}

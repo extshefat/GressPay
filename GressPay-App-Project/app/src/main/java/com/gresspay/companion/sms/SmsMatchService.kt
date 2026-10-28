@@ -86,6 +86,12 @@ class SmsMatchService : Service() {
         private const val NOTIF_ID = 4201
 
         fun start(context: android.content.Context) {
+            if (Build.VERSION.SDK_INT >= 33 &&
+                android.content.pm.PackageManager.PERMISSION_GRANTED !=
+                androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS)
+            ) {
+                return
+            }
             val i = Intent(context, SmsMatchService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(i)

@@ -12,8 +12,8 @@ services:
       HOSTNAME: "0.0.0.0"
       PORT: "3000"
       NEXT_PUBLIC_APP_NAME: GressPay
-      NEXT_PUBLIC_APP_URL: ${APP_URL:-https://your-domain.com}
-      NEXT_PUBLIC_API_URL: ""
+      NEXT_PUBLIC_APP_URL: ${APP_URL:-https://gresspay.extxcheats.com}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
       NEXT_PUBLIC_DATA_SOURCE: live
       GRESSPAY_PHP_URL: "http://php:8080"
     ports:
@@ -29,17 +29,23 @@ services:
     environment:
       APP_NAME: GressPay
       APP_ENV: production
-      APP_URL: ${APP_URL:-https://your-domain.com}
-      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-https://your-domain.com}
-      DB_DRIVER: mysql
-      DB_HOST: mariadb
-      DB_PORT: 3306
-      DB_NAME: gresspay
-      DB_USER: gresspay
-      DB_PASS: ${DB_PASS:-gp_db_secure_pass_2026}
-      JWT_SECRET: ${JWT_SECRET:-gresspay_jwt_secret_must_be_32_chars_min}
-      APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:-gresspay_enc_key_must_be_32_chars_min}
-      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      APP_URL: ${APP_URL:-https://gresspay.extxcheats.com}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-https://gresspay.extxcheats.com}
+      DB_DRIVER: ${DB_CONNECTION:-mysql}
+      DB_HOST: ${DB_HOST:-mariadb}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_NAME: ${DB_DATABASE:-gresspay}
+      DB_USER: ${DB_USERNAME:-gresspay}
+      DB_PASS: ${DB_PASSWORD:-${DB_PASS:?Set DB_PASS or DB_PASSWORD}}
+      DB_DATABASE: ${DB_DATABASE:-gresspay}
+      DB_USERNAME: ${DB_USERNAME:-gresspay}
+      DB_PASSWORD: ${DB_PASSWORD:-${DB_PASS:?Set DB_PASS or DB_PASSWORD}}
+      DB_CONNECTION: ${DB_CONNECTION:-mysql}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
+      APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:?Set APP_ENCRYPTION_KEY}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://gresspay.extxcheats.com}
       GRESSPAY_CRYPTO_ALLOWED: ${GRESSPAY_CRYPTO_ALLOWED:-0}
       BINANCE_PAY_API_BASE: ${BINANCE_PAY_API_BASE:-https://bpay.binanceapi.com}
       TRON_API_BASE: ${TRON_API_BASE:-https://api.trongrid.io}
@@ -57,8 +63,8 @@ services:
     environment:
       MYSQL_DATABASE: gresspay
       MYSQL_USER: gresspay
-      MYSQL_PASSWORD: ${DB_PASS:-gp_db_secure_pass_2026}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-gp_root_pass_2026}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-${DB_PASS:?Set DB_PASS or DB_PASSWORD}}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD}
     volumes:
       - gresspay_db:/var/lib/mysql
       - ./backend/schema/install.mysql.sql:/docker-entrypoint-initdb.d/01-install.sql:ro

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
+import { AdminPlatformPanel } from "@/features/dashboard/components/AdminPlatformPanel";
 import {
   AdminMerchant,
   AdminPlan,
@@ -228,6 +229,7 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
+      <AdminPlatformPanel />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-zinc-200 dark:border-zinc-800">
         <div>

@@ -40,7 +40,7 @@ final class CheckoutController
         GpJson::error('NOT_FOUND', 'Unknown checkout route.', 404);
     }
 
-    private static function createAuthenticated(GpRequest $req): never
+    public static function createAuthenticated(GpRequest $req): never
     {
         $actor = GpAuth::requireActor($req);
         GpAuth::requireScope($actor, 'create_payment');
@@ -52,7 +52,7 @@ final class CheckoutController
     }
 
     /** Merchant verifies payment status by sessionId (API key / JWT). */
-    private static function verifyPaymentMerchant(GpRequest $req): never
+    public static function verifyPaymentMerchant(GpRequest $req): never
     {
         $actor = GpAuth::requireActor($req);
         GpAuth::requireScope($actor, 'verify_payment');
@@ -163,11 +163,13 @@ final class CheckoutController
         $expires = gmdate('Y-m-d\TH:i:s\Z', time() + 1800);
         $sessionId = GpIds::make('chs', 10);
         $customer = [
-            'name' => (string) $req->input('full_name', $req->input('name', '')),
-            'email' => (string) $req->input('email_address', $req->input('email', '')),
+            'name' => (string) $req->input('full_name', $req->input('name', $req->input('customer_name', ''))),
+            'email' => (string) $req->input('email_address', $req->input('email', $req->input('customer_email', ''))),
             'mobile' => (string) $req->input('mobile_number', $req->input('mobile', '')),
         ];
-        $returnUrl = trim((string) $req->input('return_url', $req->input('returnUrl', '')));
+        $returnUrl = trim((string) $req->input('return_url', $req->input('returnUrl', $req->input('success_url', $req->input('redirect_url', '')))));
+        $cancelUrl = trim((string) $req->input('cancel_url', ''));
+        $orderId = trim((string) $req->input('order_id', $req->input('orderId', '')));
         if ($returnUrl !== '' && !filter_var($returnUrl, FILTER_VALIDATE_URL)) {
             GpJson::error('INVALID_URL', 'return_url must be a valid URL.');
         }
@@ -188,6 +190,12 @@ final class CheckoutController
         $meta['confirmationState'] = 'none';
         if ($returnUrl !== '') {
             $meta['returnUrl'] = $returnUrl;
+        }
+        if ($cancelUrl !== '' && filter_var($cancelUrl, FILTER_VALIDATE_URL)) {
+            $meta['cancelUrl'] = $cancelUrl;
+        }
+        if ($orderId !== '') {
+            $meta['orderId'] = $orderId;
         }
         $orderTitle = trim((string) $req->input('order_title', $req->input('orderTitle', $link['title'] ?? 'Payment')));
         $orderDescription = trim((string) $req->input('order_description', $req->input('orderDescription', $link['description'] ?? '')));
@@ -274,7 +282,7 @@ final class CheckoutController
             foreach ($gateways as $gw) {
                 $code = GpCatalog::publicCode((string) ($gw['method_code'] ?? ''));
                 $cat = GpCatalog::find($code);
-                if ($cat === null || empty($cat['releaseScope'])) {
+                if ($cat === null || empty($cat['releaseScope']) || !GpPlatform::checkoutAllowed($code)) {
                     continue;
                 }
                 $readiness = GatewaysController::readiness($gw);
@@ -424,7 +432,7 @@ final class CheckoutController
             GpJson::error('METHOD_DISABLED', 'This payment method is not enabled.');
         }
 
-        if (empty($cat['releaseScope'])) {
+        if (empty($cat['releaseScope']) || !GpPlatform::checkoutAllowed($methodCode)) {
             GpJson::error('METHOD_DISABLED', 'This payment method is not available in this release.');
         }
 

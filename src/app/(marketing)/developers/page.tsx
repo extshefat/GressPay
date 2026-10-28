@@ -21,6 +21,7 @@ import {
   Layers,
 } from "lucide-react";
 import Link from "next/link";
+import { IntegrationSnippets } from "@/features/developers/IntegrationSnippets";
 
 export default function DevelopersPage() {
   const [activeLang, setActiveLang] = useState<"php" | "node" | "python">("node");
@@ -369,6 +370,7 @@ def verify_payment_status(session_id: str) -> dict:
 
         {/* Documentation Content */}
         <div className="lg:col-span-9 space-y-12">
+          <IntegrationSnippets />
           {/* Section 1: Quickstart */}
           <section id="quickstart" className="space-y-4">
             <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">

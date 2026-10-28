@@ -17,6 +17,7 @@ final class AdminController
                 'POST' => match ($sub) {
                     'credit' => self::adjustCredit($actor, $id, $req),
                     'status' => self::updateMerchantStatus($actor, $id, $req),
+                    'role' => self::setMerchantRole($actor, $id, $req),
                     default => GpJson::error('NOT_FOUND', 'Unknown merchant admin action.', 404),
                 },
                 default => GpJson::error('METHOD_NOT_ALLOWED', 'Method not allowed.', 405),
@@ -33,6 +34,20 @@ final class AdminController
             },
             'audit' => match ($req->method) {
                 'GET' => self::listAuditLogs(),
+                default => GpJson::error('METHOD_NOT_ALLOWED', 'Method not allowed.', 405),
+            },
+            'gateways' => match ($req->method) {
+                'GET' => self::listPlatformGateways(),
+                'POST' => self::setPlatformGateway($actor, $req),
+                default => GpJson::error('METHOD_NOT_ALLOWED', 'Method not allowed.', 405),
+            },
+            'transactions' => match ($req->method) {
+                'GET' => self::listAllTransactions(),
+                default => GpJson::error('METHOD_NOT_ALLOWED', 'Method not allowed.', 405),
+            },
+            'devices' => match ($req->method) {
+                'GET' => self::listAllDevices(),
+                'POST' => $sub === 'revoke' ? self::revokeDevice($actor, $id) : GpJson::error('NOT_FOUND', 'Unknown device action.', 404),
                 default => GpJson::error('METHOD_NOT_ALLOWED', 'Method not allowed.', 405),
             },
             default => GpJson::error('NOT_FOUND', 'Unknown admin route.', 404),
@@ -434,6 +449,81 @@ final class AdminController
         }
 
         GpJson::send(['auditLogs' => $out]);
+    }
+
+    private static function listPlatformGateways(): never
+    {
+        GpJson::send(['gateways' => GpPlatform::listRails()]);
+    }
+
+    /** @param array{email?:string} $actor */
+    private static function setPlatformGateway(array $actor, GpRequest $req): never
+    {
+        $code = strtolower(trim((string) $req->input('code', '')));
+        $enabled = $req->input('enabled', null);
+        $on = $enabled === true || $enabled === 1 || $enabled === '1' || $enabled === 'true';
+        GpPlatform::setRail($code, $on);
+        self::logAudit((string) ($actor['email'] ?? ''), 'gateway', $code, 'platform_gateway', ['enabled' => $on]);
+        GpJson::send(['ok' => true, 'gateways' => GpPlatform::listRails()]);
+    }
+
+    /** @param array{email?:string} $actor */
+    private static function setMerchantRole(array $actor, string $merchantId, GpRequest $req): never
+    {
+        $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$merchantId]);
+        if ($merchant === null) {
+            GpJson::error('NOT_FOUND', 'Merchant not found.', 404);
+        }
+        $email = strtolower(trim((string) ($merchant['email'] ?? '')));
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            GpJson::error('VALIDATION', 'Merchant email is missing.', 400);
+        }
+        $makeAdmin = $req->input('admin', null);
+        $allowed = $makeAdmin === true || $makeAdmin === 1 || $makeAdmin === '1' || $makeAdmin === 'true';
+        $now = GpIds::now();
+        $existing = GpDb::one('SELECT email FROM gp_admin_overrides WHERE email = ?', [$email]);
+        if (is_array($existing)) {
+            GpDb::exec('UPDATE gp_admin_overrides SET allowed = ?, updated_at = ? WHERE email = ?', [$allowed ? 1 : 0, $now, $email]);
+        } else {
+            GpDb::exec('INSERT INTO gp_admin_overrides (email, allowed, updated_at) VALUES (?, ?, ?)', [$email, $allowed ? 1 : 0, $now]);
+        }
+        self::logAudit((string) ($actor['email'] ?? ''), 'merchant', $merchantId, 'admin_role', [
+            'email' => $email,
+            'admin' => $allowed,
+        ]);
+        GpJson::send(['ok' => true, 'email' => $email, 'admin' => $allowed]);
+    }
+
+    private static function listAllTransactions(): never
+    {
+        $rows = GpDb::all(
+            'SELECT session_id, brand_id, amount, currency, status, method_code, trx_id, ledger_mode, created_at
+             FROM gp_transactions ORDER BY id DESC LIMIT 100'
+        );
+        GpJson::send(['transactions' => $rows]);
+    }
+
+    private static function listAllDevices(): never
+    {
+        $rows = GpDb::all(
+            'SELECT device_id, brand_id, label, status, last_seen_at, created_at
+             FROM gp_devices ORDER BY id DESC LIMIT 100'
+        );
+        GpJson::send(['devices' => $rows]);
+    }
+
+    /** @param array{email?:string} $actor */
+    private static function revokeDevice(array $actor, string $deviceId): never
+    {
+        $row = GpDb::one('SELECT * FROM gp_devices WHERE device_id = ?', [$deviceId]);
+        if ($row === null) {
+            GpJson::error('NOT_FOUND', 'Device not found.', 404);
+        }
+        GpDb::exec('UPDATE gp_devices SET status = ?, updated_at = ? WHERE device_id = ?', ['revoked', GpIds::now(), $deviceId]);
+        self::logAudit((string) ($actor['email'] ?? ''), 'device', $deviceId, 'revoke', [
+            'brandId' => $row['brand_id'] ?? '',
+        ]);
+        GpJson::send(['ok' => true, 'deviceId' => $deviceId, 'status' => 'revoked']);
     }
 
     private static function logAudit(string $actorEmail, string $targetType, string $targetId, string $action, array $details): void

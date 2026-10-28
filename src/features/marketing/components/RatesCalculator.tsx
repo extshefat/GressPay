@@ -2,7 +2,6 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api-client";
-import { MOCK_EXCHANGE_RATES } from "@/lib/mock-data";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
@@ -12,13 +11,13 @@ export function RatesCalculator() {
   const [amount, setAmount] = useState("100");
   const [from, setFrom] = useState<(typeof CURRENCIES)[number]>("USD");
   const [to, setTo] = useState<(typeof CURRENCIES)[number]>("BDT");
-  const [rates, setRates] = useState(MOCK_EXCHANGE_RATES.rates);
+  const [rates, setRates] = useState<Record<string, number>>({ USD: 1, USDT: 1, BDT: 120 });
 
   useEffect(() => {
     api
       .getExchangeRates()
-      .then((r) => setRates(r.rates))
-      .catch(() => setRates(MOCK_EXCHANGE_RATES.rates));
+      .then((r) => setRates(r.rates as Record<string, number>))
+      .catch(() => setRates({}));
   }, []);
 
   const converted = useMemo(() => {
