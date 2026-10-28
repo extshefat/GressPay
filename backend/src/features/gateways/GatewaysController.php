@@ -95,6 +95,9 @@ final class GatewaysController
         if ($cat === null || empty($cat['releaseScope'])) {
             GpJson::error('METHOD_DISABLED', 'Method is not available in this release.', 400);
         }
+        if (!GpCatalog::isPlatformEnabled($methodCode)) {
+            GpJson::error('METHOD_DISABLED', 'This payment method has been disabled platform-wide by admin.', 400);
+        }
 
         $displayName = trim((string) $req->input('displayName', $req->input('display_name', $cat['title'] ?? $methodCode)));
         if ($displayName === '' || strlen($displayName) > 120) {
@@ -471,6 +474,10 @@ final class GatewaysController
         $status = (string) ($gw['status'] ?? 'inactive');
         $qr = (string) ($gw['qr_status'] ?? 'none');
 
+        if (!GpCatalog::isPlatformEnabled($method)) {
+            return 'disabled_by_admin';
+        }
+
         if ($method === 'binance_pay') {
             if ($status !== 'active') {
                 return 'disabled';
@@ -486,6 +493,28 @@ final class GatewaysController
             $ready = GpMethodReadiness::evaluate($cat, ['status' => 'active', 'options' => '{}'], $brand);
             return !empty($ready['liveReady']) ? 'live_ready' : 'needs_attention';
         }
+
+        if (in_array($method, ['bkash', 'nagad', 'rocket', 'upay', 'cellfin'], true)) {
+            if ($account === '') {
+                return 'setup_incomplete';
+            }
+            if ($status !== 'active') {
+                return 'configured_disabled';
+            }
+            try {
+                $hasDevice = (int) (GpDb::one(
+                    "SELECT COUNT(*) as c FROM gp_companion_devices WHERE brand_id = ? AND status = 'active'",
+                    [(string) ($gw['brand_id'] ?? '')]
+                )['c'] ?? 0) > 0;
+                if (!$hasDevice) {
+                    return 'needs_companion';
+                }
+            } catch (Throwable $e) {
+                // non-fatal fallback
+            }
+            return 'live_ready';
+        }
+
         if ($account === '') {
             return 'setup_incomplete';
         }
@@ -514,7 +543,7 @@ final class GatewaysController
         if ($dest === '') {
             return '';
         }
-        if ($methodCode === 'bkash' || $methodCode === 'nagad') {
+        if (in_array($methodCode, ['bkash', 'nagad', 'upay', 'cellfin'], true)) {
             $digits = preg_replace('/\D+/', '', $dest) ?? '';
             if (preg_match('/^8801[3-9]\d{8}$/', $digits)) {
                 return '0' . substr($digits, 3);
@@ -523,6 +552,23 @@ final class GatewaysController
                 return $digits;
             }
             GpJson::error('INVALID_ACCOUNT', 'Enter a valid Bangladesh mobile number (01XXXXXXXXX).', 400);
+        }
+        if ($methodCode === 'rocket') {
+            $digits = preg_replace('/\D+/', '', $dest) ?? '';
+            if (preg_match('/^8801[3-9]\d{8,9}$/', $digits)) {
+                return '0' . substr($digits, 3);
+            }
+            if (preg_match('/^01[3-9]\d{8,9}$/', $digits)) {
+                return $digits;
+            }
+            GpJson::error('INVALID_ACCOUNT', 'Enter a valid Rocket account number (11 or 12 digits).', 400);
+        }
+        if ($methodCode === 'bybit_pay') {
+            $cleaned = trim($dest);
+            if (strlen($cleaned) < 4 || strlen($cleaned) > 50) {
+                GpJson::error('INVALID_ACCOUNT', 'Enter a valid Bybit UID or Account ID.', 400);
+            }
+            return $cleaned;
         }
         if ($methodCode === 'usdt_trc20') {
             $norm = TronUsdtVerifier::normalizeBase58($dest);

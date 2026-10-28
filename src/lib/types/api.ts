@@ -75,6 +75,8 @@ export type GatewayReadiness =
   | "live_ready"
   | "needs_attention"
   | "disabled"
+  | "disabled_by_admin"
+  | "needs_companion"
   | "qr_upload_unavailable";
 
 export interface MerchantGateway {

@@ -97,7 +97,7 @@ final class MethodsController
 
             if ($code === 'binance_pay') {
                 // Destination not applicable; enable only tracks merchant intent — liveReady still needs sealed creds.
-            } elseif ($enable && in_array($code, ['bkash', 'nagad', 'usdt_trc20'], true) && !$hasDest) {
+            } elseif ($enable && in_array($code, ['bkash', 'nagad', 'rocket', 'upay', 'cellfin', 'usdt_trc20', 'bybit_pay'], true) && !$hasDest) {
                 GpJson::error('DESTINATION_REQUIRED', 'Save a receiving number/address before enabling this rail.', 400);
             }
 
@@ -123,7 +123,7 @@ final class MethodsController
 
     private static function validateDestination(string $code, string $dest): string
     {
-        if ($code === 'bkash' || $code === 'nagad') {
+        if (in_array($code, ['bkash', 'nagad', 'upay', 'cellfin'], true)) {
             $digits = preg_replace('/\D+/', '', $dest) ?? '';
             // Bangladesh mobile: 01XXXXXXXXX (11 digits) or 8801XXXXXXXXX
             if (preg_match('/^8801[3-9]\d{8}$/', $digits)) {
@@ -133,6 +133,23 @@ final class MethodsController
                 return $digits;
             }
             GpJson::error('INVALID_ACCOUNT', 'Enter a valid Bangladesh mobile number (01XXXXXXXXX).', 400);
+        }
+        if ($code === 'rocket') {
+            $digits = preg_replace('/\D+/', '', $dest) ?? '';
+            if (preg_match('/^8801[3-9]\d{8,9}$/', $digits)) {
+                return '0' . substr($digits, 3);
+            }
+            if (preg_match('/^01[3-9]\d{8,9}$/', $digits)) {
+                return $digits;
+            }
+            GpJson::error('INVALID_ACCOUNT', 'Enter a valid Rocket account number (11 or 12 digits).', 400);
+        }
+        if ($code === 'bybit_pay') {
+            $cleaned = trim($dest);
+            if (strlen($cleaned) < 4 || strlen($cleaned) > 50) {
+                GpJson::error('INVALID_ACCOUNT', 'Enter a valid Bybit UID or Account ID.', 400);
+            }
+            return $cleaned;
         }
         if ($code === 'usdt_trc20') {
             $norm = TronUsdtVerifier::normalizeBase58($dest);
