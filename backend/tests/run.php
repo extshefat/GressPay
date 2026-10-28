@@ -505,5 +505,109 @@ assert_true(
     'orderAmount is used only when totalFee is absent'
 );
 
+// —— Phase 5 Two-Way Auto-Verification Engine Tests ——
+// 1. Scenario A: SMS arrives first via APK, customer submits TrxID second
+$nowP5 = GpIds::now();
+$brandP5 = GpIds::make('b', 6);
+$merchP5 = GpIds::make('m', 6);
+GpDb::exec(
+    'INSERT INTO gp_merchants (merchant_id, full_name, email, password_hash, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    [$merchP5, 'P5 Merchant', 'p5_' . bin2hex(random_bytes(3)) . '@test.local', password_hash('x', PASSWORD_BCRYPT), 'active', $nowP5, $nowP5]
+);
+GpDb::exec(
+    'INSERT INTO gp_brands (brand_id, merchant_id, name, currency_code, timezone, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    [$brandP5, $merchP5, 'Brand Phase 5', 'BDT', 'Asia/Dhaka', $nowP5, $nowP5]
+);
+GpDb::exec(
+    'INSERT INTO gp_methods (brand_id, code, status, options, created_at, updated_at) VALUES (?,?,?,?,?,?)',
+    [$brandP5, 'bkash', 'active', json_encode(['account' => '01799999999']), $nowP5, $nowP5]
+);
+GpDb::exec(
+    'INSERT INTO gp_methods (brand_id, code, status, options, created_at, updated_at) VALUES (?,?,?,?,?,?)',
+    [$brandP5, 'nagad', 'active', json_encode(['account' => '01888888888']), $nowP5, $nowP5]
+);
+
+// Step 1: Carrier SMS arrives first from Android Companion APK
+$trxA = 'TRX_SCENARIO_A_' . bin2hex(random_bytes(3));
+GpDb::exec(
+    'INSERT INTO gp_sms_data (brand_id, sender_key, amount, trx_id, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    [$brandP5, 'bkash', '500.00', $trxA, 'approved', $nowP5, $nowP5]
+);
+
+// Step 2: Customer creates checkout session
+$sessionP5_A = GpIds::make('chs', 6);
+GpDb::exec(
+    'INSERT INTO gp_transactions (session_id, brand_id, source, amount, currency, ledger_mode, method_code, status, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?)',
+    [$sessionP5_A, $brandP5, 'api', '500', 'BDT', 'live', 'bkash', 'pending', $nowP5, $nowP5]
+);
+
+// Step 3: Customer submits TrxID (case-insensitive test)
+$matchA = CheckoutController::matchingSms($brandP5, strtolower($trxA), '500', 'bkash');
+assert_true($matchA !== null && (string)$matchA['trx_id'] === $trxA, 'Scenario A: SMS arrived first, matchingSms finds it case-insensitively');
+
+// Step 4: markPaid settles the transaction & updates SMS to used
+$rowP5_A = GpDb::one('SELECT * FROM gp_transactions WHERE session_id = ?', [$sessionP5_A]);
+$methodRowP5_A = GpDb::one('SELECT * FROM gp_methods WHERE brand_id = ? AND code = ?', [$brandP5, 'bkash']);
+$paidA = CheckoutController::markPaid($rowP5_A, $trxA, 'bkash', $methodRowP5_A, '500', 'BDT', $matchA, 'matched');
+assert_true(strtolower((string)$paidA['status']) === 'completed', 'Scenario A: Transaction marked completed upon matching SMS');
+$usedSmsA = GpDb::one('SELECT status FROM gp_sms_data WHERE trx_id = ?', [$trxA]);
+assert_true(($usedSmsA['status'] ?? '') === 'used', 'Scenario A: Synced SMS status locked to used');
+
+// Step 5: Duplicate prevention - same TrxID cannot be reused on a different session
+$dupA = GpDb::one(
+    'SELECT session_id FROM gp_transactions WHERE (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND status = ?',
+    [$trxA, strtoupper($trxA), strtolower($trxA), 'completed']
+);
+assert_true($dupA !== null, 'Duplicate TrxID check: completed transaction blocks TrxID reuse');
+
+// 2. Scenario B: Customer submits TrxID first, SMS arrives 2-10 seconds later via APK
+$trxB = 'TRX_SCENARIO_B_' . bin2hex(random_bytes(3));
+$sessionP5_B = GpIds::make('chs', 6);
+GpDb::exec(
+    'INSERT INTO gp_transactions (session_id, brand_id, source, amount, currency, ledger_mode, method_code, status, trx_id, metadata, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+    [
+        $sessionP5_B,
+        $brandP5,
+        'api',
+        '750',
+        'BDT',
+        'live',
+        'nagad',
+        'pending',
+        $trxB,
+        json_encode(['confirmationState' => 'verifying', 'submitted_trx_id' => $trxB]),
+        $nowP5,
+        $nowP5,
+    ]
+);
+
+// SMS has NOT arrived yet:
+$noSmsYet = CheckoutController::matchingSms($brandP5, $trxB, '750', 'nagad');
+assert_true($noSmsYet === null, 'Scenario B: matchingSms returns null before carrier SMS arrives');
+
+// A few seconds later, Companion APK posts the SMS:
+GpDb::exec(
+    'INSERT INTO gp_sms_data (brand_id, sender_key, amount, trx_id, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    [$brandP5, 'nagad', '750.00', $trxB, 'approved', $nowP5, $nowP5]
+);
+
+// CompanionController finds the pending verifying session:
+$pendingB = GpDb::one(
+    'SELECT * FROM gp_transactions WHERE brand_id = ? AND (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND status IN (?, ?) ORDER BY id DESC',
+    [$brandP5, $trxB, strtoupper($trxB), strtolower($trxB), 'pending', 'initiated']
+);
+assert_true($pendingB !== null && (string)$pendingB['session_id'] === $sessionP5_B, 'Scenario B: Companion finds pending session waiting for TrxID');
+
+$smsB = CheckoutController::matchingSms($brandP5, $trxB, '750', 'nagad');
+assert_true($smsB !== null, 'Scenario B: matchingSms matches newly arrived carrier SMS');
+
+$methodRowP5_B = GpDb::one('SELECT * FROM gp_methods WHERE brand_id = ? AND code = ?', [$brandP5, 'nagad']);
+$paidB = CheckoutController::markPaid($pendingB, $trxB, 'nagad', $methodRowP5_B, '750', 'BDT', $smsB, 'matched');
+assert_true(strtolower((string)$paidB['status']) === 'completed', 'Scenario B: Pending session automatically transitions to completed');
+$usedSmsB = GpDb::one('SELECT status FROM gp_sms_data WHERE trx_id = ?', [$trxB]);
+assert_true(($usedSmsB['status'] ?? '') === 'used', 'Scenario B: Synced SMS status locked to used');
+
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

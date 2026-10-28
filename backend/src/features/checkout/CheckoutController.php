@@ -520,28 +520,34 @@ final class CheckoutController
             GpJson::error('MISSING_FIELD', 'trx_id is required.');
         }
 
-        // Block reuse of a TxID already tied to a completed (or other open) session for this brand or globally.
-        $globalDup = GpDb::one(
-            'SELECT session_id FROM gp_transactions WHERE (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND session_id != ? AND status = ?',
-            [$trxId, strtoupper($trxId), strtolower($trxId), $id, 'completed']
+        // Anti-Fraud & Duplicate TrxID Protection:
+        // A trx_id that has already been matched to ANY completed transaction can NEVER be reused.
+        $dupCompleted = GpDb::one(
+            'SELECT session_id FROM gp_transactions WHERE (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND status = ?',
+            [$trxId, strtoupper($trxId), strtolower($trxId), 'completed']
         );
-        if ($globalDup) {
-            GpJson::error('DUPLICATE_TRX', 'This transaction ID has already been credited to another completed order.', 409);
+        if ($dupCompleted) {
+            GpJson::error('DUPLICATE_TRX', 'This Transaction ID has already been used.', 409);
         }
 
-        $dup = GpDb::one(
-            'SELECT session_id, status FROM gp_transactions
-             WHERE (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND brand_id = ? AND session_id != ? AND status IN (?, ?, ?)',
-            [$trxId, strtoupper($trxId), strtolower($trxId), $row['brand_id'], $id, 'completed', 'pending', 'initiated']
+        $usedSms = GpDb::one(
+            'SELECT id FROM gp_sms_data WHERE (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND status = ?',
+            [$trxId, strtoupper($trxId), strtolower($trxId), 'used']
         );
-        if ($dup) {
-            if (strtolower((string) $dup['status']) === 'completed') {
-                GpJson::error('DUPLICATE_TRX', 'This transaction ID is already used.');
-            }
-            if ((string) $dup['session_id'] !== $id) {
-                GpJson::error('DUPLICATE_TRX', 'This transaction ID is already attached to another open checkout.');
-            }
+        if ($usedSms) {
+            GpJson::error('DUPLICATE_TRX', 'This Transaction ID has already been used.', 409);
         }
+
+        $openDup = GpDb::one(
+            'SELECT session_id FROM gp_transactions
+             WHERE (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND brand_id = ? AND session_id != ? AND status IN (?, ?)',
+            [$trxId, strtoupper($trxId), strtolower($trxId), $row['brand_id'], $id, 'pending', 'initiated']
+        );
+        if ($openDup) {
+            GpJson::error('DUPLICATE_TRX', 'This Transaction ID is already attached to another open checkout.', 409);
+        }
+
+        $senderNumber = trim((string) $req->input('sender_number', $req->input('senderNumber', '')));
 
         $payable = GpRatesEngine::convert(
             $row['brand_id'],
@@ -559,9 +565,13 @@ final class CheckoutController
 
         $now = GpIds::now();
         $meta = self::decodeMeta($row);
-        $meta['confirmationState'] = 'submitted';
+        $meta['confirmationState'] = 'verifying';
         $meta['submittedAt'] = $now;
         $meta['submittedMethod'] = $methodCode;
+        $meta['submitted_trx_id'] = $trxId;
+        if (!empty($senderNumber)) {
+            $meta['sender_number'] = $senderNumber;
+        }
 
         // —— USDT TRC-20 on-chain verification (distinct from Binance Pay / SMS) ——
         if ($methodCode === 'usdt_trc20') {
@@ -680,7 +690,12 @@ final class CheckoutController
         }
 
         if (!$canComplete) {
-            GpJson::send(GpPresenters::checkoutStatus($row));
+            $row['confirmationState'] = 'verifying';
+            $row['message'] = 'Verifying your Transaction ID automatically... Please wait';
+            $out = GpPresenters::checkoutStatus($row);
+            $out['confirmationState'] = 'verifying';
+            $out['message'] = 'Verifying your Transaction ID automatically... Please wait';
+            GpJson::send($out);
         }
 
         $paid = self::markPaid(
@@ -721,8 +736,8 @@ final class CheckoutController
         ?string $expectedAccount = null
     ): ?array {
         $sms = GpDb::one(
-            'SELECT * FROM gp_sms_data WHERE brand_id = ? AND (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND status = ? ORDER BY id DESC',
-            [$brandId, $trxId, strtoupper($trxId), strtolower($trxId), 'approved']
+            'SELECT * FROM gp_sms_data WHERE brand_id = ? AND (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND status IN (?, ?) ORDER BY id DESC',
+            [$brandId, $trxId, strtoupper($trxId), strtolower($trxId), 'approved', 'unmatched']
         );
         if ($sms === null) {
             return null;
@@ -737,7 +752,9 @@ final class CheckoutController
         }
         $brand = GpDb::one('SELECT payment_tolerance FROM gp_brands WHERE brand_id = ?', [$brandId]);
         $tol = GpMoney::sanitize((string) ($brand['payment_tolerance'] ?? '0'));
-        if (!GpMoney::withinTolerance((string) $sms['amount'], $payable, $tol)) {
+        $smsAmt = (float) $sms['amount'];
+        $expectedAmt = (float) $payable;
+        if (!($smsAmt >= ($expectedAmt - 0.01) || GpMoney::withinTolerance((string) $sms['amount'], $payable, $tol))) {
             return null;
         }
 
@@ -824,18 +841,18 @@ final class CheckoutController
         $pdo->beginTransaction();
         try {
             $dup = GpDb::one(
-                'SELECT session_id FROM gp_transactions WHERE (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND brand_id = ? AND session_id != ? AND status = ?',
-                [$trxId, strtoupper($trxId), strtolower($trxId), $row['brand_id'], $row['session_id'], 'completed']
+                'SELECT session_id FROM gp_transactions WHERE (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND session_id != ? AND status = ?',
+                [$trxId, strtoupper($trxId), strtolower($trxId), $row['session_id'], 'completed']
             );
             if ($dup) {
                 $pdo->rollBack();
-                GpJson::error('DUPLICATE_TRX', 'This transaction ID is already used.');
+                GpJson::error('DUPLICATE_TRX', 'This Transaction ID has already been used.', 409);
             }
 
             if ($sms) {
                 $smsLock = GpDb::exec(
-                    'UPDATE gp_sms_data SET status = ?, updated_at = ? WHERE id = ? AND status = ?',
-                    ['used', $now, $sms['id'], 'approved']
+                    'UPDATE gp_sms_data SET status = ?, updated_at = ? WHERE id = ? AND status IN (?, ?)',
+                    ['used', $now, $sms['id'], 'approved', 'unmatched']
                 );
                 if ($smsLock === 0) {
                     $pdo->rollBack();

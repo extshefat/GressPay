@@ -18,11 +18,9 @@ import {
   AlertCircle,
   CheckCircle2,
   Lock,
-  ExternalLink,
   Smartphone,
   Layers,
   RefreshCw,
-  QrCode,
 } from "lucide-react";
 
 export interface HostedCheckoutModalProps {
@@ -34,7 +32,7 @@ type TabCategory = "mfs" | "crypto";
 export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ session }) => {
   const methods = useMemo(() => session.availableMethods || [], [session.availableMethods]);
 
-  // Group methods into Mobile Banking and Crypto
+  // Group active merchant methods into clean tabs: Mobile Banking & Crypto
   const mfsMethods = useMemo(
     () =>
       methods.filter(
@@ -79,6 +77,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
   }, [activeTab, mfsMethods, cryptoMethods, selectedMethod]);
 
   const [txidInput, setTxidInput] = useState<string>("");
+  const [senderNumber, setSenderNumber] = useState<string>("");
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [checkoutStatus, setCheckoutStatus] = useState<TransactionStatus>(
@@ -88,7 +87,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
   const [pollingSeconds, setPollingSeconds] = useState<number>(0);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [redirectCountdown, setRedirectCountdown] = useState<number>(5);
+  const [redirectCountdown, setRedirectCountdown] = useState<number>(4);
 
   const [secondsLeft, setSecondsLeft] = useState<number>(() => {
     if (!session.expiresAt) return 15 * 60;
@@ -143,7 +142,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
     setTimeout(() => setCopiedKey(null), 2500);
   };
 
-  // Start 3-second status polling for Scenario B (buyer enters TxID before SMS arrives)
+  // Start 3-second status polling for Scenario B (customer enters TxID before SMS arrives)
   const startStatusPolling = () => {
     if (pollingRef.current) clearInterval(pollingRef.current);
     setIsPollingVerification(true);
@@ -178,13 +177,13 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
         // Soft error during network jitter — continue polling
       }
 
-      // Stop after 2 minutes (40 attempts * 3s)
-      if (pollCount >= 40) {
+      // Stop after 2.5 minutes (50 attempts * 3s)
+      if (pollCount >= 50) {
         if (pollingRef.current) clearInterval(pollingRef.current);
         setIsPollingVerification(false);
         setIsVerifying(false);
         setErrorMessage(
-          "Payment verification is taking longer than expected. If your money was deducted, our Android companion APK will reconcile it shortly."
+          "Verification is taking longer than usual. If your money was deducted, our Android companion APK will reconcile it automatically."
         );
       }
     }, 3000);
@@ -254,7 +253,8 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
         session.sessionId,
         cleanTrx,
         selectedMethod.code,
-        selectedMethod.gatewayId
+        selectedMethod.gatewayId,
+        senderNumber.trim() || undefined
       );
 
       if (res.status === "COMPLETED") {
@@ -262,12 +262,8 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
         setCheckoutStatus("COMPLETED");
         handleSuccessfulRedirect(res.redirectUrl || res.returnUrl || session.returnUrl);
       } else {
-        // Scenario B: Submitted, waiting for companion SMS receipt or on-chain confirmation
-        setStatusMessage(
-          selectedMethod.code === "usdt_trc20"
-            ? "Transaction hash registered on TRON network. Awaiting 20 block confirmations."
-            : "Transaction ID registered. Android companion APK is listening for incoming carrier SMS receipt."
-        );
+        // Scenario B: Customer submitted TxID first, awaiting SMS from companion APK
+        setStatusMessage("Verifying your Transaction ID automatically... Please wait");
         setIsVerifying(false);
         startStatusPolling();
       }
@@ -279,87 +275,57 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
     }
   };
 
-  // Automated Instructions Generator based on Method Code
+  // Step-by-Step English Instructions Generator based on Method Code
   const getInstructions = (method: PaymentMethod) => {
     const code = method.code.toLowerCase();
     const receiver = method.depositAddressOrNumber || "the merchant number above";
-    const ref = session.sessionId.slice(-6).toUpperCase();
+    const isAgent = (method as unknown as { accountType?: string }).accountType === "agent";
+    const action = isAgent ? "Cash In" : "Send Money";
 
+    let ussd = "";
+    let methodName = method.name || "Mobile Banking";
     if (code === "bkash") {
+      ussd = " or dial *247#";
+      methodName = "bKash";
+    } else if (code === "nagad") {
+      ussd = " or dial *167#";
+      methodName = "Nagad";
+    } else if (code === "rocket") {
+      ussd = " or dial *322#";
+      methodName = "Rocket";
+    } else if (code === "upay") {
+      ussd = " or dial *268#";
+      methodName = "Upay";
+    } else if (code === "cellfin") {
+      methodName = "Cellfin";
+    }
+
+    if (["bkash", "nagad", "rocket", "upay", "cellfin"].includes(code)) {
       return [
-        `Open your bKash app or dial *247# on your mobile.`,
-        `Choose 'Send Money' option.`,
-        `Enter the Merchant bKash Wallet Number: ${receiver}`,
-        `Enter the exact payable amount: ${formatCurrency(payableAmount, payableCurrency)}`,
-        `Enter Reference: ${ref}`,
-        `Enter your bKash PIN to confirm transaction.`,
-        `Copy the 10-character Transaction ID (TrxID) and enter it below.`,
+        `Open your ${methodName} App${ussd}.`,
+        `Choose "${action}" option.`,
+        `Enter the copied recipient number (${receiver}) and the exact amount (${formatCurrency(payableAmount, payableCurrency)}).`,
+        `Copy the Transaction ID (TrxID) from your confirmation SMS and paste it below.`,
       ];
     }
-    if (code === "nagad") {
-      return [
-        `Open your Nagad app or dial *167# on your mobile.`,
-        `Choose 'Send Money' option.`,
-        `Enter the Merchant Nagad Wallet Number: ${receiver}`,
-        `Enter the exact payable amount: ${formatCurrency(payableAmount, payableCurrency)}`,
-        `Enter Reference: ${ref}`,
-        `Enter your Nagad PIN to complete payment.`,
-        `Copy the 8-character Transaction ID (TrxID) from the SMS receipt and enter it below.`,
-      ];
-    }
-    if (code === "rocket") {
-      return [
-        `Open your Rocket app or dial *322# on your mobile.`,
-        `Select 'Send Money' from the menu.`,
-        `Enter the Merchant Rocket Account Number: ${receiver}`,
-        `Enter the exact payable amount: ${formatCurrency(payableAmount, payableCurrency)}`,
-        `Enter your Rocket PIN to verify and complete.`,
-        `Copy the Transaction ID from the DBBL confirmation SMS and paste it below.`,
-      ];
-    }
-    if (code === "upay") {
-      return [
-        `Open your Upay app or dial *268# on your mobile.`,
-        `Select 'Send Money' to other Upay wallets.`,
-        `Enter the Merchant Upay Number: ${receiver}`,
-        `Enter the exact payable amount: ${formatCurrency(payableAmount, payableCurrency)}`,
-        `Enter your PIN to verify.`,
-        `Copy the Upay TrxID and paste it below.`,
-      ];
-    }
-    if (code === "cellfin") {
-      return [
-        `Open your Cellfin app and log in.`,
-        `Select 'Fund Transfer' -> 'Cellfin to Cellfin' or 'IBBL Account'.`,
-        `Enter the Merchant Cellfin Number / Account: ${receiver}`,
-        `Enter exact amount: ${formatCurrency(payableAmount, payableCurrency)}`,
-        `Enter your Cellfin PIN to confirm.`,
-        `Copy the Transaction Reference ID and enter it below.`,
-      ];
-    }
+
     if (code === "usdt_trc20") {
       return [
         `Open your crypto wallet (Trust Wallet, Binance, OKX, TronLink, etc.).`,
-        `Select USDT and tap 'Send / Transfer'.`,
-        `Choose ONLY TRON (TRC-20) network. (Do NOT send on ERC20/BEP20).`,
-        `Paste the Merchant TRON Deposit Address above or scan the QR code.`,
-        `Send exactly ${formatCurrency(payableAmount, payableCurrency)} USDT.`,
+        `Select USDT and choose ONLY TRON (TRC-20) network.`,
+        `Send exactly ${formatCurrency(payableAmount, payableCurrency)} USDT to the address above.`,
         `Copy the 64-character TRON Transaction Hash (TxID) and enter it below.`,
       ];
     }
+
     if (code === "bybit_pay") {
       return [
         `Open the Bybit app and navigate to Bybit Pay / Internal Transfer.`,
-        `Enter Merchant Bybit UID / Email: ${receiver}`,
-        `Transfer exact amount: ${formatCurrency(payableAmount, payableCurrency)}`,
+        `Transfer ${formatCurrency(payableAmount, payableCurrency)} to Merchant UID: ${receiver}.`,
         `Copy the Bybit Transfer / Order ID and paste it below.`,
       ];
     }
 
-    // Default fallback steps
-    if (method.instructionSteps && method.instructionSteps.length > 0) {
-      return method.instructionSteps.map((s) => s.text);
-    }
     return [
       `Send ${formatCurrency(payableAmount, payableCurrency)} to ${receiver}.`,
       `Save your payment receipt or Transaction ID.`,
@@ -371,7 +337,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
   if (checkoutStatus === "EXPIRED") {
     return (
       <div className="w-full max-w-lg mx-auto bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-xl p-8 text-center space-y-4">
-        <div className="w-14 h-14 rounded-2xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center mx-auto text-zinc-900 dark:text-zinc-100">
+        <div className="w-14 h-14 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center mx-auto text-zinc-900 dark:text-zinc-100">
           <Clock className="w-7 h-7" />
         </div>
         <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
@@ -400,7 +366,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
   // 2. ACTIVE VERIFICATION POLLING STATE (Scenario B)
   if (isPollingVerification) {
     return (
-      <div className="w-full max-w-lg mx-auto bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-2xl p-8 text-center space-y-5">
+      <div className="w-full max-w-lg mx-auto bg-white dark:bg-zinc-950 border border-zinc-900 dark:border-zinc-700 rounded-3xl shadow-2xl p-8 text-center space-y-5">
         <div className="relative w-16 h-16 mx-auto flex items-center justify-center">
           <div className="absolute inset-0 rounded-full border-2 border-zinc-900 dark:border-zinc-100 border-t-transparent animate-spin" />
           <div className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center text-zinc-900 dark:text-zinc-100">
@@ -414,7 +380,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
             Auto-Verifying Payment
           </span>
           <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 pt-2">
-            Awaiting Carrier Confirmation
+            Verifying your Transaction ID automatically... Please wait
           </h2>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed max-w-sm mx-auto">
             {statusMessage ||
@@ -422,13 +388,21 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
           </p>
         </div>
 
-        <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-left font-mono text-xs space-y-2.5">
+        <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-left font-mono text-xs space-y-2.5">
           <div className="flex justify-between items-center text-zinc-500">
-            <span>Submitted TxID</span>
+            <span>Submitted TrxID</span>
             <span className="text-zinc-900 dark:text-zinc-100 font-semibold break-all text-right ml-3 font-mono">
               {txidInput || "—"}
             </span>
           </div>
+          {senderNumber && (
+            <div className="flex justify-between items-center text-zinc-500">
+              <span>Sender Number</span>
+              <span className="text-zinc-900 dark:text-zinc-100 font-medium font-mono">
+                {senderNumber}
+              </span>
+            </div>
+          )}
           <div className="flex justify-between items-center text-zinc-500">
             <span>Payment Rail</span>
             <span className="text-zinc-900 dark:text-zinc-100 font-medium">
@@ -468,13 +442,13 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
 
     return (
       <div className="w-full max-w-lg mx-auto bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-2xl p-8 text-center space-y-5">
-        <div className="w-16 h-16 rounded-2xl bg-emerald-500 text-white flex items-center justify-center mx-auto shadow-md">
+        <div className="w-16 h-16 rounded-2xl bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 flex items-center justify-center mx-auto shadow-md">
           <CheckCircle2 className="w-9 h-9 stroke-[2.5]" />
         </div>
 
         <div className="space-y-1">
           <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400">
-            Payment Verified & Settled
+            Payment Successful!
           </span>
           <h2 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight pt-1">
             {formatCurrency(payableAmount, payableCurrency)}
@@ -487,7 +461,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
           </p>
         </div>
 
-        <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-left font-mono text-xs space-y-2">
+        <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-left font-mono text-xs space-y-2">
           <div className="flex justify-between items-center text-zinc-500">
             <span>Transaction ID</span>
             <span className="text-zinc-900 dark:text-zinc-100 font-semibold break-all ml-4">
@@ -518,7 +492,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
           <Button
             variant="primary"
             size="lg"
-            className="w-full bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            className="w-full bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 font-semibold"
             onClick={() => {
               if (returnTarget) {
                 window.location.href = returnTarget;
@@ -734,10 +708,14 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
                   {selectedMethod.accountLabel ||
                     (activeTab === "crypto"
                       ? "Merchant Receiving Wallet Address"
-                      : "Merchant Wallet Number (Personal/Send Money)")}
+                      : "Merchant Wallet Number")}
                 </label>
                 <span className="text-[11px] font-mono text-zinc-500">
-                  {selectedMethod.code === "usdt_trc20" ? "TRC-20 Network Only" : "Send Money Only"}
+                  {selectedMethod.code === "usdt_trc20"
+                    ? "TRC-20 Network Only"
+                    : (selectedMethod as unknown as { accountType?: string }).accountType === "agent"
+                    ? "Cash In Only"
+                    : "Send Money Only"}
                 </span>
               </div>
 
@@ -772,7 +750,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
             </div>
           )}
 
-          {/* Optional QR Code for USDT or Merchant UPI/QR */}
+          {/* Optional QR Code for USDT or Merchant Static QR */}
           {selectedMethod.qrImageUrl && (
             <div className="space-y-2 text-center pt-1">
               <label className="block text-xs font-mono text-zinc-500">
@@ -818,24 +796,38 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
                 />
               </div>
             ) : selectedMethod.requiresTxidInput ? (
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                  Carrier Transaction ID (TrxID)
-                </label>
-                <Input
-                  placeholder={
-                    selectedMethod.code === "bkash"
-                      ? "e.g. BKH9948271"
-                      : selectedMethod.code === "nagad"
-                      ? "e.g. 7H8A9B2C"
-                      : "Enter received Transaction ID"
-                  }
-                  value={txidInput}
-                  onChange={(e) =>
-                    setTxidInput(e.target.value.trim().toUpperCase())
-                  }
-                  required
-                />
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                    Carrier Transaction ID (TrxID)
+                  </label>
+                  <Input
+                    placeholder={
+                      selectedMethod.code === "bkash"
+                        ? "e.g. BKH9948271"
+                        : selectedMethod.code === "nagad"
+                        ? "e.g. 7H8A9B2C"
+                        : "Enter received Transaction ID"
+                    }
+                    value={txidInput}
+                    onChange={(e) =>
+                      setTxidInput(e.target.value.trim().toUpperCase())
+                    }
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                    Your Mobile Number (Optional)
+                  </label>
+                  <Input
+                    placeholder="e.g. 01XXXXXXXXX"
+                    value={senderNumber}
+                    onChange={(e) => setSenderNumber(e.target.value.trim())}
+                    className="font-mono text-xs"
+                  />
+                </div>
               </div>
             ) : null}
 

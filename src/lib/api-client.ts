@@ -721,7 +721,8 @@ class ApiClient {
     sessionId: string,
     trxId: string,
     method: string,
-    gatewayId?: string
+    gatewayId?: string,
+    senderNumber?: string
   ): Promise<CheckoutStatusResponse> {
     if (IS_MOCK) {
       return {
@@ -731,7 +732,7 @@ class ApiClient {
         currency: "USD",
         paymentMethod: method,
         txid: trxId,
-        confirmationState: this.ledgerMode === "test" ? "simulated" : "submitted",
+        confirmationState: this.ledgerMode === "test" ? "simulated" : "verifying",
         ledgerMode: this.ledgerMode,
       };
     }
@@ -741,6 +742,7 @@ class ApiClient {
         trx_id: trxId,
         method,
         ...(gatewayId ? { gatewayId } : {}),
+        ...(senderNumber ? { sender_number: senderNumber } : {}),
       }),
     });
   }

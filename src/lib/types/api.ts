@@ -111,6 +111,7 @@ export type TransactionStatus = "PENDING" | "COMPLETED" | "EXPIRED" | "FAILED" |
 export type ConfirmationState =
   | "none"
   | "submitted"
+  | "verifying"
   | "matched"
   | "simulated"
   | "merchant_confirmed"

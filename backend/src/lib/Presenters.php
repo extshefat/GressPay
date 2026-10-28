@@ -189,7 +189,8 @@ final class GpPresenters
             $confirmationState = 'submitted';
         }
         $message = match ($confirmationState) {
-            'submitted' => 'TxID received. Waiting for SMS match or merchant confirmation — not marked paid yet.',
+            'verifying' => 'Verifying your Transaction ID automatically... Please wait',
+            'submitted' => 'Verifying your Transaction ID automatically... Please wait',
             'matched' => 'Payment matched via companion SMS evidence.',
             'simulated' => 'Sandbox simulation — test ledger only.',
             'merchant_confirmed' => 'Marked paid after merchant review.',
