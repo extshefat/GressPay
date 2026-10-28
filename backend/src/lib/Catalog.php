@@ -4,25 +4,55 @@ declare(strict_types=1);
 final class GpCatalog
 {
     /**
-     * Public `code` is what the Next.js UI uses. Internal `slug` is the plugin folder.
-     * releaseScope=false methods are kept for future phases but not offered as live in this release.
+     * Commercial gateway catalog prioritizing core Bangladesh MFS and Crypto.
+     * Public `code` is used across APIs and UI. Internal `slug` is the plugin folder.
      *
      * @return list<array<string,mixed>>
      */
     public static function methods(): array
     {
         return [
-            self::row('bkash', 'bkash-personal', 'bKash (Direct Wallet + SMS Match)', 'BD', 'BDT', 'mfs', 'automation', true, true, 1.2, 50, 25000),
-            self::row('nagad', 'nagad-personal', 'Nagad (Direct Wallet + SMS Match)', 'BD', 'BDT', 'mfs', 'automation', true, true, 1.0, 50, 25000),
-            self::row('usdt_trc20', 'usdt-trc20', 'USDT TRC-20 (TRON On-Chain)', 'GLOBAL', 'USDT', 'crypto', 'onchain', true, true, 0.0, 1, 100000),
-            self::row('binance_pay', 'binance-personal', 'Binance Pay (Merchant API)', 'GLOBAL', 'USDT', 'crypto', 'binance_pay_merchant', true, false, 0.0, 1, 100000),
+            // Core Bangladesh MFS
+            self::row('bkash', 'bkash-personal', 'bKash Personal (Direct Wallet + SMS Match)', 'BD', 'BDT', 'mfs', 'automation', true, true, 1.2, 10, 25000),
+            self::row('nagad', 'nagad-personal', 'Nagad Personal (Direct Wallet + SMS Match)', 'BD', 'BDT', 'mfs', 'automation', true, true, 1.0, 10, 25000),
+            self::row('rocket', 'rocket-personal', 'Rocket Personal (Direct Wallet + SMS Match)', 'BD', 'BDT', 'mfs', 'automation', true, true, 1.2, 10, 25000),
+            self::row('upay', 'upay-personal', 'Upay Personal (Direct Wallet + SMS Match)', 'BD', 'BDT', 'mfs', 'automation', true, true, 1.0, 10, 25000),
+            self::row('cellfin', 'cellfin-personal', 'Cellfin IBBL (Smart Banking + SMS Match)', 'BD', 'BDT', 'mfs', 'automation', true, true, 1.0, 10, 50000),
+
+            // Crypto Rails
+            self::row('usdt_trc20', 'usdt-trc20', 'USDT TRC-20 (TRON Blockchain)', 'GLOBAL', 'USDT', 'crypto', 'onchain', true, true, 0.0, 1, 100000),
+            self::row('binance_pay', 'binance-personal', 'Binance Pay (Merchant API / QR)', 'GLOBAL', 'USDT', 'crypto', 'binance_pay_merchant', true, false, 0.0, 1, 100000),
+            self::row('bybit_pay', 'bybit-pay', 'Bybit Pay (Internal Transfer / UID)', 'GLOBAL', 'USDT', 'crypto', 'manual', true, true, 0.0, 1, 100000),
         ];
+    }
+
+    /**
+     * Checks if a gateway is enabled platform-wide by Super Admin.
+     */
+    public static function isPlatformEnabled(string $codeOrSlug): bool
+    {
+        $m = self::find($codeOrSlug);
+        if ($m === null) {
+            return false;
+        }
+        try {
+            $row = GpDb::one(
+                'SELECT is_enabled FROM gp_platform_gateways WHERE gateway_code IN (?, ?) LIMIT 1',
+                [$m['code'], $m['slug']]
+            );
+            if ($row !== null) {
+                return (int) $row['is_enabled'] === 1;
+            }
+        } catch (Throwable $e) {
+            // fallback if table is not yet queried or initialized
+        }
+        return !empty($m['releaseScope']);
     }
 
     /** @return list<array<string,mixed>> */
     public static function releaseMethods(): array
     {
-        return array_values(array_filter(self::methods(), static fn ($m) => !empty($m['releaseScope'])));
+        return array_values(array_filter(self::methods(), static fn ($m) => self::isPlatformEnabled($m['code'])));
     }
 
     private static function row(

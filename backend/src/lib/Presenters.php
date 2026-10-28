@@ -32,14 +32,21 @@ final class GpPresenters
     public static function user(array $merchant, array $brand): array
     {
         $email = strtolower(trim((string) ($merchant['email'] ?? '')));
-        $isAdmin = GpConfig::isAdmin($email);
+        $isAdmin = GpConfig::isAdmin($email) || (($merchant['role'] ?? '') === 'admin');
+        $role = $isAdmin ? 'admin' : ($merchant['role'] ?? 'merchant');
+        $planId = $isAdmin ? 'enterprise' : ($merchant['plan_id'] ?? 'starter');
         return [
             'id' => $merchant['merchant_id'],
             'name' => $merchant['full_name'],
             'email' => $merchant['email'],
             'businessName' => $brand['name'] ?? '',
-            'role' => $isAdmin ? 'admin' : 'merchant',
+            'role' => $role,
             'isAdmin' => $isAdmin,
+            'is_admin' => $isAdmin,
+            'planId' => $planId,
+            'plan_id' => $planId,
+            'planExpiresAt' => $merchant['plan_expires_at'] ?? null,
+            'status' => $merchant['status'] ?? 'active',
             'isVerified' => ($merchant['status'] ?? '') === 'active',
             'authProvider' => $merchant['auth_provider'] ?? 'local',
             'avatarUrl' => $merchant['avatar_url'] ?? null,
@@ -182,7 +189,8 @@ final class GpPresenters
             $confirmationState = 'submitted';
         }
         $message = match ($confirmationState) {
-            'submitted' => 'TxID received. Waiting for SMS match or merchant confirmation — not marked paid yet.',
+            'verifying' => 'Verifying your Transaction ID automatically... Please wait',
+            'submitted' => 'Verifying your Transaction ID automatically... Please wait',
             'matched' => 'Payment matched via companion SMS evidence.',
             'simulated' => 'Sandbox simulation — test ledger only.',
             'merchant_confirmed' => 'Marked paid after merchant review.',

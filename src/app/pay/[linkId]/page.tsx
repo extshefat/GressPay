@@ -28,7 +28,7 @@ export default function CheckoutPage() {
         if (alive) setSession(data);
       } catch (err: unknown) {
         if (alive) {
-          setError(err instanceof Error ? err.message : "Could not start checkout.");
+          setError(err instanceof Error ? err.message : "Could not start checkout session.");
         }
       } finally {
         if (alive) setLoading(false);
@@ -45,33 +45,46 @@ export default function CheckoutPage() {
       <div className="absolute top-4 right-4">
         <ThemeToggle size="sm" />
       </div>
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-gradient-to-tr from-teal-500/10 via-zinc-400/10 to-transparent blur-[120px] pointer-events-none -z-10" />
 
       <div className="w-full max-w-2xl mb-6 flex items-center justify-between">
         <Link
           href="/"
-          className="text-xs font-mono text-zinc-500 hover:text-teal-700 dark:hover:text-teal-400 flex items-center gap-1.5 transition-colors"
+          className="text-xs font-mono text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 flex items-center gap-1.5 transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          Back to GressPay
+          <span>Back to GressPay</span>
         </Link>
-        <span className="text-[11px] font-mono text-zinc-500 truncate max-w-[50%]">
+        <span className="text-[11px] font-mono text-zinc-400 truncate max-w-[50%]">
           {session ? `SESSION ${session.sessionId}` : linkId}
         </span>
       </div>
 
       {loading && (
-        <div className="py-16 text-center space-y-3">
-          <div className="w-8 h-8 border-2 border-teal-700 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-xs font-mono text-zinc-500">Preparing checkout…</p>
+        <div className="py-20 text-center space-y-3">
+          <div className="w-8 h-8 border-2 border-zinc-900 dark:border-zinc-100 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-xs font-mono text-zinc-500">Initializing checkout session…</p>
         </div>
       )}
 
       {error && (
-        <div className="w-full max-w-lg rounded-2xl border border-rose-300/50 bg-white dark:bg-zinc-950 p-8 text-center space-y-3">
-          <AlertCircle className="w-8 h-8 text-rose-500 mx-auto" />
-          <p className="text-sm text-zinc-700 dark:text-zinc-200">{error}</p>
-          <Button variant="secondary" onClick={() => window.location.reload()}>
+        <div className="w-full max-w-lg rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-8 text-center space-y-4 shadow-xl">
+          <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center mx-auto text-zinc-700 dark:text-zinc-300">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+              Unable to Open Checkout
+            </h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-sm mx-auto leading-relaxed">
+              {error}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={() => window.location.reload()}
+          >
             Retry
           </Button>
         </div>

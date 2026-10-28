@@ -55,6 +55,27 @@ final class TransactionsController
             GpJson::send(GpPresenters::transaction($row, $brand, $merchant));
         }
 
+        if ($req->method === 'POST' && $id !== null && ($action === 'cancel' || $action === 'reject')) {
+            GpAuth::requireScope($actor, 'verify_payment');
+            $row = GpDb::one(
+                'SELECT * FROM gp_transactions WHERE session_id = ? AND brand_id = ?',
+                [$id, $actor['brand_id']]
+            );
+            if ($row === null) {
+                GpJson::error('NOT_FOUND', 'Transaction not found.', 404);
+            }
+            if ($row['status'] === 'completed') {
+                GpJson::error('ALREADY_COMPLETED', 'Cannot reject a completed transaction.', 400);
+            }
+            $reason = trim((string) $req->input('reason', 'Cancelled by merchant'));
+            GpDb::exec(
+                'UPDATE gp_transactions SET status = ?, updated_at = ? WHERE session_id = ?',
+                ['failed', GpIds::now(), $id]
+            );
+            $updated = GpDb::one('SELECT * FROM gp_transactions WHERE session_id = ?', [$id]);
+            GpJson::send(GpPresenters::transaction($updated, $brand, $merchant));
+        }
+
         // Merchant manual reconciliation — never available on public checkout.
         if ($req->method === 'POST' && $id !== null && $action === 'confirm') {
             GpAuth::requireScope($actor, 'verify_payment');
@@ -81,7 +102,7 @@ final class TransactionsController
             if (strtolower((string) $row['status']) !== 'pending') {
                 GpJson::error('INVALID_STATE', 'Only pending transactions with a submitted TxID can be confirmed.', 409);
             }
-            $trxId = trim((string) ($row['trx_id'] ?? ''));
+            $trxId = trim((string) ($req->input('trxId', $req->input('trx_id', $row['trx_id'] ?? '')))); if ($trxId === '') { $trxId = 'MANUAL_' . strtoupper(bin2hex(random_bytes(4))); }
             $methodCode = GpCatalog::publicCode((string) ($row['method_code'] ?? ''));
             if ($trxId === '' || $methodCode === '') {
                 GpJson::error('MISSING_EVIDENCE', 'Buyer must submit a TxID before merchant confirmation.');

@@ -36,6 +36,10 @@ class SmsUploadWorker(
             if (res.ok) {
                 prefs.lastSyncAt = System.currentTimeMillis()
                 prefs.lastError = ""
+                prefs.totalSmsCaptured = prefs.totalSmsCaptured + 1
+                if (res.matched) {
+                    prefs.totalPaymentsMatched = prefs.totalPaymentsMatched + 1
+                }
                 Result.success()
             } else {
                 prefs.lastError = res.message

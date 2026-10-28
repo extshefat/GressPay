@@ -19,12 +19,13 @@ services:
     environment:
       APP_NAME: GressPay
       APP_ENV: production
-      DB_DRIVER: mysql
-      DB_HOST: mariadb
-      DB_PORT: 3306
-      DB_NAME: gresspay
-      DB_USER: gresspay
-      DB_PASS: ${DB_PASS:?Set DB_PASS in the environment}
+      DB_DRIVER: ${DB_DRIVER:-pgsql}
+      DB_HOST: ${DB_HOST:-gresspay-db}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-gresspay}
+      DB_USER: ${DB_USER:-gresspay}
+      DB_PASS: ${DB_PASS:-gp_db_P9xK2mQvL7wT8zN}
+      DB_SSLMODE: ${DB_SSLMODE:-disable}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the environment}
       APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:?Set APP_ENCRYPTION_KEY in the environment}
       GRESSPAY_CRYPTO_ALLOWED: ${GRESSPAY_CRYPTO_ALLOWED:-0}

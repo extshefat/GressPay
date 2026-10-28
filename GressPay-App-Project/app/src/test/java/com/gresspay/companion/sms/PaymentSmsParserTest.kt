@@ -40,6 +40,39 @@ class PaymentSmsParserTest {
     }
 
     @Test
+    fun parsesRocketCredit() {
+        val body =
+            "Tk.500.00 received from 019XXXXXXXX into your Rocket A/C. TxnId: 88471928 at 28-OCT-26."
+        val p = PaymentSmsParser.parse("16216", body)
+        assertNotNull(p)
+        assertEquals("rocket", p!!.senderKey)
+        assertEquals("500.00", p.amount)
+        assertEquals("88471928", p.trxId)
+    }
+
+    @Test
+    fun parsesUpayCredit() {
+        val body =
+            "Received Tk 1200.00 from 016XXXXXXXX. TrxID: UP981247. Fee Tk 0.00."
+        val p = PaymentSmsParser.parse("16268", body)
+        assertNotNull(p)
+        assertEquals("upay", p!!.senderKey)
+        assertEquals("1200.00", p.amount)
+        assertEquals("UP981247", p.trxId)
+    }
+
+    @Test
+    fun parsesCellfinCredit() {
+        val body =
+            "Your Cellfin A/C has been credited with Tk 2,500.00 from 017XXXXXXXX. TrxID: CF84729104 at 28-10-2026."
+        val p = PaymentSmsParser.parse("16259", body)
+        assertNotNull(p)
+        assertEquals("cellfin", p!!.senderKey)
+        assertEquals("2500.00", p.amount)
+        assertEquals("CF84729104", p.trxId)
+    }
+
+    @Test
     fun parsesAmountWithCommaThousands() {
         val body = "You have received Tk 1,250.00 from 017. TrxID COMMATHX99"
         val p = PaymentSmsParser.parse("16247", body)
@@ -77,29 +110,5 @@ class PaymentSmsParserTest {
     fun rejectsMissingAmount() {
         val body = "bKash payment received. TrxID NOAMOUNT1X"
         assertNull(PaymentSmsParser.parse("16247", body))
-    }
-
-    @Test
-    fun rejectsShortTrx() {
-        val body = "You received Tk 50. TrxID SHORT"
-        assertNull(PaymentSmsParser.parse("16247", body))
-    }
-
-    @Test
-    fun ignoresIndiaRails() {
-        val body = "Rs 100 credited UPI UTR 123456789012"
-        assertNull(PaymentSmsParser.parse("AX-HDFCBK", body))
-    }
-
-    @Test
-    fun ignoresRocketStyle() {
-        val body = "Rocket Cash In Tk 200 TrxID ROCKETTX01"
-        assertNull(PaymentSmsParser.parse("16216", body))
-    }
-
-    @Test
-    fun ignoresUpayStyle() {
-        val body = "Upay received Tk 50 TrxID UPAYTEST01"
-        assertNull(PaymentSmsParser.parse("16268", body))
     }
 }

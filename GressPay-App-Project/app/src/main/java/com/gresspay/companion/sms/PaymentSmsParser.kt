@@ -11,28 +11,30 @@ data class ParsedPaymentSms(
 )
 
 /**
- * Conservative parser for first-release Bangladesh rails only (bKash + Nagad).
- * If sender, amount, or TxID is ambiguous — return null (do not upload a guess).
+ * Enterprise-grade parser for Bangladesh MFS payment receipts:
+ * bKash, Nagad, Rocket (DBBL), Upay (UCB), and Cellfin (IBBL).
  */
 object PaymentSmsParser {
 
     private val BKASH_SENDERS = setOf("16247", "bkash", "bkas")
     private val NAGAD_SENDERS = setOf("16262", "nagad")
+    private val ROCKET_SENDERS = setOf("16216", "rocket", "dbbl")
+    private val UPAY_SENDERS = setOf("16268", "upay", "ucb")
+    private val CELLFIN_SENDERS = setOf("16259", "cellfin", "ibbl")
 
     private val AMOUNT_PATTERNS = listOf(
         Pattern.compile("(?i)(?:tk\\.?|bdt)\\s*([0-9]+(?:[.,][0-9]{1,2})?)"),
-        Pattern.compile("(?i)(?:received|credited|payment)\\s*(?:of\\s*)?(?:tk\\.?|bdt)?\\s*([0-9]+(?:[.,][0-9]{1,2})?)"),
+        Pattern.compile("(?i)(?:received|credited|payment|cash\\s*in)\\s*(?:of\\s*)?(?:tk\\.?|bdt)?\\s*([0-9]+(?:[.,][0-9]{1,2})?)"),
         Pattern.compile("(?i)\\b([0-9]+(?:[.,][0-9]{1,2})?)\\s*(?:tk\\.?|bdt)\\b")
     )
 
-    private val TRX_LABELED = Pattern.compile(
-        "(?i)(?:trx(?:id)?|txn(?:id)?|transaction\\s*id)\\s*[:#]?\\s*([A-Za-z0-9]{8,20})"
+    private val TRX_PATTERNS = listOf(
+        Pattern.compile("(?i)(?:trx(?:id)?|txn(?:id)?|transaction\\s*id)\\s*[:#]?\\s*([A-Za-z0-9]{6,24})"),
+        Pattern.compile("(?i)\\b(?:TrxID|TxnID|Ref)\\s*[:#]?\\s*([A-Za-z0-9]{6,24})")
     )
 
     fun parse(fromAddress: String, body: String): ParsedPaymentSms? {
         val senderKey = resolveSender(fromAddress, body) ?: return null
-        // First release: only bkash / nagad
-        if (senderKey != "bkash" && senderKey != "nagad") return null
         val amount = extractAmount(body) ?: return null
         val trx = extractTrx(body) ?: return null
         return ParsedPaymentSms(
@@ -46,18 +48,24 @@ object PaymentSmsParser {
     private fun resolveSender(from: String, body: String): String? {
         val fromNorm = from.trim().lowercase(Locale.US)
         val digits = from.filter { it.isDigit() }
-        when {
-            digits in setOf("16247") || BKASH_SENDERS.any { fromNorm.contains(it) } -> return "bkash"
-            digits in setOf("16262") || NAGAD_SENDERS.any { fromNorm.contains(it) } -> return "nagad"
-        }
-        val upper = body.uppercase(Locale.US)
-        val hasBkash = "BKASH" in upper
-        val hasNagad = "NAGAD" in upper
-        // Ambiguous if both labels appear
-        if (hasBkash && hasNagad) return null
-        if (hasBkash) return "bkash"
-        if (hasNagad) return "nagad"
-        return null
+        val upperBody = body.uppercase(Locale.US)
+
+        // 1. Direct shortcode or sender title matching
+        if (digits in setOf("16247") || BKASH_SENDERS.any { fromNorm.contains(it) }) return "bkash"
+        if (digits in setOf("16262") || NAGAD_SENDERS.any { fromNorm.contains(it) }) return "nagad"
+        if (digits in setOf("16216") || ROCKET_SENDERS.any { fromNorm.contains(it) }) return "rocket"
+        if (digits in setOf("16268") || UPAY_SENDERS.any { fromNorm.contains(it) }) return "upay"
+        if (digits in setOf("16259") || CELLFIN_SENDERS.any { fromNorm.contains(it) }) return "cellfin"
+
+        // 2. Body signature fallback (when gateway alters caller ID)
+        val matches = mutableListOf<String>()
+        if ("BKASH" in upperBody) matches.add("bkash")
+        if ("NAGAD" in upperBody) matches.add("nagad")
+        if ("ROCKET" in upperBody || "DBBL" in upperBody) matches.add("rocket")
+        if ("UPAY" in upperBody) matches.add("upay")
+        if ("CELLFIN" in upperBody || "IBBL" in upperBody) matches.add("cellfin")
+
+        return if (matches.size == 1) matches[0] else null
     }
 
     private fun extractAmount(body: String): String? {
@@ -73,12 +81,16 @@ object PaymentSmsParser {
     }
 
     private fun extractTrx(body: String): String? {
-        val m = TRX_LABELED.matcher(body)
-        if (!m.find()) return null
-        val candidate = m.group(1)?.trim().orEmpty()
-        if (candidate.length < 8) return null
-        // Reject pure short numeric amounts mistaken as trx
-        if (candidate.matches(Regex("^[0-9]+(\\.[0-9]+)?$")) && candidate.length <= 8) return null
-        return candidate
+        for (p in TRX_PATTERNS) {
+            val m = p.matcher(body)
+            if (m.find()) {
+                val candidate = m.group(1)?.trim().orEmpty()
+                if (candidate.length < 6) continue
+                // Reject pure short numeric amounts mistakenly matched
+                if (candidate.matches(Regex("^[0-9]+(\\.[0-9]+)?$")) && candidate.length <= 6) continue
+                return candidate.uppercase(Locale.US)
+            }
+        }
+        return null
     }
 }

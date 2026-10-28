@@ -1,6 +1,6 @@
 # ==============================================================================
 # GressPay All-In-One Unified Docker Compose Stack for Coolify VPS
-# Runs Frontend (Next.js) + Backend (PHP API) + Database (MariaDB) together
+# Runs Frontend (Next.js) + Backend (PHP API) connected to dedicated VPS PostgreSQL (gresspay-db)
 # ==============================================================================
 
 services:
@@ -31,16 +31,17 @@ services:
       APP_ENV: production
       APP_URL: ${APP_URL:-https://gresspay.extxcheats.com}
       PUBLIC_APP_URL: ${PUBLIC_APP_URL:-https://gresspay.extxcheats.com}
-      DB_DRIVER: ${DB_CONNECTION:-mysql}
-      DB_HOST: ${DB_HOST:-mariadb}
-      DB_PORT: ${DB_PORT:-3306}
-      DB_NAME: ${DB_DATABASE:-gresspay}
-      DB_USER: ${DB_USERNAME:-gresspay}
+      DB_DRIVER: ${DB_CONNECTION:-${DB_DRIVER:-pgsql}}
+      DB_CONNECTION: ${DB_CONNECTION:-${DB_DRIVER:-pgsql}}
+      DB_HOST: ${DB_HOST:-gresspay-db}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_DATABASE:-${DB_NAME:-gresspay}}
+      DB_DATABASE: ${DB_DATABASE:-${DB_NAME:-gresspay}}
+      DB_USER: ${DB_USERNAME:-${DB_USER:-gresspay}}
+      DB_USERNAME: ${DB_USERNAME:-${DB_USER:-gresspay}}
       DB_PASS: ${DB_PASSWORD:-${DB_PASS:?Set DB_PASS or DB_PASSWORD}}
-      DB_DATABASE: ${DB_DATABASE:-gresspay}
-      DB_USERNAME: ${DB_USERNAME:-gresspay}
       DB_PASSWORD: ${DB_PASSWORD:-${DB_PASS:?Set DB_PASS or DB_PASSWORD}}
-      DB_CONNECTION: ${DB_CONNECTION:-mysql}
+      DB_SSLMODE: ${DB_SSLMODE:-disable}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
       APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:?Set APP_ENCRYPTION_KEY}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
@@ -54,21 +55,4 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
       PORT: "8080"
-    depends_on:
-      - mariadb
     restart: unless-stopped
-
-  mariadb:
-    image: mariadb:11
-    environment:
-      MYSQL_DATABASE: gresspay
-      MYSQL_USER: gresspay
-      MYSQL_PASSWORD: ${DB_PASSWORD:-${DB_PASS:?Set DB_PASS or DB_PASSWORD}}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD}
-    volumes:
-      - gresspay_db:/var/lib/mysql
-      - ./backend/schema/install.mysql.sql:/docker-entrypoint-initdb.d/01-install.sql:ro
-    restart: unless-stopped
-
-volumes:
-  gresspay_db:

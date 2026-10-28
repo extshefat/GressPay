@@ -88,8 +88,15 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user, onMenuCl
             {user?.name ? user.name.slice(0, 2).toUpperCase() : "GP"}
           </div>
           <div className="hidden md:block text-left">
-            <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-              {user?.businessName || user?.name || "GressPay Merchant"}
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                {user?.businessName || user?.name || "GressPay Merchant"}
+              </span>
+              {(user?.role === "admin" || user?.isAdmin || (user as { is_admin?: boolean })?.is_admin) && (
+                <span className="text-[9px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded border border-zinc-900 dark:border-zinc-100">
+                  Super Admin
+                </span>
+              )}
             </div>
             <div className="text-[10px] text-zinc-500 font-mono">{user?.email || ""}</div>
           </div>

@@ -16,9 +16,13 @@ import {
   AdminSubscription,
   AdminAuditLog,
   AdminStats,
+  PlatformGateway,
+  AdminTransaction,
+  AdminSmsLog,
 } from "./types/api";
 import { METHOD_THEMES } from "./method-theme";
 
+/** Explicit live only — anything else is demo/mock and must be labeled as such. */
 export const IS_MOCK = false;
 export const DATA_SOURCE = "live" as const;
 function resolveApiBase(): string {
@@ -27,7 +31,6 @@ function resolveApiBase(): string {
   return raw;
 }
 const API_BASE_URL = resolveApiBase();
-
 function usdRate(_code: string): number {
   return 1;
 }
@@ -209,6 +212,56 @@ class ApiClient {
     devices: { deviceId: string; label: string; status: string; lastSeenAt?: string; createdAt?: string }[];
   }> {
         return this.request("/api/v1/companion/devices");
+  }
+
+  async registerCompanionDevice(label: string = "Android Companion"): Promise<{
+    deviceId: string;
+    token: string;
+    note: string;
+  }> {
+    return this.request<{ deviceId: string; token: string; note: string }>(
+      "/api/v1/companion/register",
+      {
+        method: "POST",
+        body: JSON.stringify({ label }),
+      }
+    );
+  }
+
+  async listMerchantSmsLogs(): Promise<{
+    smsLogs: {
+      id: string;
+      sender_key: string;
+      amount: number;
+      trx_id: string;
+      number?: string;
+      status: string;
+      device_label?: string;
+      created_at: string;
+    }[];
+  }> {
+    return this.request<{
+      smsLogs: {
+        id: string;
+        sender_key: string;
+        amount: number;
+        trx_id: string;
+        number?: string;
+        status: string;
+        device_label?: string;
+        created_at: string;
+      }[];
+    }>("/api/v1/companion/sms");
+  }
+
+  async cancelTransaction(id: string, reason?: string): Promise<Transaction> {
+    return this.request<Transaction>(
+      `/api/v1/transactions/${id}/cancel`,
+      {
+        method: "POST",
+        body: JSON.stringify({ reason }),
+      }
+    );
   }
 
   async revokeCompanionDevice(deviceId: string): Promise<{ ok: boolean }> {
@@ -406,8 +459,7 @@ class ApiClient {
 
   /** Hosted page: init or resume session for link / invoice / chs_* */
   async initCheckout(linkId: string): Promise<CheckoutSession> {
-        return this.request<CheckoutSession>(`/api/v1/checkout/${linkId}/init`, {
-      method: "POST",
+        return this.request<CheckoutSession>(`/api/v1/checkout/${linkId}/init`, {      method: "POST",
     });
   }
 
@@ -423,8 +475,7 @@ class ApiClient {
     order_description?: string;
     metadata?: Record<string, unknown>;
   }): Promise<CheckoutSession> {
-        return this.request<CheckoutSession>("/api/v1/checkout/create", {
-      method: "POST",
+        return this.request<CheckoutSession>("/api/v1/checkout/create", {      method: "POST",
       body: JSON.stringify(payload),
     });
   }
@@ -434,14 +485,15 @@ class ApiClient {
     sessionId: string,
     trxId: string,
     method: string,
-    gatewayId?: string
+    gatewayId?: string,
+    senderNumber?: string
   ): Promise<CheckoutStatusResponse> {
-        return this.request<CheckoutStatusResponse>(`/api/v1/checkout/${sessionId}/verify`, {
-      method: "POST",
+        return this.request<CheckoutStatusResponse>(`/api/v1/checkout/${sessionId}/verify`, {      method: "POST",
       body: JSON.stringify({
         trx_id: trxId,
         method,
         ...(gatewayId ? { gatewayId } : {}),
+        ...(senderNumber ? { sender_number: senderNumber } : {}),
       }),
     });
   }
@@ -544,35 +596,99 @@ class ApiClient {
     return this.request<{ auditLogs: AdminAuditLog[] }>("/api/v1/admin/audit");
   }
 
-  async getAdminGateways(): Promise<{ gateways: { code: string; enabled: boolean; available: boolean }[] }> {
-    return this.request("/api/v1/admin/gateways");
+  async getAdminPlatformGateways(): Promise<{ gateways: PlatformGateway[] }> {
+    return this.request<{ gateways: PlatformGateway[] }>("/api/v1/admin/gateways");
   }
 
-  async setAdminGateway(code: string, enabled: boolean): Promise<{ ok: boolean; gateways: { code: string; enabled: boolean; available: boolean }[] }> {
-    return this.request("/api/v1/admin/gateways", {
-      method: "POST",
-      body: JSON.stringify({ code, enabled }),
-    });
+  async toggleAdminPlatformGateway(codeOrId: string): Promise<{ ok: boolean; gateway_code: string; is_enabled: number }> {
+    return this.request<{ ok: boolean; gateway_code: string; is_enabled: number }>(
+      `/api/v1/admin/gateways/${codeOrId}/toggle`,
+      { method: "POST" }
+    );
   }
 
-  async setAdminRole(merchantId: string, admin: boolean): Promise<{ ok: boolean }> {
-    return this.request(`/api/v1/admin/merchants/${merchantId}/role`, {
-      method: "POST",
-      body: JSON.stringify({ admin }),
-    });
+  async updateAdminPlatformGateway(
+    codeOrId: string,
+    payload: Partial<PlatformGateway>
+  ): Promise<{ ok: boolean; gateway: PlatformGateway }> {
+    return this.request<{ ok: boolean; gateway: PlatformGateway }>(
+      `/api/v1/admin/gateways/${codeOrId}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      }
+    );
   }
 
-  async getAdminTransactions(): Promise<{ transactions: { session_id: string; brand_id: string; amount: string; currency: string; status: string; method_code: string | null }[] }> {
-    return this.request("/api/v1/admin/transactions");
+  async updateAdminMerchantRole(
+    merchantId: string,
+    role: "admin" | "merchant"
+  ): Promise<{ ok: boolean; merchantId: string; role: string }> {
+    return this.request<{ ok: boolean; merchantId: string; role: string }>(
+      `/api/v1/admin/merchants/${merchantId}/role`,
+      {
+        method: "POST",
+        body: JSON.stringify({ role }),
+      }
+    );
   }
 
-  async getAdminDevices(): Promise<{ devices: { device_id: string; brand_id: string; label: string | null; status: string }[] }> {
-    return this.request("/api/v1/admin/devices");
+  async updateAdminMerchantPlan(
+    merchantId: string,
+    planId: string,
+    planExpiresAt?: string | null
+  ): Promise<{ ok: boolean; merchantId: string; planId: string; planExpiresAt?: string | null }> {
+    return this.request<{ ok: boolean; merchantId: string; planId: string; planExpiresAt?: string | null }>(
+      `/api/v1/admin/merchants/${merchantId}/plan`,
+      {
+        method: "POST",
+        body: JSON.stringify({ plan_id: planId, plan_expires_at: planExpiresAt }),
+      }
+    );
   }
 
-  async revokeAdminDevice(deviceId: string): Promise<{ ok: boolean }> {
-    return this.request(`/api/v1/admin/devices/${deviceId}/revoke`, { method: "POST", body: "{}" });
+  async getAdminTransactions(params?: {
+    status?: string;
+    search?: string;
+    limit?: number;
+  }): Promise<{ transactions: AdminTransaction[]; total: number }> {
+    const q = new URLSearchParams();
+    if (params?.status) q.set("status", params.status);
+    if (params?.search) q.set("search", params.search);
+    if (params?.limit) q.set("limit", String(params.limit));
+    const qs = q.toString();
+    return this.request<{ transactions: AdminTransaction[]; total: number }>(
+      `/api/v1/admin/transactions${qs ? "?" + qs : ""}`
+    );
   }
+
+  async resolveAdminTransaction(
+    transactionId: string,
+    trxId?: string,
+    note?: string
+  ): Promise<{ ok: boolean; transaction: AdminTransaction }> {
+    return this.request<{ ok: boolean; transaction: AdminTransaction }>(
+      `/api/v1/admin/transactions/${transactionId}/resolve`,
+      {
+        method: "POST",
+        body: JSON.stringify({ trx_id: trxId, note }),
+      }
+    );
+  }
+
+  async getAdminSmsLogs(params?: {
+    search?: string;
+    status?: string;
+    limit?: number;
+  }): Promise<{ smsLogs: AdminSmsLog[]; total: number }> {
+    const q = new URLSearchParams();
+    if (params?.search) q.set("search", params.search);
+    if (params?.status) q.set("status", params.status);
+    if (params?.limit) q.set("limit", String(params.limit));
+    const qs = q.toString();
+    return this.request<{ smsLogs: AdminSmsLog[]; total: number }>(
+      `/api/v1/admin/sms${qs ? "?" + qs : ""}`
+    );  }
 }
 
 export const api = new ApiClient();

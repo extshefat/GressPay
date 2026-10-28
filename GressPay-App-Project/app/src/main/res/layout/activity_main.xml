@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fillViewport="true"
-    android:background="@color/gp_zinc_100">
+    android:background="@color/gp_zinc_50">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -12,104 +12,280 @@
         android:orientation="vertical"
         android:padding="20dp">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/app_name"
-            android:textColor="@color/gp_zinc_950"
-            android:textSize="24sp"
-            android:textStyle="bold" />
-
-        <TextView
+        <!-- App Header -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:text="Merchant SMS companion for GressPay automation rails."
-            android:textColor="@color/gp_zinc_500"
-            android:textSize="13sp" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
 
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/app_name"
+                    android:textColor="@color/gp_zinc_950"
+                    android:textSize="22sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="MFS Verification &amp; Automation Node"
+                    android:textColor="@color/gp_zinc_500"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/badgeStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:background="@color/gp_zinc_200"
+                android:textColor="@color/gp_zinc_900"
+                android:text="DISCONNECTED"
+                android:fontFamily="monospace"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- KPI Metrics Strip -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:orientation="horizontal"
+            android:baselineAligned="false">
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginEnd="6dp"
+                app:cardBackgroundColor="@color/gp_white"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/gp_zinc_200"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Captured"
+                        android:textColor="@color/gp_zinc_500"
+                        android:textSize="11sp" />
+
+                    <TextView
+                        android:id="@+id/textTotalCaptured"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="0"
+                        android:textColor="@color/gp_zinc_950"
+                        android:fontFamily="monospace"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="3dp"
+                android:layout_marginEnd="3dp"
+                app:cardBackgroundColor="@color/gp_white"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/gp_zinc_200"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Matched"
+                        android:textColor="@color/gp_zinc_500"
+                        android:textSize="11sp" />
+
+                    <TextView
+                        android:id="@+id/textTotalMatched"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="0"
+                        android:textColor="@color/gp_emerald"
+                        android:fontFamily="monospace"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                app:cardBackgroundColor="@color/gp_white"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/gp_zinc_200"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Latency"
+                        android:textColor="@color/gp_zinc_500"
+                        android:textSize="11sp" />
+
+                    <TextView
+                        android:id="@+id/textPingLatency"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="—"
+                        android:textColor="@color/gp_zinc_950"
+                        android:fontFamily="monospace"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+
+        <!-- Card 1: Server Connection -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
+            android:layout_marginTop="16dp"
             app:cardBackgroundColor="@color/gp_white"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="1dp"
-            app:strokeColor="#E4E4E7"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/gp_zinc_200"
             app:strokeWidth="1dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="18dp">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="1. Server"
+                    android:text="1. Server Connection"
                     android:textColor="@color/gp_zinc_950"
+                    android:textSize="14sp"
                     android:textStyle="bold" />
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:hint="API base URL (https://your-domain.com)">
+                    android:layout_marginTop="12dp"
+                    android:hint="API Base URL (https://your-domain.com)">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/inputBaseUrl"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:inputType="textUri"
-                        android:textSize="14sp" />
+                        android:textSize="13sp" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:hint="Merchant API key (gp_live_… or gp_test_…)">
+                    android:layout_marginTop="10dp"
+                    android:hint="Merchant API Key (gp_live_…)">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/inputApiKey"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:inputType="textPassword"
-                        android:textSize="14sp" />
+                        android:textSize="13sp" />
                 </com.google.android.material.textfield.TextInputLayout>
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnRegister"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:text="Register this device"
-                    app:backgroundTint="@color/gp_teal" />
+                    android:layout_marginTop="14dp"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnRegister"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="6dp"
+                        android:text="Pair &amp; Register"
+                        android:textColor="@color/gp_white"
+                        app:backgroundTint="@color/gp_zinc_950"
+                        app:cornerRadius="10dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnPing"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:text="Test Ping"
+                        android:textColor="@color/gp_zinc_900"
+                        app:strokeColor="@color/gp_zinc_300"
+                        app:cornerRadius="10dp" />
+                </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- Card 2: Device Credentials -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
             app:cardBackgroundColor="@color/gp_white"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="1dp"
-            app:strokeColor="#E4E4E7"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/gp_zinc_200"
             app:strokeWidth="1dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="18dp">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="2. Device token"
+                    android:text="2. Device Authentication"
                     android:textColor="@color/gp_zinc_950"
+                    android:textSize="14sp"
                     android:textStyle="bold" />
 
                 <TextView
@@ -118,22 +294,22 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:fontFamily="monospace"
-                    android:text="Device: —"
+                    android:text="Device ID: —"
                     android:textColor="@color/gp_zinc_500"
                     android:textSize="12sp" />
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:hint="Device token (gpdev_…)">
+                    android:layout_marginTop="10dp"
+                    android:hint="Device Token (gpdev_…)">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/inputDeviceToken"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:inputType="textPassword"
-                        android:textSize="14sp" />
+                        android:textSize="13sp" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.button.MaterialButton
@@ -141,33 +317,37 @@
                     style="@style/Widget.Material3.Button.OutlinedButton"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="Save token"
-                    app:strokeColor="@color/gp_teal" />
+                    android:layout_marginTop="12dp"
+                    android:text="Save Token"
+                    android:textColor="@color/gp_zinc_900"
+                    app:strokeColor="@color/gp_zinc_300"
+                    app:cornerRadius="10dp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- Card 3: Automation Control & Inbox Backfill -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
             app:cardBackgroundColor="@color/gp_white"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="1dp"
-            app:strokeColor="#E4E4E7"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/gp_zinc_200"
             app:strokeWidth="1dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="18dp">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="3. Matching"
+                    android:text="3. Automation Control"
                     android:textColor="@color/gp_zinc_950"
+                    android:textSize="14sp"
                     android:textStyle="bold" />
 
                 <TextView
@@ -176,21 +356,24 @@
                     android:layout_marginTop="8dp"
                     android:text="@string/consent_body"
                     android:textColor="@color/gp_zinc_500"
-                    android:textSize="12sp" />
+                    android:textSize="12sp"
+                    android:lineSpacingExtra="2dp" />
 
                 <com.google.android.material.materialswitch.MaterialSwitch
                     android:id="@+id/switchMatching"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:text="Enable SMS payment matching"
-                    android:textColor="@color/gp_zinc_950" />
+                    android:layout_marginTop="16dp"
+                    android:text="Automated Payment SMS Matching"
+                    android:textColor="@color/gp_zinc_950"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/textStatus"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
+                    android:layout_marginTop="14dp"
                     android:fontFamily="monospace"
                     android:text="Status: idle"
                     android:textColor="@color/gp_zinc_500"
@@ -213,13 +396,25 @@
                     android:layout_marginTop="4dp"
                     android:fontFamily="monospace"
                     android:text=""
-                    android:textColor="#B91C1C"
+                    android:textColor="@color/gp_error"
                     android:textSize="11sp" />
+
+                <!-- Scan / Sync Recent Inbox Button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnScanInbox"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:text="Scan &amp; Sync Recent Inbox SMS"
+                    android:textColor="@color/gp_zinc_900"
+                    app:strokeColor="@color/gp_zinc_900"
+                    app:cornerRadius="10dp" />
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
+                    android:layout_marginTop="12dp"
                     android:text="@string/privacy_stop_hint"
                     android:textColor="@color/gp_zinc_500"
                     android:textSize="11sp" />
@@ -230,8 +425,10 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
-                    android:text="Stop matching &amp; clear device"
-                    app:strokeColor="#B91C1C" />
+                    android:text="Disconnect &amp; Clear Device"
+                    android:textColor="@color/gp_error"
+                    app:strokeColor="@color/gp_error"
+                    app:cornerRadius="10dp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
     </LinearLayout>

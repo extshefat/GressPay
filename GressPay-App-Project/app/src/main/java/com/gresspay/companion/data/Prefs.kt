@@ -6,7 +6,7 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 
 /**
- * Credentials stored via EncryptedSharedPreferences (Android Keystore-backed master key).
+ * Credentials and metrics stored via EncryptedSharedPreferences (Android Keystore-backed).
  * Never log deviceToken / apiKey.
  */
 class Prefs(context: Context) {
@@ -45,6 +45,14 @@ class Prefs(context: Context) {
         get() = sp.getString(KEY_LAST_ERROR, "") ?: ""
         set(value) = sp.edit().putString(KEY_LAST_ERROR, value.take(200)).apply()
 
+    var totalSmsCaptured: Int
+        get() = sp.getInt(KEY_TOTAL_CAPTURED, 0)
+        set(value) = sp.edit().putInt(KEY_TOTAL_CAPTURED, value).apply()
+
+    var totalPaymentsMatched: Int
+        get() = sp.getInt(KEY_TOTAL_MATCHED, 0)
+        set(value) = sp.edit().putInt(KEY_TOTAL_MATCHED, value).apply()
+
     fun clearDevice() {
         sp.edit()
             .remove(KEY_DEVICE_ID)
@@ -64,6 +72,8 @@ class Prefs(context: Context) {
         private const val KEY_CONSENT = "consent_accepted"
         private const val KEY_LAST_SYNC = "last_sync"
         private const val KEY_LAST_ERROR = "last_error"
+        private const val KEY_TOTAL_CAPTURED = "total_sms_captured"
+        private const val KEY_TOTAL_MATCHED = "total_payments_matched"
 
         private fun createEncrypted(context: Context): SharedPreferences {
             val masterKey = MasterKey.Builder(context)
@@ -86,7 +96,7 @@ class Prefs(context: Context) {
             if (!allowCleartextLoopback) return false
             return u.startsWith("http://127.0.0.1") ||
                 u.startsWith("http://localhost") ||
-                u.startsWith("http://10.0.2.2") // Android emulator → host
+                u.startsWith("http://10.0.2.2")
         }
     }
 }

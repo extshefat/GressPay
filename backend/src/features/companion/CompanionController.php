@@ -70,7 +70,7 @@ final class CompanionController
 
         if ($req->method === 'POST' && $action === 'sms') {
             GpRateLimiter::guard('sms:' . GpRateLimiter::ip(), 120, 60);
-            $token = $req->bearer() ?? ($_SERVER['HTTP_X_GRESSPAY_DEVICE'] ?? '');
+            $token = $req->bearer() ?? ($_SERVER['HTTP_X_GRESSPAY_DEVICE'] ?? $_SERVER['HTTP_X_DEVICE_TOKEN'] ?? '');
             if (!is_string($token) || $token === '') {
                 GpJson::error('UNAUTHORIZED', 'Device token required.', 401);
             }
@@ -98,8 +98,8 @@ final class CompanionController
             );
 
             $sender = GpCatalog::publicCode((string) $req->input('sender_key', $req->input('senderKey', 'bkash')));
-            if (!in_array($sender, ['bkash', 'nagad'], true)) {
-                GpJson::error('UNSUPPORTED_RAIL', 'Companion SMS matching supports bKash and Nagad only in this release.');
+            if (!in_array($sender, ['bkash', 'nagad', 'rocket', 'upay', 'cellfin'], true)) {
+                GpJson::error('UNSUPPORTED_RAIL', 'Companion SMS matching supports bKash, Nagad, Rocket, Upay, and Cellfin.');
             }
 
             $idem = trim((string) $req->input('idempotency_key', $req->input('idempotencyKey', '')));
@@ -123,12 +123,21 @@ final class CompanionController
                 GpJson::error('VALIDATION', 'trx_id and amount are required.');
             }
 
+            // Anti-Fraud: Strict uniqueness check against completed orders and used SMS
+            $alreadyCompleted = GpDb::one(
+                'SELECT session_id FROM gp_transactions WHERE (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND status = ?',
+                [$trxId, strtoupper($trxId), strtolower($trxId), 'completed']
+            );
+            if ($alreadyCompleted) {
+                GpJson::error('DUPLICATE_TRX', 'This Transaction ID has already been used.', 409);
+            }
+
             $used = GpDb::one(
-                'SELECT id FROM gp_sms_data WHERE brand_id = ? AND trx_id = ? AND status = ?',
-                [$device['brand_id'], $trxId, 'used']
+                'SELECT id FROM gp_sms_data WHERE (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND status = ?',
+                [$trxId, strtoupper($trxId), strtolower($trxId), 'used']
             );
             if ($used) {
-                GpJson::error('DUPLICATE_SMS', 'This SMS transaction ID was already matched.');
+                GpJson::error('DUPLICATE_SMS', 'This Transaction ID has already been used.', 409);
             }
 
             $existingApproved = GpDb::one(
@@ -174,41 +183,46 @@ final class CompanionController
             }
 
             $pending = GpDb::one(
-                'SELECT * FROM gp_transactions WHERE brand_id = ? AND trx_id = ? AND status = ? ORDER BY id DESC',
-                [$device['brand_id'], $trxId, 'pending']
+                'SELECT * FROM gp_transactions WHERE brand_id = ? AND (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND status IN (?, ?) ORDER BY id DESC',
+                [$device['brand_id'], $trxId, strtoupper($trxId), strtolower($trxId), 'pending', 'initiated']
             );
             $matched = false;
             if ($pending) {
                 $methodCode = GpCatalog::publicCode((string) ($pending['method_code'] ?: $sender));
-                if ($methodCode !== $sender) {
-                    GpJson::send(['ok' => true, 'matched' => false, 'reason' => 'method_mismatch']);
-                }
-                $cat = GpCatalog::find($methodCode);
-                $payable = $cat
-                    ? GpRatesEngine::convert(
+                if ($methodCode === $sender) {
+                    $cat = GpCatalog::find($methodCode);
+                    $payable = $cat
+                        ? GpRatesEngine::convert(
+                            $pending['brand_id'],
+                            (string) $pending['amount'],
+                            (string) $pending['currency'],
+                            (string) $cat['currency']
+                        )
+                        : (string) $pending['amount'];
+                    $sms = CheckoutController::matchingSms(
                         $pending['brand_id'],
-                        (string) $pending['amount'],
-                        (string) $pending['currency'],
-                        (string) $cat['currency']
-                    )
-                    : (string) $pending['amount'];
-                $sms = CheckoutController::matchingSms($pending['brand_id'], $trxId, $payable, $methodCode);
-                if ($sms) {
-                    $methodRow = GpDb::one(
-                        'SELECT * FROM gp_methods WHERE brand_id = ? AND (code = ? OR code = ?) ORDER BY id DESC',
-                        [$pending['brand_id'], $methodCode, GpCatalog::slug($methodCode)]
-                    ) ?? ['options' => '{}', 'code' => $methodCode];
-                    $paid = CheckoutController::markPaid(
-                        $pending,
                         $trxId,
-                        $methodCode,
-                        $methodRow,
                         $payable,
-                        (string) ($cat['currency'] ?? $pending['currency']),
-                        $sms,
-                        'matched'
+                        $methodCode,
+                        isset($pending['gateway_id']) ? (string) $pending['gateway_id'] : null
                     );
-                    $matched = strtolower((string) ($paid['status'] ?? '')) === 'completed';
+                    if ($sms) {
+                        $methodRow = GpDb::one(
+                            'SELECT * FROM gp_methods WHERE brand_id = ? AND (code = ? OR code = ?) ORDER BY id DESC',
+                            [$pending['brand_id'], $methodCode, GpCatalog::slug($methodCode)]
+                        ) ?? ['options' => '{}', 'code' => $methodCode];
+                        $paid = CheckoutController::markPaid(
+                            $pending,
+                            $trxId,
+                            $methodCode,
+                            $methodRow,
+                            $payable,
+                            (string) ($cat['currency'] ?? $pending['currency']),
+                            $sms,
+                            'matched'
+                        );
+                        $matched = strtolower((string) ($paid['status'] ?? '')) === 'completed';
+                    }
                 }
             }
 

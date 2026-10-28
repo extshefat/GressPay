@@ -11,6 +11,11 @@ export interface User {
   businessName: string;
   role: UserRole;
   isAdmin?: boolean;
+  is_admin?: boolean;
+  planId?: string;
+  plan_id?: string;
+  planExpiresAt?: string | null;
+  status?: string;
   isVerified: boolean;
   avatarUrl?: string;
   createdAt: string;
@@ -70,6 +75,8 @@ export type GatewayReadiness =
   | "live_ready"
   | "needs_attention"
   | "disabled"
+  | "disabled_by_admin"
+  | "needs_companion"
   | "qr_upload_unavailable";
 
 export interface MerchantGateway {
@@ -104,6 +111,7 @@ export type TransactionStatus = "PENDING" | "COMPLETED" | "EXPIRED" | "FAILED" |
 export type ConfirmationState =
   | "none"
   | "submitted"
+  | "verifying"
   | "matched"
   | "simulated"
   | "merchant_confirmed"
@@ -251,9 +259,12 @@ export interface ApiCredentials {
 export interface DashboardMetrics {
   totalRevenueUsd: number;
   totalRevenueBdt: number;
+  todayRevenueBdt?: number;
   todayTransactions: number;
   successRate: number;
   activeLinksCount: number;
+  activeMethodsCount?: number;
+  connectedDevicesCount?: number;
   pendingSettlementUsd: number;
   volumeHistory: {
     date: string;
@@ -285,12 +296,18 @@ export interface AdminMerchant {
   id: string;
   name: string;
   email: string;
+  role?: "admin" | "merchant";
+  planId?: string;
+  planExpiresAt?: string | null;
   brandId?: string;
   brandName: string;
   authProvider: string;
   status: "active" | "suspended";
   credits: number;
   transactionsCount: number;
+  totalVolumeBdt?: number;
+  deviceCount?: number;
+  activeGatewaysCount?: number;
   subscription?: {
     id: string;
     planId: string;
@@ -304,6 +321,43 @@ export interface AdminMerchant {
   createdAt: string;
 }
 
+export interface AdminTransaction {
+  id: string;
+  sessionId: string;
+  brandId: string;
+  brandName: string;
+  merchantId: string;
+  merchantName: string;
+  merchantEmail: string;
+  amount: number;
+  currency: string;
+  methodCode: string;
+  status: "initiated" | "pending" | "completed" | "failed" | "expired" | "refunded";
+  trxId: string;
+  customerNumber?: string;
+  senderNumber?: string;
+  verifiedAmount?: number | null;
+  verifiedAt?: string | null;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminSmsLog {
+  id: string;
+  brandId: string;
+  brandName: string;
+  deviceId: string;
+  deviceLabel: string;
+  senderKey: string;
+  amount: number;
+  trxId: string;
+  number?: string;
+  status: "approved" | "used" | string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AdminPlan {
   id: string;
   name: string;
@@ -312,11 +366,29 @@ export interface AdminPlan {
   priceBdt: number;
   billingCycle: string;
   creditAllowance: number;
+  deviceLimit?: number;
+  methodLimit?: number;
   features: string[];
   isFree: boolean;
   status: "active" | "archived" | "disabled";
   createdAt: string;
   updatedAt: string;
+}
+
+export interface PlatformGateway {
+  id: number;
+  gateway_code: string;
+  slug: string;
+  display_name: string;
+  category: "mfs" | "crypto";
+  currency: string;
+  is_enabled: number;
+  display_order: number;
+  instructions?: string | null;
+  min_amount: number;
+  max_amount: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AdminSubscription {
@@ -346,8 +418,19 @@ export interface AdminAuditLog {
 }
 
 export interface AdminStats {
-  merchants: { total: number; active: number };
-  transactions: { total: number; completed: number; volumeBdt: number; volumeUsdt: number };
+  merchants: { total: number; active: number; suspended?: number };
+  transactions: {
+    total: number;
+    completed: number;
+    pending?: number;
+    failed?: number;
+    volumeBdt: number;
+    volumeUsdt: number;
+  };
+  devices?: { total: number; online: number };
+  sms?: { total: number; matched: number; unmatched: number };
+  webhooks?: { total: number; delivered: number; healthPercent: number };
+  gateways?: { total: number; enabled: number };
   subscriptions: { activePlans: number; activeSubscriptions: number };
   system: { status: string; adminEmails: string[]; serverTime: string };
 }

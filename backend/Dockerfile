@@ -2,8 +2,8 @@
 # Merchant secrets are NOT baked in — pass platform env via Coolify only.
 FROM php:8.2-cli-alpine
 
-RUN apk add --no-cache icu-dev curl-dev $PHPIZE_DEPS \
-    && docker-php-ext-install pdo pdo_mysql bcmath \
+RUN apk add --no-cache icu-dev curl-dev postgresql-dev $PHPIZE_DEPS \
+    && docker-php-ext-install pdo pdo_mysql pdo_pgsql pgsql bcmath \
     && apk del --no-cache $PHPIZE_DEPS
 
 WORKDIR /var/www/gresspay-api

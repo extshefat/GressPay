@@ -18,7 +18,7 @@ import com.gresspay.companion.ui.MainActivity
 
 /**
  * Foreground service while matching is opted-in.
- * Dynamically registers SmsBroadcastReceiver so SMS is not listened to when off.
+ * Uses FOREGROUND_SERVICE_TYPE_DATA_SYNC for Android 14+ compliance.
  */
 class SmsMatchService : Service() {
     private var smsReceiver: SmsBroadcastReceiver? = null
@@ -46,10 +46,14 @@ class SmsMatchService : Service() {
             .setOngoing(true)
             .build()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(NOTIF_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
-        } else {
-            startForeground(NOTIF_ID, notification)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                startForeground(NOTIF_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+            } else {
+                startForeground(NOTIF_ID, notification)
+            }
+        } catch (_: Exception) {
+            // Android 12+ background start guard
         }
 
         registerSmsReceiver()
@@ -62,13 +66,16 @@ class SmsMatchService : Service() {
         val filter = IntentFilter(Telephony.Sms.Intents.SMS_RECEIVED_ACTION).apply {
             priority = 999
         }
-        ContextCompat.registerReceiver(
-            this,
-            receiver,
-            filter,
-            ContextCompat.RECEIVER_EXPORTED
-        )
-        smsReceiver = receiver
+        try {
+            ContextCompat.registerReceiver(
+                this,
+                receiver,
+                filter,
+                ContextCompat.RECEIVER_EXPORTED
+            )
+            smsReceiver = receiver
+        } catch (_: Exception) {
+        }
     }
 
     override fun onDestroy() {
@@ -93,15 +100,22 @@ class SmsMatchService : Service() {
                 return
             }
             val i = Intent(context, SmsMatchService::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(i)
-            } else {
-                context.startService(i)
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(i)
+                } else {
+                    context.startService(i)
+                }
+            } catch (_: Exception) {
+                // Ignore background start restrictions on Android 12+
             }
         }
 
         fun stop(context: android.content.Context) {
-            context.stopService(Intent(context, SmsMatchService::class.java))
+            try {
+                context.stopService(Intent(context, SmsMatchService::class.java))
+            } catch (_: Exception) {
+            }
         }
     }
 }

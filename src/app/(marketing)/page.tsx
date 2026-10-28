@@ -4,6 +4,7 @@ import { CountryCoverage } from "@/features/marketing/components/CountryCoverage
 import { HowItWorks } from "@/features/marketing/components/HowItWorks";
 import { AboutSection } from "@/features/marketing/components/AboutSection";
 import { CompanionShowcase } from "@/features/marketing/components/CompanionShowcase";
+import { PricingSection } from "@/features/marketing/components/PricingSection";
 import { SecuritySection } from "@/features/marketing/components/SecuritySection";
 import { RatesCalculator } from "@/features/marketing/components/RatesCalculator";
 import { DeveloperPreview } from "@/features/marketing/components/DeveloperPreview";
@@ -20,6 +21,7 @@ export default function HomePage() {
       <HowItWorks />
       <AboutSection />
       <CompanionShowcase />
+      <PricingSection />
       <SecuritySection />
       <RatesCalculator />
       <DeveloperPreview />

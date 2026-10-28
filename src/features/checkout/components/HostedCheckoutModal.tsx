@@ -1,15 +1,14 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { PaymentMethod, CheckoutSession, TransactionStatus } from "@/lib/types/api";
 import { formatCurrency } from "@/lib/formatters";
 import { api } from "@/lib/api-client";
-import { railTheme, foldTxid } from "@/lib/method-theme";
+import { foldTxid } from "@/lib/method-theme";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
-import { CopyField } from "@/components/ui/copy-field";
 import {
   ShieldCheck,
   Clock,
@@ -19,36 +18,77 @@ import {
   AlertCircle,
   CheckCircle2,
   Lock,
-  ExternalLink,
   Smartphone,
   Layers,
+  RefreshCw,
 } from "lucide-react";
 
 export interface HostedCheckoutModalProps {
   session: CheckoutSession;
 }
 
-const COUNTRY_CONFIG: Record<string, { label: string; flag: string }> = {
-  BD: { label: "Bangladesh (bKash / Nagad)", flag: "BD" },
-  GLOBAL: { label: "USDT Crypto", flag: "USDT" },
-};
+type TabCategory = "mfs" | "crypto";
 
 export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ session }) => {
-  const methods = session.availableMethods || [];
-  const availableCountries = Array.from(new Set(methods.map((m) => m.country)));
-  const initialCountry = availableCountries[0] || "BD";
+  const methods = useMemo(() => session.availableMethods || [], [session.availableMethods]);
 
-  const [selectedCountry, setSelectedCountry] = useState<string>(initialCountry);
-  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | undefined>(
-    methods.find((m) => m.country === initialCountry) || methods[0]
+  // Group active merchant methods into clean tabs: Mobile Banking & Crypto
+  const mfsMethods = useMemo(
+    () =>
+      methods.filter(
+        (m) =>
+          m.category === "mfs" ||
+          ["bkash", "nagad", "rocket", "upay", "cellfin"].includes(m.code.toLowerCase())
+      ),
+    [methods]
   );
+
+  const cryptoMethods = useMemo(
+    () =>
+      methods.filter(
+        (m) =>
+          m.category === "crypto" ||
+          ["binance_pay", "bybit_pay", "usdt_trc20"].includes(m.code.toLowerCase())
+      ),
+    [methods]
+  );
+
+  const initialTab: TabCategory = mfsMethods.length > 0 ? "mfs" : "crypto";
+  const [activeTab, setActiveTab] = useState<TabCategory>(initialTab);
+
+  const currentTabMethods = activeTab === "mfs" ? mfsMethods : cryptoMethods;
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | undefined>(() => {
+    return (
+      (initialTab === "mfs" ? mfsMethods[0] : cryptoMethods[0]) || methods[0]
+    );
+  });
+
+  // When activeTab changes, auto-select first method in that tab if not matching
+  useEffect(() => {
+    if (activeTab === "mfs" && mfsMethods.length > 0) {
+      if (!selectedMethod || !mfsMethods.some((m) => m.code === selectedMethod.code)) {
+        setSelectedMethod(mfsMethods[0]);
+      }
+    } else if (activeTab === "crypto" && cryptoMethods.length > 0) {
+      if (!selectedMethod || !cryptoMethods.some((m) => m.code === selectedMethod.code)) {
+        setSelectedMethod(cryptoMethods[0]);
+      }
+    }
+  }, [activeTab, mfsMethods, cryptoMethods, selectedMethod]);
+
   const [txidInput, setTxidInput] = useState<string>("");
+  const [senderNumber, setSenderNumber] = useState<string>("");
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
-  const [copiedText, setCopiedText] = useState<string | null>(null);
-  const [checkoutStatus, setCheckoutStatus] = useState<TransactionStatus>("PENDING");
-  const [awaitingEvidence, setAwaitingEvidence] = useState(false);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [checkoutStatus, setCheckoutStatus] = useState<TransactionStatus>(
+    (session as unknown as { status?: TransactionStatus }).status || "PENDING"
+  );
+  const [isPollingVerification, setIsPollingVerification] = useState(false);
+  const [pollingSeconds, setPollingSeconds] = useState<number>(0);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [redirectCountdown, setRedirectCountdown] = useState<number>(4);
+
   const [secondsLeft, setSecondsLeft] = useState<number>(() => {
     if (!session.expiresAt) return 15 * 60;
     const diff = Math.floor((new Date(session.expiresAt).getTime() - Date.now()) / 1000);
@@ -56,10 +96,13 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
   });
 
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const redirectTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   const payableAmount = selectedMethod?.payableAmount ?? session.amount;
   const payableCurrency =
     selectedMethod?.payableCurrency ?? selectedMethod?.currency ?? session.currency;
 
+  // Countdown timer for session expiration
   useEffect(() => {
     if (
       checkoutStatus === "COMPLETED" ||
@@ -81,9 +124,11 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
     return () => clearInterval(interval);
   }, [checkoutStatus]);
 
+  // Clean up polling & redirect intervals on unmount
   useEffect(() => {
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
+      if (redirectTimerRef.current) clearInterval(redirectTimerRef.current);
     };
   }, []);
 
@@ -91,69 +136,99 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
   const seconds = secondsLeft % 60;
   const timeFormatted = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 
-  const copyToClipboard = (text: string) => {
+  const copyToClipboard = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
-    setCopiedText(text);
-    setTimeout(() => setCopiedText(null), 2000);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 2500);
   };
 
-  const filteredMethods = methods.filter((m) => m.country === selectedCountry);
-
+  // Start 3-second status polling for Scenario B (customer enters TxID before SMS arrives)
   const startStatusPolling = () => {
     if (pollingRef.current) clearInterval(pollingRef.current);
-    let attempts = 0;
+    setIsPollingVerification(true);
+    setPollingSeconds(0);
+
+    const startTime = Date.now();
+    let pollCount = 0;
+
     pollingRef.current = setInterval(async () => {
-      attempts += 1;
+      pollCount += 1;
+      setPollingSeconds(Math.floor((Date.now() - startTime) / 1000));
+
       try {
         const res = await api.getCheckoutStatus(session.sessionId);
         if (res.status === "COMPLETED") {
           if (pollingRef.current) clearInterval(pollingRef.current);
+          setIsPollingVerification(false);
           setIsVerifying(false);
-          setAwaitingEvidence(false);
           setCheckoutStatus("COMPLETED");
-          if (res.redirectUrl) {
-            window.location.href = res.redirectUrl;
-          }
-        } else if (res.status === "FAILED" || res.status === "EXPIRED") {
+          handleSuccessfulRedirect(res.redirectUrl || res.returnUrl || session.returnUrl);
+          return;
+        }
+
+        if (res.status === "FAILED" || res.status === "EXPIRED") {
           if (pollingRef.current) clearInterval(pollingRef.current);
+          setIsPollingVerification(false);
           setIsVerifying(false);
           setCheckoutStatus(res.status);
+          return;
         }
       } catch {
-        // Retry
+        // Soft error during network jitter — continue polling
       }
-      if (attempts >= 40) {
+
+      // Stop after 2.5 minutes (50 attempts * 3s)
+      if (pollCount >= 50) {
         if (pollingRef.current) clearInterval(pollingRef.current);
+        setIsPollingVerification(false);
         setIsVerifying(false);
         setErrorMessage(
-          "Still awaiting carrier SMS confirmation. Please keep this window open or verify your TxID."
+          "Verification is taking longer than usual. If your money was deducted, our Android companion APK will reconcile it automatically."
         );
       }
     }, 3000);
   };
 
+  const handleSuccessfulRedirect = (targetUrl?: string | null) => {
+    const finalUrl = targetUrl || session.returnUrl;
+    if (!finalUrl) return;
+
+    let countdown = 4;
+    setRedirectCountdown(countdown);
+    redirectTimerRef.current = setInterval(() => {
+      countdown -= 1;
+      setRedirectCountdown(countdown);
+      if (countdown <= 0) {
+        if (redirectTimerRef.current) clearInterval(redirectTimerRef.current);
+        window.location.href = finalUrl;
+      }
+    }, 1000);
+  };
+
   const handleVerifyPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+
     if (!selectedMethod) {
-      setErrorMessage("No payment method is selected.");
+      setErrorMessage("Please select a payment method.");
       return;
     }
+
     if (
       selectedMethod.code !== "binance_pay" &&
       !selectedMethod.depositAddressOrNumber
     ) {
-      setErrorMessage("This merchant has not saved a receiving wallet address for this rail.");
+      setErrorMessage("Merchant receiving account has not been configured for this method.");
       return;
     }
 
-    const trx = foldTxid(selectedMethod, txidInput);
+    const cleanTrx = foldTxid(selectedMethod, txidInput);
     if (
       selectedMethod.code !== "binance_pay" &&
       selectedMethod.requiresTxidInput &&
-      !trx
+      !cleanTrx
     ) {
-      setErrorMessage(selectedMethod.trxHint || "Please enter the Transaction ID.");
+      setErrorMessage(selectedMethod.trxHint || "Please enter the Transaction ID (TrxID).");
       return;
     }
 
@@ -164,12 +239,10 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
         if (order.checkoutUrl) {
           window.open(order.checkoutUrl, "_blank", "noopener,noreferrer");
         }
-        setAwaitingEvidence(true);
         setStatusMessage(
           order.liveReady === false
-            ? order.message ||
-                "Binance Pay is not live-configured in sandbox. Server is monitoring order status."
-            : "Complete payment in the Binance app or browser. Page will confirm automatically upon settlement."
+            ? order.message || "Binance Pay order registered. Monitoring for incoming webhook confirmation."
+            : "Complete payment in the Binance app. This window will automatically confirm upon settlement."
         );
         setIsVerifying(false);
         startStatusPolling();
@@ -178,23 +251,19 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
 
       const res = await api.verifyCheckout(
         session.sessionId,
-        trx,
+        cleanTrx,
         selectedMethod.code,
-        selectedMethod.gatewayId
+        selectedMethod.gatewayId,
+        senderNumber.trim() || undefined
       );
+
       if (res.status === "COMPLETED") {
         setIsVerifying(false);
         setCheckoutStatus("COMPLETED");
-        if (res.redirectUrl) {
-          window.location.href = res.redirectUrl;
-        }
+        handleSuccessfulRedirect(res.redirectUrl || res.returnUrl || session.returnUrl);
       } else {
-        setAwaitingEvidence(true);
-        setStatusMessage(
-          selectedMethod.code === "usdt_trc20"
-            ? "Waiting for TRON on-chain block confirmations. Verification requires 20 confirmed blocks."
-            : "Payment details recorded. Awaiting real-time Android companion SMS verification match."
-        );
+        // Scenario B: Customer submitted TxID first, awaiting SMS from companion APK
+        setStatusMessage("Verifying your Transaction ID automatically... Please wait");
         setIsVerifying(false);
         startStatusPolling();
       }
@@ -206,18 +275,76 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
     }
   };
 
+  // Step-by-Step English Instructions Generator based on Method Code
+  const getInstructions = (method: PaymentMethod) => {
+    const code = method.code.toLowerCase();
+    const receiver = method.depositAddressOrNumber || "the merchant number above";
+    const isAgent = (method as unknown as { accountType?: string }).accountType === "agent";
+    const action = isAgent ? "Cash In" : "Send Money";
+
+    let ussd = "";
+    let methodName = method.name || "Mobile Banking";
+    if (code === "bkash") {
+      ussd = " or dial *247#";
+      methodName = "bKash";
+    } else if (code === "nagad") {
+      ussd = " or dial *167#";
+      methodName = "Nagad";
+    } else if (code === "rocket") {
+      ussd = " or dial *322#";
+      methodName = "Rocket";
+    } else if (code === "upay") {
+      ussd = " or dial *268#";
+      methodName = "Upay";
+    } else if (code === "cellfin") {
+      methodName = "Cellfin";
+    }
+
+    if (["bkash", "nagad", "rocket", "upay", "cellfin"].includes(code)) {
+      return [
+        `Open your ${methodName} App${ussd}.`,
+        `Choose "${action}" option.`,
+        `Enter the copied recipient number (${receiver}) and the exact amount (${formatCurrency(payableAmount, payableCurrency)}).`,
+        `Copy the Transaction ID (TrxID) from your confirmation SMS and paste it below.`,
+      ];
+    }
+
+    if (code === "usdt_trc20") {
+      return [
+        `Open your crypto wallet (Trust Wallet, Binance, OKX, TronLink, etc.).`,
+        `Select USDT and choose ONLY TRON (TRC-20) network.`,
+        `Send exactly ${formatCurrency(payableAmount, payableCurrency)} USDT to the address above.`,
+        `Copy the 64-character TRON Transaction Hash (TxID) and enter it below.`,
+      ];
+    }
+
+    if (code === "bybit_pay") {
+      return [
+        `Open the Bybit app and navigate to Bybit Pay / Internal Transfer.`,
+        `Transfer ${formatCurrency(payableAmount, payableCurrency)} to Merchant UID: ${receiver}.`,
+        `Copy the Bybit Transfer / Order ID and paste it below.`,
+      ];
+    }
+
+    return [
+      `Send ${formatCurrency(payableAmount, payableCurrency)} to ${receiver}.`,
+      `Save your payment receipt or Transaction ID.`,
+      `Enter the Transaction ID below to verify your payment.`,
+    ];
+  };
+
   // 1. EXPIRED STATE
   if (checkoutStatus === "EXPIRED") {
     return (
-      <div className="w-full max-w-lg mx-auto bg-white dark:bg-zinc-950 border border-rose-200 dark:border-rose-900/60 rounded-3xl shadow-xl p-8 text-center space-y-4">
-        <div className="w-14 h-14 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 flex items-center justify-center mx-auto text-rose-600 dark:text-rose-400">
+      <div className="w-full max-w-lg mx-auto bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-xl p-8 text-center space-y-4">
+        <div className="w-14 h-14 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center mx-auto text-zinc-900 dark:text-zinc-100">
           <Clock className="w-7 h-7" />
         </div>
-        <Badge variant="rose" size="md">
+        <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
           Session Expired
-        </Badge>
+        </span>
         <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
-          Checkout Window Ended
+          Payment Window Ended
         </h2>
         <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed max-w-sm mx-auto">
           This payment session has timed out for security. Please request a new checkout link or invoice from the merchant.
@@ -236,90 +363,147 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
     );
   }
 
-  // 2. AWAITING VERIFICATION / PENDING EVIDENCE
-  if (awaitingEvidence && checkoutStatus === "PENDING") {
+  // 2. ACTIVE VERIFICATION POLLING STATE (Scenario B)
+  if (isPollingVerification) {
     return (
-      <div className="w-full max-w-lg mx-auto bg-white dark:bg-zinc-950 border border-amber-200 dark:border-amber-900/50 rounded-3xl shadow-xl p-8 text-center space-y-4">
-        <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-center justify-center mx-auto text-amber-600 dark:text-amber-400">
-          <Clock className="w-7 h-7 animate-pulse" />
+      <div className="w-full max-w-lg mx-auto bg-white dark:bg-zinc-950 border border-zinc-900 dark:border-zinc-700 rounded-3xl shadow-2xl p-8 text-center space-y-5">
+        <div className="relative w-16 h-16 mx-auto flex items-center justify-center">
+          <div className="absolute inset-0 rounded-full border-2 border-zinc-900 dark:border-zinc-100 border-t-transparent animate-spin" />
+          <div className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center text-zinc-900 dark:text-zinc-100">
+            <RefreshCw className="w-5 h-5 animate-pulse" />
+          </div>
         </div>
-        <Badge variant="amber" size="md" dot>
-          Verification in Progress
-        </Badge>
-        <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
-          Awaiting Carrier Confirmation
-        </h2>
-        <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed max-w-sm mx-auto">
-          {statusMessage ||
-            "Your Transaction ID was recorded. Live payments settle strictly upon carrier SMS match or on-chain verification."}
-        </p>
 
-        <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-left font-mono text-xs space-y-2">
-          <div className="flex justify-between text-zinc-500">
-            <span>Submitted TxID</span>
-            <span className="text-zinc-900 dark:text-zinc-100 font-semibold break-all text-right ml-3">
+        <div className="space-y-1">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+            Auto-Verifying Payment
+          </span>
+          <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 pt-2">
+            Verifying your Transaction ID automatically... Please wait
+          </h2>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed max-w-sm mx-auto">
+            {statusMessage ||
+              "Your Transaction ID is registered. Our Android companion APK is listening for incoming carrier SMS to auto-verify your transaction."}
+          </p>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-left font-mono text-xs space-y-2.5">
+          <div className="flex justify-between items-center text-zinc-500">
+            <span>Submitted TrxID</span>
+            <span className="text-zinc-900 dark:text-zinc-100 font-semibold break-all text-right ml-3 font-mono">
               {txidInput || "—"}
             </span>
           </div>
-          <div className="flex justify-between text-zinc-500">
+          {senderNumber && (
+            <div className="flex justify-between items-center text-zinc-500">
+              <span>Sender Number</span>
+              <span className="text-zinc-900 dark:text-zinc-100 font-medium font-mono">
+                {senderNumber}
+              </span>
+            </div>
+          )}
+          <div className="flex justify-between items-center text-zinc-500">
             <span>Payment Rail</span>
             <span className="text-zinc-900 dark:text-zinc-100 font-medium">
               {selectedMethod?.name || "—"}
             </span>
           </div>
+          <div className="flex justify-between items-center text-zinc-500">
+            <span>Time Elapsed</span>
+            <span className="text-zinc-900 dark:text-zinc-100 font-mono">
+              {pollingSeconds}s
+            </span>
+          </div>
         </div>
 
         <p className="text-[11px] font-mono text-zinc-400">
-          Listening for matching evidence • Do not refresh this page
+          Syncing automatically every 3 seconds • Do not close this window
         </p>
+
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-xs text-zinc-600 dark:text-zinc-400"
+          onClick={() => {
+            if (pollingRef.current) clearInterval(pollingRef.current);
+            setIsPollingVerification(false);
+          }}
+        >
+          Back to Payment Form
+        </Button>
       </div>
     );
   }
 
-  // 3. COMPLETED PAYMENT
+  // 3. COMPLETED STATE
   if (checkoutStatus === "COMPLETED") {
-    return (
-      <div className="w-full max-w-lg mx-auto bg-white dark:bg-zinc-950 border border-emerald-200 dark:border-emerald-900/60 rounded-3xl shadow-xl p-8 text-center space-y-4">
-        <div className="w-16 h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center mx-auto text-emerald-600 dark:text-emerald-400">
-          <CheckCircle2 className="w-9 h-9" />
-        </div>
-        <Badge variant="emerald" size="md" dot>
-          Payment Confirmed
-        </Badge>
-        <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
-          {formatCurrency(payableAmount, payableCurrency)} Paid
-        </h2>
-        <p className="text-xs text-zinc-500 dark:text-zinc-400">
-          Settled to merchant:{" "}
-          <span className="font-semibold text-zinc-900 dark:text-zinc-100">
-            {session.merchantName}
-          </span>
-        </p>
+    const returnTarget = session.returnUrl;
 
-        <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-left font-mono text-xs space-y-2">
-          <div className="flex justify-between text-zinc-500">
+    return (
+      <div className="w-full max-w-lg mx-auto bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-2xl p-8 text-center space-y-5">
+        <div className="w-16 h-16 rounded-2xl bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 flex items-center justify-center mx-auto shadow-md">
+          <CheckCircle2 className="w-9 h-9 stroke-[2.5]" />
+        </div>
+
+        <div className="space-y-1">
+          <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400">
+            Payment Successful!
+          </span>
+          <h2 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight pt-1">
+            {formatCurrency(payableAmount, payableCurrency)}
+          </h2>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            Successfully credited to{" "}
+            <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+              {session.merchantName}
+            </span>
+          </p>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-left font-mono text-xs space-y-2">
+          <div className="flex justify-between items-center text-zinc-500">
             <span>Transaction ID</span>
             <span className="text-zinc-900 dark:text-zinc-100 font-semibold break-all ml-4">
-              {txidInput || "—"}
+              {txidInput || session.sessionId}
             </span>
           </div>
-          <div className="flex justify-between text-zinc-500">
-            <span>Settled Rail</span>
+          <div className="flex justify-between items-center text-zinc-500">
+            <span>Payment Method</span>
             <span className="text-zinc-900 dark:text-zinc-100">{selectedMethod?.name || "—"}</span>
           </div>
+          <div className="flex justify-between items-center text-zinc-500">
+            <span>Order Reference</span>
+            <span className="text-zinc-900 dark:text-zinc-100">{session.sessionId}</span>
+          </div>
         </div>
+
+        {returnTarget && redirectCountdown > 0 ? (
+          <p className="text-xs text-zinc-500 font-mono">
+            Redirecting to merchant store in{" "}
+            <span className="font-bold text-zinc-900 dark:text-zinc-100">
+              {redirectCountdown}s
+            </span>
+            …
+          </p>
+        ) : null}
 
         <div className="pt-2">
           <Button
             variant="primary"
             size="lg"
-            className="w-full"
+            className="w-full bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 font-semibold"
             onClick={() => {
-              if (window.opener) window.close();
-              else window.location.href = "/";
+              if (returnTarget) {
+                window.location.href = returnTarget;
+              } else if (window.opener) {
+                window.close();
+              } else {
+                window.location.href = "/";
+              }
             }}
           >
-            Done
+            {returnTarget ? "Return to Merchant" : "Close Checkout"}
           </Button>
         </div>
       </div>
@@ -329,31 +513,26 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
   // 4. EMPTY RAILS STATE
   if (!methods.length || !selectedMethod) {
     return (
-      <div className="w-full max-w-lg mx-auto bg-white dark:bg-zinc-950 border border-amber-200 dark:border-amber-900/50 rounded-3xl shadow-xl p-8 text-center space-y-3">
-        <AlertCircle className="w-8 h-8 text-amber-500 mx-auto" />
+      <div className="w-full max-w-lg mx-auto bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-xl p-8 text-center space-y-3">
+        <AlertCircle className="w-8 h-8 text-zinc-400 mx-auto" />
         <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
-          No Payment Rails Configured
+          No Payment Rails Available
         </h2>
-        <p className="text-xs text-zinc-500 dark:text-zinc-400">
-          The merchant has not yet configured receiving wallet numbers or API credentials for this store.
+        <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+          The merchant has not enabled any active payment methods for this store checkout.
         </p>
       </div>
     );
   }
 
-  const steps =
-    selectedMethod.instructionSteps && selectedMethod.instructionSteps.length > 0
-      ? selectedMethod.instructionSteps
-      : selectedMethod.instructions
-      ? [{ text: selectedMethod.instructions }]
-      : [];
+  const instructions = getInstructions(selectedMethod);
 
   return (
     <div className="w-full max-w-2xl mx-auto bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-2xl overflow-hidden transition-all">
       {/* Merchant Header */}
-      <div className="p-5 sm:p-6 bg-zinc-50/70 dark:bg-zinc-900/60 border-b border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-12 h-12 rounded-2xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center font-bold text-[#077C74] dark:text-[#1BD1C0] shrink-0 shadow-2xs">
+      <div className="p-5 sm:p-6 bg-zinc-50/80 dark:bg-zinc-900/60 border-b border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5 min-w-0">
+          <div className="w-12 h-12 rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 flex items-center justify-center font-bold text-base shrink-0 shadow-sm">
             {session.merchantName ? session.merchantName.slice(0, 2).toUpperCase() : "GP"}
           </div>
           <div className="min-w-0">
@@ -361,11 +540,9 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
               <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate">
                 {session.merchantName}
               </span>
-              {session.merchantVerified && (
-                <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              )}
+              <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
             </div>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
               {session.orderTitle || "Order Checkout"}
             </p>
           </div>
@@ -373,76 +550,76 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
 
         <div className="text-right flex sm:flex-col items-center sm:items-end justify-between border-t sm:border-t-0 pt-3 sm:pt-0 border-zinc-200 dark:border-zinc-800">
           <div className="text-2xl font-bold font-mono text-zinc-900 dark:text-zinc-100">
-            {formatCurrency(session.amount, session.currency)}
+            {formatCurrency(payableAmount, payableCurrency)}
           </div>
-          <div className="flex items-center gap-1.5 text-[11px] font-mono text-amber-600 dark:text-amber-400 mt-0.5">
-            <Clock className="w-3.5 h-3.5" />
+          <div className="flex items-center gap-1.5 text-[11px] font-mono text-zinc-500 mt-0.5">
+            <Clock className="w-3.5 h-3.5 text-zinc-400" />
             <span>Expires in {timeFormatted}</span>
           </div>
         </div>
       </div>
 
-      {/* Security strip */}
-      <div className="px-5 sm:px-6 py-2.5 bg-teal-50/50 dark:bg-zinc-900/30 border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400">
-        <Lock className="w-3.5 h-3.5 text-[#077C74] dark:text-[#1BD1C0]" />
-        <span>End-to-End Encrypted Settlement • Amount Locked</span>
+      {/* Security & Non-Custodial Strip */}
+      <div className="px-5 sm:px-6 py-2 bg-zinc-100/70 dark:bg-zinc-900/40 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between text-xs font-medium text-zinc-600 dark:text-zinc-400">
+        <div className="flex items-center gap-2">
+          <Lock className="w-3.5 h-3.5 text-zinc-900 dark:text-zinc-100" />
+          <span>Direct-to-Wallet · Non-Custodial Automated Verification</span>
+        </div>
+        <span className="hidden sm:inline font-mono text-[11px] text-zinc-400">
+          REF: {session.sessionId.slice(-8).toUpperCase()}
+        </span>
       </div>
 
       {/* Main Body */}
       <div className="p-5 sm:p-6 space-y-6">
         {errorMessage && (
-          <Alert variant="danger" title="Payment Notice">
+          <Alert variant="danger" title="Payment Error">
             {errorMessage}
           </Alert>
         )}
 
-        {/* Region Pills if multiple countries */}
-        {availableCountries.length > 1 && (
-          <div className="space-y-2">
-            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider font-mono">
-              Select Region
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {availableCountries.map((cCode) => {
-                const conf = COUNTRY_CONFIG[cCode] || { label: cCode, flag: "" };
-                const isSelected = selectedCountry === cCode;
-
-                return (
-                  <button
-                    key={cCode}
-                    type="button"
-                    onClick={() => {
-                      setSelectedCountry(cCode);
-                      const firstOfCountry = methods.find((m) => m.country === cCode);
-                      if (firstOfCountry) {
-                        setSelectedMethod(firstOfCountry);
-                        setTxidInput("");
-                      }
-                    }}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                      isSelected
-                        ? "bg-[#077C74] text-white dark:bg-[#1BD1C0] dark:text-zinc-950 shadow-xs"
-                        : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-900 dark:text-zinc-400"
-                    }`}
-                  >
-                    <span>{conf.label}</span>
-                  </button>
-                );
-              })}
-            </div>
+        {/* Category Tabs: Mobile Banking vs Crypto */}
+        {(mfsMethods.length > 0 && cryptoMethods.length > 0) && (
+          <div className="flex items-center rounded-xl bg-zinc-100 dark:bg-zinc-900 p-1 border border-zinc-200 dark:border-zinc-800">
+            <button
+              type="button"
+              onClick={() => setActiveTab("mfs")}
+              className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                activeTab === "mfs"
+                  ? "bg-white text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100 shadow-xs"
+                  : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+              }`}
+            >
+              <Smartphone className="w-3.5 h-3.5" />
+              <span>Mobile Banking ({mfsMethods.length})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("crypto")}
+              className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                activeTab === "crypto"
+                  ? "bg-white text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100 shadow-xs"
+                  : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>Crypto Payment ({cryptoMethods.length})</span>
+            </button>
           </div>
         )}
 
         {/* Payment Rails Grid */}
         <div className="space-y-2">
           <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider font-mono">
-            Payment Method
+            Select Payment Method
           </label>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {filteredMethods.map((method) => {
+            {currentTabMethods.map((method) => {
               const isSelected =
                 (method.gatewayId && selectedMethod.gatewayId === method.gatewayId) ||
                 (!method.gatewayId && selectedMethod.code === method.code && !selectedMethod.gatewayId);
+
+              const methodIconUrl = `/methods/${method.code.toLowerCase()}.svg`;
 
               return (
                 <button
@@ -451,25 +628,37 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
                   onClick={() => {
                     setSelectedMethod(method);
                     setTxidInput("");
+                    setErrorMessage(null);
                   }}
                   className={`p-3.5 rounded-2xl border text-left transition-all relative flex flex-col justify-between cursor-pointer ${
                     isSelected
-                      ? "border-[#077C74] bg-teal-50/40 dark:border-[#1BD1C0] dark:bg-teal-950/20 shadow-xs"
-                      : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 hover:border-zinc-300 dark:hover:border-zinc-700"
+                      ? "border-zinc-900 bg-zinc-50 dark:border-zinc-100 dark:bg-zinc-900 shadow-xs ring-1 ring-zinc-900 dark:ring-zinc-100"
+                      : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 hover:border-zinc-300 dark:hover:border-zinc-700"
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 truncate">
-                      {method.name}
-                    </span>
+                    <div className="flex items-center gap-2 min-w-0">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={methodIconUrl}
+                        alt={method.name}
+                        className="w-5 h-5 object-contain shrink-0"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = "none";
+                        }}
+                      />
+                      <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 truncate">
+                        {method.name}
+                      </span>
+                    </div>
                     {isSelected && (
-                      <Check className="w-3.5 h-3.5 text-[#077C74] dark:text-[#1BD1C0] stroke-[3]" />
+                      <Check className="w-3.5 h-3.5 text-zinc-900 dark:text-zinc-100 stroke-[3] shrink-0" />
                     )}
                   </div>
 
                   <div className="text-[11px] text-zinc-500 font-mono mt-3 flex items-center justify-between">
                     <span>{method.currency}</span>
-                    <span>Fee {method.feePercentage}%</span>
+                    <span>0% Fee</span>
                   </div>
                 </button>
               );
@@ -477,113 +666,173 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
           </div>
         </div>
 
-        {/* Payment Instructions Card */}
-        <div className="p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-900/40 space-y-4">
-          <div className="flex items-start justify-between gap-3">
+        {/* Payment Transfer & Verification Card */}
+        <div className="p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/40 space-y-5">
+          {/* Payable Amount Highlight with Copy Button */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800">
             <div>
-              <div className="text-xs font-mono text-zinc-500">Payable Amount</div>
-              <div className="text-2xl font-bold font-mono text-[#077C74] dark:text-[#1BD1C0]">
+              <span className="text-xs text-zinc-500 font-mono">Exact Payable Amount</span>
+              <div className="text-2xl font-bold font-mono text-zinc-900 dark:text-zinc-100">
                 {formatCurrency(payableAmount, payableCurrency)}
               </div>
-              {payableCurrency !== session.currency && (
-                <div className="text-[11px] text-zinc-400 font-mono mt-0.5">
-                  Original Invoice: {formatCurrency(session.amount, session.currency)}
-                </div>
-              )}
             </div>
 
-            <Badge variant="cyan" size="md">
-              {selectedMethod.name}
-            </Badge>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                copyToClipboard(
+                  String(payableAmount),
+                  "amount"
+                )
+              }
+              className="font-mono text-xs"
+              leftIcon={
+                copiedKey === "amount" ? (
+                  <Check className="w-3.5 h-3.5 text-emerald-500" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5" />
+                )
+              }
+            >
+              {copiedKey === "amount" ? "Amount Copied!" : "Copy Amount"}
+            </Button>
           </div>
 
-          {selectedMethod.qrImageUrl ? (
-            <div className="space-y-2">
-              <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                Scan merchant QR
+          {/* Receiving Destination Account / Wallet */}
+          {selectedMethod.depositAddressOrNumber ? (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                  {selectedMethod.accountLabel ||
+                    (activeTab === "crypto"
+                      ? "Merchant Receiving Wallet Address"
+                      : "Merchant Wallet Number")}
+                </label>
+                <span className="text-[11px] font-mono text-zinc-500">
+                  {selectedMethod.code === "usdt_trc20"
+                    ? "TRC-20 Network Only"
+                    : (selectedMethod as unknown as { accountType?: string }).accountType === "agent"
+                    ? "Cash In Only"
+                    : "Send Money Only"}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between gap-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 font-mono text-sm">
+                <span className="select-all break-all text-zinc-900 dark:text-zinc-100 font-bold tracking-wider">
+                  {selectedMethod.depositAddressOrNumber}
+                </span>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    copyToClipboard(selectedMethod.depositAddressOrNumber || "", "wallet")
+                  }
+                  className="shrink-0 text-xs font-mono"
+                  leftIcon={
+                    copiedKey === "wallet" ? (
+                      <Check className="w-3.5 h-3.5 text-emerald-500" />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5" />
+                    )
+                  }
+                >
+                  {copiedKey === "wallet" ? "Copied!" : "Copy Number"}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 text-xs text-zinc-600 dark:text-zinc-300">
+              Receiving destination wallet is configured dynamically by the merchant.
+            </div>
+          )}
+
+          {/* Optional QR Code for USDT or Merchant Static QR */}
+          {selectedMethod.qrImageUrl && (
+            <div className="space-y-2 text-center pt-1">
+              <label className="block text-xs font-mono text-zinc-500">
+                Scan Merchant Deposit QR Code
               </label>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={selectedMethod.qrImageUrl}
                 alt="Payment QR"
-                className="w-44 h-44 object-contain mx-auto rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white p-2"
+                className="w-40 h-40 object-contain mx-auto rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white p-2 shadow-xs"
               />
-              <p className="text-[11px] text-zinc-500 text-center">
-                Scanning this QR does not complete payment — wait for SMS / on-chain confirmation.
-              </p>
-            </div>
-          ) : null}
-
-          {/* Destination Account / Wallet */}
-          {selectedMethod.depositAddressOrNumber ? (
-            <div className="space-y-1">
-              <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                {selectedMethod.accountLabel || "Receiving Destination / Account"}
-              </label>
-              <div className="flex items-center gap-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 font-mono text-xs">
-                <span className="flex-1 select-all break-all text-zinc-900 dark:text-zinc-100 font-semibold">
-                  {selectedMethod.depositAddressOrNumber}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => copyToClipboard(selectedMethod.depositAddressOrNumber || "")}
-                  className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
-                  aria-label="Copy address"
-                >
-                  {copiedText === selectedMethod.depositAddressOrNumber ? (
-                    <Check className="w-4 h-4 text-emerald-500" />
-                  ) : (
-                    <Copy className="w-4 h-4" />
-                  )}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300">
-              Receiving destination is being initialized by the merchant.
             </div>
           )}
 
-          {/* Instruction steps */}
-          {steps.length > 0 && (
-            <ol className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed space-y-1.5 list-decimal pl-4 pt-1">
-              {steps.map((step, i) => (
-                <li key={i}>{step.text}</li>
+          {/* Numbered Step-by-Step Instructions */}
+          <div className="space-y-2 pt-1 border-t border-zinc-200/60 dark:border-zinc-800">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 font-mono">
+              Step-by-Step Payment Instructions
+            </span>
+            <ol className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed space-y-1.5 list-decimal pl-4">
+              {instructions.map((step, i) => (
+                <li key={i}>{step}</li>
               ))}
             </ol>
-          )}
+          </div>
 
-          {/* Form */}
+          {/* Verification Form */}
           <form onSubmit={handleVerifyPayment} className="space-y-4 pt-2">
             {selectedMethod.code === "binance_pay" ? (
               <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                Clicking below will open the official Binance Pay merchant checkout in your app or browser. Real-time webhook settles your order automatically.
+                Clicking below initiates Binance Pay checkout. You will complete payment via Binance app, and this window will verify automatically.
               </p>
             ) : selectedMethod.code === "usdt_trc20" ? (
-              <div className="space-y-2">
-                <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
-                  Send USDT on the <strong className="font-semibold">TRON (TRC-20)</strong> network to the address above. Paste your 64-character transaction hash below:
-                </p>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                  TRON Transaction Hash (TxID)
+                </label>
                 <Input
-                  label={selectedMethod.trxHint || "TRC-20 Transaction Hash"}
-                  placeholder="Paste 64-character transaction hash"
+                  placeholder="Paste 64-character TRON transaction hash (e.g. 7f8a9b...)"
                   value={txidInput}
-                  onChange={(e) => setTxidInput(foldTxid(selectedMethod, e.target.value))}
+                  onChange={(e) => setTxidInput(e.target.value.trim())}
                   required
                 />
               </div>
             ) : selectedMethod.requiresTxidInput ? (
-              <Input
-                label={selectedMethod.trxHint || "Carrier Transaction ID (TrxID)"}
-                placeholder="e.g. BKH9948271"
-                value={txidInput}
-                onChange={(e) => setTxidInput(foldTxid(selectedMethod, e.target.value))}
-                required
-              />
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                    Carrier Transaction ID (TrxID)
+                  </label>
+                  <Input
+                    placeholder={
+                      selectedMethod.code === "bkash"
+                        ? "e.g. BKH9948271"
+                        : selectedMethod.code === "nagad"
+                        ? "e.g. 7H8A9B2C"
+                        : "Enter received Transaction ID"
+                    }
+                    value={txidInput}
+                    onChange={(e) =>
+                      setTxidInput(e.target.value.trim().toUpperCase())
+                    }
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                    Your Mobile Number (Optional)
+                  </label>
+                  <Input
+                    placeholder="e.g. 01XXXXXXXXX"
+                    value={senderNumber}
+                    onChange={(e) => setSenderNumber(e.target.value.trim())}
+                    className="font-mono text-xs"
+                  />
+                </div>
+              </div>
             ) : null}
 
             {statusMessage && (
-              <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+              <p className="text-xs text-zinc-700 dark:text-zinc-300 font-medium">
                 {statusMessage}
               </p>
             )}
@@ -592,15 +841,15 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
               type="submit"
               variant="primary"
               size="lg"
-              className="w-full"
+              className="w-full bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 font-semibold"
               isLoading={isVerifying}
               rightIcon={<ArrowRight className="w-4 h-4" />}
             >
               {isVerifying
-                ? "Connecting to Settlement Node…"
+                ? "Checking Settlement Ledger…"
                 : selectedMethod.code === "binance_pay"
                 ? "Open Binance Pay Checkout"
-                : "I Have Completed This Payment"}
+                : "Verify Payment"}
             </Button>
           </form>
         </div>

@@ -91,9 +91,9 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
         })}
 
         {/* Server-Enforced Admin Authorization Navigation */}
-        {(user?.role === "admin" || user?.isAdmin) && (
+        {(user?.role === "admin" || user?.isAdmin || (user as { is_admin?: boolean })?.is_admin) && (
           <div className="pt-3 mt-3 border-t border-zinc-200 dark:border-zinc-800">
-            <div className="px-3 py-1 text-[10px] font-mono uppercase tracking-wider text-teal-600 dark:text-teal-400 font-semibold">
+            <div className="px-3 py-1 text-[10px] font-mono uppercase tracking-wider text-zinc-500 font-semibold">
               Platform Admin
             </div>
             <Link
@@ -101,16 +101,16 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               onClick={onClose}
               className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
                 pathname.startsWith("/admin") || pathname.startsWith("/dashboard/admin")
-                  ? "bg-teal-600 text-white shadow-sm"
-                  : "text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/40"
+                  ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 shadow-sm"
+                  : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900"
               }`}
             >
               <div className="flex items-center gap-3">
                 <ShieldCheck className="w-4 h-4" />
-                <span>Admin Console</span>
+                <span>Super Admin</span>
               </div>
-              <span className="text-[9px] bg-teal-500/20 text-teal-700 dark:text-teal-300 px-1.5 py-0.5 rounded font-mono font-bold">
-                ROOT
+              <span className="text-[9px] bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-1.5 py-0.5 rounded font-mono font-bold tracking-wider">
+                ADMIN
               </span>
             </Link>
           </div>
