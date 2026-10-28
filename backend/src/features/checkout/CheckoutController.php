@@ -520,11 +520,19 @@ final class CheckoutController
             GpJson::error('MISSING_FIELD', 'trx_id is required.');
         }
 
-        // Block reuse of a TxID already tied to a completed (or other open) session for this brand.
+        // Block reuse of a TxID already tied to a completed (or other open) session for this brand or globally.
+        $globalDup = GpDb::one(
+            'SELECT session_id FROM gp_transactions WHERE (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND session_id != ? AND status = ?',
+            [$trxId, strtoupper($trxId), strtolower($trxId), $id, 'completed']
+        );
+        if ($globalDup) {
+            GpJson::error('DUPLICATE_TRX', 'This transaction ID has already been credited to another completed order.', 409);
+        }
+
         $dup = GpDb::one(
             'SELECT session_id, status FROM gp_transactions
-             WHERE trx_id = ? AND brand_id = ? AND session_id != ? AND status IN (?, ?, ?)',
-            [$trxId, $row['brand_id'], $id, 'completed', 'pending', 'initiated']
+             WHERE (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND brand_id = ? AND session_id != ? AND status IN (?, ?, ?)',
+            [$trxId, strtoupper($trxId), strtolower($trxId), $row['brand_id'], $id, 'completed', 'pending', 'initiated']
         );
         if ($dup) {
             if (strtolower((string) $dup['status']) === 'completed') {
@@ -713,8 +721,8 @@ final class CheckoutController
         ?string $expectedAccount = null
     ): ?array {
         $sms = GpDb::one(
-            'SELECT * FROM gp_sms_data WHERE brand_id = ? AND trx_id = ? AND status = ? ORDER BY id DESC',
-            [$brandId, $trxId, 'approved']
+            'SELECT * FROM gp_sms_data WHERE brand_id = ? AND (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND status = ? ORDER BY id DESC',
+            [$brandId, $trxId, strtoupper($trxId), strtolower($trxId), 'approved']
         );
         if ($sms === null) {
             return null;
@@ -816,8 +824,8 @@ final class CheckoutController
         $pdo->beginTransaction();
         try {
             $dup = GpDb::one(
-                'SELECT session_id FROM gp_transactions WHERE trx_id = ? AND brand_id = ? AND session_id != ? AND status = ?',
-                [$trxId, $row['brand_id'], $row['session_id'], 'completed']
+                'SELECT session_id FROM gp_transactions WHERE (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND brand_id = ? AND session_id != ? AND status = ?',
+                [$trxId, strtoupper($trxId), strtolower($trxId), $row['brand_id'], $row['session_id'], 'completed']
             );
             if ($dup) {
                 $pdo->rollBack();
