@@ -4,7 +4,7 @@ import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Smartphone, Download, CheckCircle, Wifi, BatteryCharging, ShieldAlert } from "lucide-react";
+import { Smartphone, Download, CheckCircle, Wifi, BatteryCharging, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
 export const CompanionShowcase: React.FC = () => {
@@ -15,24 +15,24 @@ export const CompanionShowcase: React.FC = () => {
           {/* Left copy */}
           <div className="lg:col-span-6 space-y-6">
             <Badge variant="emerald" dot>
-              Companion Automation
+              Android Companion Node
             </Badge>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-100 tracking-tight leading-tight">
               Turn Any Android Phone into a High-Speed Settlement Node
             </h2>
             <p className="text-zinc-600 dark:text-zinc-400 text-sm sm:text-base leading-relaxed">
-              Traditional MFS aggregators in Bangladesh charge high percentage commissions and suffer frequent gateway outages. With GressPay Companion, you receive funds directly into your personal or agent wallet, while our companion app matches transaction SMS messages in under 3 seconds.
+              Traditional payment gateways in Bangladesh charge high percentage commissions and suffer frequent gateway downtime. With the GressPay Companion APK, customer transfers land directly in your personal or agent SIM wallet, while our background engine matches incoming payment SMS in under 2 seconds.
             </p>
 
-            <div className="space-y-3 pt-2">
+            <div className="space-y-4 pt-2">
               <div className="flex items-start gap-3">
                 <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                 <div>
                   <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-                    Zero Per-Transaction Gateway Percentage
+                    0% Per-Transaction Commission (Direct Wallet)
                   </span>
                   <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                    Keep 100% of your earnings. Funds go straight to your bKash or Nagad wallet.
+                    Keep 100% of your customer revenue. Money goes straight into your personal bKash or Nagad wallet.
                   </p>
                 </div>
               </div>
@@ -41,10 +41,10 @@ export const CompanionShowcase: React.FC = () => {
                 <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                 <div>
                   <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-                    Foreground Service with Wake-Lock
+                    Android 12–15 DataSync Foreground Service
                   </span>
                   <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                    Engineered to run continuously in the background without Android OS process termination.
+                    Engineered to run continuously in the background with WorkManager offline queuing — zero missed SMS notifications.
                   </p>
                 </div>
               </div>
@@ -53,10 +53,10 @@ export const CompanionShowcase: React.FC = () => {
                 <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                 <div>
                   <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-                    End-to-End Cryptographic Pairing
+                    Cryptographic Token Pairing
                   </span>
                   <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                    Paired securely with one-time bearer tokens. Instantly revocable from the merchant web dashboard.
+                    Pair your phone in 30 seconds using a unique hashed Device Token. Easily rotate or revoke tokens from your web dashboard.
                   </p>
                 </div>
               </div>
@@ -64,15 +64,18 @@ export const CompanionShowcase: React.FC = () => {
 
             <div className="flex flex-wrap items-center gap-3 pt-4">
               <Link href="/dashboard/devices">
-                <Button variant="primary" size="md" leftIcon={<Download className="w-4 h-4" />}>
+                <Button variant="primary" size="lg" leftIcon={<Download className="w-4 h-4" />}>
                   Download Companion APK
                 </Button>
               </Link>
-              <Link href="/help#companion-setup">
-                <Button variant="outline" size="md">
-                  Pairing Guide
+              <Link href="/developers">
+                <Button variant="outline" size="lg">
+                  API & Pairing Docs
                 </Button>
               </Link>
+            </div>
+            <div className="text-[11px] font-mono text-zinc-500">
+              Compatible with Android 8.0 through Android 15 • Battery-Optimized
             </div>
           </div>
 
@@ -81,20 +84,21 @@ export const CompanionShowcase: React.FC = () => {
             <Card className="w-full max-w-md p-6 bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 shadow-xl rounded-3xl relative overflow-hidden">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-100 dark:border-zinc-800">
                 <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-[#077C74] dark:text-[#1BD1C0]">
+                  <div className="p-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">
                     <Smartphone className="w-5 h-5" />
                   </div>
                   <div>
                     <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
                       GressPay Companion
                     </h4>
-                    <span className="text-[10px] text-zinc-500 font-mono">v1.2.0 • Active Node</span>
+                    <span className="text-[10px] text-zinc-500 font-mono">v1.4.0 • Node Active</span>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="flex items-center gap-1 text-[11px] font-mono text-emerald-600 dark:text-emerald-400">
-                    <Wifi className="w-3.5 h-3.5" /> Live
+                  <span className="flex items-center gap-1.5 text-[11px] font-mono text-emerald-600 dark:text-emerald-400 font-bold">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    LIVE SYNC
                   </span>
                   <span className="flex items-center gap-1 text-[11px] font-mono text-zinc-500">
                     <BatteryCharging className="w-3.5 h-3.5" /> 98%
@@ -104,48 +108,50 @@ export const CompanionShowcase: React.FC = () => {
 
               {/* Status feed simulator */}
               <div className="py-4 space-y-3">
-                <div className="p-3 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 text-xs space-y-1">
+                <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-emerald-900 dark:text-emerald-300">
-                      bKash SMS Matched
+                    <span className="font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      bKash SMS Auto-Matched
                     </span>
-                    <span className="font-mono text-[10px] text-emerald-700 dark:text-emerald-400">
+                    <span className="font-mono text-[10px] text-zinc-400">
                       Just now
                     </span>
                   </div>
-                  <p className="font-mono text-[11px] text-emerald-800 dark:text-emerald-300">
+                  <p className="font-mono text-[11px] text-zinc-700 dark:text-zinc-300">
                     You have received Tk 1,500.00 from 017XXXXXX. TrxID: BKH9948271
                   </p>
-                  <div className="pt-1 flex items-center justify-between text-[10px] text-emerald-700 dark:text-emerald-400">
+                  <div className="pt-1 flex items-center justify-between text-[10px] text-zinc-500 font-mono">
                     <span>Session: chs_8829a1b</span>
-                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">Verified (2.1s)</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400">Verified in 1.4s</span>
                   </div>
                 </div>
 
-                <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200/80 dark:border-zinc-800 text-xs space-y-1">
+                <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-zinc-800 dark:text-zinc-200">
-                      Nagad SMS Matched
+                    <span className="font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      Nagad SMS Auto-Matched
                     </span>
-                    <span className="font-mono text-[10px] text-zinc-500">
-                      3 mins ago
+                    <span className="font-mono text-[10px] text-zinc-400">
+                      2 mins ago
                     </span>
                   </div>
-                  <p className="font-mono text-[11px] text-zinc-600 dark:text-zinc-400">
+                  <p className="font-mono text-[11px] text-zinc-700 dark:text-zinc-300">
                     Money Received. Amount: Tk 3,200.00. TxnID: NGD7718291
                   </p>
-                  <div className="pt-1 flex items-center justify-between text-[10px] text-zinc-500">
+                  <div className="pt-1 flex items-center justify-between text-[10px] text-zinc-500 font-mono">
                     <span>Session: chs_9921c3f</span>
-                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">Settled (1.8s)</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400">Verified in 1.1s</span>
                   </div>
                 </div>
               </div>
 
               {/* Heartbeat bar */}
-              <div className="p-3 rounded-xl bg-zinc-100 dark:bg-zinc-900 flex items-center justify-between text-xs">
-                <span className="text-zinc-500 dark:text-zinc-400">Companion Heartbeat</span>
-                <span className="font-mono text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
-                  Synced 4s ago
+              <div className="p-3 rounded-xl bg-zinc-100 dark:bg-zinc-900 flex items-center justify-between text-xs font-mono">
+                <span className="text-zinc-500">Node Heartbeat</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                  Ping 3s ago (HTTP 200 OK)
                 </span>
               </div>
             </Card>

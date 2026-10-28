@@ -22,15 +22,14 @@ import { ArrowRight, Layers, ShieldCheck, Zap, Smartphone, CheckCircle2 } from "
 export const GlobeHero: React.FC = () => {
   return (
     <section className="relative pt-28 pb-16 md:pt-36 md:pb-24 overflow-hidden bg-white dark:bg-zinc-950 transition-colors">
-      {/* Background Teal Atmosphere Grid */}
+      {/* Background Subtle Monochrome Atmosphere */}
       <div className="pointer-events-none absolute inset-0" aria-hidden>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_20%_20%,rgba(15,118,110,0.12),transparent_55%)] dark:bg-[radial-gradient(ellipse_80%_60%_at_20%_20%,rgba(45,212,191,0.1),transparent_55%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_40%_at_85%_40%,rgba(15,118,110,0.08),transparent_50%)] dark:bg-[radial-gradient(ellipse_50%_40%_at_85%_40%,rgba(45,212,191,0.06),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_20%_20%,rgba(0,0,0,0.04),transparent_55%)] dark:bg-[radial-gradient(ellipse_80%_60%_at_20%_20%,rgba(255,255,255,0.03),transparent_55%)]" />
         <div
-          className="absolute inset-0 opacity-[0.3] dark:opacity-[0.18]"
+          className="absolute inset-0 opacity-[0.25] dark:opacity-[0.12]"
           style={{
             backgroundImage:
-              "linear-gradient(to right, rgba(15,118,110,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(15,118,110,0.06) 1px, transparent 1px)",
+              "linear-gradient(to right, rgba(0,0,0,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,0.06) 1px, transparent 1px)",
             backgroundSize: "48px 48px",
             maskImage: "radial-gradient(ellipse 70% 60% at 50% 40%, black, transparent)",
           }}
@@ -50,11 +49,11 @@ export const GlobeHero: React.FC = () => {
               <div className="flex flex-wrap items-center gap-2">
                 <GressPayLogo size="lg" />
                 <Badge variant="emerald" className="gap-1 font-mono text-[10px] uppercase">
-                  <ShieldCheck className="w-3 h-3" /> Bangladesh First · Non-Custodial
+                  <ShieldCheck className="w-3 h-3" /> Direct-to-Wallet · 0% Commission
                 </Badge>
               </div>
-              <div className="text-xs font-mono tracking-wider text-teal-700 dark:text-teal-400 uppercase font-semibold">
-                bKash · Nagad · USDT TRC-20
+              <div className="text-xs font-mono tracking-wider text-zinc-500 uppercase font-semibold">
+                bKash · Nagad · Rocket · Upay · Cellfin · Binance Pay · USDT TRC-20
               </div>
             </motion.div>
 
@@ -64,7 +63,7 @@ export const GlobeHero: React.FC = () => {
               transition={{ duration: 0.55, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
               className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-100 leading-[1.15]"
             >
-              Automated Payment Verification for Bangladesh.
+              Automated MFS & Crypto Payment Gateway for Bangladesh.
             </motion.h1>
 
             <motion.p
@@ -73,7 +72,7 @@ export const GlobeHero: React.FC = () => {
               transition={{ duration: 0.5, delay: 0.16, ease: [0.22, 1, 0.36, 1] }}
               className="text-base sm:text-lg text-zinc-600 dark:text-zinc-400 max-w-2xl leading-relaxed"
             >
-              Customers pay the bKash or Nagad number you publish. A paired Android companion can match the provider SMS to the checkout. Optional Binance Pay and USDT TRC-20 are separate checks. Funds stay in the wallet you configured.
+              Accept customer payments directly into your personal or agent SIM wallet. GressPay Companion auto-matches the provider SMS in under 2 seconds and fires instant webhooks to fulfill your store orders. Zero aggregator commission.
             </motion.p>
 
             {/* Trust Highlights */}
@@ -81,19 +80,19 @@ export const GlobeHero: React.FC = () => {
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.22, ease: [0.22, 1, 0.36, 1] }}
-              className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1 text-xs text-zinc-700 dark:text-zinc-300"
+              className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1 text-xs text-zinc-700 dark:text-zinc-300 font-medium"
             >
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
-                <span>Funds stay in your wallet</span>
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span>100% Direct to Your Wallet</span>
               </div>
               <div className="flex items-center gap-2">
-                <Smartphone className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
-                <span>Companion SMS match</span>
+                <Smartphone className="w-4 h-4 text-zinc-900 dark:text-zinc-100 shrink-0" />
+                <span>1-Second SMS Match</span>
               </div>
               <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
-                <span>One signed webhook</span>
+                <Zap className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span>Signed Webhook Dispatch</span>
               </div>
             </motion.div>
 
@@ -104,14 +103,14 @@ export const GlobeHero: React.FC = () => {
               transition={{ duration: 0.5, delay: 0.28, ease: [0.22, 1, 0.36, 1] }}
               className="flex flex-wrap items-center gap-3 pt-2"
             >
-              <Link href="/login">
+              <Link href="/register">
                 <Button size="lg" variant="primary" rightIcon={<ArrowRight className="w-4 h-4" />}>
-                  Get Started with Google
+                  Start Free Trial
                 </Button>
               </Link>
-              <Link href="/developers">
-                <Button size="lg" variant="secondary" leftIcon={<Layers className="w-4 h-4" />}>
-                  Explore API Docs
+              <Link href="/fees">
+                <Button size="lg" variant="outline">
+                  View Pricing Plans
                 </Button>
               </Link>
             </motion.div>
@@ -120,9 +119,9 @@ export const GlobeHero: React.FC = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.5, delay: 0.35 }}
-              className="text-[11px] text-zinc-500 pt-1"
+              className="text-[11px] text-zinc-500 pt-1 font-mono"
             >
-              Sign in with Google to open a merchant account, then add your own receiving numbers. Password sign-in remains available for existing accounts.
+              Sign up in 30 seconds with Google OAuth or email • No merchant trade license required
             </motion.div>
           </div>
 

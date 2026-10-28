@@ -11,7 +11,7 @@ import { ArrowRight, LayoutDashboard, LogOut, Menu, X } from "lucide-react";
 
 const LINKS = [
   { href: "/services", label: "Services" },
-  { href: "/fees", label: "Fees" },
+  { href: "/fees", label: "Pricing" },
   { href: "/developers", label: "Developers" },
   { href: "/help", label: "Help" },
 ];
