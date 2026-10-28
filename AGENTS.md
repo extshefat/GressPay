@@ -61,9 +61,13 @@ push.bat "feat: <message>"
 
 ## 3. Core Safety & Architecture Invariants
 
-1. **Self-Hosted VPS Model**:
-   - The user runs the SaaS on their own VPS using Coolify and a persistent MySQL/MariaDB database.
-   - Do NOT run heavy backend daemons, install JDK/Docker, or run persistent MySQL on the user's personal Windows laptop.
+1. **STRICT RULE: NO LOCAL INSTALLATIONS**:
+   - **NEVER install any software, runtimes, tools, packages, or databases locally on the user's personal Windows laptop.**
+   - Do NOT run `npm install <new-package>`, `pip install`, `choco`, `winget`, `scoop`, or any installer.
+   - Do NOT install or run PHP, Docker, MySQL, MariaDB, Java, JDK, or Gradle locally.
+   - All server-side testing, databases, and Docker runtimes run on the remote VPS (Coolify). Only use existing tools/scripts locally for file edits, Next.js build verification, and git pushes.
+
+2. **Self-Hosted VPS Model**:
 
 2. **Multi-Tenant Isolation**:
    - Every merchant operates within their own `brand_id`.
