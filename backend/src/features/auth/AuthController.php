@@ -14,6 +14,9 @@ final class AuthController
         if ($req->method === 'POST' && $action === 'login') {
             self::login($req);
         }
+        if ($action === 'me') {
+            self::me($req);
+        }
         if ($action === 'providers') {
             self::providers($req);
         }

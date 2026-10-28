@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api-client";
-import { DashboardMetrics, Transaction } from "@/lib/types/api";
+import { DashboardMetrics, Transaction, User } from "@/lib/types/api";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +15,6 @@ import { formatCurrency, formatDate } from "@/lib/formatters";
 import {
   RefreshCw,
   ArrowRight,
-  TrendingUp,
   Link2,
   DollarSign,
   Activity,
@@ -29,6 +28,7 @@ import {
 export default function OverviewPage() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [companionActive, setCompanionActive] = useState<boolean>(true);
@@ -37,15 +37,21 @@ export default function OverviewPage() {
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const [m, txs, devices] = await Promise.all([
+      const [m, txs, devices, userRes] = await Promise.all([
         api.getMetrics(),
         api.getTransactions().catch(() => ({ transactions: [] })),
         api.listCompanionDevices().catch(() => ({ devices: [] })),
+        api.getMe().catch(() => ({ user: null })),
       ]);
       setMetrics(m);
       setTransactions(txs.transactions?.slice(0, 5) || []);
-      const hasActiveDevice = devices.devices?.some((d) => d.status === "active");
-      setCompanionActive(hasActiveDevice ?? false);
+      const hasActiveDevice =
+        devices.devices?.some((d) => d.status === "active") ||
+        (m?.connectedDevicesCount ?? 0) > 0;
+      setCompanionActive(hasActiveDevice);
+      if (userRes?.user) {
+        setCurrentUser(userRes.user);
+      }
     } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : "Failed to load dashboard metrics.");
     } finally {
@@ -101,12 +107,64 @@ export default function OverviewPage() {
         </div>
       </div>
 
+      {/* SaaS Subscription & Active Plan Banner */}
+      <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-950 text-white p-5 sm:p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-1.5">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className="text-[11px] uppercase font-mono tracking-wider text-zinc-400">
+              Subscription Plan
+            </span>
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wide bg-white text-zinc-950">
+              {currentUser?.planId === "enterprise"
+                ? "Enterprise Plan"
+                : currentUser?.planId === "lifetime"
+                ? "Lifetime Deal"
+                : currentUser?.planId === "pro"
+                ? "Pro Business"
+                : "Starter Plan"}
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-mono text-emerald-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              Active · 0% Platform Commission
+            </span>
+          </div>
+          <p className="text-xs text-zinc-300 max-w-2xl leading-relaxed">
+            {currentUser?.planId === "enterprise" || currentUser?.planId === "lifetime"
+              ? "Unlimited automated volume, unlimited Android companion APK pairing, priority USDT TRC-20 on-chain verification, and 24/7 dedicated webhook delivery."
+              : currentUser?.planId === "pro"
+              ? "Up to 5 connected companion devices, automated MFS & Crypto verification, and instant webhook notifications with zero transaction fees."
+              : "Automated personal MFS verification with 1 companion device. Upgrade to Pro Business or Enterprise for unlimited multi-device pairing."}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2.5 shrink-0">
+          <Link href="/fees">
+            <Button
+              size="sm"
+              className="bg-white text-zinc-950 hover:bg-zinc-100 font-semibold border-0 shadow-sm"
+              rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
+            >
+              Upgrade Plan
+            </Button>
+          </Link>
+          <Link href="/dashboard/settings">
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-zinc-700 text-zinc-200 hover:bg-zinc-800 hover:text-white"
+            >
+              Settings
+            </Button>
+          </Link>
+        </div>
+      </div>
+
       {/* Rail Health Status Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {/* bKash / Nagad Companion */}
         <div className="flex items-center justify-between p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-2xs">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-teal-50 dark:bg-teal-950/40 text-[#077C74] dark:text-[#1BD1C0]">
+            <div className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">
               <Smartphone className="w-4 h-4" />
             </div>
             <div>
@@ -114,7 +172,11 @@ export default function OverviewPage() {
                 bKash & Nagad Companion
               </div>
               <div className="text-[11px] text-zinc-500">
-                {companionActive ? "Android node listening" : "Pair companion APK"}
+                {metrics?.connectedDevicesCount
+                  ? `${metrics.connectedDevicesCount} active device${metrics.connectedDevicesCount === 1 ? "" : "s"}`
+                  : companionActive
+                  ? "Android node listening"
+                  : "Pair companion APK"}
               </div>
             </div>
           </div>
@@ -126,14 +188,18 @@ export default function OverviewPage() {
         {/* Direct-to-Wallet Architecture */}
         <div className="flex items-center justify-between p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-2xs">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400">
+            <div className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">
               <ShieldCheck className="w-4 h-4" />
             </div>
             <div>
               <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-                Direct-to-Wallet Settlement
+                Direct-to-Wallet Gateways
               </div>
-              <div className="text-[11px] text-zinc-500">Non-Custodial · Zero Escrow</div>
+              <div className="text-[11px] text-zinc-500">
+                {metrics?.activeMethodsCount
+                  ? `${metrics.activeMethodsCount} active rail${metrics.activeMethodsCount === 1 ? "" : "s"}`
+                  : "Non-Custodial · Zero Escrow"}
+              </div>
             </div>
           </div>
           <Badge variant="emerald" size="sm" dot>
@@ -144,14 +210,14 @@ export default function OverviewPage() {
         {/* USDT TRC-20 On-Chain */}
         <div className="flex items-center justify-between p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-2xs">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-teal-50 dark:bg-teal-950/40 text-[#077C74] dark:text-[#1BD1C0]">
+            <div className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">
               <Layers className="w-4 h-4" />
             </div>
             <div>
               <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-                USDT TRC-20
+                USDT TRC-20 & Binance
               </div>
-              <div className="text-[11px] text-zinc-500">TRON Network Verifier</div>
+              <div className="text-[11px] text-zinc-500">Automated Webhook Sync</div>
             </div>
           </div>
           <Badge variant="emerald" size="sm" dot>
@@ -176,10 +242,10 @@ export default function OverviewPage() {
           loading={isLoading}
         />
         <StatCard
-          title="BDT Volume"
-          value={metrics ? formatCurrency(metrics.totalRevenueBdt, "BDT") : "৳ 0"}
+          title="Today's Revenue (BDT)"
+          value={metrics ? formatCurrency(metrics.todayRevenueBdt || 0, "BDT") : "৳ 0"}
           icon={<Activity className="w-4 h-4" />}
-          change={{ value: "+8.7%", trend: "up", label: "bKash & Nagad" }}
+          subtitle={`Total BDT: ${metrics ? formatCurrency(metrics.totalRevenueBdt, "BDT") : "৳ 0"}`}
           loading={isLoading}
         />
         <StatCard
@@ -193,7 +259,7 @@ export default function OverviewPage() {
           title="Settlement Success Rate"
           value={metrics ? `${metrics.successRate.toFixed(1)}%` : "0.0%"}
           icon={<CheckCircle2 className="w-4 h-4 text-emerald-500" />}
-          subtitle="Completed sessions divided by sessions in range"
+          subtitle="Verified via SMS & On-Chain"
           loading={isLoading}
         />
       </div>
@@ -208,7 +274,7 @@ export default function OverviewPage() {
             actions={
               <Link
                 href="/dashboard/transactions"
-                className="text-xs text-[#077C74] dark:text-[#1BD1C0] hover:underline font-medium"
+                className="text-xs text-zinc-900 dark:text-zinc-100 hover:underline font-medium"
               >
                 View Ledger Details →
               </Link>
@@ -237,8 +303,14 @@ export default function OverviewPage() {
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-zinc-500">Active Payment Links:</span>
-                <span className="font-mono font-semibold text-[#077C74] dark:text-[#1BD1C0]">
+                <span className="font-mono font-semibold text-zinc-900 dark:text-zinc-100">
                   {metrics?.activeLinksCount || 0} Links
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-zinc-500">Active Payment Rails:</span>
+                <span className="font-mono font-semibold text-zinc-900 dark:text-zinc-100">
+                  {metrics?.activeMethodsCount || 0} Gateways
                 </span>
               </div>
             </div>
@@ -272,7 +344,7 @@ export default function OverviewPage() {
           </div>
           <Link
             href="/dashboard/transactions"
-            className="text-xs text-[#077C74] dark:text-[#1BD1C0] hover:underline font-medium flex items-center gap-1"
+            className="text-xs text-zinc-900 dark:text-zinc-100 hover:underline font-medium flex items-center gap-1"
           >
             <span>View All</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -282,7 +354,7 @@ export default function OverviewPage() {
         {transactions.length === 0 ? (
           <EmptyState
             title="No transactions yet"
-            description="When customers pay via bKash, Nagad, Binance Pay, or USDT, they will appear here in real time."
+            description="When customers pay via bKash, Nagad, Rocket, Binance Pay, or USDT, they will appear here in real time."
             action={
               <Link href="/dashboard/payment-links">
                 <Button size="sm" variant="primary">

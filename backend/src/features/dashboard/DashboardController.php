@@ -19,6 +19,7 @@ final class DashboardController
         $completed = array_values(array_filter($rows, static fn ($r) => $r['status'] === 'completed'));
         $today = gmdate('Y-m-d');
         $todayCount = 0;
+        $todayBdt = 0.0;
         $usd = 0.0;
         $bdt = 0.0;
         $rates = GpRatesEngine::usdMap($actor['brand_id']);
@@ -41,6 +42,7 @@ final class DashboardController
             $day = substr((string) $row['created_at'], 0, 10);
             if (str_starts_with((string) $row['created_at'], $today) || $day === $today) {
                 $todayCount++;
+                if ($cur === 'BDT') { $todayBdt += $amt; } else { $todayBdt += $inUsd * ($rates['BDT'] ?? 122.5); }
             }
             if (isset($history[$day])) {
                 if ($cur === 'BDT') {
@@ -54,11 +56,16 @@ final class DashboardController
 
         $links = GpDb::all('SELECT id FROM gp_payment_links WHERE brand_id = ? AND status = ?', [$actor['brand_id'], 'active']);
         $success = count($rows) === 0 ? 0.0 : round(count($completed) / max(count($rows), 1) * 100, 1);
+        $activeMethods = (int) (GpDb::one("SELECT COUNT(*) as c FROM gp_gateways WHERE brand_id = ? AND status = ?", [$actor['brand_id'], 'active'])['c'] ?? 0);
+        $devices = (int) (GpDb::one("SELECT COUNT(*) as c FROM gp_devices WHERE brand_id = ? AND status = ?", [$actor['brand_id'], 'active'])['c'] ?? 0);
 
         GpJson::send([
             'totalRevenueUsd' => round($usd, 2),
             'totalRevenueBdt' => round($bdt, 2),
             'todayTransactions' => $todayCount,
+            'todayRevenueBdt' => round($todayBdt, 2),
+            'activeMethodsCount' => $activeMethods,
+            'connectedDevicesCount' => $devices,
             'successRate' => $success,
             'activeLinksCount' => count($links),
             'pendingSettlementUsd' => round($usd * 0.02, 2),

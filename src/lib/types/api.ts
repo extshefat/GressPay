@@ -256,9 +256,12 @@ export interface ApiCredentials {
 export interface DashboardMetrics {
   totalRevenueUsd: number;
   totalRevenueBdt: number;
+  todayRevenueBdt?: number;
   todayTransactions: number;
   successRate: number;
   activeLinksCount: number;
+  activeMethodsCount?: number;
+  connectedDevicesCount?: number;
   pendingSettlementUsd: number;
   volumeHistory: {
     date: string;

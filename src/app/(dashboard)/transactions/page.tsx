@@ -19,6 +19,7 @@ import { useToast } from "@/components/ui/toast";
 import {
   RefreshCw,
   CheckCircle2,
+  XCircle,
   Clock,
   ExternalLink,
   ShieldAlert,
@@ -44,6 +45,12 @@ export default function TransactionsPage() {
   const [confirmReason, setConfirmReason] = useState("");
   const [isConfirming, setIsConfirming] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
+
+  // Cancel / Reject Dialog
+  const [cancelModalTx, setCancelModalTx] = useState<Transaction | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   const loadTransactions = async () => {
     setIsLoading(true);
@@ -106,6 +113,33 @@ export default function TransactionsPage() {
     }
   };
 
+  const handleManualCancel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!cancelModalTx) return;
+
+    setIsCancelling(true);
+    setCancelError(null);
+    try {
+      const updated = await api.cancelTransaction(
+        cancelModalTx.id,
+        cancelReason.trim() || "Rejected by merchant"
+      );
+      setTransactions((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+      if (selectedTx?.id === updated.id) {
+        setSelectedTx(updated);
+      }
+      success(`Transaction ${updated.id} marked as failed.`, "Transaction Rejected");
+      setCancelModalTx(null);
+      setCancelReason("");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Rejection failed.";
+      setCancelError(msg);
+      toastError(msg, "Action Failed");
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
   const getTimelineEvents = (tx: Transaction): TimelineEvent[] => {
     const events: TimelineEvent[] = [
       {
@@ -119,40 +153,40 @@ export default function TransactionsPage() {
 
     if (tx.txid) {
       events.push({
-        id: "txid_submitted",
-        title: "Customer Submitted Identifier",
+        id: "evidence",
+        title: "TxID Submitted",
         timestamp: formatDate(tx.updatedAt || tx.createdAt),
-        description: `Identifier / TrxID: ${tx.txid}`,
+        description: `Customer claimed payment using TxID ${tx.txid}.`,
         status: "completed",
-        badge: tx.paymentMethod,
       });
     }
 
     if (tx.status === "COMPLETED") {
       events.push({
-        id: "verified",
-        title: tx.confirmedByMerchant
-          ? "Merchant Audited Confirmation"
-          : "Automated Companion / On-Chain Match",
-        timestamp: formatDate(tx.updatedAt || tx.createdAt),
-        description: tx.confirmedByMerchant
-          ? `Reason: ${tx.confirmationReason || "Merchant audited"}`
-          : "Evidence matched with carrier receipt and settled to ledger balance.",
+        id: "settled",
+        title: "Settled & Verified",
+        timestamp: formatDate(tx.completedAt || tx.updatedAt || tx.createdAt),
+        description:
+          tx.confirmationState === "merchant_confirmed"
+            ? `Manually reconciled by merchant: "${tx.confirmationReason || "Verified"}"`
+            : "Direct-to-wallet SMS or on-chain transaction auto-verified.",
         status: "completed",
-      });
-    } else if (tx.status === "PENDING") {
-      events.push({
-        id: "pending_verification",
-        title: "Awaiting Verification",
-        description: "Awaiting companion SMS receipt match or TRON blockchain confirmation.",
-        status: "current",
       });
     } else if (tx.status === "FAILED") {
       events.push({
         id: "failed",
-        title: "Verification Failed / Expired",
-        description: "Transaction did not settle within timeout window.",
+        title: "Rejected / Expired",
+        timestamp: formatDate(tx.updatedAt || tx.createdAt),
+        description: "Transaction was marked failed or rejected by merchant audit.",
         status: "failed",
+      });
+    } else {
+      events.push({
+        id: "awaiting",
+        title: "Awaiting Verification",
+        timestamp: "Now",
+        description: "Listening for Android Companion SMS match or manual merchant confirmation.",
+        status: "current",
       });
     }
 
@@ -164,23 +198,30 @@ export default function TransactionsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-            Transactions
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+              Transactions
+            </h1>
+            <Badge variant="cyan" size="sm" dot>
+              {api.getLedgerMode() === "live" ? "Live Ledger" : "Sandbox"}
+            </Badge>
+          </div>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-            Real-time audit log of customer settlements across bKash, Nagad, Binance Pay, and USDT.
+            Complete immutable ledger of all settled, pending, and refunded customer payments.
           </p>
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={loadTransactions}
-          isLoading={isLoading}
-          leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
-        >
-          Refresh Ledger
-        </Button>
+        <div className="flex items-center gap-2.5">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadTransactions}
+            isLoading={isLoading}
+            leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
+          >
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {errorMessage && (
@@ -189,12 +230,13 @@ export default function TransactionsPage() {
         </Alert>
       )}
 
-      {/* Filter and Search Bar */}
-      <Card className="p-4 bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 space-y-3">
-        <div className="flex flex-col sm:flex-row items-center gap-3">
-          <div className="flex-1 w-full">
+      {/* Filter Bar */}
+      <Card className="p-4 bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 shadow-xs">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          {/* Search Box */}
+          <div className="flex-1 max-w-md">
             <SearchInput
-              placeholder="Search by TxID, Session ID, or Customer Email..."
+              placeholder="Search by ID, TxID, email, or customer…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onClear={() => setSearchQuery("")}
@@ -210,7 +252,7 @@ export default function TransactionsPage() {
                 onClick={() => setStatusFilter(st)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-colors ${
                   statusFilter === st
-                    ? "bg-[#077C74] text-white dark:bg-[#1BD1C0] dark:text-zinc-950"
+                    ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950"
                     : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-900 dark:text-zinc-400"
                 }`}
               >
@@ -225,7 +267,7 @@ export default function TransactionsPage() {
       <Card className="bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-xs">
         {isLoading ? (
           <div className="py-20 text-center space-y-3">
-            <div className="w-8 h-8 border-2 border-teal-700 border-t-transparent rounded-full animate-spin mx-auto" />
+            <div className="w-8 h-8 border-2 border-zinc-900 dark:border-zinc-100 border-t-transparent rounded-full animate-spin mx-auto" />
             <p className="text-xs font-mono text-zinc-500">Querying ledger records…</p>
           </div>
         ) : filteredTransactions.length === 0 ? (
@@ -318,18 +360,34 @@ export default function TransactionsPage() {
                       </div>
                     </div>
 
-                    {canConfirm && (
-                      <Button
-                        size="sm"
-                        variant="primary"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setConfirmModalTx(tx);
-                        }}
-                        leftIcon={<CheckCircle2 className="w-3.5 h-3.5" />}
-                      >
-                        Confirm
-                      </Button>
+                    {tx.status === "PENDING" && (
+                      <div className="flex items-center gap-1.5">
+                        {canConfirm && (
+                          <Button
+                            size="sm"
+                            variant="primary"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setConfirmModalTx(tx);
+                            }}
+                            leftIcon={<CheckCircle2 className="w-3.5 h-3.5" />}
+                          >
+                            Confirm
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 border-rose-200 dark:border-rose-900"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCancelModalTx(tx);
+                          }}
+                          leftIcon={<XCircle className="w-3.5 h-3.5" />}
+                        >
+                          Reject
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -422,16 +480,26 @@ export default function TransactionsPage() {
               <StatusTimeline events={getTimelineEvents(selectedTx)} />
             </div>
 
-            {/* Manual confirm button if pending */}
-            {selectedTx.status === "PENDING" && selectedTx.txid && (
-              <div className="pt-2">
+            {/* Actions if pending */}
+            {selectedTx.status === "PENDING" && (
+              <div className="pt-2 flex items-center gap-2.5">
+                {selectedTx.txid && (
+                  <Button
+                    className="flex-1"
+                    variant="primary"
+                    onClick={() => setConfirmModalTx(selectedTx)}
+                    leftIcon={<CheckCircle2 className="w-4 h-4" />}
+                  >
+                    Confirm & Settle
+                  </Button>
+                )}
                 <Button
-                  className="w-full"
-                  variant="primary"
-                  onClick={() => setConfirmModalTx(selectedTx)}
-                  leftIcon={<CheckCircle2 className="w-4 h-4" />}
+                  className="flex-1 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 border-rose-200 dark:border-rose-900"
+                  variant="outline"
+                  onClick={() => setCancelModalTx(selectedTx)}
+                  leftIcon={<XCircle className="w-4 h-4" />}
                 >
-                  Manually Audit & Confirm
+                  Reject Transaction
                 </Button>
               </div>
             )}
@@ -494,6 +562,66 @@ export default function TransactionsPage() {
               leftIcon={<CheckCircle2 className="w-4 h-4" />}
             >
               Confirm & Settle Ledger
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Cancel / Reject Modal */}
+      <Modal
+        open={Boolean(cancelModalTx)}
+        onClose={() => {
+          setCancelModalTx(null);
+          setCancelReason("");
+          setCancelError(null);
+        }}
+        title="Reject / Cancel Transaction"
+      >
+        <form onSubmit={handleManualCancel} className="space-y-4">
+          <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+            Are you sure you want to reject transaction{" "}
+            <code className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
+              {cancelModalTx?.id}
+            </code>
+            ? This will transition its state to <span className="font-semibold text-rose-500">FAILED</span>.
+          </p>
+
+          {cancelError && (
+            <Alert variant="danger" title="Action Error">
+              {cancelError}
+            </Alert>
+          )}
+
+          <Textarea
+            label="Cancellation Reason (Optional)"
+            placeholder="e.g. Invalid / counterfeit TxID provided or payment not received"
+            value={cancelReason}
+            onChange={(e) => setCancelReason(e.target.value)}
+            rows={3}
+          />
+
+          <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setCancelModalTx(null);
+                setCancelReason("");
+              }}
+              disabled={isCancelling}
+            >
+              Back
+            </Button>
+            <Button
+              type="submit"
+              variant="outline"
+              size="sm"
+              isLoading={isCancelling}
+              className="bg-rose-600 text-white hover:bg-rose-700 border-rose-600"
+              leftIcon={<XCircle className="w-4 h-4" />}
+            >
+              Reject Transaction
             </Button>
           </div>
         </form>

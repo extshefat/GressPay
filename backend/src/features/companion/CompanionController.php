@@ -98,7 +98,7 @@ final class CompanionController
             );
 
             $sender = GpCatalog::publicCode((string) $req->input('sender_key', $req->input('senderKey', 'bkash')));
-            if (!in_array($sender, ['bkash', 'nagad'], true)) {
+            if (!in_array($sender, ['bkash', 'nagad', 'rocket', 'upay', 'cellfin'], true)) {
                 GpJson::error('UNSUPPORTED_RAIL', 'Companion SMS matching supports bKash and Nagad only in this release.');
             }
 
@@ -174,8 +174,8 @@ final class CompanionController
             }
 
             $pending = GpDb::one(
-                'SELECT * FROM gp_transactions WHERE brand_id = ? AND trx_id = ? AND status = ? ORDER BY id DESC',
-                [$device['brand_id'], $trxId, 'pending']
+                'SELECT * FROM gp_transactions WHERE brand_id = ? AND (trx_id = ? OR UPPER(trx_id) = ?) AND status IN (?, ?) ORDER BY id DESC',
+                [$device['brand_id'], $trxId, strtoupper($trxId), 'pending', 'initiated']
             );
             $matched = false;
             if ($pending) {

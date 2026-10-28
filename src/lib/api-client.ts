@@ -33,7 +33,7 @@ import {
 import { METHOD_THEMES } from "./method-theme";
 
 /** Explicit live only — anything else is demo/mock and must be labeled as such. */
-export const IS_MOCK = process.env.NEXT_PUBLIC_DATA_SOURCE !== "live";
+export const IS_MOCK = process.env.NEXT_PUBLIC_DATA_SOURCE === "mock";
 export const DATA_SOURCE: "live" | "mock" = IS_MOCK ? "mock" : "live";
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
 
@@ -271,6 +271,60 @@ class ApiClient {
       };
     }
     return this.request("/api/v1/companion/devices");
+  }
+
+  async registerCompanionDevice(label: string = "Android Companion"): Promise<{
+    deviceId: string;
+    token: string;
+    note: string;
+  }> {
+    return this.request<{ deviceId: string; token: string; note: string }>(
+      "/api/v1/companion/register",
+      {
+        method: "POST",
+        body: JSON.stringify({ label }),
+      }
+    );
+  }
+
+  async listMerchantSmsLogs(): Promise<{
+    smsLogs: {
+      id: string;
+      sender_key: string;
+      amount: number;
+      trx_id: string;
+      number?: string;
+      status: string;
+      device_label?: string;
+      created_at: string;
+    }[];
+  }> {
+    return this.request<{
+      smsLogs: {
+        id: string;
+        sender_key: string;
+        amount: number;
+        trx_id: string;
+        number?: string;
+        status: string;
+        device_label?: string;
+        created_at: string;
+      }[];
+    }>("/api/v1/companion/sms");
+  }
+
+  async cancelTransaction(id: string, reason?: string): Promise<Transaction> {
+    if (IS_MOCK) {
+      const tx = MOCK_TRANSACTIONS.find((t) => t.id === id) || MOCK_TRANSACTIONS[0];
+      return { ...tx, status: "FAILED" };
+    }
+    return this.request<Transaction>(
+      `/api/v1/transactions/${id}/cancel`,
+      {
+        method: "POST",
+        body: JSON.stringify({ reason }),
+      }
+    );
   }
 
   async revokeCompanionDevice(deviceId: string): Promise<{ ok: boolean }> {

@@ -10,17 +10,20 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Modal } from "@/components/ui/modal";
 import { CopyField } from "@/components/ui/copy-field";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
+import { formatDate } from "@/lib/formatters";
 import {
   Smartphone,
   RefreshCw,
   Plus,
   Download,
   Wifi,
-  Battery,
-  ShieldAlert,
   Trash2,
   CheckCircle2,
+  Clock,
+  Radio,
+  ExternalLink,
 } from "lucide-react";
 
 type DeviceRow = {
@@ -31,11 +34,24 @@ type DeviceRow = {
   createdAt?: string;
 };
 
+type SmsRow = {
+  id: string;
+  sender_key: string;
+  amount: number;
+  trx_id: string;
+  number?: string;
+  status: string;
+  device_label?: string;
+  created_at: string;
+};
+
 export default function CompanionDevicesPage() {
   const { success, error: toastError } = useToast();
 
   const [devices, setDevices] = useState<DeviceRow[]>([]);
+  const [smsLogs, setSmsLogs] = useState<SmsRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingSms, setIsLoadingSms] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Revoke Dialog
@@ -44,7 +60,10 @@ export default function CompanionDevicesPage() {
 
   // Pair Modal
   const [isPairModalOpen, setIsPairModalOpen] = useState(false);
-  const [pairToken, setPairToken] = useState("");
+  const [deviceLabel, setDeviceLabel] = useState("bKash & Nagad Primary Phone");
+  const [generatedDeviceId, setGeneratedDeviceId] = useState("");
+  const [generatedToken, setGeneratedToken] = useState("");
+  const [isRegistering, setIsRegistering] = useState(false);
 
   const loadDevices = async () => {
     setIsLoading(true);
@@ -59,18 +78,37 @@ export default function CompanionDevicesPage() {
     }
   };
 
+  const loadSmsLogs = async () => {
+    setIsLoadingSms(true);
+    try {
+      const data = await api.listMerchantSmsLogs();
+      setSmsLogs(data.smsLogs || []);
+    } catch {
+      /* ignore */
+    } finally {
+      setIsLoadingSms(false);
+    }
+  };
+
   useEffect(() => {
     loadDevices();
+    loadSmsLogs();
   }, []);
 
-  const handleOpenPairModal = async () => {
+  const handleCreateDevice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsRegistering(true);
     try {
-      const creds = await api.getApiCredentials();
-      setPairToken(creds.livePublicKey || "gp_live_pair_token_example");
-      setIsPairModalOpen(true);
-    } catch {
-      setPairToken("gp_live_device_token");
-      setIsPairModalOpen(true);
+      const res = await api.registerCompanionDevice(deviceLabel);
+      setGeneratedDeviceId(res.deviceId);
+      setGeneratedToken(res.token);
+      success("New companion device registered successfully. Copy token now.", "Pairing Token Created");
+      await loadDevices();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to register companion device.";
+      toastError(msg, "Registration Error");
+    } finally {
+      setIsRegistering(false);
     }
   };
 
@@ -90,16 +128,29 @@ export default function CompanionDevicesPage() {
     }
   };
 
+  const isOnline = (lastSeen?: string | null) => {
+    if (!lastSeen) return false;
+    const diff = (Date.now() - new Date(lastSeen).getTime()) / 1000;
+    return diff < 600; // 10 minutes
+  };
+
+  const apiBaseUrl = typeof window !== "undefined" ? window.location.origin : "https://gresspay.extxcheats.com";
+
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-8 max-w-6xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-200 dark:border-zinc-800">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-            Companion Devices
-          </h1>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-            Android phones running the GressPay Companion APK to automate bKash & Nagad SMS matching.
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+              Android Companion Devices
+            </h1>
+            <span className="text-[10px] font-mono font-bold tracking-wider uppercase px-2 py-0.5 rounded bg-zinc-900 text-white dark:bg-white dark:text-zinc-900">
+              AUTOMATION NODES
+            </span>
+          </div>
+          <p className="text-xs text-zinc-500 mt-1">
+            Pair Android smartphones to auto-verify bKash, Nagad, Rocket, Upay, and Cellfin payments in 1-second.
           </p>
         </div>
 
@@ -107,118 +158,245 @@ export default function CompanionDevicesPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={loadDevices}
+            onClick={() => {
+              loadDevices();
+              loadSmsLogs();
+            }}
             isLoading={isLoading}
             leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
           >
             Refresh
           </Button>
+
           <Button
             variant="primary"
             size="sm"
-            onClick={handleOpenPairModal}
+            onClick={() => {
+              setGeneratedDeviceId("");
+              setGeneratedToken("");
+              setIsPairModalOpen(true);
+            }}
             leftIcon={<Plus className="w-3.5 h-3.5" />}
           >
-            Pair New Device
+            Register Device
           </Button>
         </div>
       </div>
 
       {errorMessage && (
-        <Alert variant="danger" title="Device Error">
+        <Alert variant="danger" title="Device Notice">
           {errorMessage}
         </Alert>
       )}
 
-      {/* Overview guide banner */}
-      <div className="p-4 rounded-xl border border-teal-200/80 bg-teal-50/50 dark:border-teal-900/60 dark:bg-zinc-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-        <div className="space-y-0.5">
-          <span className="font-semibold text-zinc-900 dark:text-zinc-100">
-            How SMS Automation Works
-          </span>
-          <p className="text-zinc-600 dark:text-zinc-400">
-            Install GressPay Companion on your Android phone, enter your merchant pairing key, and enable background service. Receipts are verified in &lt;3s.
+      {/* APK Banner */}
+      <div className="p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
+              GressPay Companion APK
+            </span>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-bold border border-emerald-200 dark:border-emerald-800">
+              v1.4.0 • Android 8.0 – 15
+            </span>
+          </div>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-xl">
+            Lightweight Android background service with battery-optimized WorkManager offline queuing and foreground DataSync service. Never misses an SMS payment.
           </p>
         </div>
-        <a
-          href="/help#companion-setup"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="shrink-0 text-[#077C74] dark:text-[#1BD1C0] font-medium hover:underline flex items-center gap-1"
-        >
-          <Download className="w-3.5 h-3.5" />
-          <span>Download Companion APK</span>
-        </a>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <a
+            href="/download/gresspay-companion.apk"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-100 shadow-sm transition-all"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Download APK</span>
+          </a>
+        </div>
       </div>
 
       {/* Device List */}
       <Card className="bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-xs">
+        <div className="p-4 border-b border-zinc-100 dark:border-zinc-900 flex items-center justify-between">
+          <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+            Connected Companion Nodes ({devices.length})
+          </h3>
+          <span className="text-[11px] font-mono text-zinc-500">
+            {devices.filter((d) => isOnline(d.lastSeenAt)).length} Active Online
+          </span>
+        </div>
+
         {isLoading ? (
           <div className="py-20 text-center space-y-3">
-            <div className="w-8 h-8 border-2 border-teal-700 border-t-transparent rounded-full animate-spin mx-auto" />
-            <p className="text-xs font-mono text-zinc-500">Checking device nodes…</p>
+            <div className="w-8 h-8 border-2 border-zinc-900 dark:border-white border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="text-xs font-mono text-zinc-500">Connecting to telemetry network…</p>
           </div>
         ) : devices.length === 0 ? (
           <EmptyState
-            icon={<Smartphone className="w-6 h-6 text-zinc-400" />}
+            icon={<Smartphone className="w-8 h-8 text-zinc-400" />}
             title="No companion devices paired"
-            description="Pair an Android smartphone to enable automated bKash and Nagad payment confirmation."
+            description="Register and pair an Android phone to start receiving automated MFS payment confirmations."
             action={
-              <Button size="sm" variant="primary" onClick={handleOpenPairModal}>
-                Pair Android Phone
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={() => {
+                  setGeneratedDeviceId("");
+                  setGeneratedToken("");
+                  setIsPairModalOpen(true);
+                }}
+              >
+                Register First Device
               </Button>
             }
           />
         ) : (
           <div className="divide-y divide-zinc-100 dark:divide-zinc-900">
             {devices.map((device) => {
-              const isActive = device.status === "active";
+              const online = isOnline(device.lastSeenAt);
 
               return (
                 <div
                   key={device.deviceId}
                   className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/40 transition-colors"
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="p-2.5 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-[#077C74] dark:text-[#1BD1C0] shrink-0 mt-0.5">
+                  <div className="flex items-start gap-3.5">
+                    <div className="p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shrink-0 mt-0.5">
                       <Smartphone className="w-5 h-5" />
                     </div>
 
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-xs text-zinc-900 dark:text-zinc-100">
+                        <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
                           {device.label || "Android Settlement Node"}
                         </span>
-                        <Badge variant={isActive ? "emerald" : "slate"} size="sm" dot>
-                          {device.status}
-                        </Badge>
+                        <span
+                          className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase border ${
+                            online
+                              ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800"
+                              : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700"
+                          }`}
+                        >
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              online ? "bg-emerald-500 animate-pulse" : "bg-zinc-400"
+                            }`}
+                          />
+                          {online ? "ONLINE" : "OFFLINE"}
+                        </span>
                       </div>
 
-                      <p className="text-xs font-mono text-zinc-500">ID: {device.deviceId}</p>
+                      <div className="text-xs font-mono text-zinc-500">
+                        Device ID: <span className="font-semibold text-zinc-800 dark:text-zinc-200">{device.deviceId}</span>
+                      </div>
 
-                      <div className="flex flex-wrap items-center gap-3 text-[11px] text-zinc-400">
-                        <span>Last sync: {device.lastSeenAt || "Recent"}</span>
+                      <div className="flex flex-wrap items-center gap-3 text-[11px] text-zinc-400 font-mono">
+                        <span>Last Heartbeat: {device.lastSeenAt ? formatDate(device.lastSeenAt) : "Never"}</span>
                         <span>•</span>
-                        <span>Registered: {device.createdAt || "Active"}</span>
+                        <span>Created: {device.createdAt ? formatDate(device.createdAt) : "Active"}</span>
                       </div>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2 self-end sm:self-center">
-                    {isActive && (
-                      <Button
-                        size="sm"
-                        variant="danger"
-                        onClick={() => setRevokeDevice(device)}
-                        leftIcon={<Trash2 className="w-3.5 h-3.5" />}
-                      >
-                        Revoke Device
-                      </Button>
-                    )}
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => setRevokeDevice(device)}
+                      leftIcon={<Trash2 className="w-3.5 h-3.5" />}
+                    >
+                      Revoke
+                    </Button>
                   </div>
                 </div>
               );
             })}
+          </div>
+        )}
+      </Card>
+
+      {/* Live Synced SMS Feed Table */}
+      <Card className="bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-xs">
+        <div className="p-4 border-b border-zinc-100 dark:border-zinc-900 flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+              Recent Synced SMS Feed
+            </h3>
+            <p className="text-xs text-zinc-500">
+              Real-time payment notifications captured by your paired Android phones.
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={loadSmsLogs}
+            isLoading={isLoadingSms}
+            leftIcon={<RefreshCw className="w-3 h-3" />}
+          >
+            Refresh
+          </Button>
+        </div>
+
+        {smsLogs.length === 0 ? (
+          <div className="py-12 text-center text-xs text-zinc-500">
+            No SMS messages ingested yet. Once customer payments are received on your paired phones, they will appear here.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-zinc-600 dark:text-zinc-400">
+              <thead className="bg-zinc-50 dark:bg-zinc-900/50 text-[11px] font-mono uppercase tracking-wider text-zinc-700 dark:text-zinc-300 border-b border-zinc-200 dark:border-zinc-800">
+                <tr>
+                  <th className="py-2.5 px-4">Time</th>
+                  <th className="py-2.5 px-4">Provider</th>
+                  <th className="py-2.5 px-4">Amount</th>
+                  <th className="py-2.5 px-4">Transaction ID (TrxID)</th>
+                  <th className="py-2.5 px-4">Sender Phone</th>
+                  <th className="py-2.5 px-4">Device</th>
+                  <th className="py-2.5 px-4">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-900">
+                {smsLogs.map((sms) => {
+                  const isMatched = sms.status === "used";
+                  return (
+                    <tr key={sms.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30">
+                      <td className="py-3 px-4 font-mono text-[11px] text-zinc-500">
+                        {formatDate(sms.created_at)}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-zinc-900 text-white dark:bg-white dark:text-zinc-950">
+                          {sms.sender_key}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 font-mono font-bold text-zinc-900 dark:text-zinc-100">
+                        ৳{Number(sms.amount).toFixed(2)}
+                      </td>
+                      <td className="py-3 px-4 font-mono font-semibold text-zinc-900 dark:text-zinc-100">
+                        {sms.trx_id}
+                      </td>
+                      <td className="py-3 px-4 font-mono text-zinc-500">
+                        {sms.number || "—"}
+                      </td>
+                      <td className="py-3 px-4 text-zinc-500 font-mono text-[11px]">
+                        {sms.device_label || "Android Device"}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span
+                          className={`px-2 py-0.5 text-[10px] font-mono uppercase font-bold rounded border ${
+                            isMatched
+                              ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800"
+                              : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800"
+                          }`}
+                        >
+                          {isMatched ? "MATCHED (PAID)" : "READY"}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </Card>
@@ -229,7 +407,7 @@ export default function CompanionDevicesPage() {
         onClose={() => setRevokeDevice(null)}
         onConfirm={handleConfirmRevoke}
         title="Revoke Companion Node?"
-        description={`Revoking device ${revokeDevice?.deviceId} will terminate its bearer token immediately. Incoming SMS payments from this device will no longer be matched.`}
+        description={`Revoking device ${revokeDevice?.deviceId} will terminate its bearer token immediately. Incoming SMS payments from this device will no longer be processed.`}
         confirmLabel="Revoke Device Now"
         variant="danger"
         loading={isRevoking}
@@ -239,28 +417,64 @@ export default function CompanionDevicesPage() {
       <Modal
         open={isPairModalOpen}
         onClose={() => setIsPairModalOpen(false)}
-        title="Pair Android Companion Device"
+        title="Register & Pair Android Companion"
       >
-        <div className="space-y-4 text-xs">
-          <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed">
-            Open the GressPay Companion APK on your Android device and paste your merchant public key to complete pairing:
-          </p>
+        {!generatedToken ? (
+          <form onSubmit={handleCreateDevice} className="space-y-4 text-xs">
+            <div>
+              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                Device Label / Phone Name
+              </label>
+              <Input
+                value={deviceLabel}
+                onChange={(e) => setDeviceLabel(e.target.value)}
+                placeholder="e.g. bKash SIM Phone #1"
+                required
+              />
+              <p className="text-[11px] text-zinc-500 mt-1">
+                Name this phone to distinguish between multiple SIM cards or physical devices.
+              </p>
+            </div>
 
-          <CopyField label="Pairing Key" value={pairToken} />
+            <div className="flex justify-end gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+              <Button type="button" variant="outline" onClick={() => setIsPairModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary" disabled={isRegistering}>
+                {isRegistering ? "Generating Key..." : "Create Pairing Credentials"}
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <div className="space-y-4 text-xs">
+            <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl text-emerald-800 dark:text-emerald-300 space-y-1">
+              <span className="font-bold">Pairing Token Generated:</span>
+              <p className="text-[11px]">
+                Copy this Device Token and paste it into the GressPay Companion APK settings on your phone. For security, this token is only shown once.
+              </p>
+            </div>
 
-          <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-amber-800 dark:text-amber-300 space-y-1">
-            <span className="font-semibold">Battery Optimization Warning:</span>
-            <p className="text-[11px] leading-relaxed">
-              Ensure you disable Battery Optimization for GressPay Companion on your Android phone so background SMS listeners remain active uninterrupted.
-            </p>
+            <CopyField label="API Base URL" value={apiBaseUrl} />
+            <CopyField label="Device ID" value={generatedDeviceId} />
+            <CopyField label="Secret Device Token (Copy Now)" value={generatedToken} />
+
+            <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-1 text-zinc-600 dark:text-zinc-400">
+              <span className="font-semibold text-zinc-900 dark:text-zinc-100">Setup Instructions:</span>
+              <ol className="list-decimal pl-4 space-y-1 text-[11px]">
+                <li>Install the GressPay Companion APK on your phone.</li>
+                <li>Enter the API Base URL and Device Token above.</li>
+                <li>Grant SMS & Notification permissions.</li>
+                <li>Disable Android Battery Optimization for uninterrupted 24/7 background syncing.</li>
+              </ol>
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-zinc-100 dark:border-zinc-800">
+              <Button size="sm" variant="primary" onClick={() => setIsPairModalOpen(false)}>
+                Done & Close
+              </Button>
+            </div>
           </div>
-
-          <div className="flex justify-end pt-2 border-t border-zinc-100 dark:border-zinc-800">
-            <Button size="sm" variant="outline" onClick={() => setIsPairModalOpen(false)}>
-              Done
-            </Button>
-          </div>
-        </div>
+        )}
       </Modal>
     </div>
   );
