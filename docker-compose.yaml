@@ -1,6 +1,6 @@
 # ==============================================================================
 # GressPay All-In-One Unified Docker Compose Stack for Coolify VPS
-# Runs Frontend (Next.js) + Backend (PHP API) + Database (MariaDB) together
+# Runs Frontend (Next.js) + Backend (PHP API) connected to dedicated VPS PostgreSQL (gresspay-db)
 # ==============================================================================
 
 services:
@@ -31,12 +31,13 @@ services:
       APP_ENV: production
       APP_URL: ${APP_URL:-https://your-domain.com}
       PUBLIC_APP_URL: ${PUBLIC_APP_URL:-https://your-domain.com}
-      DB_DRIVER: mysql
-      DB_HOST: mariadb
-      DB_PORT: 3306
-      DB_NAME: gresspay
-      DB_USER: gresspay
-      DB_PASS: ${DB_PASS:-gp_db_secure_pass_2026}
+      DB_DRIVER: ${DB_DRIVER:-pgsql}
+      DB_HOST: ${DB_HOST:-gresspay-db}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-gresspay}
+      DB_USER: ${DB_USER:-gresspay}
+      DB_PASS: ${DB_PASS:-gp_db_P9xK2mQvL7wT8zN}
+      DB_SSLMODE: ${DB_SSLMODE:-disable}
       JWT_SECRET: ${JWT_SECRET:-gresspay_jwt_secret_must_be_32_chars_min}
       APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:-gresspay_enc_key_must_be_32_chars_min}
       CORS_ORIGINS: ${CORS_ORIGINS:-*}
@@ -48,21 +49,4 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
       PORT: "8080"
-    depends_on:
-      - mariadb
     restart: unless-stopped
-
-  mariadb:
-    image: mariadb:11
-    environment:
-      MYSQL_DATABASE: gresspay
-      MYSQL_USER: gresspay
-      MYSQL_PASSWORD: ${DB_PASS:-gp_db_secure_pass_2026}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-gp_root_pass_2026}
-    volumes:
-      - gresspay_db:/var/lib/mysql
-      - ./backend/schema/install.mysql.sql:/docker-entrypoint-initdb.d/01-install.sql:ro
-    restart: unless-stopped
-
-volumes:
-  gresspay_db:

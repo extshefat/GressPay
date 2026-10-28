@@ -25,6 +25,23 @@ final class GpDb
         }
 
         $driver = strtolower(GpConfig::get('DB_DRIVER', 'sqlite'));
+        if (in_array($driver, ['pgsql', 'postgres', 'postgresql'], true)) {
+            self::$driver = 'pgsql';
+            $host = GpConfig::get('DB_HOST', '127.0.0.1');
+            $port = GpConfig::get('DB_PORT', '5432');
+            $name = GpConfig::get('DB_NAME', 'gresspay');
+            $user = GpConfig::get('DB_USER', 'gresspay');
+            $pass = GpConfig::get('DB_PASS', '');
+            $sslmode = GpConfig::get('DB_SSLMODE', 'disable');
+            $dsn = "pgsql:host={$host};port={$port};dbname={$name};sslmode={$sslmode}";
+            self::$pdo = new PDO($dsn, $user, $pass, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES => false,
+            ]);
+            return self::$pdo;
+        }
+
         self::$driver = $driver === 'mysql' ? 'mysql' : 'sqlite';
 
         if (self::$driver === 'mysql') {
@@ -58,9 +75,11 @@ final class GpDb
 
     public static function migrate(): void
     {
-        $file = self::$driver === 'mysql'
-            ? GRESSPAY_ROOT . '/schema/install.mysql.sql'
-            : GRESSPAY_ROOT . '/schema/install.sql';
+        $file = match (self::$driver) {
+            'pgsql' => GRESSPAY_ROOT . '/schema/install.pgsql.sql',
+            'mysql' => GRESSPAY_ROOT . '/schema/install.mysql.sql',
+            default => GRESSPAY_ROOT . '/schema/install.sql',
+        };
         $sql = file_get_contents($file);
         if ($sql === false) {
             return;
@@ -72,6 +91,18 @@ final class GpDb
                 continue;
             }
             $pdo->exec($stmt);
+        }
+    }
+
+    private static function execDdl(string $sql): void
+    {
+        if (self::$driver === 'pgsql') {
+            $sql = preg_replace('/id\s+INTEGER\s+PRIMARY\s+KEY\s+AUTOINCREMENT/i', 'id SERIAL PRIMARY KEY', $sql) ?? $sql;
+        }
+        try {
+            self::pdo()->exec($sql);
+        } catch (PDOException $e) {
+            // Table or index already exists
         }
     }
 
@@ -132,7 +163,7 @@ final class GpDb
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
               )";
-        self::pdo()->exec($devices);
+        self::execDdl($devices);
 
         $deviceAlters = [
             'ALTER TABLE gp_devices ADD COLUMN label VARCHAR(80)',
@@ -180,7 +211,7 @@ final class GpDb
                 window_start INTEGER NOT NULL,
                 hit_count INTEGER NOT NULL DEFAULT 0
               )";
-        self::pdo()->exec($rateLimit);
+        self::execDdl($rateLimit);
 
         $oauthStates = self::$driver === 'mysql'
             ? "CREATE TABLE IF NOT EXISTS gp_oauth_states (
@@ -203,7 +234,7 @@ final class GpDb
                 expires_at INTEGER NOT NULL,
                 created_at TEXT NOT NULL
               )";
-        self::pdo()->exec($oauthStates);
+        self::execDdl($oauthStates);
 
         $evidence = self::$driver === 'mysql'
             ? "CREATE TABLE IF NOT EXISTS gp_payment_evidence (
@@ -232,7 +263,7 @@ final class GpDb
                 created_at TEXT NOT NULL,
                 UNIQUE(session_id, evidence_type)
               )";
-        self::pdo()->exec($evidence);
+        self::execDdl($evidence);
 
         $deliveries = self::$driver === 'mysql'
             ? "CREATE TABLE IF NOT EXISTS gp_webhook_deliveries (
@@ -268,7 +299,7 @@ final class GpDb
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
               )";
-        self::pdo()->exec($deliveries);
+        self::execDdl($deliveries);
 
         $providerOrders = self::$driver === 'mysql'
             ? "CREATE TABLE IF NOT EXISTS gp_provider_orders (
@@ -303,7 +334,7 @@ final class GpDb
                 UNIQUE(brand_id, merchant_trade_no),
                 UNIQUE(session_id, provider)
               )";
-        self::pdo()->exec($providerOrders);
+        self::execDdl($providerOrders);
 
         $nonces = self::$driver === 'mysql'
             ? "CREATE TABLE IF NOT EXISTS gp_binance_callback_nonces (
@@ -321,7 +352,7 @@ final class GpDb
                 brand_id TEXT,
                 created_at TEXT NOT NULL
               )";
-        self::pdo()->exec($nonces);
+        self::execDdl($nonces);
 
         $audit = self::$driver === 'mysql'
             ? "CREATE TABLE IF NOT EXISTS gp_audit_log (
@@ -344,7 +375,7 @@ final class GpDb
                 meta_json TEXT,
                 created_at TEXT NOT NULL
               )";
-        self::pdo()->exec($audit);
+        self::execDdl($audit);
 
         $gateways = self::$driver === 'mysql'
             ? "CREATE TABLE IF NOT EXISTS gp_gateways (
@@ -397,7 +428,7 @@ final class GpDb
                 updated_at TEXT NOT NULL,
                 UNIQUE(brand_id, gateway_id)
               )";
-        self::pdo()->exec($gateways);
+        self::execDdl($gateways);
 
         foreach ([
             'ALTER TABLE gp_transactions ADD COLUMN gateway_id VARCHAR(32)',
@@ -442,7 +473,7 @@ final class GpDb
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
               )";
-        self::pdo()->exec($plansTable);
+        self::execDdl($plansTable);
 
         $subsTable = self::$driver === 'mysql'
             ? "CREATE TABLE IF NOT EXISTS gp_subscriptions (
@@ -472,7 +503,7 @@ final class GpDb
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
               )";
-        self::pdo()->exec($subsTable);
+        self::execDdl($subsTable);
 
         $creditsTable = self::$driver === 'mysql'
             ? "CREATE TABLE IF NOT EXISTS gp_credit_transactions (
@@ -494,7 +525,7 @@ final class GpDb
                 created_by VARCHAR(120) NOT NULL,
                 created_at TEXT NOT NULL
               )";
-        self::pdo()->exec($creditsTable);
+        self::execDdl($creditsTable);
 
         $adminAuditTable = self::$driver === 'mysql'
             ? "CREATE TABLE IF NOT EXISTS gp_admin_audit_logs (
@@ -519,7 +550,7 @@ final class GpDb
                 ip_address VARCHAR(45),
                 created_at TEXT NOT NULL
               )";
-        self::pdo()->exec($adminAuditTable);
+        self::execDdl($adminAuditTable);
 
         $platformGatewaysTable = self::$driver === 'mysql'
             ? "CREATE TABLE IF NOT EXISTS gp_platform_gateways (
@@ -554,7 +585,7 @@ final class GpDb
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
               )";
-        self::pdo()->exec($platformGatewaysTable);
+        self::execDdl($platformGatewaysTable);
 
         $subscriptionPlansTable = self::$driver === 'mysql'
             ? "CREATE TABLE IF NOT EXISTS gp_subscription_plans (
@@ -591,7 +622,7 @@ final class GpDb
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
               )";
-        self::pdo()->exec($subscriptionPlansTable);
+        self::execDdl($subscriptionPlansTable);
 
 
         self::seedDefaultPlatformGateways();
