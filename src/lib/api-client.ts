@@ -27,6 +27,8 @@ import {
   AdminAuditLog,
   AdminStats,
   PlatformGateway,
+  AdminTransaction,
+  AdminSmsLog,
 } from "./types/api";
 import { METHOD_THEMES } from "./method-theme";
 
@@ -826,6 +828,77 @@ class ApiClient {
         method: "PUT",
         body: JSON.stringify(payload),
       }
+    );
+  }
+
+  async updateAdminMerchantRole(
+    merchantId: string,
+    role: "admin" | "merchant"
+  ): Promise<{ ok: boolean; merchantId: string; role: string }> {
+    return this.request<{ ok: boolean; merchantId: string; role: string }>(
+      `/api/v1/admin/merchants/${merchantId}/role`,
+      {
+        method: "POST",
+        body: JSON.stringify({ role }),
+      }
+    );
+  }
+
+  async updateAdminMerchantPlan(
+    merchantId: string,
+    planId: string,
+    planExpiresAt?: string | null
+  ): Promise<{ ok: boolean; merchantId: string; planId: string; planExpiresAt?: string | null }> {
+    return this.request<{ ok: boolean; merchantId: string; planId: string; planExpiresAt?: string | null }>(
+      `/api/v1/admin/merchants/${merchantId}/plan`,
+      {
+        method: "POST",
+        body: JSON.stringify({ plan_id: planId, plan_expires_at: planExpiresAt }),
+      }
+    );
+  }
+
+  async getAdminTransactions(params?: {
+    status?: string;
+    search?: string;
+    limit?: number;
+  }): Promise<{ transactions: AdminTransaction[]; total: number }> {
+    const q = new URLSearchParams();
+    if (params?.status) q.set("status", params.status);
+    if (params?.search) q.set("search", params.search);
+    if (params?.limit) q.set("limit", String(params.limit));
+    const qs = q.toString();
+    return this.request<{ transactions: AdminTransaction[]; total: number }>(
+      `/api/v1/admin/transactions${qs ? "?" + qs : ""}`
+    );
+  }
+
+  async resolveAdminTransaction(
+    transactionId: string,
+    trxId?: string,
+    note?: string
+  ): Promise<{ ok: boolean; transaction: AdminTransaction }> {
+    return this.request<{ ok: boolean; transaction: AdminTransaction }>(
+      `/api/v1/admin/transactions/${transactionId}/resolve`,
+      {
+        method: "POST",
+        body: JSON.stringify({ trx_id: trxId, note }),
+      }
+    );
+  }
+
+  async getAdminSmsLogs(params?: {
+    search?: string;
+    status?: string;
+    limit?: number;
+  }): Promise<{ smsLogs: AdminSmsLog[]; total: number }> {
+    const q = new URLSearchParams();
+    if (params?.search) q.set("search", params.search);
+    if (params?.status) q.set("status", params.status);
+    if (params?.limit) q.set("limit", String(params.limit));
+    const qs = q.toString();
+    return this.request<{ smsLogs: AdminSmsLog[]; total: number }>(
+      `/api/v1/admin/sms${qs ? "?" + qs : ""}`
     );
   }
 }

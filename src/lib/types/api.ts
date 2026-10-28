@@ -290,12 +290,18 @@ export interface AdminMerchant {
   id: string;
   name: string;
   email: string;
+  role?: "admin" | "merchant";
+  planId?: string;
+  planExpiresAt?: string | null;
   brandId?: string;
   brandName: string;
   authProvider: string;
   status: "active" | "suspended";
   credits: number;
   transactionsCount: number;
+  totalVolumeBdt?: number;
+  deviceCount?: number;
+  activeGatewaysCount?: number;
   subscription?: {
     id: string;
     planId: string;
@@ -307,6 +313,43 @@ export interface AdminMerchant {
     expiresAt?: string | null;
   } | null;
   createdAt: string;
+}
+
+export interface AdminTransaction {
+  id: string;
+  sessionId: string;
+  brandId: string;
+  brandName: string;
+  merchantId: string;
+  merchantName: string;
+  merchantEmail: string;
+  amount: number;
+  currency: string;
+  methodCode: string;
+  status: "initiated" | "pending" | "completed" | "failed" | "expired" | "refunded";
+  trxId: string;
+  customerNumber?: string;
+  senderNumber?: string;
+  verifiedAmount?: number | null;
+  verifiedAt?: string | null;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminSmsLog {
+  id: string;
+  brandId: string;
+  brandName: string;
+  deviceId: string;
+  deviceLabel: string;
+  senderKey: string;
+  amount: number;
+  trxId: string;
+  number?: string;
+  status: "approved" | "used" | string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AdminPlan {
@@ -369,8 +412,19 @@ export interface AdminAuditLog {
 }
 
 export interface AdminStats {
-  merchants: { total: number; active: number };
-  transactions: { total: number; completed: number; volumeBdt: number; volumeUsdt: number };
+  merchants: { total: number; active: number; suspended?: number };
+  transactions: {
+    total: number;
+    completed: number;
+    pending?: number;
+    failed?: number;
+    volumeBdt: number;
+    volumeUsdt: number;
+  };
+  devices?: { total: number; online: number };
+  sms?: { total: number; matched: number; unmatched: number };
+  webhooks?: { total: number; delivered: number; healthPercent: number };
+  gateways?: { total: number; enabled: number };
   subscriptions: { activePlans: number; activeSubscriptions: number };
   system: { status: string; adminEmails: string[]; serverTime: string };
 }

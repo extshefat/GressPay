@@ -17,8 +17,22 @@ final class AdminController
                 'POST' => match ($sub) {
                     'credit' => self::adjustCredit($actor, $id, $req),
                     'status' => self::updateMerchantStatus($actor, $id, $req),
+                    'role' => self::updateMerchantRole($actor, $id, $req),
+                    'plan' => self::updateMerchantPlan($actor, $id, $req),
                     default => GpJson::error('NOT_FOUND', 'Unknown merchant admin action.', 404),
                 },
+                default => GpJson::error('METHOD_NOT_ALLOWED', 'Method not allowed.', 405),
+            },
+            'transactions' => match ($req->method) {
+                'GET' => self::listTransactions($req),
+                'POST' => match ($sub) {
+                    'resolve' => self::resolveTransaction($actor, $id, $req),
+                    default => GpJson::error('NOT_FOUND', 'Unknown transaction admin action.', 404),
+                },
+                default => GpJson::error('METHOD_NOT_ALLOWED', 'Method not allowed.', 405),
+            },
+            'sms' => match ($req->method) {
+                'GET' => self::listSms($req),
                 default => GpJson::error('METHOD_NOT_ALLOWED', 'Method not allowed.', 405),
             },
             'plans' => match ($req->method) {
@@ -31,7 +45,7 @@ final class AdminController
                 'POST' => self::assignSubscription($actor, $req),
                 default => GpJson::error('METHOD_NOT_ALLOWED', 'Method not allowed.', 405),
             },
-                        'gateways' => match ($req->method) {
+            'gateways' => match ($req->method) {
                 'GET' => self::listPlatformGateways(),
                 'POST' => match ($sub) {
                     'toggle' => self::togglePlatformGateway($actor, $id),
@@ -52,8 +66,12 @@ final class AdminController
     {
         $merchantCount = (int) (GpDb::one('SELECT COUNT(*) as c FROM gp_merchants')['c'] ?? 0);
         $activeMerchants = (int) (GpDb::one("SELECT COUNT(*) as c FROM gp_merchants WHERE status = 'active'")['c'] ?? 0);
+        $suspendedMerchants = (int) (GpDb::one("SELECT COUNT(*) as c FROM gp_merchants WHERE status = 'suspended'")['c'] ?? 0);
+
         $txnCount = (int) (GpDb::one('SELECT COUNT(*) as c FROM gp_transactions')['c'] ?? 0);
         $completedTxnCount = (int) (GpDb::one("SELECT COUNT(*) as c FROM gp_transactions WHERE status = 'completed'")['c'] ?? 0);
+        $pendingTxnCount = (int) (GpDb::one("SELECT COUNT(*) as c FROM gp_transactions WHERE status IN ('pending', 'initiated')")['c'] ?? 0);
+        $failedTxnCount = (int) (GpDb::one("SELECT COUNT(*) as c FROM gp_transactions WHERE status IN ('failed', 'expired')")['c'] ?? 0);
         
         $volRow = GpDb::one("SELECT COALESCE(SUM(amount), 0) as total FROM gp_transactions WHERE status = 'completed' AND currency = 'BDT'");
         $volBdt = (float) ($volRow['total'] ?? 0);
@@ -61,19 +79,61 @@ final class AdminController
         $cryptoRow = GpDb::one("SELECT COALESCE(SUM(amount), 0) as total FROM gp_transactions WHERE status = 'completed' AND currency = 'USDT'");
         $volCrypto = (float) ($cryptoRow['total'] ?? 0);
 
-        $plansCount = (int) (GpDb::one("SELECT COUNT(*) as c FROM gp_plans WHERE status = 'active'")['c'] ?? 0);
+        // Companion Devices (online if seen in last 10 minutes)
+        $tenMinutesAgo = date('Y-m-d H:i:s', time() - 600);
+        $totalDevices = (int) (GpDb::one('SELECT COUNT(*) as c FROM gp_devices')['c'] ?? 0);
+        $onlineDevices = (int) (GpDb::one("SELECT COUNT(*) as c FROM gp_devices WHERE status = 'active' AND last_seen_at >= ?", [$tenMinutesAgo])['c'] ?? 0);
+
+        // SMS Ingest
+        $totalSms = (int) (GpDb::one('SELECT COUNT(*) as c FROM gp_sms_data')['c'] ?? 0);
+        $matchedSms = (int) (GpDb::one("SELECT COUNT(*) as c FROM gp_sms_data WHERE status = 'used'")['c'] ?? 0);
+        $unmatchedSms = (int) (GpDb::one("SELECT COUNT(*) as c FROM gp_sms_data WHERE status = 'approved'")['c'] ?? 0);
+
+        // Webhook Deliveries
+        $totalWebhooks = (int) (GpDb::one('SELECT COUNT(*) as c FROM gp_webhook_deliveries')['c'] ?? 0);
+        $deliveredWebhooks = (int) (GpDb::one("SELECT COUNT(*) as c FROM gp_webhook_deliveries WHERE status = 'delivered'")['c'] ?? 0);
+        $webhookHealth = $totalWebhooks > 0 ? round(($deliveredWebhooks / $totalWebhooks) * 100, 1) : 100.0;
+
+        $plansCount = (int) (GpDb::one("SELECT COUNT(*) as c FROM gp_subscription_plans WHERE status = 'active'")['c'] ?? 0);
+        if ($plansCount === 0) {
+            $plansCount = (int) (GpDb::one("SELECT COUNT(*) as c FROM gp_plans WHERE status = 'active'")['c'] ?? 0);
+        }
         $activeSubsCount = (int) (GpDb::one("SELECT COUNT(*) as c FROM gp_subscriptions WHERE status = 'active'")['c'] ?? 0);
+
+        $enabledGateways = (int) (GpDb::one("SELECT COUNT(*) as c FROM gp_platform_gateways WHERE is_enabled = 1")['c'] ?? 0);
+        $totalGateways = (int) (GpDb::one('SELECT COUNT(*) as c FROM gp_platform_gateways')['c'] ?? 0);
 
         GpJson::send([
             'merchants' => [
                 'total' => $merchantCount,
                 'active' => $activeMerchants,
+                'suspended' => $suspendedMerchants,
             ],
             'transactions' => [
                 'total' => $txnCount,
                 'completed' => $completedTxnCount,
+                'pending' => $pendingTxnCount,
+                'failed' => $failedTxnCount,
                 'volumeBdt' => $volBdt,
                 'volumeUsdt' => $volCrypto,
+            ],
+            'devices' => [
+                'total' => $totalDevices,
+                'online' => $onlineDevices,
+            ],
+            'sms' => [
+                'total' => $totalSms,
+                'matched' => $matchedSms,
+                'unmatched' => $unmatchedSms,
+            ],
+            'webhooks' => [
+                'total' => $totalWebhooks,
+                'delivered' => $deliveredWebhooks,
+                'healthPercent' => $webhookHealth,
+            ],
+            'gateways' => [
+                'total' => $totalGateways,
+                'enabled' => $enabledGateways,
             ],
             'subscriptions' => [
                 'activePlans' => $plansCount,
@@ -91,6 +151,7 @@ final class AdminController
     {
         $rows = GpDb::all('
             SELECT m.merchant_id, m.full_name, m.email, m.auth_provider, m.status, m.created_at,
+                   m.role, m.plan_id, m.plan_expires_at,
                    b.brand_id, b.name as brand_name, b.currency_code
             FROM gp_merchants m
             LEFT JOIN gp_brands b ON b.merchant_id = m.merchant_id
@@ -101,6 +162,8 @@ final class AdminController
         $out = [];
         foreach ($rows as $r) {
             $mid = (string) $r['merchant_id'];
+            $bid = (string) ($r['brand_id'] ?? '');
+
             // Fetch subscription and credit balance
             $sub = GpDb::one('
                 SELECT s.subscription_id, s.plan_id, s.status as sub_status, s.credits_remaining, s.credits_used, s.starts_at, s.expires_at,
@@ -119,18 +182,34 @@ final class AdminController
             $credits = $creditRow ? (int) $creditRow['balance_after'] : ($sub ? (int) $sub['credits_remaining'] : 0);
 
             // Count total transactions
-            $txCount = (int) (GpDb::one('SELECT COUNT(*) as c FROM gp_transactions WHERE brand_id = ?', [(string) $r['brand_id']])['c'] ?? 0);
+            $txCount = (int) (GpDb::one('SELECT COUNT(*) as c FROM gp_transactions WHERE brand_id = ?', [$bid])['c'] ?? 0);
+
+            // Count connected devices
+            $devCount = (int) (GpDb::one('SELECT COUNT(*) as c FROM gp_devices WHERE brand_id = ?', [$bid])['c'] ?? 0);
+
+            // Count active payment methods
+            $gwCount = (int) (GpDb::one('SELECT COUNT(*) as c FROM gp_methods WHERE brand_id = ? AND enabled = 1', [$bid])['c'] ?? 0);
+
+            // Total verified volume in BDT
+            $volRow = GpDb::one("SELECT COALESCE(SUM(amount), 0) as total FROM gp_transactions WHERE brand_id = ? AND status = 'completed' AND currency = 'BDT'", [$bid]);
+            $volBdt = (float) ($volRow['total'] ?? 0);
 
             $out[] = [
                 'id' => $mid,
                 'name' => $r['full_name'],
                 'email' => $r['email'],
+                'role' => $r['role'] ?? 'merchant',
+                'planId' => $r['plan_id'] ?? 'starter',
+                'planExpiresAt' => $r['plan_expires_at'] ?? null,
                 'brandId' => $r['brand_id'],
                 'brandName' => $r['brand_name'] ?? 'Merchant Store',
                 'authProvider' => $r['auth_provider'] ?? 'local',
-                'status' => $r['status'],
+                'status' => $r['status'] ?? 'active',
                 'credits' => $credits,
                 'transactionsCount' => $txCount,
+                'totalVolumeBdt' => $volBdt,
+                'deviceCount' => $devCount,
+                'activeGatewaysCount' => $gwCount,
                 'subscription' => $sub ? [
                     'id' => $sub['subscription_id'],
                     'planId' => $sub['plan_id'],
@@ -146,6 +225,285 @@ final class AdminController
         }
 
         GpJson::send(['merchants' => $out]);
+    }
+
+    private static function updateMerchantRole(array $actor, string $merchantId, GpRequest $req): never
+    {
+        $role = strtolower(trim((string) $req->input('role', 'merchant')));
+        if (!in_array($role, ['merchant', 'admin'], true)) {
+            GpJson::error('VALIDATION', 'Role must be merchant or admin.');
+        }
+
+        $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$merchantId]);
+        if (!$merchant) {
+            GpJson::error('NOT_FOUND', 'Merchant not found.', 404);
+        }
+
+        $now = GpIds::now();
+        // If promoted to admin, also grant enterprise plan if currently on starter
+        if ($role === 'admin' && in_array($merchant['plan_id'] ?? 'starter', ['starter', 'pro', ''], true)) {
+            GpDb::exec('UPDATE gp_merchants SET role = ?, plan_id = ?, updated_at = ? WHERE merchant_id = ?', [$role, 'enterprise', $now, $merchantId]);
+        } else {
+            GpDb::exec('UPDATE gp_merchants SET role = ?, updated_at = ? WHERE merchant_id = ?', [$role, $now, $merchantId]);
+        }
+
+        self::logAudit($actor['email'], 'merchant', $merchantId, 'update_role', [
+            'previous' => $merchant['role'] ?? 'merchant',
+            'new' => $role,
+        ]);
+
+        GpJson::send(['ok' => true, 'merchantId' => $merchantId, 'role' => $role]);
+    }
+
+    private static function updateMerchantPlan(array $actor, string $merchantId, GpRequest $req): never
+    {
+        $planId = strtolower(trim((string) $req->input('plan_id', $req->input('planId', 'starter'))));
+        $validPlans = ['starter', 'pro', 'enterprise', 'lifetime'];
+        if (!in_array($planId, $validPlans, true)) {
+            GpJson::error('VALIDATION', 'Invalid plan ID. Must be starter, pro, enterprise, or lifetime.');
+        }
+
+        $expiresAt = $req->input('plan_expires_at', $req->input('expiresAt', null));
+        if ($expiresAt !== null && trim((string) $expiresAt) === '') {
+            $expiresAt = null;
+        }
+
+        $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$merchantId]);
+        if (!$merchant) {
+            GpJson::error('NOT_FOUND', 'Merchant not found.', 404);
+        }
+
+        $now = GpIds::now();
+        GpDb::exec('
+            UPDATE gp_merchants
+            SET plan_id = ?, plan_expires_at = ?, updated_at = ?
+            WHERE merchant_id = ?
+        ', [$planId, $expiresAt, $now, $merchantId]);
+
+        // Keep gp_subscriptions in sync as well
+        $activeSub = GpDb::one('SELECT * FROM gp_subscriptions WHERE merchant_id = ? AND status = ? ORDER BY id DESC LIMIT 1', [$merchantId, 'active']);
+        if ($activeSub) {
+            GpDb::exec('
+                UPDATE gp_subscriptions
+                SET plan_id = ?, expires_at = ?, updated_at = ?
+                WHERE subscription_id = ?
+            ', [$planId, $expiresAt, $now, $activeSub['subscription_id']]);
+        } else {
+            $subId = 'sub_' . bin2hex(random_bytes(8));
+            GpDb::exec('
+                INSERT INTO gp_subscriptions (subscription_id, merchant_id, plan_id, status, credits_remaining, credits_used, starts_at, expires_at, created_at, updated_at)
+                VALUES (?, ?, ?, ?, 9999, 0, ?, ?, ?, ?)
+            ', [$subId, $merchantId, $planId, 'active', $now, $expiresAt, $now, $now]);
+        }
+
+        self::logAudit($actor['email'], 'merchant', $merchantId, 'update_plan', [
+            'previous_plan' => $merchant['plan_id'] ?? 'starter',
+            'new_plan' => $planId,
+            'expires_at' => $expiresAt,
+        ]);
+
+        GpJson::send([
+            'ok' => true,
+            'merchantId' => $merchantId,
+            'planId' => $planId,
+            'planExpiresAt' => $expiresAt,
+        ]);
+    }
+
+    private static function listTransactions(GpRequest $req): never
+    {
+        $status = strtolower(trim((string) $req->input('status', '')));
+        $search = trim((string) $req->input('search', ''));
+        $limit = min(100, max(1, (int) $req->input('limit', 50)));
+
+        $where = ['1=1'];
+        $params = [];
+
+        if ($status !== '' && $status !== 'all') {
+            $where[] = 't.status = ?';
+            $params[] = $status;
+        }
+
+        if ($search !== '') {
+            $where[] = '(t.trx_id LIKE ? OR t.session_id LIKE ? OR t.customer_number LIKE ? OR t.sender_number LIKE ? OR m.email LIKE ? OR b.name LIKE ?)';
+            $wildcard = '%' . $search . '%';
+            $params[] = $wildcard;
+            $params[] = $wildcard;
+            $params[] = $wildcard;
+            $params[] = $wildcard;
+            $params[] = $wildcard;
+            $params[] = $wildcard;
+        }
+
+        $sqlWhere = implode(' AND ', $where);
+        $countRow = GpDb::one("
+            SELECT COUNT(*) as c
+            FROM gp_transactions t
+            LEFT JOIN gp_brands b ON b.brand_id = t.brand_id
+            LEFT JOIN gp_merchants m ON m.merchant_id = b.merchant_id
+            WHERE {$sqlWhere}
+        ", $params);
+        $total = (int) ($countRow['c'] ?? 0);
+
+        $rows = GpDb::all("
+            SELECT t.*, b.name as brand_name, m.merchant_id, m.full_name as merchant_name, m.email as merchant_email
+            FROM gp_transactions t
+            LEFT JOIN gp_brands b ON b.brand_id = t.brand_id
+            LEFT JOIN gp_merchants m ON m.merchant_id = b.merchant_id
+            WHERE {$sqlWhere}
+            ORDER BY t.id DESC
+            LIMIT {$limit}
+        ", $params);
+
+        $out = [];
+        foreach ($rows as $r) {
+            $meta = [];
+            if (!empty($r['metadata'])) {
+                $decoded = is_array($r['metadata']) ? $r['metadata'] : json_decode((string) $r['metadata'], true);
+                $meta = is_array($decoded) ? $decoded : [];
+            }
+            $out[] = [
+                'id' => (string) $r['id'],
+                'sessionId' => $r['session_id'],
+                'brandId' => $r['brand_id'],
+                'brandName' => $r['brand_name'] ?? 'Merchant Store',
+                'merchantId' => $r['merchant_id'] ?? '',
+                'merchantName' => $r['merchant_name'] ?? 'Merchant',
+                'merchantEmail' => $r['merchant_email'] ?? '',
+                'amount' => (float) $r['amount'],
+                'currency' => $r['currency'],
+                'methodCode' => $r['method_code'] ?? '',
+                'status' => $r['status'],
+                'trxId' => $r['trx_id'] ?? '',
+                'customerNumber' => $r['customer_number'] ?? '',
+                'senderNumber' => $r['sender_number'] ?? '',
+                'verifiedAmount' => $r['verified_amount'] ? (float) $r['verified_amount'] : null,
+                'verifiedAt' => $r['verified_at'] ?? null,
+                'metadata' => $meta,
+                'createdAt' => $r['created_at'],
+                'updatedAt' => $r['updated_at'],
+            ];
+        }
+
+        GpJson::send(['transactions' => $out, 'total' => $total]);
+    }
+
+    private static function resolveTransaction(array $actor, string $id, GpRequest $req): never
+    {
+        $tx = GpDb::one('SELECT * FROM gp_transactions WHERE session_id = ? OR id = ?', [$id, $id]);
+        if (!$tx) {
+            GpJson::error('NOT_FOUND', 'Transaction not found.', 404);
+        }
+        if ($tx['status'] === 'completed') {
+            GpJson::error('ALREADY_COMPLETED', 'Transaction is already marked completed.', 400);
+        }
+
+        $trxId = trim((string) $req->input('trx_id', $req->input('trxId', $tx['trx_id'] ?? '')));
+        if ($trxId === '') {
+            $trxId = 'MANUAL_' . strtoupper(bin2hex(random_bytes(4)));
+        }
+
+        $methodCode = GpCatalog::publicCode((string) ($tx['method_code'] ?: 'bkash'));
+        $cat = GpCatalog::find($methodCode);
+        $localCurrency = $cat ? (string) $cat['currency'] : (string) $tx['currency'];
+        $methodRow = GpDb::one(
+            'SELECT * FROM gp_methods WHERE brand_id = ? AND (code = ? OR code = ?) ORDER BY id DESC',
+            [$tx['brand_id'], $methodCode, GpCatalog::slug($methodCode)]
+        ) ?? ['options' => '{}', 'code' => $methodCode];
+
+        $meta = [];
+        if (!empty($tx['metadata'])) {
+            $decoded = is_array($tx['metadata']) ? $tx['metadata'] : json_decode((string) $tx['metadata'], true);
+            $meta = is_array($decoded) ? $decoded : [];
+        }
+        $meta['adminResolution'] = [
+            'resolvedBy' => $actor['email'],
+            'note' => trim((string) $req->input('note', 'Admin manual verification')),
+            'at' => GpIds::now(),
+        ];
+        $tx['metadata'] = json_encode($meta, JSON_UNESCAPED_SLASHES);
+
+        $paid = CheckoutController::markPaid(
+            $tx,
+            $trxId,
+            $methodCode,
+            $methodRow,
+            (string) $tx['amount'],
+            $localCurrency,
+            null,
+            'admin_resolved',
+            [
+                'provider_ref' => $trxId,
+                'verified_amount' => (string) $tx['amount'],
+                'verified_currency' => $localCurrency,
+                'meta' => $meta['adminResolution'],
+            ]
+        );
+
+        self::logAudit($actor['email'], 'transaction', $tx['session_id'], 'admin_resolve_transaction', [
+            'session_id' => $tx['session_id'],
+            'trx_id' => $trxId,
+            'amount' => $tx['amount'],
+            'currency' => $tx['currency'],
+        ]);
+
+        GpJson::send(['ok' => true, 'transaction' => $paid]);
+    }
+
+    private static function listSms(GpRequest $req): never
+    {
+        $search = trim((string) $req->input('search', ''));
+        $status = strtolower(trim((string) $req->input('status', '')));
+        $limit = min(100, max(1, (int) $req->input('limit', 50)));
+
+        $where = ['1=1'];
+        $params = [];
+
+        if ($status !== '' && $status !== 'all') {
+            $where[] = 's.status = ?';
+            $params[] = $status;
+        }
+
+        if ($search !== '') {
+            $where[] = '(s.trx_id LIKE ? OR s.number LIKE ? OR s.sender_key LIKE ? OR d.label LIKE ? OR b.name LIKE ?)';
+            $wildcard = '%' . $search . '%';
+            $params[] = $wildcard;
+            $params[] = $wildcard;
+            $params[] = $wildcard;
+            $params[] = $wildcard;
+            $params[] = $wildcard;
+        }
+
+        $sqlWhere = implode(' AND ', $where);
+        $rows = GpDb::all("
+            SELECT s.*, d.label as device_label, b.name as brand_name
+            FROM gp_sms_data s
+            LEFT JOIN gp_devices d ON d.device_id = s.device_id
+            LEFT JOIN gp_brands b ON b.brand_id = s.brand_id
+            WHERE {$sqlWhere}
+            ORDER BY s.id DESC
+            LIMIT {$limit}
+        ", $params);
+
+        $out = [];
+        foreach ($rows as $r) {
+            $out[] = [
+                'id' => (string) $r['id'],
+                'brandId' => $r['brand_id'],
+                'brandName' => $r['brand_name'] ?? 'Store',
+                'deviceId' => $r['device_id'] ?? '',
+                'deviceLabel' => $r['device_label'] ?? 'Android Device',
+                'senderKey' => $r['sender_key'],
+                'amount' => (float) $r['amount'],
+                'trxId' => $r['trx_id'],
+                'number' => $r['number'] ?? '',
+                'status' => $r['status'], // 'approved' (unmatched/ready), 'used' (matched)
+                'createdAt' => $r['created_at'],
+                'updatedAt' => $r['updated_at'],
+            ];
+        }
+
+        GpJson::send(['smsLogs' => $out, 'total' => count($out)]);
     }
 
     private static function adjustCredit(array $actor, string $merchantId, GpRequest $req): never
