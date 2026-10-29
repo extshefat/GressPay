@@ -36,9 +36,11 @@ final class GpCatalog
             return false;
         }
         try {
-            $row = GpDb::one(
-                'SELECT is_enabled FROM gp_platform_gateways WHERE gateway_code IN (?, ?) LIMIT 1',
-                [$m['code'], $m['slug']]
+            $row = GpDb::withinSavepoint(
+                static fn () => GpDb::one(
+                    'SELECT is_enabled FROM gp_platform_gateways WHERE gateway_code IN (?, ?) LIMIT 1',
+                    [$m['code'], $m['slug']]
+                )
             );
             if ($row !== null) {
                 return (int) $row['is_enabled'] === 1;

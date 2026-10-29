@@ -625,8 +625,27 @@ final class GpDb
               )";
         self::execDdl($subscriptionPlansTable);
 
+        $adminOverrides = self::$driver === 'mysql'
+            ? "CREATE TABLE IF NOT EXISTS gp_admin_overrides (
+                email VARCHAR(190) NOT NULL PRIMARY KEY,
+                allowed INT NOT NULL DEFAULT 0,
+                updated_at VARCHAR(32) NOT NULL
+              ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+            : (self::$driver === 'pgsql'
+                ? "CREATE TABLE IF NOT EXISTS gp_admin_overrides (
+                    email VARCHAR(190) PRIMARY KEY,
+                    allowed INTEGER NOT NULL DEFAULT 0,
+                    updated_at VARCHAR(32) NOT NULL
+                  )"
+                : "CREATE TABLE IF NOT EXISTS gp_admin_overrides (
+                    email VARCHAR(190) NOT NULL PRIMARY KEY,
+                    allowed INTEGER NOT NULL DEFAULT 0,
+                    updated_at TEXT NOT NULL
+                  )");
+        self::execDdl($adminOverrides);
 
         self::seedDefaultPlatformGateways();
+
         self::seedDefaultPlans();
         self::autoPromoteSuperAdmins();
 
@@ -929,5 +948,30 @@ final class GpDb
         $stmt = self::pdo()->prepare($sql);
         $stmt->execute($params);
         return $stmt->rowCount();
+    }
+
+    /**
+     * Run a query inside a savepoint when a transaction is open.
+     * PostgreSQL aborts the whole transaction after any failed statement.
+     * A caught lookup must not do that to Google account linking.
+     */
+    public static function withinSavepoint(callable $fn): mixed
+    {
+        $pdo = self::pdo();
+        if (!$pdo->inTransaction()) {
+            return $fn();
+        }
+        $pdo->exec('SAVEPOINT gp_guard');
+        try {
+            $result = $fn();
+            $pdo->exec('RELEASE SAVEPOINT gp_guard');
+            return $result;
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->exec('ROLLBACK TO SAVEPOINT gp_guard');
+                $pdo->exec('RELEASE SAVEPOINT gp_guard');
+            }
+            throw $e;
+        }
     }
 }

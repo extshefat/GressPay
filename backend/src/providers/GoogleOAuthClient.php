@@ -327,10 +327,16 @@ final class GoogleOAuthClient
                 $pdo->rollBack();
             }
             error_log('Google OAuth account linking error: ' . $e->getMessage());
+            $detail = trim(preg_replace('/\s+/', ' ', $e->getMessage()) ?? '');
+            if (strlen($detail) > 180) {
+                $detail = substr($detail, 0, 180) . '…';
+            }
             return [
                 'ok' => false,
                 'error' => 'TRANSACTION_FAILED',
-                'message' => 'Database error while linking Google account.',
+                'message' => $detail !== ''
+                    ? 'Database error while linking Google account. ' . $detail
+                    : 'Database error while linking Google account.',
             ];
         }
 

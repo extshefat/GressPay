@@ -614,5 +614,22 @@ assert_true(GpConfig::normalizeDbDriver('postgres') === 'pgsql', 'postgres alias
 assert_true(GpConfig::normalizeDbDriver('mysql') === 'mysql', 'mysql driver stays mysql');
 assert_true(GpConfig::normalizeDbDriver('sqlite') === 'sqlite', 'sqlite driver stays sqlite');
 
+$guardPdo = GpDb::pdo();
+$guardPdo->beginTransaction();
+$guardThrew = false;
+try {
+    GpDb::withinSavepoint(static function () {
+        GpDb::one('SELECT id FROM gp_table_missing_for_guard', []);
+    });
+} catch (Throwable $e) {
+    $guardThrew = true;
+}
+assert_true($guardThrew && $guardPdo->inTransaction(), 'failed lookup does not abort the open transaction');
+GpDb::exec('CREATE TABLE IF NOT EXISTS gp_guard_probe (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)');
+GpDb::exec('INSERT INTO gp_guard_probe (name) VALUES (?)', ['ok']);
+$guardPdo->commit();
+$guardRow = GpDb::one('SELECT name FROM gp_guard_probe WHERE name = ?', ['ok']);
+assert_true(($guardRow['name'] ?? '') === 'ok', 'insert works after a guarded SQL failure');
+
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

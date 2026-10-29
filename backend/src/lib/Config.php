@@ -308,7 +308,9 @@ final class GpConfig
             return false;
         }
         try {
-            $row = GpDb::one('SELECT allowed FROM gp_admin_overrides WHERE email = ?', [$email]);
+            $row = GpDb::withinSavepoint(
+                static fn () => GpDb::one('SELECT allowed FROM gp_admin_overrides WHERE email = ?', [$email])
+            );
             if (is_array($row)) {
                 return (int) ($row['allowed'] ?? 0) === 1;
             }
