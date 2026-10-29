@@ -544,7 +544,7 @@ final class GatewaysController
             }
             try {
                 $hasDevice = (int) (GpDb::one(
-                    "SELECT COUNT(*) as c FROM gp_companion_devices WHERE brand_id = ? AND status = 'active'",
+                    "SELECT COUNT(*) as c FROM gp_devices WHERE brand_id = ? AND status = 'active'",
                     [(string) ($gw['brand_id'] ?? '')]
                 )['c'] ?? 0) > 0;
                 if (!$hasDevice) {
