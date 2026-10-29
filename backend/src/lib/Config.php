@@ -39,7 +39,13 @@ final class GpConfig
             }
         }
         // Overlay actual getenv for critical keys (Docker/K8s).
-        foreach (['APP_ENV', 'APP_URL', 'JWT_SECRET', 'DB_PASS', 'DB_PASSWORD', 'APP_ENCRYPTION_KEY', 'GRESSPAY_CRYPTO_ALLOWED', 'ADMIN_EMAIL', 'ADMIN_EMAILS', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI'] as $k) {
+        foreach ([
+            'APP_ENV', 'APP_URL', 'JWT_SECRET', 'APP_ENCRYPTION_KEY',
+            'DB_DRIVER', 'DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASS', 'DB_SSLMODE',
+            'DB_CONNECTION', 'DB_DATABASE', 'DB_USERNAME', 'DB_PASSWORD',
+            'GRESSPAY_CRYPTO_ALLOWED', 'ADMIN_EMAIL', 'ADMIN_EMAILS',
+            'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI'
+        ] as $k) {
             $g = getenv($k);
             if ($g !== false && $g !== '') {
                 self::$env[$k] = $g;
@@ -132,10 +138,11 @@ final class GpConfig
             );
         }
 
-        if (strtolower(self::get('DB_DRIVER', 'sqlite')) === 'mysql') {
+        $drv = strtolower(self::get('DB_DRIVER', 'sqlite'));
+        if (in_array($drv, ['mysql', 'pgsql'], true)) {
             $pass = self::get('DB_PASS', '');
             if (in_array($pass, $weak, true)) {
-                self::fatal('DB_PASS must be set to a non-placeholder value when APP_ENV=production and DB_DRIVER=mysql.');
+                self::fatal("DB_PASS must be set to a non-placeholder value when APP_ENV=production and DB_DRIVER={$drv}.");
             }
         }
     }
