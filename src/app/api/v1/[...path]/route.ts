@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const PHP_ORIGIN = process.env.GRESSPAY_PHP_URL || "http://127.0.0.1:8080";
+const PHP_ORIGIN = process.env.GRESSPAY_PHP_URL || "http://php:8080";
 const HOP = new Set([
   "connection",
   "keep-alive",

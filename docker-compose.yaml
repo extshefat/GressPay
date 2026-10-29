@@ -1,6 +1,7 @@
 # ==============================================================================
 # GressPay All-In-One Unified Docker Compose Stack for Coolify VPS
 # Runs Frontend (Next.js) + Backend (PHP API) connected to dedicated VPS PostgreSQL (gresspay-db)
+# Values come from Coolify. Direct ${VAR} references avoid baking defaults into the service env.
 # ==============================================================================
 
 services:
@@ -9,13 +10,10 @@ services:
       context: .
       dockerfile: Dockerfile
     environment:
-      HOSTNAME: "0.0.0.0"
-      PORT: "3000"
-      NEXT_PUBLIC_APP_NAME: GressPay
-      NEXT_PUBLIC_APP_URL: ${APP_URL:-https://gresspay.extxcheats.com}
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api/v1}
-      NEXT_PUBLIC_DATA_SOURCE: live
-      GRESSPAY_PHP_URL: "http://php:8080"
+      APP_URL: ${APP_URL}
+      NEXT_PUBLIC_APP_URL: ${APP_URL}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      GRESSPAY_PHP_URL: ${GRESSPAY_PHP_URL}
     ports:
       - "3000"
     restart: unless-stopped
@@ -27,32 +25,30 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     environment:
-      APP_NAME: GressPay
-      APP_ENV: production
-      APP_URL: ${APP_URL:-https://gresspay.extxcheats.com}
-      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-https://gresspay.extxcheats.com}
-      DB_DRIVER: ${DB_CONNECTION:-${DB_DRIVER:-pgsql}}
-      DB_CONNECTION: ${DB_CONNECTION:-${DB_DRIVER:-pgsql}}
-      DB_HOST: ${DB_HOST:-gresspay-db}
-      DB_PORT: ${DB_PORT:-5432}
-      DB_NAME: ${DB_DATABASE:-${DB_NAME:-gresspay}}
-      DB_DATABASE: ${DB_DATABASE:-${DB_NAME:-gresspay}}
-      DB_USER: ${DB_USERNAME:-${DB_USER:-gresspay}}
-      DB_USERNAME: ${DB_USERNAME:-${DB_USER:-gresspay}}
-      DB_PASS: ${DB_PASSWORD:-${DB_PASS:?Set DB_PASS or DB_PASSWORD}}
-      DB_PASSWORD: ${DB_PASSWORD:-${DB_PASS:?Set DB_PASS or DB_PASSWORD}}
-      DB_SSLMODE: ${DB_SSLMODE:-disable}
-      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
-      APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:?Set APP_ENCRYPTION_KEY}
-      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
-      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
-      CORS_ORIGINS: ${CORS_ORIGINS:-https://gresspay.extxcheats.com}
-      GRESSPAY_CRYPTO_ALLOWED: ${GRESSPAY_CRYPTO_ALLOWED:-0}
-      BINANCE_PAY_API_BASE: ${BINANCE_PAY_API_BASE:-https://bpay.binanceapi.com}
-      TRON_API_BASE: ${TRON_API_BASE:-https://api.trongrid.io}
-      TRON_API_KEY: ${TRON_API_KEY:-}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-https://gresspay.extxcheats.com/callback/google}
-      PORT: "8080"
+      APP_URL: ${APP_URL}
+      DB_DRIVER: ${DB_DRIVER}
+      DB_CONNECTION: ${DB_CONNECTION}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USER: ${DB_USER}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASS: ${DB_PASS}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_SSLMODE: ${DB_SSLMODE}
+      JWT_SECRET: ${JWT_SECRET}
+      APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_EMAILS: ${ADMIN_EMAILS}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI}
+      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY}
+      R2_BUCKET_NAME: ${R2_BUCKET_NAME}
+      R2_ENDPOINT: ${R2_ENDPOINT}
+      R2_PUBLIC_BASE_URL: ${R2_PUBLIC_BASE_URL}
     restart: unless-stopped

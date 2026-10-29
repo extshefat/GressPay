@@ -39,7 +39,15 @@ final class GpConfig
             }
         }
         // Overlay actual getenv for critical keys (Docker/K8s).
-        foreach (['APP_ENV', 'APP_URL', 'JWT_SECRET', 'DB_PASS', 'DB_PASSWORD', 'APP_ENCRYPTION_KEY', 'GRESSPAY_CRYPTO_ALLOWED', 'ADMIN_EMAIL', 'ADMIN_EMAILS', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI'] as $k) {
+        foreach ([
+            'APP_ENV', 'APP_URL', 'JWT_SECRET', 'APP_ENCRYPTION_KEY',
+            'DB_DRIVER', 'DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASS', 'DB_SSLMODE',
+            'DB_CONNECTION', 'DB_DATABASE', 'DB_USERNAME', 'DB_PASSWORD',
+            'GRESSPAY_CRYPTO_ALLOWED', 'ADMIN_EMAIL', 'ADMIN_EMAILS',
+            'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI',
+            'R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY',
+            'R2_BUCKET_NAME', 'R2_ENDPOINT', 'R2_PUBLIC_BASE_URL'
+        ] as $k) {
             $g = getenv($k);
             if ($g !== false && $g !== '') {
                 self::$env[$k] = $g;
@@ -132,10 +140,11 @@ final class GpConfig
             );
         }
 
-        if (strtolower(self::get('DB_DRIVER', 'sqlite')) === 'mysql') {
+        $drv = strtolower(self::get('DB_DRIVER', 'sqlite'));
+        if (in_array($drv, ['mysql', 'pgsql'], true)) {
             $pass = self::get('DB_PASS', '');
             if (in_array($pass, $weak, true)) {
-                self::fatal('DB_PASS must be set to a non-placeholder value when APP_ENV=production and DB_DRIVER=mysql.');
+                self::fatal("DB_PASS must be set to a non-placeholder value when APP_ENV=production and DB_DRIVER={$drv}.");
             }
         }
     }
@@ -188,10 +197,10 @@ final class GpConfig
         return hash('sha256', $key, true);
     }
 
-    /** Operator must explicitly allow crypto rails (Binance Pay / USDT). Default: off. */
+    /** Operator allowed crypto rails (Binance Pay / USDT). Default: on (1). */
     public static function cryptoAllowed(): bool
     {
-        return self::get('GRESSPAY_CRYPTO_ALLOWED', '0') === '1';
+        return self::get('GRESSPAY_CRYPTO_ALLOWED', '1') === '1';
     }
 
     public static function tronApiBase(): string
@@ -218,7 +227,7 @@ final class GpConfig
 
     public static function publicAppUrl(): string
     {
-        return rtrim(self::get('PUBLIC_APP_URL', self::get('APP_URL', '')), '/');
+        return rtrim(self::get('APP_URL', self::get('PUBLIC_APP_URL', '')), '/');
     }
 
     public static function binancePayBase(): string
