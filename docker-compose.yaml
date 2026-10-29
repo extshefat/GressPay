@@ -10,7 +10,6 @@ services:
       dockerfile: Dockerfile
     environment:
       APP_URL: ${APP_URL}
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     ports:
       - "3000"
     restart: unless-stopped
@@ -23,7 +22,6 @@ services:
       dockerfile: Dockerfile
     environment:
       APP_URL: ${APP_URL}
-      PUBLIC_APP_URL: ${PUBLIC_APP_URL}
       DB_DRIVER: ${DB_DRIVER}
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT}
@@ -35,10 +33,6 @@ services:
       APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY}
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       CORS_ORIGINS: ${CORS_ORIGINS}
-      GRESSPAY_CRYPTO_ALLOWED: ${GRESSPAY_CRYPTO_ALLOWED}
-      BINANCE_PAY_API_BASE: ${BINANCE_PAY_API_BASE}
-      TRON_API_BASE: ${TRON_API_BASE}
-      TRON_API_KEY: ${TRON_API_KEY}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI}

@@ -197,10 +197,10 @@ final class GpConfig
         return hash('sha256', $key, true);
     }
 
-    /** Operator must explicitly allow crypto rails (Binance Pay / USDT). Default: off. */
+    /** Operator allowed crypto rails (Binance Pay / USDT). Default: on (1). */
     public static function cryptoAllowed(): bool
     {
-        return self::get('GRESSPAY_CRYPTO_ALLOWED', '0') === '1';
+        return self::get('GRESSPAY_CRYPTO_ALLOWED', '1') === '1';
     }
 
     public static function tronApiBase(): string
@@ -227,7 +227,7 @@ final class GpConfig
 
     public static function publicAppUrl(): string
     {
-        return rtrim(self::get('PUBLIC_APP_URL', self::get('APP_URL', '')), '/');
+        return rtrim(self::get('APP_URL', self::get('PUBLIC_APP_URL', '')), '/');
     }
 
     public static function binancePayBase(): string
