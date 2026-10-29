@@ -193,7 +193,7 @@ final class AdminController
             $devCount = (int) (GpDb::one('SELECT COUNT(*) as c FROM gp_devices WHERE brand_id = ?', [$bid])['c'] ?? 0);
 
             // Count active payment methods
-            $gwCount = (int) (GpDb::one('SELECT COUNT(*) as c FROM gp_methods WHERE brand_id = ? AND enabled = 1', [$bid])['c'] ?? 0);
+            $gwCount = (int) (GpDb::one("SELECT COUNT(*) as c FROM gp_methods WHERE brand_id = ? AND status = 'active'", [$bid])['c'] ?? 0);
 
             // Total verified volume in BDT
             $volRow = GpDb::one("SELECT COALESCE(SUM(amount), 0) as total FROM gp_transactions WHERE brand_id = ? AND status = 'completed' AND currency = 'BDT'", [$bid]);
@@ -263,20 +263,43 @@ final class AdminController
     private static function updateMerchantPlan(array $actor, string $merchantId, GpRequest $req): never
     {
         $planId = strtolower(trim((string) $req->input('plan_id', $req->input('planId', 'starter'))));
-        $validPlans = ['starter', 'pro', 'enterprise', 'lifetime'];
-        if (!in_array($planId, $validPlans, true)) {
-            GpJson::error('VALIDATION', 'Invalid plan ID. Must be starter, pro, enterprise, or lifetime.');
-        }
+        $dbPlans = GpDb::all('SELECT plan_id FROM gp_plans');
+        $validPlans = !empty($dbPlans)
+            ? array_map(static fn($p) => strtolower((string) $p['plan_id']), $dbPlans)
+            : ['starter', 'growth', 'pro', 'enterprise', 'lifetime'];
 
-        $expiresAt = $req->input('plan_expires_at', $req->input('expiresAt', null));
-        if ($expiresAt !== null && trim((string) $expiresAt) === '') {
-            $expiresAt = null;
+        if (!in_array($planId, $validPlans, true)) {
+            GpJson::error('VALIDATION', 'Invalid plan ID. Must be one of: ' . implode(', ', $validPlans));
         }
 
         $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$merchantId]);
         if (!$merchant) {
             GpJson::error('NOT_FOUND', 'Merchant not found.', 404);
         }
+
+        $isLifetime = (bool) $req->input('is_lifetime', $req->input('isLifetime', $planId === 'lifetime'));
+        $durationDays = (int) $req->input('duration_days', $req->input('durationDays', 0));
+        $expiresAt = null;
+
+        if (!$isLifetime) {
+            if ($durationDays > 0) {
+                $expiresAt = gmdate('Y-m-d\TH:i:s\Z', time() + ($durationDays * 86400));
+            } else {
+                $rawExp = $req->input('plan_expires_at', $req->input('expiresAt', null));
+                if ($rawExp !== null && trim((string) $rawExp) !== '') {
+                    $expiresAt = trim((string) $rawExp);
+                } elseif ($planId !== 'lifetime') {
+                    $expiresAt = gmdate('Y-m-d\TH:i:s\Z', time() + (30 * 86400));
+                }
+            }
+        }
+
+        $planDef = GpDb::one('SELECT * FROM gp_plans WHERE plan_id = ?', [$planId]);
+        $creditAllowance = (int) ($planDef['credit_allowance'] ?? 1000);
+        $bonusCredits = max(0, (int) $req->input('bonus_credits', $req->input('bonusCredits', 0)));
+        $totalCreditsToGrant = $creditAllowance + $bonusCredits;
+
+        $reason = trim((string) $req->input('reason', 'Plan upgrade: ' . strtoupper($planId)));
 
         $now = GpIds::now();
         GpDb::exec('
@@ -290,21 +313,30 @@ final class AdminController
         if ($activeSub) {
             GpDb::exec('
                 UPDATE gp_subscriptions
-                SET plan_id = ?, expires_at = ?, updated_at = ?
+                SET plan_id = ?, credits_remaining = ?, expires_at = ?, updated_at = ?
                 WHERE subscription_id = ?
-            ', [$planId, $expiresAt, $now, $activeSub['subscription_id']]);
+            ', [$planId, $totalCreditsToGrant, $expiresAt, $now, $activeSub['subscription_id']]);
         } else {
             $subId = 'sub_' . bin2hex(random_bytes(8));
             GpDb::exec('
                 INSERT INTO gp_subscriptions (subscription_id, merchant_id, plan_id, status, credits_remaining, credits_used, starts_at, expires_at, created_at, updated_at)
-                VALUES (?, ?, ?, ?, 9999, 0, ?, ?, ?, ?)
-            ', [$subId, $merchantId, $planId, 'active', $now, $expiresAt, $now, $now]);
+                VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?)
+            ', [$subId, $merchantId, $planId, 'active', $totalCreditsToGrant, $now, $expiresAt, $now, $now]);
         }
+
+        // Record credit transaction history
+        GpDb::exec('
+            INSERT INTO gp_credit_transactions (merchant_id, delta, balance_after, reason, created_by, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ', [$merchantId, $totalCreditsToGrant, $totalCreditsToGrant, $reason, $actor['email'], $now]);
 
         self::logAudit($actor['email'], 'merchant', $merchantId, 'update_plan', [
             'previous_plan' => $merchant['plan_id'] ?? 'starter',
             'new_plan' => $planId,
+            'is_lifetime' => $isLifetime,
+            'credits_granted' => $totalCreditsToGrant,
             'expires_at' => $expiresAt,
+            'reason' => $reason,
         ]);
 
         GpJson::send([
@@ -312,6 +344,7 @@ final class AdminController
             'merchantId' => $merchantId,
             'planId' => $planId,
             'planExpiresAt' => $expiresAt,
+            'credits' => $totalCreditsToGrant,
         ]);
     }
 
@@ -513,12 +546,6 @@ final class AdminController
 
     private static function adjustCredit(array $actor, string $merchantId, GpRequest $req): never
     {
-        $delta = (int) $req->input('delta', 0);
-        $reason = trim((string) $req->input('reason', 'Admin adjustment'));
-        if ($delta === 0) {
-            GpJson::error('VALIDATION', 'Delta amount cannot be zero.');
-        }
-
         $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$merchantId]);
         if (!$merchant) {
             GpJson::error('NOT_FOUND', 'Merchant not found.', 404);
@@ -526,7 +553,20 @@ final class AdminController
 
         $latestCredit = GpDb::one('SELECT balance_after FROM gp_credit_transactions WHERE merchant_id = ? ORDER BY id DESC LIMIT 1', [$merchantId]);
         $currentBalance = $latestCredit ? (int) $latestCredit['balance_after'] : 0;
-        $newBalance = max(0, $currentBalance + $delta);
+
+        $hasSetBalance = $req->input('set_balance', $req->input('setBalance', null)) !== null;
+        if ($hasSetBalance) {
+            $newBalance = max(0, (int) $req->input('set_balance', $req->input('setBalance', 0)));
+            $delta = $newBalance - $currentBalance;
+        } else {
+            $delta = (int) $req->input('delta', $req->input('amount', 0));
+            $newBalance = max(0, $currentBalance + $delta);
+        }
+
+        $reason = trim((string) $req->input('reason', 'Admin balance adjustment'));
+        if ($delta === 0 && !$hasSetBalance) {
+            GpJson::error('VALIDATION', 'Adjustment delta or set_balance is required.');
+        }
 
         $now = GpIds::now();
         GpDb::exec('
@@ -535,10 +575,19 @@ final class AdminController
         ', [$merchantId, $delta, $newBalance, $reason, $actor['email'], $now]);
 
         // Also update active subscription credits if one exists
-        GpDb::exec('
-            UPDATE gp_subscriptions SET credits_remaining = ?, updated_at = ?
-            WHERE merchant_id = ? AND status = ?
-        ', [$newBalance, $now, $merchantId, 'active']);
+        $sub = GpDb::one('SELECT subscription_id FROM gp_subscriptions WHERE merchant_id = ? AND status = ? ORDER BY id DESC LIMIT 1', [$merchantId, 'active']);
+        if ($sub) {
+            GpDb::exec('
+                UPDATE gp_subscriptions SET credits_remaining = ?, updated_at = ?
+                WHERE subscription_id = ?
+            ', [$newBalance, $now, $sub['subscription_id']]);
+        } else {
+            $subId = 'sub_' . bin2hex(random_bytes(8));
+            GpDb::exec('
+                INSERT INTO gp_subscriptions (subscription_id, merchant_id, plan_id, status, credits_remaining, credits_used, starts_at, expires_at, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, 0, ?, NULL, ?, ?)
+            ', [$subId, $merchantId, $merchant['plan_id'] ?? 'starter', 'active', $newBalance, $now, $now, $now]);
+        }
 
         self::logAudit($actor['email'], 'merchant', $merchantId, 'credit_adjustment', [
             'delta' => $delta,
@@ -765,6 +814,9 @@ final class AdminController
             INSERT INTO gp_credit_transactions (merchant_id, delta, balance_after, reason, created_by, created_at)
             VALUES (?, ?, ?, ?, ?, ?)
         ', [$merchantId, $credits, $credits, 'Plan assignment: ' . $plan['name'], $actor['email'], $now]);
+
+        // Keep gp_merchants plan in sync
+        GpDb::exec('UPDATE gp_merchants SET plan_id = ?, updated_at = ? WHERE merchant_id = ?', [$planId, $now, $merchantId]);
 
         self::logAudit($actor['email'], 'subscription', $subId, 'assign_plan', [
             'merchant_id' => $merchantId,

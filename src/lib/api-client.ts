@@ -522,13 +522,18 @@ class ApiClient {
   async adjustAdminCredit(
     merchantId: string,
     delta: number,
-    reason: string
+    reason: string,
+    setBalance?: number | null
   ): Promise<{ ok: boolean; credits: number }> {
     return this.request<{ ok: boolean; credits: number }>(
       `/api/v1/admin/merchants/${merchantId}/credit`,
       {
         method: "POST",
-        body: JSON.stringify({ delta, reason }),
+        body: JSON.stringify({
+          delta,
+          reason,
+          ...(setBalance !== undefined && setBalance !== null ? { set_balance: setBalance } : {}),
+        }),
       }
     );
   }
@@ -636,13 +641,22 @@ class ApiClient {
   async updateAdminMerchantPlan(
     merchantId: string,
     planId: string,
-    planExpiresAt?: string | null
-  ): Promise<{ ok: boolean; merchantId: string; planId: string; planExpiresAt?: string | null }> {
-    return this.request<{ ok: boolean; merchantId: string; planId: string; planExpiresAt?: string | null }>(
+    planExpiresAt?: string | null,
+    bonusCredits?: number,
+    isLifetime?: boolean,
+    reason?: string
+  ): Promise<{ ok: boolean; merchantId: string; planId: string; planExpiresAt?: string | null; credits?: number }> {
+    return this.request<{ ok: boolean; merchantId: string; planId: string; planExpiresAt?: string | null; credits?: number }>(
       `/api/v1/admin/merchants/${merchantId}/plan`,
       {
         method: "POST",
-        body: JSON.stringify({ plan_id: planId, plan_expires_at: planExpiresAt }),
+        body: JSON.stringify({
+          plan_id: planId,
+          plan_expires_at: planExpiresAt,
+          bonus_credits: bonusCredits,
+          is_lifetime: isLifetime,
+          reason,
+        }),
       }
     );
   }
