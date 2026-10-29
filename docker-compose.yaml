@@ -9,13 +9,8 @@ services:
       context: .
       dockerfile: Dockerfile
     environment:
-      HOSTNAME: "0.0.0.0"
-      PORT: "3000"
-      NEXT_PUBLIC_APP_NAME: GressPay
       NEXT_PUBLIC_APP_URL: ${APP_URL:-https://gresspay.extxcheats.com}
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
-      NEXT_PUBLIC_DATA_SOURCE: live
-      GRESSPAY_PHP_URL: "http://php:8080"
     ports:
       - "3000"
     restart: unless-stopped
@@ -27,8 +22,6 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     environment:
-      APP_NAME: GressPay
-      APP_ENV: production
       APP_URL: ${APP_URL:-https://gresspay.extxcheats.com}
       PUBLIC_APP_URL: ${PUBLIC_APP_URL:-https://gresspay.extxcheats.com}
       DB_DRIVER: ${DB_DRIVER:-pgsql}
@@ -55,5 +48,4 @@ services:
       R2_BUCKET_NAME: ${R2_BUCKET_NAME:-}
       R2_ENDPOINT: ${R2_ENDPOINT:-}
       R2_PUBLIC_BASE_URL: ${R2_PUBLIC_BASE_URL:-}
-      PORT: "8080"
     restart: unless-stopped
