@@ -27,7 +27,7 @@ final class GpRouter
         $head = $req->part(0) ?? '';
 
         match ($head) {
-            'health' => GpJson::send(['ok' => true, 'product' => 'GressPay', 'time' => GpIds::now()]),
+            'health' => self::health(),
             'auth' => AuthController::handle($req),
             'me' => AuthController::me($req),
             'checkout' => CheckoutController::handle($req),
@@ -46,6 +46,34 @@ final class GpRouter
             'binance-pay' => self::binancePay($req),
             default => GpJson::error('NOT_FOUND', 'Unknown route.', 404),
         };
+    }
+
+    private static function health(): never
+    {
+        $driver = 'unknown';
+        $dbOk = false;
+        $dbError = null;
+        try {
+            $driver = GpDb::driver();
+            GpDb::pdo()->query('SELECT 1');
+            $dbOk = true;
+        } catch (Throwable $e) {
+            $dbError = $e->getMessage();
+        }
+        $body = [
+            'ok' => $dbOk,
+            'product' => 'GressPay',
+            'time' => GpIds::now(),
+            'database' => [
+                'ok' => $dbOk,
+                'driver' => $driver,
+            ],
+        ];
+        if (!$dbOk) {
+            $body['database']['error'] = $dbError;
+            GpJson::send($body, 503);
+        }
+        GpJson::send($body);
     }
 
     private static function binancePay(GpRequest $req): never

@@ -609,5 +609,10 @@ assert_true(strtolower((string)$paidB['status']) === 'completed', 'Scenario B: P
 $usedSmsB = GpDb::one('SELECT status FROM gp_sms_data WHERE trx_id = ?', [$trxB]);
 assert_true(($usedSmsB['status'] ?? '') === 'used', 'Scenario B: Synced SMS status locked to used');
 
+assert_true(GpConfig::normalizeDbDriver('pgsql') === 'pgsql', 'pgsql is not rewritten to mysql');
+assert_true(GpConfig::normalizeDbDriver('postgres') === 'pgsql', 'postgres alias stays PostgreSQL');
+assert_true(GpConfig::normalizeDbDriver('mysql') === 'mysql', 'mysql driver stays mysql');
+assert_true(GpConfig::normalizeDbDriver('sqlite') === 'sqlite', 'sqlite driver stays sqlite');
+
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

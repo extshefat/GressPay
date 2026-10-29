@@ -67,9 +67,21 @@ final class GpConfig
             }
         }
         if ($key === 'DB_DRIVER' && $value !== '') {
-            $value = strtolower($value) === 'sqlite' ? 'sqlite' : 'mysql';
+            $value = self::normalizeDbDriver($value);
         }
         return $value !== '' ? $value : $default;
+    }
+
+    /** Keep PostgreSQL as pgsql. A private VPC Postgres must not be contacted with the MySQL protocol. */
+    public static function normalizeDbDriver(string $value): string
+    {
+        $value = strtolower(trim($value));
+        return match ($value) {
+            'sqlite' => 'sqlite',
+            'pgsql', 'postgres', 'postgresql' => 'pgsql',
+            'mysql', 'mariadb' => 'mysql',
+            default => $value,
+        };
     }
 
     public static function isProduction(): bool

@@ -51,7 +51,7 @@ export function AuthCard({ initialTab }: { initialTab: Tab }) {
     setError(null);
     try {
       const redirectUri = `${window.location.origin}/callback/google`;
-      const res = await api.getGoogleAuthUrl(redirectUri);
+      const res = await api.getGoogleAuthUrl(redirectUri, AbortSignal.timeout(20000));
       if (res.enabled && res.url) {
         window.location.href = res.url;
         return;

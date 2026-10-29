@@ -146,7 +146,7 @@ class ApiClient {
     }>("/api/v1/auth/providers");
   }
 
-  async getGoogleAuthUrl(redirectUri?: string): Promise<{
+  async getGoogleAuthUrl(redirectUri?: string, signal?: AbortSignal): Promise<{
     enabled: boolean;
     url?: string;
     state?: string;
@@ -158,7 +158,7 @@ class ApiClient {
       url?: string;
       state?: string;
       reason?: string;
-    }>(`/api/v1/auth/google/url${query}`);
+    }>(`/api/v1/auth/google/url${query}`, { signal });
   }
 
   async handleGoogleCallback(payload: {

@@ -33,7 +33,7 @@ final class GpDb
             $user = GpConfig::get('DB_USER', 'gresspay');
             $pass = GpConfig::get('DB_PASS', '');
             $sslmode = GpConfig::get('DB_SSLMODE', 'disable');
-            $dsn = "pgsql:host={$host};port={$port};dbname={$name};sslmode={$sslmode}";
+            $dsn = "pgsql:host={$host};port={$port};dbname={$name};sslmode={$sslmode};connect_timeout=5";
             self::$pdo = new PDO($dsn, $user, $pass, [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
@@ -55,6 +55,7 @@ final class GpDb
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES => false,
+                PDO::MYSQL_ATTR_CONNECT_TIMEOUT => 5,
             ]);
             return self::$pdo;
         }
