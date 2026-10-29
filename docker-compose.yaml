@@ -9,8 +9,8 @@ services:
       context: .
       dockerfile: Dockerfile
     environment:
-      NEXT_PUBLIC_APP_URL: ${APP_URL:-https://gresspay.extxcheats.com}
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
+      APP_URL: ${APP_URL}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     ports:
       - "3000"
     restart: unless-stopped
@@ -22,30 +22,30 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     environment:
-      APP_URL: ${APP_URL:-https://gresspay.extxcheats.com}
-      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-https://gresspay.extxcheats.com}
-      DB_DRIVER: ${DB_DRIVER:-pgsql}
-      DB_HOST: ${DB_HOST:-gresspay-db}
-      DB_PORT: ${DB_PORT:-5432}
-      DB_NAME: ${DB_NAME:-gresspay}
-      DB_USER: ${DB_USER:-gresspay}
+      APP_URL: ${APP_URL}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL}
+      DB_DRIVER: ${DB_DRIVER}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
-      DB_SSLMODE: ${DB_SSLMODE:-disable}
+      DB_SSLMODE: ${DB_SSLMODE}
       JWT_SECRET: ${JWT_SECRET}
       APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY}
-      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
-      CORS_ORIGINS: ${CORS_ORIGINS:-https://gresspay.extxcheats.com}
-      GRESSPAY_CRYPTO_ALLOWED: ${GRESSPAY_CRYPTO_ALLOWED:-0}
-      BINANCE_PAY_API_BASE: ${BINANCE_PAY_API_BASE:-https://bpay.binanceapi.com}
-      TRON_API_BASE: ${TRON_API_BASE:-https://api.trongrid.io}
-      TRON_API_KEY: ${TRON_API_KEY:-}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
-      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-}
-      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
-      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
-      R2_BUCKET_NAME: ${R2_BUCKET_NAME:-}
-      R2_ENDPOINT: ${R2_ENDPOINT:-}
-      R2_PUBLIC_BASE_URL: ${R2_PUBLIC_BASE_URL:-}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      GRESSPAY_CRYPTO_ALLOWED: ${GRESSPAY_CRYPTO_ALLOWED}
+      BINANCE_PAY_API_BASE: ${BINANCE_PAY_API_BASE}
+      TRON_API_BASE: ${TRON_API_BASE}
+      TRON_API_KEY: ${TRON_API_KEY}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI}
+      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY}
+      R2_BUCKET_NAME: ${R2_BUCKET_NAME}
+      R2_ENDPOINT: ${R2_ENDPOINT}
+      R2_PUBLIC_BASE_URL: ${R2_PUBLIC_BASE_URL}
     restart: unless-stopped
