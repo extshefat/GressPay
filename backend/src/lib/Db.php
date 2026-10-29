@@ -196,6 +196,7 @@ final class GpDb
             'ALTER TABLE gp_merchants ADD COLUMN telegram_bot_token TEXT',
             'ALTER TABLE gp_merchants ADD COLUMN telegram_chat_id VARCHAR(64)',
             'ALTER TABLE gp_merchants ADD COLUMN discord_webhook_url TEXT',
+            'ALTER TABLE gp_merchants ADD COLUMN receipt_footer TEXT',
         ];
         foreach ($deviceAlters as $sql) {
             try {
@@ -649,6 +650,19 @@ final class GpDb
                     updated_at TEXT NOT NULL
                   )");
         self::execDdl($adminOverrides);
+
+        $platformSettings = self::$driver === 'mysql'
+            ? "CREATE TABLE IF NOT EXISTS gp_platform_settings (
+                setting_key VARCHAR(64) NOT NULL PRIMARY KEY,
+                setting_value TEXT NULL,
+                updated_at VARCHAR(32) NOT NULL
+              ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+            : "CREATE TABLE IF NOT EXISTS gp_platform_settings (
+                setting_key VARCHAR(64) NOT NULL PRIMARY KEY,
+                setting_value TEXT,
+                updated_at TEXT NOT NULL
+              )";
+        self::execDdl($platformSettings);
 
         self::seedDefaultPlatformGateways();
 

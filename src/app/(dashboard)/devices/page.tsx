@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import QRCode from "qrcode";
 import { api } from "@/lib/api-client";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -18,12 +18,7 @@ import {
   RefreshCw,
   Plus,
   Download,
-  Wifi,
   Trash2,
-  CheckCircle2,
-  Clock,
-  Radio,
-  ExternalLink,
 } from "lucide-react";
 
 type DeviceRow = {
@@ -63,6 +58,7 @@ export default function CompanionDevicesPage() {
   const [deviceLabel, setDeviceLabel] = useState("bKash & Nagad Primary Phone");
   const [generatedDeviceId, setGeneratedDeviceId] = useState("");
   const [generatedToken, setGeneratedToken] = useState("");
+  const [pairingQr, setPairingQr] = useState<string | null>(null);
   const [isRegistering, setIsRegistering] = useState(false);
 
   const loadDevices = async () => {
@@ -102,6 +98,17 @@ export default function CompanionDevicesPage() {
       const res = await api.registerCompanionDevice(deviceLabel);
       setGeneratedDeviceId(res.deviceId);
       setGeneratedToken(res.token);
+      const payload = JSON.stringify({
+        apiBaseUrl: "https://gresspay.extxcheats.com/api/v1",
+        deviceId: res.deviceId,
+        token: res.token,
+      });
+      const qr = await QRCode.toDataURL(payload, {
+        width: 220,
+        margin: 1,
+        color: { dark: "#09090b", light: "#ffffff" },
+      });
+      setPairingQr(qr);
       success("New companion device registered successfully. Copy token now.", "Pairing Token Created");
       await loadDevices();
     } catch (err: unknown) {
@@ -134,7 +141,7 @@ export default function CompanionDevicesPage() {
     return diff < 600; // 10 minutes
   };
 
-  const apiBaseUrl = typeof window !== "undefined" ? window.location.origin : "https://gresspay.extxcheats.com";
+  const apiBaseUrl = "https://gresspay.extxcheats.com/api/v1";
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
@@ -174,11 +181,12 @@ export default function CompanionDevicesPage() {
             onClick={() => {
               setGeneratedDeviceId("");
               setGeneratedToken("");
+              setPairingQr(null);
               setIsPairModalOpen(true);
             }}
             leftIcon={<Plus className="w-3.5 h-3.5" />}
           >
-            Register Device
+            Add Android Device
           </Button>
         </div>
       </div>
@@ -456,15 +464,33 @@ export default function CompanionDevicesPage() {
 
             <CopyField label="API Base URL" value={apiBaseUrl} />
             <CopyField label="Device ID" value={generatedDeviceId} />
-            <CopyField label="Secret Device Token (Copy Now)" value={generatedToken} />
+            <CopyField label="Device Token (Copy Now)" value={generatedToken} />
+
+            {pairingQr && (
+              <div className="flex flex-col items-center gap-2 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={pairingQr} alt="Device pairing QR" className="w-44 h-44" />
+                <p className="text-[11px] text-zinc-500 text-center">
+                  Scan in the Companion APK for instant pairing
+                </p>
+              </div>
+            )}
+
+            <a
+              href="/download/gresspay-companion.apk"
+              className="inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-xl text-xs font-semibold bg-zinc-900 text-white dark:bg-white dark:text-zinc-950"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Download Android Companion APK
+            </a>
 
             <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-1 text-zinc-600 dark:text-zinc-400">
               <span className="font-semibold text-zinc-900 dark:text-zinc-100">Setup Instructions:</span>
               <ol className="list-decimal pl-4 space-y-1 text-[11px]">
                 <li>Install the GressPay Companion APK on your phone.</li>
-                <li>Enter the API Base URL and Device Token above.</li>
-                <li>Grant SMS & Notification permissions.</li>
-                <li>Disable Android Battery Optimization for uninterrupted 24/7 background syncing.</li>
+                <li>Scan the QR or paste API Base URL + Device Token.</li>
+                <li>Grant SMS &amp; Notification permissions.</li>
+                <li>Disable battery optimization for 24/7 syncing.</li>
               </ol>
             </div>
 

@@ -169,6 +169,36 @@ final class TransactionsController
             GpJson::send(GpPresenters::transaction($paid, $brand, $merchant));
         }
 
+        if ($req->method === 'POST' && $id !== null && $action === 'resend-webhook') {
+            GpAuth::requireScope($actor, 'verify_payment');
+            GpRateLimiter::guard('webhook-resend:' . $actor['brand_id'], 20, 60);
+            $row = GpDb::one(
+                'SELECT * FROM gp_transactions WHERE session_id = ? AND brand_id = ?',
+                [$id, $actor['brand_id']]
+            );
+            if ($row === null) {
+                GpJson::error('NOT_FOUND', 'Transaction not found.', 404);
+            }
+            if (($row['status'] ?? '') !== 'completed') {
+                GpJson::error('INVALID_STATE', 'Only completed transactions can resend webhooks.', 409);
+            }
+            $url = trim((string) ($brand['webhook_url'] ?? ''));
+            if ($url === '' || $url === '--') {
+                GpJson::error('NO_WEBHOOK', 'Set a webhook URL in merchant settings first.');
+            }
+            $link = null;
+            if (($row['source'] ?? '') === 'payment-link' && !empty($row['source_id'])) {
+                $link = GpDb::one('SELECT * FROM gp_payment_links WHERE link_id = ? AND brand_id = ?', [$row['source_id'], $actor['brand_id']]);
+            }
+            $payload = GpPresenters::webhookPayload($row, $brand, $link);
+            $code = GpWebhook::dispatch($brand, $url, $payload, 'payment.completed');
+            GpJson::send([
+                'ok' => $code >= 200 && $code < 300,
+                'httpCode' => $code,
+                'message' => $code >= 200 && $code < 300 ? 'Webhook resent successfully.' : 'Webhook delivery failed.',
+            ]);
+        }
+
         GpJson::error('METHOD_NOT_ALLOWED', 'Unsupported method.', 405);
     }
 }

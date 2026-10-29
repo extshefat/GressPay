@@ -351,8 +351,8 @@ final class GpPresenters
             'payment_url' => $payUrl,
             'returnUrl' => $returnUrl,
             'merchantName' => $brand['name'] ?? 'GressPay Merchant',
-            'merchantLogo' => null,
-            'merchantVerified' => false,
+            'merchantLogo' => self::merchantLogoForBrand($brand),
+            'merchantVerified' => true,
             'orderTitle' => $meta['orderTitle'] ?? ($link['title'] ?? 'Payment'),
             'orderDescription' => $meta['orderDescription'] ?? ($link['description'] ?? ''),
             'amount' => self::num($txn['amount']),
@@ -415,5 +415,21 @@ final class GpPresenters
                 'EUR' => (float) ($out['EUR'] ?? 0.92),
             ],
         ];
+    }
+
+    /** @param array<string,mixed> $brand */
+    private static function merchantLogoForBrand(array $brand): ?string
+    {
+        $merchantId = (string) ($brand['merchant_id'] ?? '');
+        if ($merchantId === '') {
+            return null;
+        }
+        try {
+            $m = GpDb::one('SELECT brand_logo_url, brand_name FROM gp_merchants WHERE merchant_id = ?', [$merchantId]);
+            $logo = trim((string) ($m['brand_logo_url'] ?? ''));
+            return $logo !== '' ? $logo : null;
+        } catch (Throwable $e) {
+            return null;
+        }
     }
 }

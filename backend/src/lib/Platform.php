@@ -3,37 +3,39 @@ declare(strict_types=1);
 
 final class GpPlatform
 {
+    /** All Stage-2 live rails (MFS + crypto). Platform-wide enablement is via gp_platform_gateways. */
     /** @var list<string> */
-    public const LIVE_RAILS = ['bkash', 'nagad', 'binance_pay', 'usdt_trc20'];
+    public const LIVE_RAILS = [
+        'bkash',
+        'nagad',
+        'rocket',
+        'upay',
+        'cellfin',
+        'binance_pay',
+        'bybit_pay',
+        'usdt_trc20',
+    ];
 
     /** @var list<string> */
-    public const UNAVAILABLE_RAILS = ['rocket', 'upay', 'cellfin', 'bybit_pay'];
+    public const UNAVAILABLE_RAILS = [];
 
     public static function checkoutAllowed(string $code): bool
     {
         if (!in_array($code, self::LIVE_RAILS, true)) {
             return false;
         }
-        try {
-            $row = GpDb::one('SELECT enabled FROM gp_platform_flags WHERE flag_key = ?', [$code]);
-            if (!is_array($row)) {
-                return true;
-            }
-            return (int) ($row['enabled'] ?? 0) === 1;
-        } catch (Throwable $e) {
-            return true;
-        }
+        return GpCatalog::isPlatformEnabled($code);
     }
 
     /** @return list<array{code:string,enabled:bool,available:bool}> */
     public static function listRails(): array
     {
         $out = [];
-        foreach (array_merge(self::LIVE_RAILS, self::UNAVAILABLE_RAILS) as $code) {
+        foreach (self::LIVE_RAILS as $code) {
             $out[] = [
                 'code' => $code,
                 'enabled' => self::checkoutAllowed($code),
-                'available' => in_array($code, self::LIVE_RAILS, true),
+                'available' => true,
             ];
         }
         return $out;
@@ -42,15 +44,27 @@ final class GpPlatform
     public static function setRail(string $code, bool $enabled): void
     {
         if (!in_array($code, self::LIVE_RAILS, true)) {
-            GpJson::error('RAIL_UNAVAILABLE', 'This rail has no live verifier and cannot be enabled.', 400);
+            GpJson::error('RAIL_UNAVAILABLE', 'Unknown payment rail.', 400);
         }
-        $now = GpIds::now();
+        $gw = GpDb::one('SELECT * FROM gp_platform_gateways WHERE gateway_code = ?', [$code]);
+        if (!is_array($gw)) {
+            GpJson::error('NOT_FOUND', 'Platform gateway row missing for rail.', 404);
+        }
         $flag = $enabled ? 1 : 0;
+        GpDb::exec(
+            'UPDATE gp_platform_gateways SET is_enabled = ?, updated_at = ? WHERE gateway_code = ?',
+            [$flag, GpIds::now(), $code]
+        );
+        $now = GpIds::now();
         $existing = GpDb::one('SELECT flag_key FROM gp_platform_flags WHERE flag_key = ?', [$code]);
         if (is_array($existing)) {
             GpDb::exec('UPDATE gp_platform_flags SET enabled = ?, updated_at = ? WHERE flag_key = ?', [$flag, $now, $code]);
             return;
         }
-        GpDb::exec('INSERT INTO gp_platform_flags (flag_key, enabled, updated_at) VALUES (?, ?, ?)', [$code, $flag, $now]);
+        try {
+            GpDb::exec('INSERT INTO gp_platform_flags (flag_key, enabled, updated_at) VALUES (?, ?, ?)', [$code, $flag, $now]);
+        } catch (Throwable $e) {
+            // optional mirror table
+        }
     }
 }

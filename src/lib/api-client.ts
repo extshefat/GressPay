@@ -19,10 +19,11 @@ import {
   PlatformGateway,
   AdminTransaction,
   AdminSmsLog,
+  AdminPaymentWallets,
 } from "./types/api";
 import { METHOD_THEMES } from "./method-theme";
 
-/** Explicit live only — anything else is demo/mock and must be labeled as such. */
+/** Live API only — mock/demo fallbacks are permanently removed. */
 export const IS_MOCK = false;
 export const DATA_SOURCE = "live" as const;
 function resolveApiBase(): string {
@@ -420,8 +421,8 @@ class ApiClient {
         return this.request<ExchangeRatesResponse>("/api/v1/rates");
   }
 
-  async getMetrics(): Promise<DashboardMetrics> {
-        return this.request<DashboardMetrics>("/api/v1/dashboard/metrics");
+  async getMetrics(days: 7 | 30 = 7): Promise<DashboardMetrics> {
+    return this.request<DashboardMetrics>(`/api/v1/dashboard/metrics?days=${days}`);
   }
 
   async getApiCredentials(): Promise<ApiCredentials> {
@@ -434,12 +435,49 @@ class ApiClient {
 
   async updateSettings(payload: {
     businessName?: string;
+    brandName?: string;
+    brandLogoUrl?: string;
+    supportContact?: string;
+    receiptFooter?: string;
+    telegramBotToken?: string;
+    telegramChatId?: string;
+    discordWebhookUrl?: string;
+    clearTelegramBotToken?: boolean;
     webhookUrl?: string;
     cryptoEnabled?: boolean;
   }): Promise<MerchantSettings> {
-        return this.request<MerchantSettings>("/api/v1/merchant/settings", {
+    return this.request<MerchantSettings>("/api/v1/merchant/settings", {
       method: "PUT",
       body: JSON.stringify(payload),
+    });
+  }
+
+  async testInstantAlert(channel: "telegram" | "discord" | "all" = "all"): Promise<{
+    ok: boolean;
+    message: string;
+    results: Record<string, { ok?: boolean; error?: string; httpCode?: number } | null>;
+  }> {
+    return this.request("/api/v1/merchant/alerts/test", {
+      method: "POST",
+      body: JSON.stringify({ channel }),
+    });
+  }
+
+  async resendTransactionWebhook(id: string): Promise<{ ok: boolean; httpCode?: number; message: string }> {
+    return this.request(`/api/v1/transactions/${id}/resend-webhook`, {
+      method: "POST",
+      body: "{}",
+    });
+  }
+
+  async getAdminPaymentSettings(): Promise<{ wallets: AdminPaymentWallets }> {
+    return this.request<{ wallets: AdminPaymentWallets }>("/api/v1/admin/payment-settings");
+  }
+
+  async updateAdminPaymentSettings(wallets: Partial<AdminPaymentWallets>): Promise<{ ok: boolean; wallets: AdminPaymentWallets }> {
+    return this.request<{ ok: boolean; wallets: AdminPaymentWallets }>("/api/v1/admin/payment-settings", {
+      method: "PUT",
+      body: JSON.stringify({ wallets }),
     });
   }
 

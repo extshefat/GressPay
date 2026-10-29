@@ -99,6 +99,9 @@ const ALL_METHOD_OPTIONS: MethodMeta[] = [
   },
 ];
 
+const MFS_CODES = new Set(["bkash", "nagad", "rocket", "upay", "cellfin"]);
+const CRYPTO_CODES = new Set(["usdt_trc20", "binance_pay", "bybit_pay"]);
+
 function readinessBadge(method: string, r: string): { label: string; variant: "emerald" | "amber" | "slate" | "rose" } {
   if (r === "disabled_by_admin") {
     return { label: "Disabled by Admin", variant: "slate" };
@@ -143,6 +146,12 @@ export default function GatewaysPage() {
   const [formAccount, setFormAccount] = useState("");
   const [formAccountType, setFormAccountType] = useState<"personal" | "agent" | "merchant">("personal");
   const [formInstructions, setFormInstructions] = useState("");
+  const [formRateMode, setFormRateMode] = useState<"auto" | "custom">("auto");
+  const [formCustomRate, setFormCustomRate] = useState("");
+  const [formBinanceMode, setFormBinanceMode] = useState<"uid" | "merchant_api">("uid");
+  const [formAccountName, setFormAccountName] = useState("");
+  const [formUsdtOptional, setFormUsdtOptional] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<"all" | "mfs" | "crypto">("all");
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
@@ -190,6 +199,11 @@ export default function GatewaysPage() {
     setFormAccount("");
     setFormAccountType("personal");
     setFormInstructions("");
+    setFormRateMode("auto");
+    setFormCustomRate("");
+    setFormBinanceMode("uid");
+    setFormAccountName("");
+    setFormUsdtOptional("");
     setPreviewUrl(null);
     setShowForm(true);
   };
@@ -201,6 +215,11 @@ export default function GatewaysPage() {
     setFormAccount(g.account || "");
     setFormAccountType((g.accountType as "personal" | "agent" | "merchant") || "personal");
     setFormInstructions((g.instructions as string) || "");
+    setFormRateMode("auto");
+    setFormCustomRate("");
+    setFormBinanceMode(g.methodCode === "binance_pay" ? "merchant_api" : "uid");
+    setFormAccountName("");
+    setFormUsdtOptional("");
     setPreviewUrl(null);
     setShowForm(true);
     if (g.qrStatus === "ready") {
@@ -213,25 +232,69 @@ export default function GatewaysPage() {
     }
   };
 
+  const validateForm = (): string | null => {
+    if (MFS_CODES.has(formMethod)) {
+      const digits = formAccount.replace(/\D/g, "");
+      if (formMethod === "rocket") {
+        if (digits.length < 11 || digits.length > 12) return "Rocket wallet must be 11–12 digits.";
+      } else if (!/^01\d{9}$/.test(digits)) {
+        return "Bangladesh MFS wallet must be an 11-digit number starting with 01.";
+      }
+    }
+    if (formMethod === "usdt_trc20") {
+      if (!/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(formAccount.trim())) {
+        return "USDT TRC-20 address must be a valid Base58 address starting with T (34 chars).";
+      }
+      if (formRateMode === "custom" && !(Number(formCustomRate) > 0)) {
+        return "Enter a valid custom BDT per USDT rate.";
+      }
+    }
+    if (formMethod === "binance_pay" && formBinanceMode === "uid" && formAccount.trim().length < 4) {
+      return "Enter a Binance Pay UID.";
+    }
+    if (formMethod === "bybit_pay" && formAccount.trim().length < 4) {
+      return "Enter a Bybit UID.";
+    }
+    return null;
+  };
+
   const saveForm = async (e: React.FormEvent) => {
     e.preventDefault();
+    const validationError = validateForm();
+    if (validationError) {
+      setErrorMessage(validationError);
+      return;
+    }
     setBusyId("form");
     setErrorMessage(null);
     try {
+      const payload: Record<string, unknown> = {
+        displayName: formName || activeMeta?.label || formMethod,
+        account: formAccount,
+        accountType: MFS_CODES.has(formMethod) ? formAccountType : "personal",
+        instructions: formInstructions,
+      };
+      if (formMethod === "usdt_trc20") {
+        payload.exchangeRateMode = formRateMode;
+        if (formRateMode === "custom") payload.customUsdtRate = Number(formCustomRate);
+      }
+      if (formMethod === "binance_pay") {
+        payload.integrationMode = formBinanceMode;
+        payload.accountName = formAccountName;
+        payload.binance_uid = formAccount;
+      }
+      if (formMethod === "bybit_pay") {
+        payload.bybit_uid = formAccount;
+        payload.accountName = formAccountName;
+        if (formUsdtOptional.trim()) payload.wallet_address = formUsdtOptional.trim();
+      }
+
       if (editing) {
-        await api.updateGateway(editing.gatewayId, {
-          displayName: formName,
-          account: formAccount,
-          accountType: formAccountType,
-          instructions: formInstructions,
-        });
+        await api.updateGateway(editing.gatewayId, payload);
       } else {
         await api.createGateway({
           methodCode: formMethod,
-          displayName: formName || activeMeta?.label || formMethod,
-          account: formAccount,
-          accountType: formAccountType,
-          instructions: formInstructions,
+          ...payload,
         });
       }
       setShowForm(false);
@@ -321,8 +384,11 @@ export default function GatewaysPage() {
     }
   };
 
-  const mfsCodes = new Set(["bkash", "nagad", "rocket", "upay", "cellfin"]);
-  const cryptoCodes = new Set(["usdt_trc20", "binance_pay", "bybit_pay"]);
+  const filteredGateways = gateways.filter((g) => {
+    if (categoryFilter === "mfs") return MFS_CODES.has(g.methodCode);
+    if (categoryFilter === "crypto") return CRYPTO_CODES.has(g.methodCode);
+    return true;
+  });
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -354,6 +420,29 @@ export default function GatewaysPage() {
             Add Payment Rail
           </Button>
         </div>
+      </div>
+
+      <div className="flex flex-wrap gap-1 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 p-1">
+        {(
+          [
+            { id: "all", label: "All Gateways" },
+            { id: "mfs", label: "Bangladesh MFS" },
+            { id: "crypto", label: "Global Crypto" },
+          ] as const
+        ).map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setCategoryFilter(tab.id)}
+            className={`flex-1 min-w-[120px] px-3 py-2 text-xs font-semibold rounded-lg transition-colors ${
+              categoryFilter === tab.id
+                ? "bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 shadow-sm"
+                : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* Non-Custodial Architecture Strip */}
@@ -421,7 +510,7 @@ export default function GatewaysPage() {
               required
             />
 
-            {mfsCodes.has(formMethod) && (
+            {MFS_CODES.has(formMethod) && (
               <label className="block text-xs font-medium space-y-1.5 text-zinc-700 dark:text-zinc-300">
                 <span>Account Type</span>
                 <select
@@ -429,31 +518,114 @@ export default function GatewaysPage() {
                   value={formAccountType}
                   onChange={(e) => setFormAccountType(e.target.value as "personal" | "agent" | "merchant")}
                 >
-                  <option value="personal">Personal Account (Send Money)</option>
-                  <option value="agent">Agent Account (Cash In)</option>
-                  <option value="merchant">Merchant Account (Payment)</option>
+                  <option value="personal">Personal — Send Money</option>
+                  <option value="agent">Agent — Cash In</option>
                 </select>
-                <span className="block text-[11px] text-zinc-500">
-                  Customers are instructed to use Send Money for personal wallets or Cash In for agent wallets.
-                </span>
+              </label>
+            )}
+
+            {formMethod === "binance_pay" && (
+              <label className="block text-xs font-medium space-y-1.5 text-zinc-700 dark:text-zinc-300">
+                <span>Integration Mode</span>
+                <select
+                  className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs font-medium"
+                  value={formBinanceMode}
+                  onChange={(e) => setFormBinanceMode(e.target.value as "uid" | "merchant_api")}
+                >
+                  <option value="uid">Personal Binance UID</option>
+                  <option value="merchant_api">Binance Merchant API</option>
+                </select>
               </label>
             )}
 
             <Input
-              label={activeMeta?.accountLabel || "Your Receiving Account / Number"}
+              label={
+                formMethod === "usdt_trc20"
+                  ? "TRON (TRC20) Receiving Wallet Address"
+                  : formMethod === "binance_pay"
+                  ? formBinanceMode === "uid"
+                    ? "Binance Pay UID"
+                    : "Merchant API Key note / Merchant ID"
+                  : formMethod === "bybit_pay"
+                  ? "Bybit UID"
+                  : activeMeta?.accountLabel || "Receiving Account / Number"
+              }
               value={formAccount}
               onChange={(e) => setFormAccount(e.target.value)}
               placeholder={activeMeta?.placeholder || "01XXXXXXXXX"}
               className="font-mono text-xs"
-              required={formMethod !== "binance_pay"}
+              required={!(formMethod === "binance_pay" && formBinanceMode === "merchant_api")}
             />
 
+            {(formMethod === "binance_pay" || formMethod === "bybit_pay") && (
+              <Input
+                label="Account Name"
+                value={formAccountName}
+                onChange={(e) => setFormAccountName(e.target.value)}
+                placeholder="Display name for checkout"
+              />
+            )}
+
+            {formMethod === "bybit_pay" && (
+              <Input
+                label="Optional USDT TRC20 Address"
+                value={formUsdtOptional}
+                onChange={(e) => setFormUsdtOptional(e.target.value)}
+                placeholder="T..."
+                className="font-mono text-xs"
+              />
+            )}
+
+            {formMethod === "usdt_trc20" && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label className="block text-xs font-medium space-y-1.5 text-zinc-700 dark:text-zinc-300">
+                  <span>Exchange Rate Mode</span>
+                  <select
+                    className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs font-medium"
+                    value={formRateMode}
+                    onChange={(e) => setFormRateMode(e.target.value as "auto" | "custom")}
+                  >
+                    <option value="auto">Auto Live Rate</option>
+                    <option value="custom">Custom BDT per USDT Rate</option>
+                  </select>
+                </label>
+                {formRateMode === "custom" && (
+                  <Input
+                    label="Custom BDT / USDT"
+                    value={formCustomRate}
+                    onChange={(e) => setFormCustomRate(e.target.value)}
+                    placeholder="e.g. 122.50"
+                    className="font-mono text-xs"
+                  />
+                )}
+              </div>
+            )}
+
+            {formMethod === "binance_pay" && formBinanceMode === "merchant_api" && (
+              <p className="text-[11px] text-zinc-500 rounded-xl border border-zinc-200 dark:border-zinc-800 p-3">
+                Store API Key &amp; Secret under{" "}
+                <Link href="/dashboard/settings#binance-pay" className="underline font-semibold text-zinc-900 dark:text-zinc-100">
+                  Settings → Binance Pay
+                </Link>
+                . This gateway row only toggles checkout availability.
+              </p>
+            )}
+
             <Input
-              label="Custom Customer Instructions (optional)"
+              label="Custom Checkout Instruction Note (optional)"
               value={formInstructions}
               onChange={(e) => setFormInstructions(e.target.value)}
-              placeholder="e.g. Please use Send Money option and paste the 10-character TrxID below."
+              placeholder="e.g. Please use Send Money and paste the TrxID below."
             />
+
+            {editing && MFS_CODES.has(formMethod) && (
+              <div className="flex items-center justify-between p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs">
+                <span className="text-zinc-600 dark:text-zinc-400">Companion readiness</span>
+                <Badge variant={editing.readiness === "needs_companion" ? "amber" : "emerald"} size="sm" dot>
+                  {editing.readiness === "needs_companion" ? "No Active Device" : "Connected to Companion APK"}
+                </Badge>
+              </div>
+            )}
 
             {editing && editing.supportsQr && (
               <div className="space-y-3 border-t border-zinc-100 dark:border-zinc-900 pt-3">
@@ -511,17 +683,17 @@ export default function GatewaysPage() {
           <div className="w-8 h-8 border-2 border-zinc-900 dark:border-white border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-xs font-mono text-zinc-500">Loading payment gateways…</p>
         </div>
-      ) : gateways.length === 0 ? (
+      ) : filteredGateways.length === 0 ? (
         <Card className="p-12 text-center space-y-4 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
           <div className="p-3 rounded-2xl bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 w-fit mx-auto">
             <Smartphone className="w-8 h-8" />
           </div>
           <div className="space-y-1">
             <h3 className="font-bold text-base text-zinc-900 dark:text-zinc-100">
-              No payment destinations configured yet
+              No payment destinations in this category
             </h3>
             <p className="text-xs text-zinc-500 max-w-sm mx-auto">
-              Add your bKash, Nagad, Rocket, Upay, Cellfin, or USDT TRC-20 wallet to start accepting automated payments.
+              Add your bKash, Nagad, Rocket, Upay, Cellfin, or crypto wallets to start accepting automated payments.
             </p>
           </div>
           <Button size="sm" variant="primary" onClick={openCreate} leftIcon={<Plus className="w-4 h-4" />}>
@@ -534,19 +706,19 @@ export default function GatewaysPage() {
             {
               title: "Mobile Banking (bKash, Nagad, Rocket, Upay, Cellfin)",
               hint: "Direct wallet settlement via paired Android Companion APK. Zero platform escrow.",
-              items: gateways.filter((g) => mfsCodes.has(g.methodCode)),
+              items: filteredGateways.filter((g) => MFS_CODES.has(g.methodCode)),
               icon: <Smartphone className="w-4 h-4" />,
             },
             {
               title: "Cryptocurrency (USDT TRC-20, Binance Pay, Bybit Pay)",
               hint: "Non-custodial TRON blockchain on-chain verification, Binance Pay Merchant API, and Bybit Pay UID transfers.",
-              items: gateways.filter((g) => cryptoCodes.has(g.methodCode)),
+              items: filteredGateways.filter((g) => CRYPTO_CODES.has(g.methodCode)),
               icon: <Layers className="w-4 h-4" />,
             },
             {
               title: "Other Destinations",
               hint: "Legacy or custom configured destinations.",
-              items: gateways.filter((g) => !mfsCodes.has(g.methodCode) && !cryptoCodes.has(g.methodCode)),
+              items: filteredGateways.filter((g) => !MFS_CODES.has(g.methodCode) && !CRYPTO_CODES.has(g.methodCode)),
               icon: <HelpCircle className="w-4 h-4" />,
             },
           ]

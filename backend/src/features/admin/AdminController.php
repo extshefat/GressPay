@@ -63,6 +63,11 @@ final class AdminController
                 'POST' => $sub === 'revoke' ? self::revokeDevice($actor, $id) : GpJson::error('NOT_FOUND', 'Unknown device action.', 404),
                 default => GpJson::error('METHOD_NOT_ALLOWED', 'Method not allowed.', 405),
             },
+            'payment-settings' => match ($req->method) {
+                'GET' => self::getPlatformPaymentSettings(),
+                'PUT', 'POST' => self::putPlatformPaymentSettings($actor, $req),
+                default => GpJson::error('METHOD_NOT_ALLOWED', 'Method not allowed.', 405),
+            },
             default => GpJson::error('NOT_FOUND', 'Unknown admin route.', 404),
         };
     }
@@ -931,6 +936,67 @@ final class AdminController
              FROM gp_devices ORDER BY id DESC LIMIT 100'
         );
         GpJson::send(['devices' => $rows]);
+    }
+
+    private static function getPlatformPaymentSettings(): never
+    {
+        $row = GpDb::one('SELECT setting_value FROM gp_platform_settings WHERE setting_key = ?', ['admin_payment_wallets']);
+        $wallets = [];
+        if (is_array($row) && !empty($row['setting_value'])) {
+            $decoded = json_decode((string) $row['setting_value'], true);
+            if (is_array($decoded)) {
+                $wallets = $decoded;
+            }
+        }
+        GpJson::send([
+            'wallets' => array_merge([
+                'bkash' => '',
+                'nagad' => '',
+                'rocket' => '',
+                'upay' => '',
+                'usdt_trc20' => '',
+                'binance_uid' => '',
+                'bybit_uid' => '',
+            ], $wallets),
+        ]);
+    }
+
+    private static function putPlatformPaymentSettings(array $actor, GpRequest $req): never
+    {
+        $incoming = $req->input('wallets', $req->body);
+        if (!is_array($incoming)) {
+            GpJson::error('INVALID_BODY', 'Expected wallets object.', 400);
+        }
+        if (isset($incoming['wallets']) && is_array($incoming['wallets'])) {
+            $incoming = $incoming['wallets'];
+        }
+        $clean = [
+            'bkash' => trim((string) ($incoming['bkash'] ?? '')),
+            'nagad' => trim((string) ($incoming['nagad'] ?? '')),
+            'rocket' => trim((string) ($incoming['rocket'] ?? '')),
+            'upay' => trim((string) ($incoming['upay'] ?? '')),
+            'usdt_trc20' => trim((string) ($incoming['usdt_trc20'] ?? '')),
+            'binance_uid' => trim((string) ($incoming['binance_uid'] ?? '')),
+            'bybit_uid' => trim((string) ($incoming['bybit_uid'] ?? '')),
+        ];
+        $json = json_encode($clean, JSON_UNESCAPED_UNICODE);
+        $now = GpIds::now();
+        $existing = GpDb::one('SELECT setting_key FROM gp_platform_settings WHERE setting_key = ?', ['admin_payment_wallets']);
+        if (is_array($existing)) {
+            GpDb::exec(
+                'UPDATE gp_platform_settings SET setting_value = ?, updated_at = ? WHERE setting_key = ?',
+                [$json, $now, 'admin_payment_wallets']
+            );
+        } else {
+            GpDb::exec(
+                'INSERT INTO gp_platform_settings (setting_key, setting_value, updated_at) VALUES (?, ?, ?)',
+                ['admin_payment_wallets', $json, $now]
+            );
+        }
+        self::logAudit((string) ($actor['email'] ?? ''), 'platform_settings', 'admin_payment_wallets', 'update_payment_wallets', [
+            'keys' => array_keys(array_filter($clean)),
+        ]);
+        GpJson::send(['ok' => true, 'wallets' => $clean]);
     }
 
     /** @param array{email?:string} $actor */

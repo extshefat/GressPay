@@ -265,16 +265,39 @@ export interface DashboardMetrics {
   activeLinksCount: number;
   activeMethodsCount?: number;
   connectedDevicesCount?: number;
+  onlineDevicesCount?: number;
   pendingSettlementUsd: number;
+  rangeDays?: number;
   volumeHistory: {
     date: string;
     bdt: number;
     cryptoUsd: number;
   }[];
+  railBreakdown?: {
+    code: string;
+    label: string;
+    volumeBdt: number;
+  }[];
+  subscription?: {
+    planId: string;
+    planName: string;
+    planExpiresAt?: string | null;
+    deviceLimit: number;
+    methodLimit: number;
+    devicesUsed: number;
+    methodsUsed: number;
+  };
 }
 
 export interface MerchantSettings {
   businessName: string;
+  brandName?: string;
+  brandLogoUrl?: string;
+  supportContact?: string;
+  receiptFooter?: string;
+  telegramBotTokenSet?: boolean;
+  telegramChatId?: string;
+  discordWebhookUrl?: string;
   webhookUrl: string;
   currency: Currency;
   cryptoEnabled?: boolean;
@@ -287,9 +310,23 @@ export interface MerchantSettings {
   rails?: {
     bkash?: { enabled?: boolean; destinationConfigured?: boolean };
     nagad?: { enabled?: boolean; destinationConfigured?: boolean };
+    rocket?: { enabled?: boolean; destinationConfigured?: boolean };
+    upay?: { enabled?: boolean; destinationConfigured?: boolean };
+    cellfin?: { enabled?: boolean; destinationConfigured?: boolean };
     usdt_trc20?: { enabled?: boolean; destinationConfigured?: boolean };
+    bybit_pay?: { enabled?: boolean; destinationConfigured?: boolean };
     binance_pay?: { enabled?: boolean; credentialsConfigured?: boolean };
   };
+}
+
+export interface AdminPaymentWallets {
+  bkash: string;
+  nagad: string;
+  rocket: string;
+  upay: string;
+  usdt_trc20: string;
+  binance_uid: string;
+  bybit_uid: string;
 }
 
 export interface AdminMerchant {

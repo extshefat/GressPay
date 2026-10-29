@@ -51,6 +51,7 @@ export default function TransactionsPage() {
   const [cancelReason, setCancelReason] = useState("");
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
+  const [isResendingWebhook, setIsResendingWebhook] = useState(false);
 
   const loadTransactions = async () => {
     setIsLoading(true);
@@ -79,7 +80,9 @@ export default function TransactionsPage() {
         const matchesId = tx.id.toLowerCase().includes(q);
         const matchesTxId = (tx.txid || "").toLowerCase().includes(q);
         const matchesCustomer = (tx.customerEmail || tx.customerName || "").toLowerCase().includes(q);
-        if (!matchesId && !matchesTxId && !matchesCustomer) return false;
+        const matchesPhone = (tx.customerPhone || tx.senderAccountOrAddress || "").toLowerCase().includes(q);
+        const matchesLink = (tx.paymentLinkId || tx.invoiceId || "").toLowerCase().includes(q);
+        if (!matchesId && !matchesTxId && !matchesCustomer && !matchesPhone && !matchesLink) return false;
       }
       return true;
     });
@@ -137,6 +140,19 @@ export default function TransactionsPage() {
       toastError(msg, "Action Failed");
     } finally {
       setIsCancelling(false);
+    }
+  };
+
+  const handleResendWebhook = async (tx: Transaction) => {
+    setIsResendingWebhook(true);
+    try {
+      const res = await api.resendTransactionWebhook(tx.id);
+      if (res.ok) success(res.message, "Webhook Resent");
+      else toastError(res.message, "Webhook Failed");
+    } catch (err: unknown) {
+      toastError(err instanceof Error ? err.message : "Webhook resend failed.", "Action Failed");
+    } finally {
+      setIsResendingWebhook(false);
     }
   };
 
@@ -236,7 +252,7 @@ export default function TransactionsPage() {
           {/* Search Box */}
           <div className="flex-1 max-w-md">
             <SearchInput
-              placeholder="Search by ID, TxID, email, or customer…"
+              placeholder="Search by TrxID, Order ID, or Sender Phone…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onClear={() => setSearchQuery("")}
@@ -490,7 +506,7 @@ export default function TransactionsPage() {
                     onClick={() => setConfirmModalTx(selectedTx)}
                     leftIcon={<CheckCircle2 className="w-4 h-4" />}
                   >
-                    Confirm & Settle
+                    Manual Approve
                   </Button>
                 )}
                 <Button
@@ -499,9 +515,21 @@ export default function TransactionsPage() {
                   onClick={() => setCancelModalTx(selectedTx)}
                   leftIcon={<XCircle className="w-4 h-4" />}
                 >
-                  Reject Transaction
+                  Reject
                 </Button>
               </div>
+            )}
+
+            {selectedTx.status === "COMPLETED" && (
+              <Button
+                className="w-full"
+                variant="outline"
+                size="sm"
+                isLoading={isResendingWebhook}
+                onClick={() => handleResendWebhook(selectedTx)}
+              >
+                Resend Webhook
+              </Button>
             )}
           </div>
         )}

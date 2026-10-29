@@ -11,6 +11,7 @@ import {
   PlatformGateway,
   AdminTransaction,
   AdminSmsLog,
+  AdminPaymentWallets,
 } from "@/lib/types/api";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -55,8 +56,18 @@ export default function AdminPage() {
   const [auditLogs, setAuditLogs] = useState<AdminAuditLog[]>([]);
 
   const [activeTab, setActiveTab] = useState<
-    "overview" | "gateways" | "merchants" | "transactions" | "sms" | "plans" | "audit"
-  >("overview");
+    "gateways" | "merchants" | "pricing" | "health"
+  >("gateways");
+  const [adminWallets, setAdminWallets] = useState<AdminPaymentWallets>({
+    bkash: "",
+    nagad: "",
+    rocket: "",
+    upay: "",
+    usdt_trc20: "",
+    binance_uid: "",
+    bybit_uid: "",
+  });
+  const [savingWallets, setSavingWallets] = useState(false);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isForbidden, setIsForbidden] = useState(false);
@@ -128,7 +139,7 @@ export default function AdminPage() {
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const [s, m, g, t, sms, p, sub, a] = await Promise.all([
+      const [s, m, g, t, sms, p, sub, a, wallets] = await Promise.all([
         api.getAdminStats(),
         api.getAdminMerchants(),
         api.getAdminPlatformGateways().catch(() => ({ gateways: [] })),
@@ -137,6 +148,17 @@ export default function AdminPage() {
         api.getAdminPlans(),
         api.getAdminSubscriptions(),
         api.getAdminAuditLogs(),
+        api.getAdminPaymentSettings().catch(() => ({
+          wallets: {
+            bkash: "",
+            nagad: "",
+            rocket: "",
+            upay: "",
+            usdt_trc20: "",
+            binance_uid: "",
+            bybit_uid: "",
+          },
+        })),
       ]);
       setStats(s);
       setMerchants(m.merchants || []);
@@ -146,6 +168,7 @@ export default function AdminPage() {
       setPlans(p.plans || []);
       setSubscriptions(sub.subscriptions || []);
       setAuditLogs(a.auditLogs || []);
+      setAdminWallets(wallets.wallets);
       setIsForbidden(false);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Access denied or failed to load admin console.";
@@ -418,23 +441,20 @@ export default function AdminPage() {
         </Alert>
       )}
 
-      {/* High-Contrast Tab Bar */}
+      {/* Stage-2 Tab Bar — 4 control surfaces */}
       <div className="flex gap-1.5 overflow-x-auto pb-1 border-b border-zinc-200 dark:border-zinc-800 scrollbar-none">
         {[
-          { key: "overview", label: "Overview", icon: Activity },
-          { key: "gateways", label: `Global Gateways (${gateways.length})`, icon: Sliders },
-          { key: "merchants", label: `Merchants (${merchants.length})`, icon: Users },
-          { key: "transactions", label: `Platform Transactions (${transactions.length})`, icon: CreditCard },
-          { key: "sms", label: `Companion SMS Stream (${smsLogs.length})`, icon: Smartphone },
-          { key: "plans", label: `SaaS Plans (${plans.length})`, icon: Layers },
-          { key: "audit", label: `Audit Trail (${auditLogs.length})`, icon: History },
+          { key: "gateways", label: "Global Gateway Control", icon: Sliders },
+          { key: "merchants", label: "Merchants & Subscriptions", icon: Users },
+          { key: "pricing", label: "Pricing & Admin Wallets", icon: CreditCard },
+          { key: "health", label: "Transactions & Health", icon: Activity },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.key;
           return (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key as any)}
+              onClick={() => setActiveTab(tab.key as typeof activeTab)}
               className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
                 isActive
                   ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 shadow-sm"
@@ -449,7 +469,7 @@ export default function AdminPage() {
       </div>
 
       {/* TAB 1: OVERVIEW */}
-      {activeTab === "overview" && stats && (
+      {activeTab === "health" && stats && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
@@ -844,7 +864,7 @@ export default function AdminPage() {
       )}
 
       {/* TAB 4: PLATFORM TRANSACTIONS */}
-      {activeTab === "transactions" && (
+      {activeTab === "health" && (
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
@@ -976,7 +996,7 @@ export default function AdminPage() {
       )}
 
       {/* TAB 5: COMPANION SMS STREAM */}
-      {activeTab === "sms" && (
+      {activeTab === "health" && (
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
@@ -1080,7 +1100,7 @@ export default function AdminPage() {
       )}
 
       {/* TAB 6: SAAS PLANS */}
-      {activeTab === "plans" && (
+      {activeTab === "pricing" && (
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
@@ -1117,11 +1137,66 @@ export default function AdminPage() {
               </Card>
             ))}
           </div>
+
+          <Card className="p-5 space-y-4 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
+            <div>
+              <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                Super Admin Receiving Wallets
+              </h3>
+              <p className="text-xs text-zinc-500 mt-0.5">
+                Merchants pay these wallets when upgrading plans. MFS numbers and crypto destinations for platform revenue.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {(
+                [
+                  ["bkash", "bKash Wallet"],
+                  ["nagad", "Nagad Wallet"],
+                  ["rocket", "Rocket Wallet"],
+                  ["upay", "Upay Wallet"],
+                  ["usdt_trc20", "USDT TRC20 Address"],
+                  ["binance_uid", "Binance UID"],
+                  ["bybit_uid", "Bybit UID"],
+                ] as const
+              ).map(([key, label]) => (
+                <Input
+                  key={key}
+                  label={label}
+                  value={adminWallets[key]}
+                  onChange={(e) =>
+                    setAdminWallets((prev) => ({ ...prev, [key]: e.target.value }))
+                  }
+                  className="font-mono text-xs"
+                />
+              ))}
+            </div>
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                variant="primary"
+                isLoading={savingWallets}
+                onClick={async () => {
+                  setSavingWallets(true);
+                  try {
+                    const res = await api.updateAdminPaymentSettings(adminWallets);
+                    setAdminWallets(res.wallets);
+                    setSuccessMessage("Admin payment wallets updated.");
+                  } catch (err: unknown) {
+                    setErrorMessage(err instanceof Error ? err.message : "Failed to save wallets.");
+                  } finally {
+                    setSavingWallets(false);
+                  }
+                }}
+              >
+                Save Admin Payment Settings
+              </Button>
+            </div>
+          </Card>
         </div>
       )}
 
       {/* TAB 7: AUDIT TRAIL */}
-      {activeTab === "audit" && (
+      {activeTab === "health" && (
         <div className="space-y-4">
           <div>
             <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100">

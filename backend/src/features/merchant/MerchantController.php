@@ -24,6 +24,9 @@ final class MerchantController
         if ($a === 'settings' && $req->method === 'PUT') {
             self::putSettings($actor, $req);
         }
+        if ($a === 'alerts' && $b === 'test' && $req->method === 'POST') {
+            self::testAlert($actor, $req);
+        }
         if ($a === 'binance-pay' && $req->method === 'PUT') {
             self::putBinancePay($actor, $req);
         }
@@ -114,8 +117,17 @@ final class MerchantController
             ];
         };
 
+        $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$actor['merchant_id']]);
+
         GpJson::send([
             'businessName' => $brand['name'] ?? '',
+            'brandName' => $merchant['brand_name'] ?? ($brand['name'] ?? ''),
+            'brandLogoUrl' => $merchant['brand_logo_url'] ?? '',
+            'supportContact' => $merchant['support_contact'] ?? '',
+            'receiptFooter' => $merchant['receipt_footer'] ?? '',
+            'telegramBotTokenSet' => trim((string) ($merchant['telegram_bot_token'] ?? '')) !== '',
+            'telegramChatId' => $merchant['telegram_chat_id'] ?? '',
+            'discordWebhookUrl' => $merchant['discord_webhook_url'] ?? '',
             'webhookUrl' => $brand['webhook_url'] ?? '',
             'currency' => $brand['currency_code'] ?? 'BDT',
             'cryptoEnabled' => !empty($brand['crypto_enabled']),
@@ -128,7 +140,11 @@ final class MerchantController
             'rails' => [
                 'bkash' => $rail('bkash'),
                 'nagad' => $rail('nagad'),
+                'rocket' => $rail('rocket'),
+                'upay' => $rail('upay'),
+                'cellfin' => $rail('cellfin'),
                 'usdt_trc20' => $rail('usdt_trc20'),
+                'bybit_pay' => $rail('bybit_pay'),
                 'binance_pay' => [
                     'enabled' => ($byCode['binance_pay']['status'] ?? '') === 'active',
                     'credentialsConfigured' => $configured,
@@ -141,6 +157,7 @@ final class MerchantController
     {
         GpRateLimiter::guard('merchant-settings:' . $actor['brand_id'], 30, 60);
         $brand = GpDb::one('SELECT * FROM gp_brands WHERE brand_id = ?', [$actor['brand_id']]);
+        $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$actor['merchant_id']]);
         // Reject provider secrets smuggled into generic settings.
         foreach (['apiKey', 'secret', 'apiSecret', 'certificateSn', 'binancePay', 'account'] as $bad) {
             if ($req->input($bad, null) !== null) {
@@ -160,12 +177,110 @@ final class MerchantController
         if ($crypto !== null) {
             $cryptoFlag = ($crypto === true || $crypto === 1 || $crypto === '1' || $crypto === 'true') ? 1 : 0;
         }
+
+        $brandName = trim((string) $req->input('brandName', $req->input('brand_name', $merchant['brand_name'] ?? $name)));
+        $brandLogo = trim((string) $req->input('brandLogoUrl', $req->input('brand_logo_url', $merchant['brand_logo_url'] ?? '')));
+        $support = trim((string) $req->input('supportContact', $req->input('support_contact', $merchant['support_contact'] ?? '')));
+        $receiptFooter = trim((string) $req->input('receiptFooter', $req->input('receipt_footer', $merchant['receipt_footer'] ?? '')));
+        $telegramChatId = trim((string) $req->input('telegramChatId', $req->input('telegram_chat_id', $merchant['telegram_chat_id'] ?? '')));
+        $discordWebhook = trim((string) $req->input('discordWebhookUrl', $req->input('discord_webhook_url', $merchant['discord_webhook_url'] ?? '')));
+        $telegramTokenIn = $req->input('telegramBotToken', $req->input('telegram_bot_token', null));
+        $telegramToken = $merchant['telegram_bot_token'] ?? null;
+        if ($telegramTokenIn !== null && trim((string) $telegramTokenIn) !== '') {
+            $telegramToken = trim((string) $telegramTokenIn);
+        }
+        if ($req->input('clearTelegramBotToken', false) === true) {
+            $telegramToken = null;
+        }
+
+        if ($brandLogo !== '' && !preg_match('#^https://#i', $brandLogo)) {
+            GpJson::error('INVALID_URL', 'Brand logo URL must be HTTPS.', 400);
+        }
+        if ($discordWebhook !== '' && !preg_match('#^https://#i', $discordWebhook)) {
+            GpJson::error('INVALID_URL', 'Discord webhook URL must be HTTPS.', 400);
+        }
+
         GpDb::exec(
             'UPDATE gp_brands SET name = ?, webhook_url = ?, crypto_enabled = ?, updated_at = ? WHERE brand_id = ?',
-            [$name, $webhook !== '' ? $webhook : null, $cryptoFlag, GpIds::now(), $actor['brand_id']]
+            [$name !== '' ? $name : ($brandName ?: 'Store'), $webhook !== '' ? $webhook : null, $cryptoFlag, GpIds::now(), $actor['brand_id']]
         );
-        self::audit($actor, 'settings.update', ['cryptoEnabled' => (bool) $cryptoFlag]);
+        GpDb::exec(
+            'UPDATE gp_merchants SET brand_name = ?, brand_logo_url = ?, support_contact = ?, receipt_footer = ?, telegram_bot_token = ?, telegram_chat_id = ?, discord_webhook_url = ?, updated_at = ? WHERE merchant_id = ?',
+            [
+                $brandName !== '' ? $brandName : null,
+                $brandLogo !== '' ? $brandLogo : null,
+                $support !== '' ? $support : null,
+                $receiptFooter !== '' ? $receiptFooter : null,
+                $telegramToken,
+                $telegramChatId !== '' ? $telegramChatId : null,
+                $discordWebhook !== '' ? $discordWebhook : null,
+                GpIds::now(),
+                $actor['merchant_id'],
+            ]
+        );
+        self::audit($actor, 'settings.update', ['cryptoEnabled' => (bool) $cryptoFlag, 'branding' => true]);
         self::getSettings($actor);
+    }
+
+    private static function testAlert(array $actor, GpRequest $req): never
+    {
+        GpRateLimiter::guard('merchant-alert-test:' . $actor['brand_id'], 10, 60);
+        $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$actor['merchant_id']]);
+        $channel = strtolower(trim((string) $req->input('channel', 'telegram')));
+        $message = 'GressPay test alert — your Instant Alerts channel is connected.';
+        $results = ['telegram' => null, 'discord' => null];
+
+        if ($channel === 'telegram' || $channel === 'all') {
+            $token = trim((string) ($merchant['telegram_bot_token'] ?? ''));
+            $chatId = trim((string) ($merchant['telegram_chat_id'] ?? ''));
+            if ($token === '' || $chatId === '') {
+                $results['telegram'] = ['ok' => false, 'error' => 'Telegram bot token or chat ID is not configured.'];
+            } else {
+                $url = 'https://api.telegram.org/bot' . rawurlencode($token) . '/sendMessage';
+                $payload = json_encode(['chat_id' => $chatId, 'text' => $message], JSON_UNESCAPED_UNICODE);
+                $ch = curl_init($url);
+                curl_setopt_array($ch, [
+                    CURLOPT_POST => true,
+                    CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+                    CURLOPT_POSTFIELDS => $payload,
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_TIMEOUT => 8,
+                ]);
+                $body = curl_exec($ch);
+                $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
+                $results['telegram'] = ['ok' => $code >= 200 && $code < 300, 'httpCode' => $code, 'body' => is_string($body) ? substr($body, 0, 200) : ''];
+            }
+        }
+
+        if ($channel === 'discord' || $channel === 'all') {
+            $hook = trim((string) ($merchant['discord_webhook_url'] ?? ''));
+            if ($hook === '') {
+                $results['discord'] = ['ok' => false, 'error' => 'Discord webhook URL is not configured.'];
+            } else {
+                $payload = json_encode(['content' => $message], JSON_UNESCAPED_UNICODE);
+                $ch = curl_init($hook);
+                curl_setopt_array($ch, [
+                    CURLOPT_POST => true,
+                    CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+                    CURLOPT_POSTFIELDS => $payload,
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_TIMEOUT => 8,
+                ]);
+                $body = curl_exec($ch);
+                $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
+                $results['discord'] = ['ok' => $code >= 200 && $code < 300, 'httpCode' => $code];
+            }
+        }
+
+        $ok = false;
+        foreach ($results as $r) {
+            if (is_array($r) && !empty($r['ok'])) {
+                $ok = true;
+            }
+        }
+        GpJson::send(['ok' => $ok, 'results' => $results, 'message' => $ok ? 'Test alert dispatched.' : 'No alert channel accepted the test.']);
     }
 
     private static function getBinancePay(array $actor): never

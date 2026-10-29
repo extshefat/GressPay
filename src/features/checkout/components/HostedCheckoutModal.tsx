@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
+import QRCode from "qrcode";
 import { PaymentMethod, CheckoutSession, TransactionStatus } from "@/lib/types/api";
 import { formatCurrency } from "@/lib/formatters";
 import { api } from "@/lib/api-client";
 import { foldTxid } from "@/lib/method-theme";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
 import {
   ShieldCheck,
@@ -88,6 +88,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [redirectCountdown, setRedirectCountdown] = useState<number>(4);
+  const [generatedQr, setGeneratedQr] = useState<string | null>(null);
 
   const [secondsLeft, setSecondsLeft] = useState<number>(() => {
     if (!session.expiresAt) return 15 * 60;
@@ -101,6 +102,35 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
   const payableAmount = selectedMethod?.payableAmount ?? session.amount;
   const payableCurrency =
     selectedMethod?.payableCurrency ?? selectedMethod?.currency ?? session.currency;
+
+  // Generate scannable QR for crypto destination (wallet / UID)
+  useEffect(() => {
+    let cancelled = false;
+    async function buildQr() {
+      const dest = selectedMethod?.depositAddressOrNumber;
+      const code = selectedMethod?.code?.toLowerCase() || "";
+      const isCrypto = ["usdt_trc20", "binance_pay", "bybit_pay"].includes(code);
+      if (!dest || !isCrypto) {
+        setGeneratedQr(null);
+        return;
+      }
+      try {
+        const dataUrl = await QRCode.toDataURL(dest, {
+          width: 200,
+          margin: 1,
+          color: { dark: "#09090b", light: "#ffffff" },
+          errorCorrectionLevel: "M",
+        });
+        if (!cancelled) setGeneratedQr(dataUrl);
+      } catch {
+        if (!cancelled) setGeneratedQr(null);
+      }
+    }
+    buildQr();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedMethod?.depositAddressOrNumber, selectedMethod?.code]);
 
   // Countdown timer for session expiration
   useEffect(() => {
@@ -532,9 +562,18 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
       {/* Merchant Header */}
       <div className="p-5 sm:p-6 bg-zinc-50/80 dark:bg-zinc-900/60 border-b border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5 min-w-0">
-          <div className="w-12 h-12 rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 flex items-center justify-center font-bold text-base shrink-0 shadow-sm">
-            {session.merchantName ? session.merchantName.slice(0, 2).toUpperCase() : "GP"}
-          </div>
+          {session.merchantLogo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={session.merchantLogo}
+              alt={session.merchantName}
+              className="w-12 h-12 rounded-2xl object-contain bg-white border border-zinc-200 dark:border-zinc-700 shrink-0 shadow-sm"
+            />
+          ) : (
+            <div className="w-12 h-12 rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 flex items-center justify-center font-bold text-base shrink-0 shadow-sm">
+              {session.merchantName ? session.merchantName.slice(0, 2).toUpperCase() : "GP"}
+            </div>
+          )}
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate">
@@ -544,6 +583,9 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
             </div>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
               {session.orderTitle || "Order Checkout"}
+              <span className="font-mono text-[10px] text-zinc-400 ml-2">
+                REF {session.sessionId.slice(-8).toUpperCase()}
+              </span>
             </p>
           </div>
         </div>
@@ -671,10 +713,17 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
           {/* Payable Amount Highlight with Copy Button */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800">
             <div>
-              <span className="text-xs text-zinc-500 font-mono">Exact Payable Amount</span>
+              <span className="text-xs text-zinc-500 font-mono">
+                {activeTab === "crypto" ? "Exact USDT Amount" : "Exact BDT Amount"}
+              </span>
               <div className="text-2xl font-bold font-mono text-zinc-900 dark:text-zinc-100">
                 {formatCurrency(payableAmount, payableCurrency)}
               </div>
+              {activeTab === "crypto" && session.exchangeRateToUsd != null && (
+                <span className="inline-flex mt-1 text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
+                  Live rate badge · order {session.currency}
+                </span>
+              )}
             </div>
 
             <Button
@@ -740,7 +789,11 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
                     )
                   }
                 >
-                  {copiedKey === "wallet" ? "Copied!" : "Copy Number"}
+                  {copiedKey === "wallet"
+                    ? "Copied!"
+                    : activeTab === "crypto"
+                    ? "Copy Address / UID"
+                    : "Copy Number"}
                 </Button>
               </div>
             </div>
@@ -750,17 +803,19 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
             </div>
           )}
 
-          {/* Optional QR Code for USDT or Merchant Static QR */}
-          {selectedMethod.qrImageUrl && (
+          {/* Crypto QR (generated) or merchant static QR */}
+          {(generatedQr || selectedMethod.qrImageUrl) && (
             <div className="space-y-2 text-center pt-1">
               <label className="block text-xs font-mono text-zinc-500">
-                Scan Merchant Deposit QR Code
+                {activeTab === "crypto"
+                  ? "Scan Wallet Address / UID QR"
+                  : "Scan Merchant Deposit QR Code"}
               </label>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={selectedMethod.qrImageUrl}
+                src={generatedQr || selectedMethod.qrImageUrl || ""}
                 alt="Payment QR"
-                className="w-40 h-40 object-contain mx-auto rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white p-2 shadow-xs"
+                className="w-44 h-44 object-contain mx-auto rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white p-2 shadow-xs"
               />
             </div>
           )}
@@ -783,13 +838,19 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
               <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
                 Clicking below initiates Binance Pay checkout. You will complete payment via Binance app, and this window will verify automatically.
               </p>
-            ) : selectedMethod.code === "usdt_trc20" ? (
+            ) : selectedMethod.code === "usdt_trc20" || selectedMethod.code === "bybit_pay" ? (
               <div className="space-y-1.5">
                 <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                  TRON Transaction Hash (TxID)
+                  {selectedMethod.code === "usdt_trc20"
+                    ? "Transaction Hash (TxID)"
+                    : "Transaction Hash (TxID) / Bybit Order ID"}
                 </label>
                 <Input
-                  placeholder="Paste 64-character TRON transaction hash (e.g. 7f8a9b...)"
+                  placeholder={
+                    selectedMethod.code === "usdt_trc20"
+                      ? "Paste 64-character TRON transaction hash"
+                      : "Paste Bybit transfer / order ID"
+                  }
                   value={txidInput}
                   onChange={(e) => setTxidInput(e.target.value.trim())}
                   required
@@ -849,6 +910,8 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
                 ? "Checking Settlement Ledger…"
                 : selectedMethod.code === "binance_pay"
                 ? "Open Binance Pay Checkout"
+                : activeTab === "crypto"
+                ? "Verify Crypto Payment"
                 : "Verify Payment"}
             </Button>
           </form>

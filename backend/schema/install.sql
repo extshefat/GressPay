@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS gp_merchants (
   telegram_bot_token TEXT NULL,
   telegram_chat_id VARCHAR(64) NULL,
   discord_webhook_url TEXT NULL,
+  receipt_footer TEXT NULL,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
