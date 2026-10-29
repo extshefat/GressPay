@@ -35,6 +35,13 @@ final class GpPresenters
         $isAdmin = GpConfig::isAdmin($email) || (($merchant['role'] ?? '') === 'admin');
         $role = $isAdmin ? 'admin' : ($merchant['role'] ?? 'merchant');
         $planId = $isAdmin ? 'enterprise' : ($merchant['plan_id'] ?? 'starter');
+        $mid = (string) ($merchant['merchant_id'] ?? '');
+
+        // Fetch active subscription & credit balance
+        $sub = $mid !== '' ? GpDb::one('SELECT * FROM gp_subscriptions WHERE merchant_id = ? AND status = ? ORDER BY id DESC LIMIT 1', [$mid, 'active']) : null;
+        $creditRow = $mid !== '' ? GpDb::one('SELECT balance_after FROM gp_credit_transactions WHERE merchant_id = ? ORDER BY id DESC LIMIT 1', [$mid]) : null;
+        $credits = $creditRow ? (int) $creditRow['balance_after'] : ($sub ? (int) $sub['credits_remaining'] : 0);
+
         return [
             'id' => $merchant['merchant_id'],
             'name' => $merchant['full_name'],
@@ -48,6 +55,17 @@ final class GpPresenters
             'planExpiresAt' => $merchant['plan_expires_at'] ?? null,
             'status' => $merchant['status'] ?? 'active',
             'isVerified' => ($merchant['status'] ?? '') === 'active',
+            'credits' => $credits,
+            'creditsRemaining' => $sub ? (int) $sub['credits_remaining'] : $credits,
+            'subscription' => $sub ? [
+                'id' => $sub['subscription_id'],
+                'planId' => $sub['plan_id'],
+                'status' => $sub['status'],
+                'creditsRemaining' => (int) $sub['credits_remaining'],
+                'creditsUsed' => (int) $sub['credits_used'],
+                'startsAt' => $sub['starts_at'],
+                'expiresAt' => $sub['expires_at'],
+            ] : null,
             'authProvider' => $merchant['auth_provider'] ?? 'local',
             'avatarUrl' => $merchant['avatar_url'] ?? null,
             'createdAt' => $merchant['created_at'] ?? GpIds::now(),

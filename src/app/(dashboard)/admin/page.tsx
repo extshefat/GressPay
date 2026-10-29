@@ -80,8 +80,10 @@ export default function AdminPage() {
   // Credit Adjustment Modal
   const [creditModalOpen, setCreditModalOpen] = useState(false);
   const [selectedMerchant, setSelectedMerchant] = useState<AdminMerchant | null>(null);
+  const [creditMode, setCreditMode] = useState<"delta" | "set">("delta");
   const [creditDelta, setCreditDelta] = useState<number>(100);
-  const [creditReason, setCreditReason] = useState<string>("Promotion bonus");
+  const [creditSetBalance, setCreditSetBalance] = useState<number>(1000);
+  const [creditReason, setCreditReason] = useState<string>("Manual balance top-up by Super Admin");
   const [isSubmittingCredit, setIsSubmittingCredit] = useState(false);
 
   // Plan Assignment Modal for Merchant
@@ -89,6 +91,9 @@ export default function AdminPage() {
   const [targetMerchant, setTargetMerchant] = useState<AdminMerchant | null>(null);
   const [targetPlanId, setTargetPlanId] = useState<string>("starter");
   const [targetPlanExpiresAt, setTargetPlanExpiresAt] = useState<string>("");
+  const [targetPlanIsLifetime, setTargetPlanIsLifetime] = useState<boolean>(false);
+  const [targetBonusCredits, setTargetBonusCredits] = useState<number>(0);
+  const [targetPlanReason, setTargetPlanReason] = useState<string>("Complimentary subscription assignment");
   const [isSubmittingPlanAssign, setIsSubmittingPlanAssign] = useState(false);
 
   // Gateway Limits Modal
@@ -294,7 +299,10 @@ export default function AdminPage() {
       await api.updateAdminMerchantPlan(
         targetMerchant.id,
         targetPlanId,
-        targetPlanExpiresAt ? targetPlanExpiresAt : null
+        targetPlanIsLifetime ? null : (targetPlanExpiresAt || null),
+        targetBonusCredits,
+        targetPlanIsLifetime,
+        targetPlanReason
       );
       setSuccessMessage(`Assigned ${targetPlanId.toUpperCase()} plan to ${targetMerchant.name}.`);
       setPlanModalOpen(false);
@@ -306,15 +314,20 @@ export default function AdminPage() {
     }
   };
 
-  // Credit Adjustment
+  // Credit Adjustment / Top-up
   const handleCreditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedMerchant) return;
     setIsSubmittingCredit(true);
     setErrorMessage(null);
     try {
-      await api.adjustAdminCredit(selectedMerchant.id, creditDelta, creditReason);
-      setSuccessMessage(`Successfully adjusted credits for ${selectedMerchant.name}.`);
+      await api.adjustAdminCredit(
+        selectedMerchant.id,
+        creditMode === "delta" ? creditDelta : 0,
+        creditReason,
+        creditMode === "set" ? creditSetBalance : null
+      );
+      setSuccessMessage(`Successfully updated verification credits for ${selectedMerchant.name}.`);
       setCreditModalOpen(false);
       await loadData();
     } catch (err: unknown) {
@@ -729,7 +742,10 @@ export default function AdminPage() {
                             onClick={() => {
                               setTargetMerchant(m);
                               setTargetPlanId(m.planId || "starter");
-                              setTargetPlanExpiresAt(m.planExpiresAt || "");
+                              setTargetPlanExpiresAt(m.planExpiresAt ? m.planExpiresAt.split("T")[0] : "");
+                              setTargetPlanIsLifetime(m.planId === "lifetime" || !m.planExpiresAt);
+                              setTargetBonusCredits(0);
+                              setTargetPlanReason(`Complimentary plan upgrade for ${m.name}`);
                               setPlanModalOpen(true);
                             }}
                             className="cursor-pointer text-left group"
@@ -759,12 +775,16 @@ export default function AdminPage() {
                             type="button"
                             onClick={() => {
                               setSelectedMerchant(m);
-                              setCreditDelta(100);
+                              setCreditMode("delta");
+                              setCreditDelta(500);
+                              setCreditSetBalance(m.credits ?? 1000);
+                              setCreditReason(`Balance adjustment for ${m.name}`);
                               setCreditModalOpen(true);
                             }}
-                            className="cursor-pointer font-mono font-bold text-zinc-900 dark:text-zinc-100 hover:underline"
+                            className="cursor-pointer font-mono font-bold text-zinc-900 dark:text-zinc-100 hover:underline flex items-center gap-1"
                           >
-                            {m.credits} credits ✎
+                            <span>{m.credits.toLocaleString()} credits</span>
+                            <span className="text-[10px] text-zinc-400">✎</span>
                           </button>
                         </td>
 
@@ -789,7 +809,10 @@ export default function AdminPage() {
                             onClick={() => {
                               setTargetMerchant(m);
                               setTargetPlanId(m.planId || "starter");
-                              setTargetPlanExpiresAt(m.planExpiresAt || "");
+                              setTargetPlanExpiresAt(m.planExpiresAt ? m.planExpiresAt.split("T")[0] : "");
+                              setTargetPlanIsLifetime(m.planId === "lifetime" || !m.planExpiresAt);
+                              setTargetBonusCredits(0);
+                              setTargetPlanReason(`Complimentary plan upgrade for ${m.name}`);
                               setPlanModalOpen(true);
                             }}
                           >
@@ -800,7 +823,10 @@ export default function AdminPage() {
                             variant="ghost"
                             onClick={() => {
                               setSelectedMerchant(m);
-                              setCreditDelta(100);
+                              setCreditMode("delta");
+                              setCreditDelta(500);
+                              setCreditSetBalance(m.credits ?? 1000);
+                              setCreditReason(`Balance adjustment for ${m.name}`);
                               setCreditModalOpen(true);
                             }}
                           >
@@ -1149,42 +1175,158 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* MODAL 1: Assign Plan to Merchant */}
+      {/* MODAL 1: Gift / Assign SaaS Plan to Merchant */}
       {planModalOpen && targetMerchant && (
         <Modal
           open={planModalOpen}
           onClose={() => setPlanModalOpen(false)}
-          title={`Assign SaaS Plan — ${targetMerchant.name}`}
+          title={`Gift / Assign SaaS Plan — ${targetMerchant.name}`}
         >
           <form onSubmit={handleAssignPlan} className="space-y-4">
+            {/* Merchant Summary Bar */}
+            <div className="p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex items-center justify-between">
+              <div>
+                <div className="font-semibold text-xs text-zinc-900 dark:text-zinc-100">{targetMerchant.name}</div>
+                <div className="text-[11px] text-zinc-500 font-mono">{targetMerchant.email}</div>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 font-bold">
+                  Current: {(targetMerchant.planId || "starter").toUpperCase()}
+                </span>
+                <div className="text-[10px] text-zinc-400 font-mono mt-0.5">
+                  Balance: {targetMerchant.credits.toLocaleString()} credits
+                </div>
+              </div>
+            </div>
+
+            {/* Plan Tier Selection */}
             <div>
               <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
                 Select Subscription Tier
               </label>
               <select
                 value={targetPlanId}
-                onChange={(e) => setTargetPlanId(e.target.value)}
+                onChange={(e) => {
+                  const p = e.target.value;
+                  setTargetPlanId(p);
+                  if (p === "lifetime") {
+                    setTargetPlanIsLifetime(true);
+                    setTargetPlanExpiresAt("");
+                  }
+                }}
                 className="w-full text-xs rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 px-3 py-2"
               >
-                <option value="starter">Starter Plan (Personal MFS, 1 Device)</option>
-                <option value="pro">Pro Plan (High Volume, 5 Devices, Crypto)</option>
-                <option value="enterprise">Enterprise Plan (Unlimited Devices, Dedicated Rails)</option>
-                <option value="lifetime">Lifetime Deal (Unlimited Access)</option>
+                {plans.length > 0 ? (
+                  plans.map((p) => (
+                    <option key={p.code} value={p.code}>
+                      {p.name} ({p.code.toUpperCase()}) — ৳{p.priceBdt} / {p.billingCycle} ({p.creditAllowance.toLocaleString()} credits/mo)
+                    </option>
+                  ))
+                ) : (
+                  <>
+                    <option value="starter">Starter Plan (৳1,200/mo — 1 Device, 1,000 credits)</option>
+                    <option value="growth">Growth Plan (৳2,500/mo — 3 Devices, 3,000 credits)</option>
+                    <option value="pro">Pro Plan (৳4,500/mo — 5 Devices, 5,000 credits, Crypto)</option>
+                    <option value="enterprise">Enterprise Plan (৳12,000/mo — Unlimited Devices, Dedicated)</option>
+                    <option value="lifetime">Lifetime Deal (Unlimited Access, No Expiry)</option>
+                  </>
+                )}
               </select>
             </div>
 
+            {/* Validity & Duration Options */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                  Plan Duration & Validity
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer text-xs text-zinc-700 dark:text-zinc-300">
+                  <input
+                    type="checkbox"
+                    checked={targetPlanIsLifetime}
+                    onChange={(e) => {
+                      setTargetPlanIsLifetime(e.target.checked);
+                      if (e.target.checked) setTargetPlanExpiresAt("");
+                    }}
+                    className="rounded border-zinc-300 text-zinc-900 focus:ring-0"
+                  />
+                  <span>Lifetime Pass (Never Expires)</span>
+                </label>
+              </div>
+
+              {!targetPlanIsLifetime && (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {[
+                      { label: "30 Days", days: 30 },
+                      { label: "90 Days", days: 90 },
+                      { label: "180 Days", days: 180 },
+                      { label: "365 Days", days: 365 },
+                    ].map((preset) => (
+                      <button
+                        key={preset.days}
+                        type="button"
+                        onClick={() => {
+                          const d = new Date();
+                          d.setDate(d.getDate() + preset.days);
+                          setTargetPlanExpiresAt(d.toISOString().split("T")[0]);
+                        }}
+                        className="py-1 px-2 text-[10px] font-mono rounded border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 hover:border-zinc-900 dark:hover:border-zinc-100 transition-colors"
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                  <Input
+                    type="date"
+                    value={targetPlanExpiresAt}
+                    onChange={(e) => setTargetPlanExpiresAt(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Bonus Credits Gifting */}
             <div>
               <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-                Plan Expiration Date (Optional)
+                Bonus Verification Credits Gift
               </label>
               <Input
-                type="date"
-                value={targetPlanExpiresAt}
-                onChange={(e) => setTargetPlanExpiresAt(e.target.value)}
+                type="number"
+                min={0}
+                value={targetBonusCredits}
+                onChange={(e) => setTargetBonusCredits(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                placeholder="0"
               />
-              <p className="text-[10px] text-zinc-500 mt-1">
-                Leave blank for unlimited or lifetime validity.
-              </p>
+              <div className="flex gap-1.5 mt-1.5">
+                {[0, 500, 1000, 2500, 5000, 10000].map((b) => (
+                  <button
+                    key={b}
+                    type="button"
+                    onClick={() => setTargetBonusCredits(b)}
+                    className={`py-0.5 px-2 text-[10px] font-mono rounded border ${
+                      targetBonusCredits === b
+                        ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 border-zinc-900 dark:border-white"
+                        : "border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                    }`}
+                  >
+                    +{b.toLocaleString()}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Reason */}
+            <div>
+              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                Gift / Audit Reason
+              </label>
+              <Input
+                type="text"
+                value={targetPlanReason}
+                onChange={(e) => setTargetPlanReason(e.target.value)}
+                placeholder="e.g. VIP client promo, annual bundle bonus"
+              />
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
@@ -1192,42 +1334,137 @@ export default function AdminPage() {
                 Cancel
               </Button>
               <Button type="submit" variant="primary" disabled={isSubmittingPlanAssign}>
-                {isSubmittingPlanAssign ? "Updating..." : "Save Plan Assignment"}
+                {isSubmittingPlanAssign ? "Granting Plan..." : "Gift / Save Plan"}
               </Button>
             </div>
           </form>
         </Modal>
       )}
 
-      {/* MODAL 2: Credit Adjustment */}
+      {/* MODAL 2: Credit Adjustment & Account Balance Top-up */}
       {creditModalOpen && selectedMerchant && (
         <Modal
           open={creditModalOpen}
           onClose={() => setCreditModalOpen(false)}
-          title={`Adjust Verification Credits — ${selectedMerchant.name}`}
+          title={`Merchant Balance & Top-up — ${selectedMerchant.name}`}
         >
           <form onSubmit={handleCreditSubmit} className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-                Credit Adjustment Delta (Positive to add, Negative to deduct)
-              </label>
-              <Input
-                type="number"
-                value={creditDelta}
-                onChange={(e) => setCreditDelta(parseInt(e.target.value, 10) || 0)}
-                placeholder="+500 or -100"
-              />
+            {/* Current Balance Display */}
+            <div className="p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex items-center justify-between">
+              <div>
+                <div className="font-semibold text-xs text-zinc-900 dark:text-zinc-100">{selectedMerchant.name}</div>
+                <div className="text-[11px] text-zinc-500 font-mono">{selectedMerchant.email}</div>
+              </div>
+              <div className="text-right">
+                <div className="text-[10px] text-zinc-500 uppercase font-mono">Current Balance</div>
+                <div className="text-base font-bold font-mono text-zinc-900 dark:text-zinc-100">
+                  {selectedMerchant.credits.toLocaleString()} <span className="text-xs font-normal">credits</span>
+                </div>
+              </div>
             </div>
+
+            {/* Mode Switcher */}
+            <div className="grid grid-cols-2 gap-2 p-1 bg-zinc-100 dark:bg-zinc-900 rounded-lg">
+              <button
+                type="button"
+                onClick={() => setCreditMode("delta")}
+                className={`py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  creditMode === "delta"
+                    ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm"
+                    : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                }`}
+              >
+                Top-up / Adjust (+ / -)
+              </button>
+              <button
+                type="button"
+                onClick={() => setCreditMode("set")}
+                className={`py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  creditMode === "set"
+                    ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm"
+                    : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                }`}
+              >
+                Set Exact Balance
+              </button>
+            </div>
+
+            {creditMode === "delta" ? (
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                  Credit Delta (Positive to add, Negative to deduct)
+                </label>
+                <Input
+                  type="number"
+                  value={creditDelta}
+                  onChange={(e) => setCreditDelta(parseInt(e.target.value, 10) || 0)}
+                  placeholder="+500 or -100"
+                />
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {[100, 500, 1000, 2500, 5000, 10000].map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setCreditDelta(amt)}
+                      className="py-1 px-2 text-[10px] font-mono rounded border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 hover:border-zinc-900 dark:hover:border-zinc-100 transition-colors"
+                    >
+                      +{amt.toLocaleString()}
+                    </button>
+                  ))}
+                  {[-100, -500, -1000].map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setCreditDelta(amt)}
+                      className="py-1 px-2 text-[10px] font-mono rounded border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20 text-red-600 dark:text-red-400 hover:border-red-500 transition-colors"
+                    >
+                      {amt.toLocaleString()}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] font-mono text-zinc-500 mt-2">
+                  New balance: <span className="font-bold text-zinc-900 dark:text-zinc-100">{Math.max(0, (selectedMerchant.credits || 0) + creditDelta).toLocaleString()}</span> credits
+                </p>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                  Set Exact Account Balance
+                </label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={creditSetBalance}
+                  onChange={(e) => setCreditSetBalance(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                  placeholder="1000"
+                />
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {[500, 1000, 2500, 5000, 10000, 50000].map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setCreditSetBalance(amt)}
+                      className="py-1 px-2 text-[10px] font-mono rounded border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 hover:border-zinc-900 dark:hover:border-zinc-100 transition-colors"
+                    >
+                      {amt.toLocaleString()}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] font-mono text-zinc-500 mt-2">
+                  Balance will be directly set to <span className="font-bold text-zinc-900 dark:text-zinc-100">{creditSetBalance.toLocaleString()}</span> credits
+                </p>
+              </div>
+            )}
 
             <div>
               <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-                Audit Reason
+                Audit / Top-up Reason
               </label>
               <Input
                 type="text"
                 value={creditReason}
                 onChange={(e) => setCreditReason(e.target.value)}
-                placeholder="e.g. Promotional bonus or manual top-up"
+                placeholder="e.g. Manual bKash payment verification top-up"
               />
             </div>
 
@@ -1236,7 +1473,7 @@ export default function AdminPage() {
                 Cancel
               </Button>
               <Button type="submit" variant="primary" disabled={isSubmittingCredit}>
-                {isSubmittingCredit ? "Saving..." : "Apply Adjustment"}
+                {isSubmittingCredit ? "Saving..." : "Apply Balance Update"}
               </Button>
             </div>
           </form>
