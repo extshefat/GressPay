@@ -41,6 +41,10 @@ class SmsUploadWorker(
                     prefs.totalPaymentsMatched = prefs.totalPaymentsMatched + 1
                 }
                 Result.success()
+            } else if (res.permanentFailure) {
+                // Do not retry permanent client errors (e.g. 401/403/409 duplicate).
+                prefs.lastError = res.message
+                Result.failure()
             } else {
                 prefs.lastError = res.message
                 Result.retry()

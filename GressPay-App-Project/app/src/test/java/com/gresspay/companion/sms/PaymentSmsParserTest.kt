@@ -107,6 +107,18 @@ class PaymentSmsParserTest {
     }
 
     @Test
+    fun rejectsOtpSms() {
+        val body = "Your bKash OTP is 482910. Do not share this code with anyone."
+        assertNull(PaymentSmsParser.parse("16247", body))
+    }
+
+    @Test
+    fun rejectsLoginPinSms() {
+        val body = "Nagad login code 991122. One-time password valid for 5 minutes."
+        assertNull(PaymentSmsParser.parse("16262", body))
+    }
+
+    @Test
     fun rejectsMissingAmount() {
         val body = "bKash payment received. TrxID NOAMOUNT1X"
         assertNull(PaymentSmsParser.parse("16247", body))

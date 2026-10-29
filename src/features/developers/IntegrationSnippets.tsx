@@ -1,8 +1,16 @@
 "use client";
 
+import { useState } from "react";
+import { Check, Copy } from "lucide-react";
+
 const HOST = "https://gresspay.extxcheats.com/api/v1";
 
-const curl = `curl -X POST ${HOST}/payment/create \\
+type Lang = "curl" | "php" | "laravel" | "node" | "wordpress";
+
+const SNIPPETS: Record<Lang, { label: string; code: string }> = {
+  curl: {
+    label: "cURL",
+    code: `curl -X POST ${HOST}/payment/create \\
   -H "Authorization: Bearer gp_live_your_key" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -14,9 +22,11 @@ const curl = `curl -X POST ${HOST}/payment/create \\
     "success_url": "https://shop.example/paid",
     "cancel_url": "https://shop.example/cancel",
     "webhook_url": "https://shop.example/hooks/gresspay"
-  }'`;
-
-const php = `<?php
+  }'`,
+  },
+  php: {
+    label: "PHP",
+    code: `<?php
 $ch = curl_init('${HOST}/payment/create');
 curl_setopt_array($ch, [
   CURLOPT_POST => true,
@@ -37,9 +47,32 @@ curl_setopt_array($ch, [
   ]),
 ]);
 $data = json_decode(curl_exec($ch), true);
-header('Location: ' . $data['payment_url']);`;
+header('Location: ' . ($data['payment_url'] ?? $data['payUrl']));`,
+  },
+  laravel: {
+    label: "Laravel",
+    code: `<?php
+use Illuminate\\Support\\Facades\\Http;
 
-const node = `const res = await fetch("${HOST}/payment/create", {
+$response = Http::withToken(config('services.gresspay.key'))
+    ->post('${HOST}/payment/create', [
+        'amount' => '500.00',
+        'currency' => 'BDT',
+        'order_id' => (string) $order->id,
+        'customer_name' => $order->customer_name,
+        'customer_email' => $order->customer_email,
+        'success_url' => route('orders.paid', $order),
+        'cancel_url' => route('checkout'),
+        'webhook_url' => route('webhooks.gresspay'),
+    ])
+    ->throw()
+    ->json();
+
+return redirect()->away($response['payment_url'] ?? $response['payUrl']);`,
+  },
+  node: {
+    label: "Node / Next.js",
+    code: `const res = await fetch("${HOST}/payment/create", {
   method: "POST",
   headers: {
     Authorization: "Bearer " + process.env.GRESSPAY_API_KEY,
@@ -57,10 +90,12 @@ const node = `const res = await fetch("${HOST}/payment/create", {
   }),
 });
 const data = await res.json();
-// Send the buyer to data.payment_url`;
-
-const wp = `<?php
-// WordPress / WooCommerce: call the same endpoint from the server, never from the browser.
+// Redirect the buyer to data.payment_url (alias: data.payUrl)`,
+  },
+  wordpress: {
+    label: "WordPress / Woo",
+    code: `<?php
+// Call from the server (checkout handler / REST), never from the browser.
 $response = wp_remote_post('${HOST}/payment/create', [
   'headers' => [
     'Authorization' => 'Bearer ' . getenv('GRESSPAY_API_KEY'),
@@ -78,31 +113,79 @@ $response = wp_remote_post('${HOST}/payment/create', [
   ]),
 ]);
 $body = json_decode(wp_remote_retrieve_body($response), true);
-wp_redirect($body['payment_url']);
-exit;`;
+wp_redirect($body['payment_url'] ?? $body['payUrl']);
+exit;`,
+  },
+};
 
-function Block({ title, code }: { title: string; code: string }) {
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
   return (
-    <div className="space-y-2">
-      <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{title}</div>
-      <pre className="overflow-x-auto border border-zinc-200 bg-zinc-950 p-4 text-xs text-zinc-100 dark:border-zinc-800">
-        <code>{code}</code>
-      </pre>
-    </div>
+    <button
+      type="button"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(text);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1600);
+        } catch {
+          /* ignore */
+        }
+      }}
+      className="inline-flex items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-[11px] font-medium text-zinc-200 hover:bg-zinc-800"
+    >
+      {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+      {copied ? "Copied" : "Copy"}
+    </button>
   );
 }
 
 export function IntegrationSnippets() {
+  const [lang, setLang] = useState<Lang>("curl");
+  const active = SNIPPETS[lang];
+
   return (
-    <section id="integrate" className="space-y-4">
-      <h2 className="text-xl font-semibold text-zinc-950 dark:text-white">Integrate any website</h2>
-      <p className="text-sm text-zinc-600 dark:text-zinc-400">
-        Create a session with your API key. Send the buyer to <span className="font-mono">payment_url</span>. The return URL is used only after the server has already marked the session paid. Verify with <span className="font-mono">POST /payment/verify</span> or <span className="font-mono">GET /payment/status/{"{session_id}"}</span>.
-      </p>
-      <Block title="cURL" code={curl} />
-      <Block title="PHP" code={php} />
-      <Block title="Node.js" code={node} />
-      <Block title="WordPress" code={wp} />
+    <section id="snippets" className="space-y-4">
+      <div>
+        <h2 className="text-xl font-semibold tracking-tight text-zinc-950 dark:text-white">
+          Language examples
+        </h2>
+        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+          Create a session with your API key, send the buyer to{" "}
+          <code className="font-mono text-xs">payment_url</code>, then confirm
+          with <code className="font-mono text-xs">POST /payment/verify</code> or{" "}
+          <code className="font-mono text-xs">GET /payment/status/{"{session_id}"}</code>.
+        </p>
+      </div>
+
+      <div className="flex flex-wrap gap-1 rounded-xl border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-800 dark:bg-zinc-950">
+        {(Object.keys(SNIPPETS) as Lang[]).map((key) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setLang(key)}
+            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+              lang === key
+                ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950"
+                : "text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white"
+            }`}
+          >
+            {SNIPPETS[key].label}
+          </button>
+        ))}
+      </div>
+
+      <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950">
+        <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-2">
+          <span className="font-mono text-[11px] uppercase tracking-wide text-zinc-500">
+            {active.label}
+          </span>
+          <CopyButton text={active.code} />
+        </div>
+        <pre className="overflow-x-auto p-4 text-xs leading-relaxed text-zinc-100">
+          <code>{active.code}</code>
+        </pre>
+      </div>
     </section>
   );
 }

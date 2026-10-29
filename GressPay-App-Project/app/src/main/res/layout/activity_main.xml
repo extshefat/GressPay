@@ -399,6 +399,20 @@
                     android:textColor="@color/gp_error"
                     android:textSize="11sp" />
 
+                <TextView
+                    android:id="@+id/textSyncLog"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:background="@color/gp_zinc_50"
+                    android:fontFamily="monospace"
+                    android:lineSpacingExtra="2dp"
+                    android:minHeight="72dp"
+                    android:padding="10dp"
+                    android:text="Sync log: idle"
+                    android:textColor="@color/gp_zinc_500"
+                    android:textSize="11sp" />
+
                 <!-- Scan / Sync Recent Inbox Button -->
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnScanInbox"

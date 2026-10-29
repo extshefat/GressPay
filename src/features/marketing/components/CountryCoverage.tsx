@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, CheckCircle2, ShieldCheck, Smartphone, Cpu, Coins, Lock } from "lucide-react";
+import { ArrowRight, Smartphone, Coins, Wallet, Zap, Plug } from "lucide-react";
 import Link from "next/link";
 
 interface SupportedRail {
@@ -15,7 +15,6 @@ interface SupportedRail {
   currency: string;
   settlement: string;
   verificationMechanism: string;
-  feeInfo: string;
   features: string[];
   statusLabel: string;
 }
@@ -23,67 +22,91 @@ interface SupportedRail {
 const SUPPORTED_RAILS: SupportedRail[] = [
   {
     id: "bkash",
-    name: "bKash Automation",
+    name: "bKash",
     category: "mfs",
-    type: "Personal, Agent & Merchant Numbers",
+    type: "Personal / Agent wallet",
     currency: "BDT",
-    settlement: "Direct to your own bKash account",
-    verificationMechanism: "Approved companion SMS with the same brand, rail, TrxID, and amount. A pasted TrxID alone does not complete a live checkout.",
-    feeInfo: "You receive the transfer in your own bKash account",
-    features: [
-      "Personal, Agent, or Merchant is a label you set, not an official bKash API",
-      "Live completion needs a paired Android companion and the provider SMS",
-      "Test ledger can simulate a match and is stored separately",
-    ],
-    statusLabel: "SMS match",
+    settlement: "Direct to your bKash number",
+    verificationMechanism: "Android companion SMS match in ~1 second",
+    features: ["Send Money or Cash In instructions", "TrxID + amount matching", "Multi-gateway numbers"],
+    statusLabel: "MFS",
   },
   {
     id: "nagad",
-    name: "Nagad Automation",
+    name: "Nagad",
     category: "mfs",
-    type: "Personal, Agent & Merchant Numbers",
+    type: "Personal / Agent wallet",
     currency: "BDT",
-    settlement: "Direct to your own Nagad account",
-    verificationMechanism: "Approved companion SMS with the same brand, rail, TrxID, and amount. Screenshots are not accepted as proof.",
-    feeInfo: "You receive the transfer in your own Nagad account",
-    features: [
-      "Account type does not create a Nagad merchant integration",
-      "Live completion needs a paired Android companion and the provider SMS",
-      "Duplicate TrxIDs are rejected inside the same brand",
-    ],
-    statusLabel: "SMS match",
+    settlement: "Direct to your Nagad number",
+    verificationMechanism: "Android companion SMS match in ~1 second",
+    features: ["Personal or agent account types", "Duplicate TrxID blocked", "Live companion heartbeat"],
+    statusLabel: "MFS",
+  },
+  {
+    id: "rocket",
+    name: "Rocket",
+    category: "mfs",
+    type: "DBBL mobile banking",
+    currency: "BDT",
+    settlement: "Direct to your Rocket wallet",
+    verificationMechanism: "Companion SMS parser + auto verify",
+    features: ["11–12 digit wallets", "OTP/promo SMS ignored", "Offline WorkManager queue"],
+    statusLabel: "MFS",
+  },
+  {
+    id: "upay",
+    name: "Upay",
+    category: "mfs",
+    type: "UCB Upay wallet",
+    currency: "BDT",
+    settlement: "Direct to your Upay number",
+    verificationMechanism: "Companion SMS match",
+    features: ["Same BD MFS checkout UX", "Copy number + amount", "Webhook on settle"],
+    statusLabel: "MFS",
+  },
+  {
+    id: "cellfin",
+    name: "Cellfin",
+    category: "mfs",
+    type: "Islami Bank smart banking",
+    currency: "BDT",
+    settlement: "Direct to your Cellfin account",
+    verificationMechanism: "Companion SMS match",
+    features: ["Pro+ plan rail", "English checkout steps", "Device-scoped ingest"],
+    statusLabel: "MFS",
+  },
+  {
+    id: "usdt_trc20",
+    name: "USDT TRC-20",
+    category: "crypto",
+    type: "TRON network",
+    currency: "USDT",
+    settlement: "Your TRC-20 address (T…)",
+    verificationMechanism: "On-chain TronGrid confirmations",
+    features: ["Exact micro-USDT amount", "QR + copy address", "Live or custom BDT rate"],
+    statusLabel: "Crypto",
   },
   {
     id: "binance_pay",
     name: "Binance Pay",
     category: "crypto",
-    type: "Merchant API, not Spot trading",
+    type: "Merchant API or UID",
     currency: "USDT",
-    settlement: "Binance Pay checkout for the order GressPay creates",
-    verificationMechanism: "Server creates an order, then marks paid only after a provider query returns PAID with a matching amount and trade number.",
-    feeInfo: "Optional. Credentials stay encrypted on the server.",
-    features: [
-      "Needs Binance Pay Merchant API key, secret, and certificate serial",
-      "A payment to a Binance-owned address is not a Binance Pay order",
-      "Webhook callbacks are a signal. The server re-queries before completing.",
-    ],
-    statusLabel: "Optional",
+    settlement: "Binance Pay order / UID",
+    verificationMechanism: "Official Merchant API query (PAID)",
+    features: ["Encrypted API credentials", "QR / UID checkout", "Webhook + reconcile"],
+    statusLabel: "Crypto",
   },
   {
-    id: "usdt_trc20",
-    name: "USDT TRC-20 (TRON)",
+    id: "bybit_pay",
+    name: "Bybit Pay",
     category: "crypto",
-    type: "Non-Custodial On-Chain Settlement",
+    type: "Internal transfer / UID",
     currency: "USDT",
-    settlement: "Direct to your TRON wallet address (T...)",
-    verificationMechanism: "On-chain TronGrid RPC verification (Contract, micro-units & block confirmations)",
-    feeInfo: "Blockchain network fee only",
-    features: [
-      "Separate from Binance Pay. A hash alone does not complete a live checkout.",
-      "Checks contract, recipient address, exact token amount, and confirmation count",
-      "Confirm the TRON network and address before you publish them",
-    ],
-    statusLabel: "On-chain",
+    settlement: "Your Bybit UID",
+    verificationMechanism: "Order ID / TxID verify flow",
+    features: ["UID + optional TRC20", "QR for UID", "Pro+ crypto suite"],
+    statusLabel: "Crypto",
   },
 ];
 
@@ -99,126 +122,107 @@ export const CountryCoverage: React.FC = () => {
   return (
     <section className="py-20 bg-white dark:bg-zinc-950 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
-        {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto space-y-4">
-          <Badge variant="emerald" className="font-mono text-[10px] uppercase">
-            What this release checks
+          <Badge variant="slate" dot>
+            Payment Rails
           </Badge>
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-zinc-900 dark:text-zinc-100 tracking-tight">
-            Bangladesh wallets, then two optional crypto checks.
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-100 tracking-tight">
+            Bangladesh MFS + Global Crypto
           </h2>
-          <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 leading-relaxed">
-            bKash and Nagad are SMS matches against your own numbers. Binance Pay and USDT TRC-20 are optional and use different evidence. India, Pakistan, and Nepal rails are not part of this release.
+          <p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
+            Every rail settles direct to your wallet. Zero platform escrow. Zero commission held.
           </p>
-
-          {/* Filter Pills */}
-          <div className="flex items-center justify-center gap-2 pt-2">
-            {[
-              { id: "all", label: "All Supported Rails" },
-              { id: "mfs", label: "Bangladesh MFS (bKash & Nagad)" },
-              { id: "crypto", label: "Binance Pay and USDT" },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setFilter(tab.id as any)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
-                  filter === tab.id
-                    ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 shadow-sm"
-                    : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 bg-zinc-100 dark:bg-zinc-900"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
         </div>
 
-        {/* Rails Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {filteredRails.map((rail) => (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[
+            {
+              icon: <Wallet className="w-5 h-5" />,
+              title: "100% Direct-to-Wallet",
+              body: "Funds hit your own MFS or crypto wallet instantly—zero settlement delay, zero commission held.",
+            },
+            {
+              icon: <Zap className="w-5 h-5" />,
+              title: "1-Second Companion Sync",
+              body: "Lightweight Android APK reads incoming MFS SMS and verifies checkouts automatically.",
+            },
+            {
+              icon: <Plug className="w-5 h-5" />,
+              title: "Plug & Play Webhooks",
+              body: "Integrate WordPress/WooCommerce, Laravel, PHP, or Next.js in minutes with HMAC signatures.",
+            },
+          ].map((item) => (
             <Card
-              key={rail.id}
-              className="p-6 flex flex-col justify-between space-y-6 hover:shadow-lg transition-all border-zinc-200 dark:border-zinc-800"
+              key={item.title}
+              className="p-5 border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 space-y-2"
             >
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950/50 border border-teal-200 dark:border-teal-800/60 flex items-center justify-center text-teal-600 dark:text-teal-400">
-                      {rail.category === "mfs" ? (
-                        <Smartphone className="w-5 h-5" />
-                      ) : (
-                        <Coins className="w-5 h-5" />
-                      )}
-                    </div>
-                    <div>
-                      <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
-                        {rail.name}
-                      </h3>
-                      <div className="text-[11px] font-mono text-zinc-500 uppercase">
-                        {rail.currency} · {rail.type}
-                      </div>
-                    </div>
-                  </div>
-                  <Badge variant="slate">{rail.statusLabel}</Badge>
-                </div>
-
-                <div className="space-y-2.5 pt-2 border-t border-zinc-100 dark:border-zinc-850 text-xs">
-                  <div>
-                    <span className="text-zinc-400 font-mono text-[10px] uppercase block">
-                      Settlement Destination
-                    </span>
-                    <span className="font-semibold text-zinc-800 dark:text-zinc-200">
-                      {rail.settlement}
-                    </span>
-                  </div>
-
-                  <div>
-                    <span className="text-zinc-400 font-mono text-[10px] uppercase block">
-                      Verification Architecture
-                    </span>
-                    <span className="text-zinc-600 dark:text-zinc-400">
-                      {rail.verificationMechanism}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Feature Bullet Points */}
-                <div className="pt-2 space-y-1.5 border-t border-zinc-100 dark:border-zinc-850">
-                  {rail.features.map((feat, i) => (
-                    <div key={i} className="flex items-start gap-2 text-xs text-zinc-600 dark:text-zinc-400">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0 mt-0.5" />
-                      <span>{feat}</span>
-                    </div>
-                  ))}
-                </div>
+              <div className="w-10 h-10 rounded-xl bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 flex items-center justify-center">
+                {item.icon}
               </div>
-
-              <div className="pt-4 border-t border-zinc-100 dark:border-zinc-850 flex items-center justify-between text-xs">
-                <span className="text-zinc-500 font-mono text-[11px]">{rail.feeInfo}</span>
-                <Link
-                  href="/developers"
-                  className="font-semibold text-teal-700 hover:text-teal-800 dark:text-teal-400 inline-flex items-center gap-1"
-                >
-                  Docs <ArrowRight className="w-3 h-3" />
-                </Link>
-              </div>
+              <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{item.title}</h3>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">{item.body}</p>
             </Card>
           ))}
         </div>
 
-        {/* Non-Custodial Integrity Disclosure */}
-        <div className="p-5 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 max-w-4xl mx-auto flex flex-col sm:flex-row items-center gap-4 text-xs text-zinc-600 dark:text-zinc-400">
-          <div className="w-10 h-10 rounded-full bg-teal-100 dark:bg-teal-950/80 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
-            <ShieldCheck className="w-5 h-5" />
-          </div>
-          <div className="space-y-1 text-center sm:text-left">
-            <div className="font-bold text-zinc-900 dark:text-zinc-100">
-              Direct-to-Wallet Principle
-            </div>
-            <p>
-              GressPay operates solely as a payment automation and verification engine. All bKash, Nagad, and USDT payments are transferred directly from the customer to your own designated wallet or phone number. GressPay never touches, pools, or delays your merchant settlements.
-            </p>
-          </div>
+        <div className="flex justify-center gap-1 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 p-1 max-w-md mx-auto">
+          {(
+            [
+              { id: "all", label: "All Rails", icon: null },
+              { id: "mfs", label: "Bangladesh MFS", icon: <Smartphone className="w-3.5 h-3.5" /> },
+              { id: "crypto", label: "Global Crypto", icon: <Coins className="w-3.5 h-3.5" /> },
+            ] as const
+          ).map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setFilter(tab.id)}
+              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg transition-colors ${
+                filter === tab.id
+                  ? "bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 shadow-sm"
+                  : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+              }`}
+            >
+              {tab.icon}
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {filteredRails.map((rail) => (
+            <Card
+              key={rail.id}
+              className="p-4 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 space-y-3 hover:border-zinc-400 dark:hover:border-zinc-600 transition-colors"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100">{rail.name}</span>
+                <Badge variant="slate" size="sm">
+                  {rail.statusLabel}
+                </Badge>
+              </div>
+              <p className="text-[11px] text-zinc-500 font-mono">{rail.type} · {rail.currency}</p>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                {rail.verificationMechanism}
+              </p>
+              <ul className="space-y-1">
+                {rail.features.map((f) => (
+                  <li key={f} className="text-[11px] text-zinc-500 flex gap-1.5">
+                    <span className="text-zinc-900 dark:text-zinc-100">·</span>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          ))}
+        </div>
+
+        <div className="text-center">
+          <Link href="/register">
+            <Button variant="primary" size="md" rightIcon={<ArrowRight className="w-4 h-4" />}>
+              Configure Your Rails
+            </Button>
+          </Link>
         </div>
       </div>
     </section>

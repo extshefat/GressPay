@@ -92,22 +92,25 @@ class SmsMatchService : Service() {
     companion object {
         private const val NOTIF_ID = 4201
 
-        fun start(context: android.content.Context) {
+        /** @return false when the FGS could not be started (caller should surface in UI). */
+        fun start(context: android.content.Context): Boolean {
             if (Build.VERSION.SDK_INT >= 33 &&
                 android.content.pm.PackageManager.PERMISSION_GRANTED !=
                 androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS)
             ) {
-                return
+                return false
             }
             val i = Intent(context, SmsMatchService::class.java)
-            try {
+            return try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     context.startForegroundService(i)
                 } else {
                     context.startService(i)
                 }
+                true
             } catch (_: Exception) {
-                // Ignore background start restrictions on Android 12+
+                // Android 12+ ForegroundServiceStartNotAllowedException
+                false
             }
         }
 

@@ -1,39 +1,49 @@
 # GressPay Companion (Android)
 
-Merchant SMS companion for **GressPay** Bangladesh rails (bKash / Nagad).  
+Merchant SMS companion for **GressPay** Bangladesh rails (bKash / Nagad / Rocket / Upay / Cellfin).  
 Open this folder in **Android Studio**. Package: `com.gresspay.companion`.
 
 ## What it does
 
 1. Register via `POST /api/v1/companion/register` (merchant `gp_live_` / `gp_test_` key).
-2. After **explicit opt-in** + `RECEIVE_SMS`, listen for payment SMS.
-3. Parse only amount + TxID + rail for bKash/Nagad; ignore ambiguous/unrelated SMS.
-4. Upload via WorkManager with idempotency keys — never full message bodies.
-5. Server matches pending checkouts; revoked devices cannot upload.
+2. After **explicit opt-in** + `RECEIVE_SMS` (+ notifications on Android 13+), listen for payment SMS.
+3. Parse only amount + TxID + rail; reject OTP / promo noise.
+4. Upload via WorkManager with idempotency keys — never full message bodies. Permanent HTTP 4xx (e.g. 409) is not retried.
+5. Optional **Scan Inbox (24h)** backfill requests `READ_SMS` at runtime when used.
+6. Server matches pending checkouts; revoked devices cannot upload.
+
+## Permissions
+
+| Permission | When |
+|---|---|
+| `RECEIVE_SMS` | Required to enable live matching |
+| `POST_NOTIFICATIONS` | Android 13+ for the dataSync foreground service |
+| `READ_SMS` | Requested only when the merchant taps **Scan & Sync Recent Inbox SMS** |
 
 ## Security
 
 - EncryptedSharedPreferences (Android Keystore) for tokens
-- No `READ_SMS` / inbox / default SMS app
 - HTTPS required (http only for `localhost` / `10.0.2.2`)
 - Do not log credentials or SMS contents
+- Foreground service type: `dataSync` (Android 12–15)
 
 ## Run
 
-1. Android Studio → Open `GressPay-App/`
-2. JDK 17, API 26+
-3. API base e.g. `https://your-domain.com` or emulator `http://10.0.2.2:8080`
-4. Register device → consent → enable matching
+1. Android Studio → Open `GressPay-App-Project/`
+2. JDK 17+, API 26+
+3. API base e.g. `https://gresspay.extxcheats.com` or emulator `http://10.0.2.2:8080`
+4. Register device → consent → enable matching → optional inbox scan
+
+Public download (after assemble): `/download/gresspay-companion.apk` (version `1.0.0`).
 
 ## Tests / build
 
-Gradle wrapper is included (`gradlew` / `gradlew.bat`). Requires JDK 17 + Android SDK.
-
 ```bash
-gradlew.bat test --tests com.gresspay.companion.sms.PaymentSmsParserTest
-gradlew.bat assembleDebug
+./gradlew test --tests com.gresspay.companion.sms.PaymentSmsParserTest
+./gradlew assembleDebug
+cp app/build/outputs/apk/debug/app-debug.apk ../public/download/gresspay-companion.apk
 ```
 
 ## Related
 
-`GressPay- Web/backend/docs/PHASE1_RAILS.md`
+`backend/docs/PHASE1_RAILS.md`

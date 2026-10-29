@@ -9,10 +9,17 @@ import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
 data class RegisterResult(val deviceId: String, val token: String)
-data class SmsPostResult(val ok: Boolean, val matched: Boolean, val message: String)
+data class PingResult(val ok: Boolean, val latencyMs: Long, val message: String)
+data class SmsPostResult(
+    val ok: Boolean,
+    val matched: Boolean,
+    val message: String,
+    val httpCode: Int = 0,
+    val permanentFailure: Boolean = false
+)
 
 /**
- * Talks to GressPay PHP companion routes under /api/v1/companion/*
+ * Talks to GressPay PHP companion routes under /api/v1/companion/.
  */
 class CompanionApi(
     private val baseUrl: String,
@@ -24,17 +31,25 @@ class CompanionApi(
         }
     }
 
-    fun ping(deviceToken: String): Boolean {
+    fun ping(deviceToken: String = ""): PingResult {
         val url = "$baseUrl/api/v1/health"
-        val req = Request.Builder()
-            .url(url)
-            .header("Authorization", "Bearer $deviceToken")
-            .get()
-            .build()
+        val builder = Request.Builder().url(url).get()
+        if (deviceToken.isNotBlank()) {
+            builder.header("Authorization", "Bearer $deviceToken")
+        }
+        val started = System.nanoTime()
         return try {
-            client.newCall(req).execute().use { it.isSuccessful }
-        } catch (_: Exception) {
-            false
+            client.newCall(builder.build()).execute().use { res ->
+                val ms = (System.nanoTime() - started) / 1_000_000L
+                if (res.isSuccessful) {
+                    PingResult(true, ms, "HTTP ${res.code}")
+                } else {
+                    PingResult(false, ms, "HTTP ${res.code}")
+                }
+            }
+        } catch (e: Exception) {
+            val ms = (System.nanoTime() - started) / 1_000_000L
+            PingResult(false, ms, e.message ?: "network_error")
         }
     }
 
@@ -50,7 +65,7 @@ class CompanionApi(
         client.newCall(req).execute().use { res ->
             val raw = res.body?.string().orEmpty()
             if (!res.isSuccessful) {
-                throw ApiException(parseError(raw, res.code))
+                throw ApiException(parseError(raw, res.code), res.code)
             }
             val json = JSONObject(raw)
             return RegisterResult(
@@ -86,13 +101,21 @@ class CompanionApi(
         client.newCall(req).execute().use { res ->
             val raw = res.body?.string().orEmpty()
             if (!res.isSuccessful) {
-                return SmsPostResult(false, false, parseError(raw, res.code))
+                val permanent = res.code in 400..499 && res.code != 408 && res.code != 429
+                return SmsPostResult(
+                    ok = false,
+                    matched = false,
+                    message = parseError(raw, res.code),
+                    httpCode = res.code,
+                    permanentFailure = permanent
+                )
             }
             val json = JSONObject(raw)
             return SmsPostResult(
                 ok = json.optBoolean("ok", true),
                 matched = json.optBoolean("matched", false),
-                message = if (json.optBoolean("matched", false)) "matched" else "stored"
+                message = if (json.optBoolean("matched", false)) "matched" else "stored",
+                httpCode = res.code
             )
         }
     }
@@ -118,4 +141,4 @@ class CompanionApi(
     }
 }
 
-class ApiException(message: String) : Exception(message)
+class ApiException(message: String, val httpCode: Int = 0) : Exception(message)

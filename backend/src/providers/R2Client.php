@@ -111,16 +111,14 @@ final class R2Client
     /** Detect PNG/JPEG/WebP from magic bytes. */
     public static function detectImageMime(string $bytes): ?string
     {
-        if (strlen($bytes) < 12) {
-            return null;
-        }
-        if (strncmp($bytes, "\x89PNG\r\n\x1a\n", 8) === 0) {
-            return 'image/png';
-        }
-        if (strncmp($bytes, "\xFF\xD8\xFF", 3) === 0) {
+        $len = strlen($bytes);
+        if ($len >= 3 && strncmp($bytes, "\xFF\xD8\xFF", 3) === 0) {
             return 'image/jpeg';
         }
-        if (strncmp($bytes, 'RIFF', 4) === 0 && substr($bytes, 8, 4) === 'WEBP') {
+        if ($len >= 8 && strncmp($bytes, "\x89PNG\r\n\x1a\n", 8) === 0) {
+            return 'image/png';
+        }
+        if ($len >= 12 && strncmp($bytes, 'RIFF', 4) === 0 && substr($bytes, 8, 4) === 'WEBP') {
             return 'image/webp';
         }
         return null;

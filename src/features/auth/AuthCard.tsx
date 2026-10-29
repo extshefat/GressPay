@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,8 +15,15 @@ import { ArrowRight, Mail, ShieldCheck, User } from "lucide-react";
 
 type Tab = "signin" | "signup";
 
-function homeFor(user: { role?: string; isAdmin?: boolean } | undefined) {
-  return user?.role === "admin" || user?.isAdmin ? "/admin" : "/overview";
+function homeFor(
+  user: { role?: string; isAdmin?: boolean } | undefined,
+  plan?: string | null
+) {
+  const base = user?.role === "admin" || user?.isAdmin ? "/admin" : "/overview";
+  if (plan && plan !== "starter") {
+    return `${base}?upgrade=${encodeURIComponent(plan)}`;
+  }
+  return base;
 }
 
 function GoogleMark() {
@@ -32,6 +39,8 @@ function GoogleMark() {
 
 export function AuthCard({ initialTab }: { initialTab: Tab }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const planParam = searchParams.get("plan");
   const [tab, setTab] = useState<Tab>(initialTab);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -44,16 +53,51 @@ export function AuthCard({ initialTab }: { initialTab: Tab }) {
     setTab(initialTab);
   }, [initialTab]);
 
+  useEffect(() => {
+    if (planParam) {
+      try {
+        localStorage.setItem("gresspay_selected_plan", planParam);
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [planParam]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const me = await api.getMe();
+        if (cancelled || !me?.user) return;
+        const plan =
+          planParam ||
+          (typeof window !== "undefined"
+            ? localStorage.getItem("gresspay_selected_plan")
+            : null);
+        router.replace(homeFor(me.user, plan));
+      } catch {
+        /* not logged in */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [planParam, router]);
+
   const switchTab = (next: Tab) => {
     setTab(next);
     setError(null);
-    router.replace(next === "signup" ? "/register" : "/login");
+    const q = planParam ? `?plan=${encodeURIComponent(planParam)}` : "";
+    router.replace(next === "signup" ? `/register${q}` : `/login${q}`);
   };
 
   const google = async () => {
     setGoogleBusy(true);
     setError(null);
     try {
+      if (planParam) {
+        localStorage.setItem("gresspay_selected_plan", planParam);
+      }
       const redirectUri = `${window.location.origin}/callback/google`;
       const res = await api.getGoogleAuthUrl(redirectUri, AbortSignal.timeout(20000));
       if (res.enabled && res.url) {
@@ -73,6 +117,11 @@ export function AuthCard({ initialTab }: { initialTab: Tab }) {
     setBusy(true);
     setError(null);
     try {
+      const selectedPlan =
+        planParam ||
+        (typeof window !== "undefined"
+          ? localStorage.getItem("gresspay_selected_plan")
+          : null);
       const res = tab === "signup"
         ? await api.register({
             name: name.trim(),
@@ -81,7 +130,7 @@ export function AuthCard({ initialTab }: { initialTab: Tab }) {
             businessName: name.trim(),
           })
         : await api.login(email.trim(), password);
-      router.push(homeFor(res.user));
+      router.push(homeFor(res.user, selectedPlan));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Sign-in failed.");
     } finally {
@@ -106,6 +155,11 @@ export function AuthCard({ initialTab }: { initialTab: Tab }) {
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
             Bangladesh payment verification for the wallets you configure.
           </p>
+          {planParam && (
+            <p className="text-[11px] font-mono text-zinc-700 dark:text-zinc-300">
+              Selected plan: <span className="font-bold uppercase">{planParam}</span>
+            </p>
+          )}
         </div>
 
         <Card className="border-zinc-950 bg-white p-6 shadow-xl dark:border-white dark:bg-zinc-950 sm:p-8">

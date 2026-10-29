@@ -25,11 +25,27 @@ import {
 
 export interface HostedCheckoutModalProps {
   session: CheckoutSession;
+  /** Marketing / sandbox demo: no live API calls; sample TrxID completes locally. */
+  demoMode?: boolean;
 }
 
 type TabCategory = "mfs" | "crypto";
 
-export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ session }) => {
+const DEMO_SAMPLE_TRX: Record<string, string> = {
+  bkash: "DEMOBKASH01",
+  nagad: "DEMONAGAD01",
+  rocket: "DEMOROCKET1",
+  upay: "DEMOUPAY001",
+  cellfin: "DEMOCELLFIN",
+  usdt_trc20: "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456",
+  bybit_pay: "BYBIT-DEMO-ORDER-001",
+  binance_pay: "BINANCE-DEMO-ORDER",
+};
+
+export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
+  session,
+  demoMode = false,
+}) => {
   const methods = useMemo(() => session.availableMethods || [], [session.availableMethods]);
 
   // Group active merchant methods into clean tabs: Mobile Banking & Crypto
@@ -174,6 +190,16 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
 
   // Start 3-second status polling for Scenario B (customer enters TxID before SMS arrives)
   const startStatusPolling = () => {
+    if (demoMode) {
+      setIsPollingVerification(true);
+      setPollingSeconds(0);
+      setTimeout(() => {
+        setIsPollingVerification(false);
+        setIsVerifying(false);
+        setCheckoutStatus("COMPLETED");
+      }, 1200);
+      return;
+    }
     if (pollingRef.current) clearInterval(pollingRef.current);
     setIsPollingVerification(true);
     setPollingSeconds(0);
@@ -264,6 +290,13 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
 
     setIsVerifying(true);
     try {
+      if (demoMode) {
+        setStatusMessage("Demo mode — simulating auto-verification…");
+        setIsVerifying(false);
+        startStatusPolling();
+        return;
+      }
+
       if (selectedMethod.code === "binance_pay") {
         const order = await api.createBinancePayOrder(session.sessionId);
         if (order.checkoutUrl) {
@@ -891,6 +924,29 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({ sessio
                 </div>
               </div>
             ) : null}
+
+            {demoMode && selectedMethod.code !== "binance_pay" && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full font-mono text-xs"
+                onClick={() => {
+                  const sample =
+                    DEMO_SAMPLE_TRX[selectedMethod.code] || "DEMO-SAMPLE-TRX";
+                  setTxidInput(
+                    selectedMethod.category === "mfs" ||
+                      ["bkash", "nagad", "rocket", "upay", "cellfin"].includes(
+                        selectedMethod.code
+                      )
+                      ? sample.toUpperCase()
+                      : sample
+                  );
+                }}
+              >
+                Use One-Click Sample TrxID
+              </Button>
+            )}
 
             {statusMessage && (
               <p className="text-xs text-zinc-700 dark:text-zinc-300 font-medium">

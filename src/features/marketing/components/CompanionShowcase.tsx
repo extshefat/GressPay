@@ -21,7 +21,7 @@ export const CompanionShowcase: React.FC = () => {
               Turn Any Android Phone into a High-Speed Settlement Node
             </h2>
             <p className="text-zinc-600 dark:text-zinc-400 text-sm sm:text-base leading-relaxed">
-              Traditional payment gateways in Bangladesh charge high percentage commissions and suffer frequent gateway downtime. With the GressPay Companion APK, customer transfers land directly in your personal or agent SIM wallet, while our background engine matches incoming payment SMS in under 2 seconds.
+              Customer transfers land directly in your bKash, Nagad, Rocket, Upay, or Cellfin wallet. The Companion APK matches payment SMS in about one second — non-custodial, 0% gateway fee, with WorkManager queuing when the network drops.
             </p>
 
             <div className="space-y-4 pt-2">
@@ -63,11 +63,11 @@ export const CompanionShowcase: React.FC = () => {
             </div>
 
             <div className="flex flex-wrap items-center gap-3 pt-4">
-              <Link href="/dashboard/devices">
+              <a href="/download/gresspay-companion.apk">
                 <Button variant="primary" size="lg" leftIcon={<Download className="w-4 h-4" />}>
                   Download Companion APK
                 </Button>
-              </Link>
+              </a>
               <Link href="/developers">
                 <Button variant="outline" size="lg">
                   API & Pairing Docs
@@ -75,7 +75,7 @@ export const CompanionShowcase: React.FC = () => {
               </Link>
             </div>
             <div className="text-[11px] font-mono text-zinc-500">
-              Compatible with Android 8.0 through Android 15 • Battery-Optimized
+              v1.0.0 · Android 8.0–15 · /download/gresspay-companion.apk
             </div>
           </div>
 
@@ -91,7 +91,7 @@ export const CompanionShowcase: React.FC = () => {
                     <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
                       GressPay Companion
                     </h4>
-                    <span className="text-[10px] text-zinc-500 font-mono">v1.4.0 • Node Active</span>
+                    <span className="text-[10px] text-zinc-500 font-mono">v1.0.0 • Node Active</span>
                   </div>
                 </div>
 

@@ -24,3 +24,5 @@ Thumbs.db
 .vscode/
 .cursor/
 *.swp
+
+.android-sdk/
