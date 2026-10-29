@@ -110,6 +110,13 @@ final class GatewaysController
         } else {
             $account = '';
         }
+        if ($methodCode === 'bybit_pay' && $account !== '') {
+            self::assertUidFree($actor['brand_id'], $account, null);
+        }
+        $binanceUid = trim((string) $req->input('binance_uid', ''));
+        if ($methodCode === 'binance_pay' && $binanceUid !== '') {
+            self::assertUidFree($actor['brand_id'], $binanceUid, null);
+        }
 
         $now = GpIds::now();
         $gwId = 'gw_' . bin2hex(random_bytes(8));
@@ -150,6 +157,7 @@ final class GatewaysController
             ]
         );
         self::mirrorPrimaryMethod($actor['brand_id'], $methodCode);
+        self::persistRailProfile($actor['brand_id'], $methodCode, $req, $account);
         self::audit($actor, 'gateway.create', ['gatewayId' => $gwId]);
         $row = self::owned($actor['brand_id'], $gwId);
         GpJson::send(['gateway' => self::present($row)], 201);
@@ -178,6 +186,14 @@ final class GatewaysController
             if ($willDisable !== false && $willDisable !== 0 && $willDisable !== '0') {
                 GpJson::error('DESTINATION_REQUIRED', 'Active gateways require a receiving account.', 400);
             }
+        }
+
+        if ($methodCode === 'bybit_pay' && $account !== '') {
+            self::assertUidFree($actor['brand_id'], $account, (string) $gw['gateway_id']);
+        }
+        $binanceUid = trim((string) $req->input('binance_uid', ''));
+        if ($methodCode === 'binance_pay' && $binanceUid !== '') {
+            self::assertUidFree($actor['brand_id'], $binanceUid, (string) $gw['gateway_id']);
         }
 
         $status = (string) $gw['status'];
@@ -209,6 +225,7 @@ final class GatewaysController
             ]
         );
         self::mirrorPrimaryMethod($actor['brand_id'], $methodCode);
+        self::persistRailProfile($actor['brand_id'], $methodCode, $req, $account);
         self::audit($actor, 'gateway.update', ['gatewayId' => $gw['gateway_id']]);
         GpJson::send(['gateway' => self::present(self::owned($actor['brand_id'], (string) $gw['gateway_id']))]);
     }
@@ -450,6 +467,30 @@ final class GatewaysController
             'createdAt' => $gw['created_at'] ?? null,
             'updatedAt' => $gw['updated_at'] ?? null,
         ];
+        $profile = GpDb::one(
+            'SELECT options FROM gp_methods WHERE brand_id = ? AND code = ?',
+            [(string) ($gw['brand_id'] ?? ''), $methodCode]
+        );
+        $opts = [];
+        if ($profile) {
+            $decoded = json_decode((string) ($profile['options'] ?? ''), true);
+            $opts = is_array($decoded) ? $decoded : [];
+        }
+        if ($methodCode === 'bybit_pay') {
+            $out['bybit_uid'] = (string) ($opts['bybit_uid'] ?? $account);
+            $out['wallet_address'] = (string) ($opts['wallet_address'] ?? '');
+            $out['account_name'] = (string) ($opts['account_name'] ?? '');
+        }
+        if ($methodCode === 'binance_pay') {
+            $out['mode'] = (string) ($opts['mode'] ?? 'merchant');
+            $out['binance_uid'] = (string) ($opts['binance_uid'] ?? '');
+            $out['account_name'] = (string) ($opts['account_name'] ?? '');
+            $out['apiKeySet'] = trim((string) ($opts['api_key_sealed'] ?? '')) !== '';
+            $out['apiSecretSet'] = trim((string) ($opts['api_secret_sealed'] ?? '')) !== '';
+        }
+        if (isset($opts['custom_rate_bdt']) && (float) $opts['custom_rate_bdt'] > 0) {
+            $out['custom_rate_bdt'] = (float) $opts['custom_rate_bdt'];
+        }
         if ($includeQrUrl && $qrStatus === 'ready' && !empty($gw['qr_object_key']) && R2Client::isConfigured()) {
             try {
                 $out['qrImageUrl'] = R2Client::presignGet((string) $gw['qr_object_key'], min(900, GpConfig::r2PresignTtl()));
@@ -584,6 +625,128 @@ final class GatewaysController
         return $dest;
     }
 
+    /** Reject a UID already stored on another gateway of this brand. */
+    private static function assertUidFree(string $brandId, string $uid, ?string $exceptGatewayId): void
+    {
+        $uid = trim($uid);
+        if ($uid === '') {
+            return;
+        }
+        $rows = GpDb::all('SELECT gateway_id, method_code, account FROM gp_gateways WHERE brand_id = ?', [$brandId]);
+        foreach ($rows as $row) {
+            if ($exceptGatewayId !== null && (string) $row['gateway_id'] === $exceptGatewayId) {
+                continue;
+            }
+            if (!in_array((string) ($row['method_code'] ?? ''), ['bybit_pay', 'binance_pay'], true)) {
+                continue;
+            }
+            if (strcasecmp(trim((string) ($row['account'] ?? '')), $uid) === 0) {
+                GpJson::error('UID_IN_USE', 'That UID is already saved on this brand.', 409);
+            }
+        }
+        $methods = GpDb::all('SELECT code, options FROM gp_methods WHERE brand_id = ?', [$brandId]);
+        foreach ($methods as $row) {
+            $opts = json_decode((string) ($row['options'] ?? ''), true);
+            if (!is_array($opts)) {
+                continue;
+            }
+            foreach (['bybit_uid', 'binance_uid'] as $key) {
+                $saved = trim((string) ($opts[$key] ?? ''));
+                if ($saved !== '' && strcasecmp($saved, $uid) === 0) {
+                    $sameRail = ($key === 'bybit_uid' && (string) $row['code'] === 'bybit_pay')
+                        || ($key === 'binance_uid' && (string) $row['code'] === 'binance_pay');
+                    if ($sameRail && $exceptGatewayId !== null) {
+                        continue;
+                    }
+                    if ($sameRail && $exceptGatewayId === null) {
+                        GpJson::error('UID_IN_USE', 'That UID is already saved on this brand.', 409);
+                    }
+                    if (!$sameRail) {
+                        GpJson::error('UID_IN_USE', 'That UID is already saved on this brand.', 409);
+                    }
+                }
+            }
+        }
+    }
+
+    /** Store manual UID fields. Secrets are sealed and never returned. */
+    private static function persistRailProfile(string $brandId, string $methodCode, GpRequest $req, string $account): void
+    {
+        if (!in_array($methodCode, ['bybit_pay', 'binance_pay', 'usdt_trc20'], true)) {
+            return;
+        }
+        $existing = GpDb::one('SELECT options FROM gp_methods WHERE brand_id = ? AND code = ?', [$brandId, $methodCode]);
+        $prev = [];
+        if ($existing) {
+            $decoded = json_decode((string) ($existing['options'] ?? ''), true);
+            $prev = is_array($decoded) ? $decoded : [];
+        }
+        if ($methodCode === 'bybit_pay') {
+            $uid = trim((string) $req->input('bybit_uid', $account));
+            if ($uid !== '') {
+                $prev['bybit_uid'] = $uid;
+                $prev['account'] = $uid;
+                $prev['depositAddressOrNumber'] = $uid;
+            }
+            foreach (['wallet_address', 'account_name'] as $key) {
+                if ($req->input($key, null) !== null) {
+                    $prev[$key] = trim((string) $req->input($key));
+                }
+            }
+        }
+        if ($methodCode === 'binance_pay') {
+            $mode = strtolower(trim((string) $req->input('mode', $prev['mode'] ?? 'merchant')));
+            if (!in_array($mode, ['merchant', 'personal'], true)) {
+                GpJson::error('INVALID_MODE', 'Binance mode must be merchant or personal.', 400);
+            }
+            $prev['mode'] = $mode;
+            $uid = trim((string) $req->input('binance_uid', $prev['binance_uid'] ?? ''));
+            if ($uid !== '') {
+                $prev['binance_uid'] = $uid;
+            }
+            if ($req->input('account_name', null) !== null) {
+                $prev['account_name'] = trim((string) $req->input('account_name'));
+            }
+            foreach (['api_key', 'api_secret'] as $secretKey) {
+                $secret = $req->input($secretKey, null);
+                if (!is_string($secret) || trim($secret) === '') {
+                    continue;
+                }
+                $prev[$secretKey . '_sealed'] = GpCrypto::seal(trim($secret));
+                unset($prev[$secretKey]);
+            }
+        }
+        if ($methodCode === 'usdt_trc20' && $account !== '') {
+            $prev['account'] = $account;
+            $prev['depositAddressOrNumber'] = $account;
+            $wallet = trim((string) $req->input('wallet_address', ''));
+            if ($wallet !== '') {
+                $prev['wallet_address'] = $wallet;
+            }
+        }
+        if ($req->input('custom_rate_bdt', null) !== null && $req->input('custom_rate_bdt') !== '') {
+            $rate = (float) $req->input('custom_rate_bdt');
+            if ($rate <= 0) {
+                GpJson::error('INVALID_RATE', 'custom_rate_bdt must be a positive BDT per USDT rate.', 400);
+            }
+            $prev['custom_rate_bdt'] = $rate;
+        }
+        unset($prev['api_key'], $prev['api_secret']);
+        $json = json_encode($prev, JSON_UNESCAPED_SLASHES);
+        $now = GpIds::now();
+        if ($existing) {
+            GpDb::exec(
+                'UPDATE gp_methods SET options = ?, updated_at = ? WHERE brand_id = ? AND code = ?',
+                [$json, $now, $brandId, $methodCode]
+            );
+            return;
+        }
+        GpDb::exec(
+            'INSERT INTO gp_methods (brand_id, code, status, options, created_at, updated_at) VALUES (?,?,?,?,?,?)',
+            [$brandId, $methodCode, 'inactive', $json, $now, $now]
+        );
+    }
+
     private static function nullableAmount(mixed $v): ?string
     {
         if ($v === null || $v === '') {
@@ -598,31 +761,38 @@ final class GatewaysController
             'SELECT * FROM gp_gateways WHERE brand_id = ? AND method_code = ? AND status = ? ORDER BY display_order ASC, id ASC',
             [$brandId, $methodCode, 'active']
         );
-        $now = GpIds::now();
         if ($primary === null) {
             $any = GpDb::one(
                 'SELECT * FROM gp_gateways WHERE brand_id = ? AND method_code = ? ORDER BY display_order ASC, id ASC',
                 [$brandId, $methodCode]
             );
-            $opts = $any && trim((string) ($any['account'] ?? '')) !== ''
-                ? json_encode(['account' => $any['account'], 'depositAddressOrNumber' => $any['account']], JSON_UNESCAPED_SLASHES)
-                : '{}';
+            $acc = $any ? trim((string) ($any['account'] ?? '')) : '';
             $status = 'inactive';
         } else {
-            $acc = (string) ($primary['account'] ?? '');
-            $opts = json_encode(['account' => $acc, 'depositAddressOrNumber' => $acc], JSON_UNESCAPED_SLASHES);
+            $acc = trim((string) ($primary['account'] ?? ''));
             $status = 'active';
         }
-        $existing = GpDb::one('SELECT id FROM gp_methods WHERE brand_id = ? AND code = ?', [$brandId, $methodCode]);
+        $existing = GpDb::one('SELECT id, options FROM gp_methods WHERE brand_id = ? AND code = ?', [$brandId, $methodCode]);
+        $opts = [];
+        if ($existing) {
+            $decoded = json_decode((string) ($existing['options'] ?? ''), true);
+            $opts = is_array($decoded) ? $decoded : [];
+        }
+        if ($acc !== '') {
+            $opts['account'] = $acc;
+            $opts['depositAddressOrNumber'] = $acc;
+        }
+        $json = json_encode($opts, JSON_UNESCAPED_SLASHES);
+        $now = GpIds::now();
         if ($existing) {
             GpDb::exec(
                 'UPDATE gp_methods SET status = ?, options = ?, updated_at = ? WHERE brand_id = ? AND code = ?',
-                [$status, $opts, $now, $brandId, $methodCode]
+                [$status, $json, $now, $brandId, $methodCode]
             );
         } else {
             GpDb::exec(
                 'INSERT INTO gp_methods (brand_id, code, status, options, created_at, updated_at) VALUES (?,?,?,?,?,?)',
-                [$brandId, $methodCode, $status, $opts, $now, $now]
+                [$brandId, $methodCode, $status, $json, $now, $now]
             );
         }
     }

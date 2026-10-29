@@ -49,8 +49,9 @@ function GoogleCallbackContent() {
         const res = await api.handleGoogleCallback({ code, state });
         if (alive) {
           setStatus("success");
+          const admin = res.user?.role === "admin" || Boolean(res.user?.isAdmin);
           setTimeout(() => {
-            router.push("/dashboard/overview");
+            router.push(admin ? "/admin" : "/overview");
           }, 600);
         }
       } catch (err: unknown) {

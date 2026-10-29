@@ -56,4 +56,68 @@ final class GpRatesEngine
         $usd = (float) $amount / $fromRate;
         return GpMoney::round((string) ($usd * $toRate));
     }
+
+    /**
+     * USDT display quote for BDT or USD checkout amounts.
+     * Returns null when no rate exists, so a missing rate is not shown as 1:1.
+     *
+     * @return array{amount:string,rate:string}|null
+     */
+    public static function usdtQuote(string $brandId, string $amount, string $from): ?array
+    {
+        $from = strtoupper(trim($from));
+        if (!in_array($from, ['BDT', 'USD'], true)) {
+            return null;
+        }
+        $amount = GpMoney::sanitize($amount);
+        if ($from === 'USD') {
+            $map = self::usdMap($brandId);
+            $usd = (float) ($map['USD'] ?? 0);
+            $usdt = (float) ($map['USDT'] ?? 0);
+            if ($usd <= 0 || $usdt <= 0) {
+                return null;
+            }
+            $quoted = ((float) $amount / $usd) * $usdt;
+            $rate = $usdt / $usd;
+            return [
+                'amount' => GpMoney::round((string) $quoted, 2),
+                'rate' => GpMoney::round((string) $rate, 2),
+            ];
+        }
+        $custom = self::customRateBdt($brandId);
+        if ($custom !== null && $custom > 0) {
+            return [
+                'amount' => GpMoney::round((string) ((float) $amount / $custom), 2),
+                'rate' => GpMoney::round((string) $custom, 2),
+            ];
+        }
+        $map = self::usdMap($brandId);
+        $bdt = (float) ($map['BDT'] ?? 0);
+        $usdt = (float) ($map['USDT'] ?? 0);
+        if ($bdt <= 0 || $usdt <= 0) {
+            return null;
+        }
+        $quoted = ((float) $amount / $bdt) * $usdt;
+        return [
+            'amount' => GpMoney::round((string) $quoted, 2),
+            'rate' => GpMoney::round((string) ($bdt / $usdt), 2),
+        ];
+    }
+
+    /** Brand-only BDT per 1 USDT override stored on a method options row. */
+    public static function customRateBdt(string $brandId): ?float
+    {
+        $rows = GpDb::all('SELECT options FROM gp_methods WHERE brand_id = ?', [$brandId]);
+        foreach ($rows as $row) {
+            $opts = json_decode((string) ($row['options'] ?? ''), true);
+            if (!is_array($opts) || !isset($opts['custom_rate_bdt']) || $opts['custom_rate_bdt'] === '') {
+                continue;
+            }
+            $rate = (float) $opts['custom_rate_bdt'];
+            if ($rate > 0) {
+                return $rate;
+            }
+        }
+        return null;
+    }
 }

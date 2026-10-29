@@ -70,7 +70,7 @@ final class CompanionController
 
         if ($req->method === 'POST' && $action === 'sms') {
             GpRateLimiter::guard('sms:' . GpRateLimiter::ip(), 120, 60);
-            $token = $req->bearer() ?? ($_SERVER['HTTP_X_GRESSPAY_DEVICE'] ?? $_SERVER['HTTP_X_DEVICE_TOKEN'] ?? '');
+            $token = $req->bearer() ?? ($req->deviceToken() ?? '');
             if (!is_string($token) || $token === '') {
                 GpJson::error('UNAUTHORIZED', 'Device token required.', 401);
             }

@@ -631,5 +631,78 @@ $guardPdo->commit();
 $guardRow = GpDb::one('SELECT name FROM gp_guard_probe WHERE name = ?', ['ok']);
 assert_true(($guardRow['name'] ?? '') === 'ok', 'insert works after a guarded SQL failure');
 
+putenv('ADMIN_EMAIL=stage1-admin@gresspay.test');
+$_ENV['ADMIN_EMAIL'] = 'stage1-admin@gresspay.test';
+putenv('GOOGLE_REDIRECT_URI=http://localhost:3000/callback/google');
+$_ENV['GOOGLE_REDIRECT_URI'] = 'http://localhost:3000/callback/google';
+GpConfig::load();
+assert_true(GpConfig::isAdminEmail('stage1-admin@gresspay.test') === true, 'isAdminEmail matches ADMIN_EMAIL');
+assert_true(GpConfig::isAdminEmail('someone-else@gresspay.test') === false, 'isAdminEmail fails closed');
+$_SERVER['HTTP_X_FORWARDED_HOST'] = 'gresspay.extxcheats.com';
+$_SERVER['HTTP_X_FORWARDED_PROTO'] = 'https';
+unset($_SERVER['HTTP_ORIGIN']);
+$forced = GoogleOAuthClient::resolveRedirectUri('http://localhost:3000/callback/google');
+assert_true(
+    $forced === 'https://gresspay.extxcheats.com/callback/google',
+    'localhost Google redirect is forced to the public callback'
+);
+
+$quoteDefault = GpRatesEngine::usdtQuote($brandP5, '1225', 'BDT');
+assert_true($quoteDefault !== null && $quoteDefault['amount'] === '10.00', 'default BDT map quotes USDT to 2 decimals');
+assert_true($quoteDefault !== null && $quoteDefault['amount'] !== '1225.00', 'missing custom rate is not treated as 1:1');
+$nowQuote = GpIds::now();
+GpDb::exec(
+    'INSERT INTO gp_methods (brand_id, code, status, options, created_at, updated_at) VALUES (?,?,?,?,?,?)',
+    [$brandP5, 'usdt_trc20', 'active', json_encode(['custom_rate_bdt' => 120]), $nowQuote, $nowQuote]
+);
+$quoteCustom = GpRatesEngine::usdtQuote($brandP5, '1200', 'BDT');
+assert_true($quoteCustom !== null && $quoteCustom['amount'] === '10.00' && $quoteCustom['rate'] === '120.00', 'custom_rate_bdt overrides the BDT rate for that brand');
+$quoteUsd = GpRatesEngine::usdtQuote($brandP5, '15', 'USD');
+assert_true($quoteUsd !== null && $quoteUsd['amount'] === '15.00', 'USD checkout quotes USDT at the saved USD rate');
+
+$presented = GpPresenters::method(
+    GpCatalog::find('usdt_trc20'),
+    ['status' => 'active', 'options' => json_encode(['account' => 'TXYZnotchecked', 'custom_rate_bdt' => 120])],
+    ['amount' => '1200', 'currency' => 'BDT', 'brandId' => $brandP5]
+);
+assert_true(($presented['usdt_amount'] ?? null) === 10.0, 'crypto method payload includes the USDT amount');
+assert_true(isset($presented['exchange_rate']), 'crypto method payload includes exchange_rate');
+
+$statusRow = [
+    'session_id' => 'chs_stage1',
+    'status' => 'completed',
+    'amount' => '100',
+    'currency' => 'BDT',
+    'method_code' => 'bkash',
+    'trx_id' => 'TXSTAGE1',
+    'metadata' => json_encode(['orderId' => 'ord_stage1', 'returnUrl' => 'https://example.com/back']),
+    'ledger_mode' => 'live',
+    'expires_at' => null,
+    'updated_at' => '2026-10-29T02:00:00Z',
+];
+$statusOut = GpPresenters::checkoutStatus($statusRow);
+assert_true(($statusOut['order_id'] ?? '') === 'ord_stage1', 'verify payload includes order_id');
+assert_true(is_array($statusOut['metadata'] ?? null), 'verify payload includes metadata');
+assert_true(($statusOut['paid_at'] ?? null) === '2026-10-29T02:00:00Z', 'verify payload includes paid_at');
+
+$createOut = GpPresenters::checkoutSession(
+    [
+        'session_id' => 'chs_stage1_create',
+        'amount' => '100',
+        'currency' => 'BDT',
+        'metadata' => '{}',
+        'ledger_mode' => 'live',
+        'expires_at' => null,
+        'created_at' => '2026-10-29T02:00:00Z',
+        'source' => 'api',
+    ],
+    ['link_id' => 'lnk_stage1', 'title' => 'Order', 'description' => ''],
+    ['brand_id' => $brandP5, 'name' => 'Stage Brand'],
+    []
+);
+assert_true(($createOut['status'] ?? false) === true, 'create payload status is true');
+assert_true(($createOut['session_id'] ?? '') === 'chs_stage1_create', 'create payload includes session_id');
+assert_true(str_contains((string) ($createOut['payment_url'] ?? ''), '/pay/chs_stage1_create'), 'create payload includes payment_url');
+
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

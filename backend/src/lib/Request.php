@@ -44,6 +44,25 @@ final class GpRequest
 
     public function apiKeyHeader(): ?string
     {
-        return $_SERVER['HTTP_X_GRESSPAY_KEY'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? null;
+        foreach (['HTTP_X_GRESSPAY_KEY', 'HTTP_X_API_KEY'] as $name) {
+            $key = $_SERVER[$name] ?? null;
+            if (is_string($key) && trim($key) !== '') {
+                return trim($key);
+            }
+        }
+        $auth = $_SERVER['HTTP_AUTHORIZATION'] ?? null;
+        return is_string($auth) && trim($auth) !== '' ? trim($auth) : null;
+    }
+
+    /** Companion device token. X-Device-Token is an alias of X-GressPay-Device. */
+    public function deviceToken(): ?string
+    {
+        foreach (['HTTP_X_GRESSPAY_DEVICE', 'HTTP_X_DEVICE_TOKEN'] as $name) {
+            $token = $_SERVER[$name] ?? null;
+            if (is_string($token) && trim($token) !== '') {
+                return trim($token);
+            }
+        }
+        return null;
     }
 }

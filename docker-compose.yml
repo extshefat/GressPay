@@ -13,7 +13,7 @@ services:
       PORT: "3000"
       NEXT_PUBLIC_APP_NAME: GressPay
       NEXT_PUBLIC_APP_URL: ${APP_URL:-https://gresspay.extxcheats.com}
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api/v1}
       NEXT_PUBLIC_DATA_SOURCE: live
       GRESSPAY_PHP_URL: "http://php:8080"
     ports:
@@ -53,6 +53,6 @@ services:
       TRON_API_KEY: ${TRON_API_KEY:-}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-https://gresspay.extxcheats.com/callback/google}
       PORT: "8080"
     restart: unless-stopped

@@ -66,7 +66,25 @@ final class MethodsController
                 if (!is_array($prev)) {
                     $prev = [];
                 }
-                $allowed = ['account', 'depositAddressOrNumber', 'mobile_number'];
+                if ($code === 'binance_pay') {
+                    foreach (['api_key', 'api_secret'] as $secretKey) {
+                        if (!array_key_exists($secretKey, $optsIn)) {
+                            continue;
+                        }
+                        $secret = trim((string) $optsIn[$secretKey]);
+                        unset($optsIn[$secretKey]);
+                        if ($secret === '') {
+                            continue;
+                        }
+                        $prev[$secretKey . '_sealed'] = GpCrypto::seal($secret);
+                        unset($prev[$secretKey]);
+                    }
+                }
+                $allowed = [
+                    'account', 'depositAddressOrNumber', 'mobile_number',
+                    'bybit_uid', 'wallet_address', 'account_name',
+                    'mode', 'binance_uid', 'custom_rate_bdt',
+                ];
                 foreach ($allowed as $k) {
                     if (array_key_exists($k, $optsIn)) {
                         $val = $optsIn[$k];
@@ -76,6 +94,35 @@ final class MethodsController
                         }
                         $prev[$k] = is_string($val) ? trim($val) : $val;
                     }
+                }
+                if (isset($prev['mode'])) {
+                    $mode = strtolower(trim((string) $prev['mode']));
+                    if (!in_array($mode, ['merchant', 'personal'], true)) {
+                        GpJson::error('INVALID_MODE', 'Binance mode must be merchant or personal.', 400);
+                    }
+                    $prev['mode'] = $mode;
+                }
+                if (isset($prev['custom_rate_bdt']) && (float) $prev['custom_rate_bdt'] <= 0) {
+                    GpJson::error('INVALID_RATE', 'custom_rate_bdt must be a positive BDT per USDT rate.', 400);
+                }
+                $uid = '';
+                if ($code === 'bybit_pay') {
+                    $uid = trim((string) ($prev['bybit_uid'] ?? $prev['account'] ?? ''));
+                    if ($uid !== '') {
+                        $prev['bybit_uid'] = $uid;
+                        if (trim((string) ($prev['account'] ?? '')) === '') {
+                            $prev['account'] = $uid;
+                        }
+                    }
+                }
+                if ($code === 'binance_pay') {
+                    $uid = trim((string) ($prev['binance_uid'] ?? ''));
+                    if ($uid !== '') {
+                        $prev['binance_uid'] = $uid;
+                    }
+                }
+                if ($uid !== '') {
+                    self::assertUidFree($actor['brand_id'], $uid, $code);
                 }
                 // Normalize destination into account for consistency.
                 $dest = trim((string) ($prev['account'] ?? $prev['depositAddressOrNumber'] ?? $prev['mobile_number'] ?? ''));
@@ -164,6 +211,45 @@ final class MethodsController
             return $norm;
         }
         return $dest;
+    }
+
+    /** A UID may be saved once per brand. The row being edited is excluded. */
+    private static function assertUidFree(string $brandId, string $uid, string $code): void
+    {
+        $uid = trim($uid);
+        if ($uid === '') {
+            return;
+        }
+        $gateways = GpDb::all(
+            'SELECT method_code, account FROM gp_gateways WHERE brand_id = ?',
+            [$brandId]
+        );
+        foreach ($gateways as $row) {
+            if ((string) ($row['method_code'] ?? '') === $code) {
+                continue;
+            }
+            if (!in_array((string) ($row['method_code'] ?? ''), ['bybit_pay', 'binance_pay'], true)) {
+                continue;
+            }
+            if (strcasecmp(trim((string) ($row['account'] ?? '')), $uid) === 0) {
+                GpJson::error('UID_IN_USE', 'That UID is already saved on this brand.', 409);
+            }
+        }
+        $methods = GpDb::all('SELECT code, options FROM gp_methods WHERE brand_id = ?', [$brandId]);
+        foreach ($methods as $row) {
+            if ((string) ($row['code'] ?? '') === $code) {
+                continue;
+            }
+            $opts = json_decode((string) ($row['options'] ?? ''), true);
+            if (!is_array($opts)) {
+                continue;
+            }
+            foreach (['bybit_uid', 'binance_uid', 'account'] as $key) {
+                if (strcasecmp(trim((string) ($opts[$key] ?? '')), $uid) === 0 && trim((string) ($opts[$key] ?? '')) !== '') {
+                    GpJson::error('UID_IN_USE', 'That UID is already saved on this brand.', 409);
+                }
+            }
+        }
     }
 
     /** @param array{brand_id:string,merchant_id?:string} $actor */

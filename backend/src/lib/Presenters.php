@@ -34,7 +34,7 @@ final class GpPresenters
         $email = strtolower(trim((string) ($merchant['email'] ?? '')));
         $isAdmin = GpConfig::isAdmin($email) || (($merchant['role'] ?? '') === 'admin');
         $role = $isAdmin ? 'admin' : ($merchant['role'] ?? 'merchant');
-        $planId = $isAdmin ? 'enterprise' : ($merchant['plan_id'] ?? 'starter');
+        $planId = $isAdmin ? 'lifetime' : ($merchant['plan_id'] ?? 'starter');
         $mid = (string) ($merchant['merchant_id'] ?? '');
 
         // Fetch active subscription & credit balance
@@ -83,9 +83,20 @@ final class GpPresenters
         $plugin = GpCatalog::loadPlugin($catalog['slug'] ?? $catalog['code']);
         $account = $opts['account'] ?? $opts['depositAddressOrNumber'] ?? $opts['mobile_number'] ?? $opts['binance_uid'] ?? $opts['merchant_id'] ?? '';
         $methodCurrency = (string) $catalog['currency'];
-        $payable = isset($ctx['amount'], $ctx['currency'], $ctx['brandId'])
-            ? GpRatesEngine::convert((string) $ctx['brandId'], (string) $ctx['amount'], (string) $ctx['currency'], $methodCurrency)
-            : '';
+        $cryptoQuote = null;
+        $cryptoCode = in_array((string) $catalog['code'], ['usdt_trc20', 'binance_pay', 'bybit_pay'], true);
+        $fromCur = strtoupper((string) ($ctx['currency'] ?? ''));
+        if ($cryptoCode && isset($ctx['amount'], $ctx['brandId']) && in_array($fromCur, ['BDT', 'USD'], true)) {
+            $cryptoQuote = GpRatesEngine::usdtQuote((string) $ctx['brandId'], (string) $ctx['amount'], $fromCur);
+            $payable = $cryptoQuote['amount'] ?? '';
+            if ($cryptoQuote !== null) {
+                $methodCurrency = 'USDT';
+            }
+        } else {
+            $payable = isset($ctx['amount'], $ctx['currency'], $ctx['brandId'])
+                ? GpRatesEngine::convert((string) $ctx['brandId'], (string) $ctx['amount'], (string) $ctx['currency'], $methodCurrency)
+                : '';
+        }
 
         $steps = [];
         $theme = [
@@ -146,6 +157,10 @@ final class GpPresenters
         if ($payable !== '') {
             $out['payableAmount'] = self::num($payable);
             $out['payableCurrency'] = $methodCurrency;
+        }
+        if (is_array($cryptoQuote)) {
+            $out['usdt_amount'] = self::num($cryptoQuote['amount']);
+            $out['exchange_rate'] = self::num($cryptoQuote['rate']);
         }
         return $out;
     }
@@ -236,7 +251,10 @@ final class GpPresenters
             'txid' => ($row['trx_id'] ?? null) ?: null,
             'redirectUrl' => $redirectUrl,
             'returnUrl' => $returnUrl,
+            'order_id' => (string) ($meta['orderId'] ?? $meta['order_id'] ?? ''),
+            'metadata' => $meta !== [] ? $meta : new \stdClass(),
             'paidAt' => $status === 'COMPLETED' ? ($row['updated_at'] ?? null) : null,
+            'paid_at' => $status === 'COMPLETED' ? ($row['updated_at'] ?? null) : null,
             'ledgerMode' => strtolower((string) ($row['ledger_mode'] ?? 'live')) === 'test' ? 'test' : 'live',
             'confirmationState' => $confirmationState,
             'message' => $message,
@@ -325,6 +343,7 @@ final class GpPresenters
         $payUrl = ($app !== '' ? $app : '') . '/pay/' . $txn['session_id'];
         $returnUrl = isset($meta['returnUrl']) && is_string($meta['returnUrl']) ? $meta['returnUrl'] : null;
         return [
+            'status' => true,
             'sessionId' => $txn['session_id'],
             'session_id' => $txn['session_id'],
             'linkId' => $link['link_id'] ?? $txn['session_id'],

@@ -190,6 +190,12 @@ final class GpDb
             "ALTER TABLE gp_merchants ADD COLUMN auth_provider VARCHAR(20) NOT NULL DEFAULT 'local'",
             'ALTER TABLE gp_merchants ADD COLUMN avatar_url TEXT',
             'ALTER TABLE gp_merchants ADD COLUMN google_email_verified INTEGER NOT NULL DEFAULT 0',
+            'ALTER TABLE gp_merchants ADD COLUMN brand_name VARCHAR(120)',
+            'ALTER TABLE gp_merchants ADD COLUMN brand_logo_url TEXT',
+            'ALTER TABLE gp_merchants ADD COLUMN support_contact VARCHAR(160)',
+            'ALTER TABLE gp_merchants ADD COLUMN telegram_bot_token TEXT',
+            'ALTER TABLE gp_merchants ADD COLUMN telegram_chat_id VARCHAR(64)',
+            'ALTER TABLE gp_merchants ADD COLUMN discord_webhook_url TEXT',
         ];
         foreach ($deviceAlters as $sql) {
             try {
@@ -724,7 +730,7 @@ final class GpDb
                 return;
             }
             $stmt = self::pdo()->prepare(
-                "UPDATE gp_merchants SET role = 'admin', plan_id = 'enterprise' WHERE LOWER(TRIM(email)) = ?"
+                "UPDATE gp_merchants SET role = 'admin', plan_id = 'lifetime' WHERE LOWER(TRIM(email)) = ?"
             );
             foreach ($admins as $email) {
                 $stmt->execute([$email]);

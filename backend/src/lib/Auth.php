@@ -21,10 +21,10 @@ final class GpAuth
             }
             $email = strtolower(trim((string) ($merchant['email'] ?? '')));
             $isAdmin = GpConfig::isAdmin($email) || (($merchant['role'] ?? '') === 'admin');
-            if ($isAdmin && (($merchant['role'] ?? '') !== 'admin' || ($merchant['plan_id'] ?? '') !== 'enterprise')) {
-                GpDb::exec("UPDATE gp_merchants SET role = 'admin', plan_id = 'enterprise' WHERE merchant_id = ?", [$merchant['merchant_id']]);
+            if ($isAdmin && (($merchant['role'] ?? '') !== 'admin' || ($merchant['plan_id'] ?? '') !== 'lifetime')) {
+                GpDb::exec("UPDATE gp_merchants SET role = 'admin', plan_id = 'lifetime' WHERE merchant_id = ?", [$merchant['merchant_id']]);
                 $merchant['role'] = 'admin';
-                $merchant['plan_id'] = 'enterprise';
+                $merchant['plan_id'] = 'lifetime';
             }
             $brand = GpDb::one('SELECT * FROM gp_brands WHERE merchant_id = ?', [$merchant['merchant_id']]);
             if ($brand === null) {
@@ -37,7 +37,7 @@ final class GpAuth
                 'email' => $merchant['email'],
                 'role' => $isAdmin ? 'admin' : ($merchant['role'] ?? 'merchant'),
                 'is_admin' => $isAdmin,
-                'plan_id' => $isAdmin ? 'enterprise' : ($merchant['plan_id'] ?? 'starter'),
+                'plan_id' => $isAdmin ? 'lifetime' : ($merchant['plan_id'] ?? 'starter'),
                 'mode' => $mode,
                 'auth' => 'jwt',
                 'scopes' => self::allScopes(),

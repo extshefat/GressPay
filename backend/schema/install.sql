@@ -15,6 +15,12 @@ CREATE TABLE IF NOT EXISTS gp_merchants (
   auth_provider VARCHAR(20) NOT NULL DEFAULT 'local',
   avatar_url TEXT NULL,
   google_email_verified INTEGER NOT NULL DEFAULT 0,
+  brand_name VARCHAR(120) NULL,
+  brand_logo_url TEXT NULL,
+  support_contact VARCHAR(160) NULL,
+  telegram_bot_token TEXT NULL,
+  telegram_chat_id VARCHAR(64) NULL,
+  discord_webhook_url TEXT NULL,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );

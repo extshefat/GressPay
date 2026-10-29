@@ -245,9 +245,8 @@ final class AdminController
         }
 
         $now = GpIds::now();
-        // If promoted to admin, also grant enterprise plan if currently on starter
-        if ($role === 'admin' && in_array($merchant['plan_id'] ?? 'starter', ['starter', 'pro', ''], true)) {
-            GpDb::exec('UPDATE gp_merchants SET role = ?, plan_id = ?, updated_at = ? WHERE merchant_id = ?', [$role, 'enterprise', $now, $merchantId]);
+        if ($role === 'admin') {
+            GpDb::exec('UPDATE gp_merchants SET role = ?, plan_id = ?, updated_at = ? WHERE merchant_id = ?', [$role, 'lifetime', $now, $merchantId]);
         } else {
             GpDb::exec('UPDATE gp_merchants SET role = ?, updated_at = ? WHERE merchant_id = ?', [$role, $now, $merchantId]);
         }

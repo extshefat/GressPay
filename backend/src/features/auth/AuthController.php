@@ -103,7 +103,7 @@ final class AuthController
         $now = GpIds::now();
         $isAdmin = GpConfig::isAdmin($email);
         $role = $isAdmin ? 'admin' : 'merchant';
-        $planId = $isAdmin ? 'enterprise' : 'starter';
+        $planId = $isAdmin ? 'lifetime' : 'starter';
         $merchantId = GpIds::make('mrc', 8);
         $brandId = GpIds::make('brd', 8);
         $webhookSecret = 'gpwh_' . bin2hex(random_bytes(24));
@@ -180,10 +180,10 @@ final class AuthController
             GpJson::error('SUSPENDED', 'This account is not active.', 403);
         }
         $isAdmin = GpConfig::isAdmin($row['email']) || (($row['role'] ?? '') === 'admin');
-        if ($isAdmin && (($row['role'] ?? '') !== 'admin' || ($row['plan_id'] ?? '') !== 'enterprise')) {
-            GpDb::exec("UPDATE gp_merchants SET role = 'admin', plan_id = 'enterprise' WHERE merchant_id = ?", [$row['merchant_id']]);
+        if ($isAdmin && (($row['role'] ?? '') !== 'admin' || ($row['plan_id'] ?? '') !== 'lifetime')) {
+            GpDb::exec("UPDATE gp_merchants SET role = 'admin', plan_id = 'lifetime' WHERE merchant_id = ?", [$row['merchant_id']]);
             $row['role'] = 'admin';
-            $row['plan_id'] = 'enterprise';
+            $row['plan_id'] = 'lifetime';
         }
         $brand = GpDb::one('SELECT * FROM gp_brands WHERE merchant_id = ?', [$row['merchant_id']]);
         $token = GpJwt::encode([
@@ -192,7 +192,7 @@ final class AuthController
             'email' => $row['email'],
             'role' => $isAdmin ? 'admin' : ($row['role'] ?? 'merchant'),
             'is_admin' => $isAdmin,
-            'plan_id' => $isAdmin ? 'enterprise' : ($row['plan_id'] ?? 'starter'),
+            'plan_id' => $isAdmin ? 'lifetime' : ($row['plan_id'] ?? 'starter'),
         ]);
         GpJson::send([
             'token' => $token,
@@ -211,10 +211,10 @@ final class AuthController
         if ($merchant) {
             $email = strtolower(trim((string) ($merchant['email'] ?? '')));
             $isAdmin = GpConfig::isAdmin($email) || (($merchant['role'] ?? '') === 'admin');
-            if ($isAdmin && (($merchant['role'] ?? '') !== 'admin' || ($merchant['plan_id'] ?? '') !== 'enterprise')) {
-                GpDb::exec("UPDATE gp_merchants SET role = 'admin', plan_id = 'enterprise' WHERE merchant_id = ?", [$merchant['merchant_id']]);
+            if ($isAdmin && (($merchant['role'] ?? '') !== 'admin' || ($merchant['plan_id'] ?? '') !== 'lifetime')) {
+                GpDb::exec("UPDATE gp_merchants SET role = 'admin', plan_id = 'lifetime' WHERE merchant_id = ?", [$merchant['merchant_id']]);
                 $merchant['role'] = 'admin';
-                $merchant['plan_id'] = 'enterprise';
+                $merchant['plan_id'] = 'lifetime';
             }
         }
         $brand = GpDb::one('SELECT * FROM gp_brands WHERE brand_id = ?', [$actor['brand_id']]);

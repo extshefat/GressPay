@@ -301,6 +301,11 @@ final class GpConfig
         return array_values(array_unique($emails));
     }
 
+    public static function isAdminEmail(string $email): bool
+    {
+        return self::isAdmin($email);
+    }
+
     public static function isAdmin(string $email): bool
     {
         $email = strtolower(trim($email));

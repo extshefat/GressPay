@@ -15,6 +15,10 @@ import { ArrowRight, Mail, ShieldCheck, User } from "lucide-react";
 
 type Tab = "signin" | "signup";
 
+function homeFor(user: { role?: string; isAdmin?: boolean } | undefined) {
+  return user?.role === "admin" || user?.isAdmin ? "/admin" : "/overview";
+}
+
 function GoogleMark() {
   return (
     <svg className="w-4 h-4" viewBox="0 0 24 24" aria-hidden>
@@ -69,17 +73,15 @@ export function AuthCard({ initialTab }: { initialTab: Tab }) {
     setBusy(true);
     setError(null);
     try {
-      if (tab === "signup") {
-        await api.register({
-          name: name.trim(),
-          email: email.trim(),
-          password,
-          businessName: name.trim(),
-        });
-      } else {
-        await api.login(email.trim(), password);
-      }
-      router.push("/dashboard/overview");
+      const res = tab === "signup"
+        ? await api.register({
+            name: name.trim(),
+            email: email.trim(),
+            password,
+            businessName: name.trim(),
+          })
+        : await api.login(email.trim(), password);
+      router.push(homeFor(res.user));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Sign-in failed.");
     } finally {
@@ -88,7 +90,7 @@ export function AuthCard({ initialTab }: { initialTab: Tab }) {
   };
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center bg-zinc-50 p-4 selection:bg-teal-500/20 dark:bg-zinc-950">
+    <div className="relative flex min-h-screen flex-col items-center justify-center bg-zinc-50 p-4 selection:bg-zinc-950/15 dark:bg-black">
       <div className="absolute right-5 top-5">
         <ThemeToggle size="sm" />
       </div>
@@ -106,7 +108,7 @@ export function AuthCard({ initialTab }: { initialTab: Tab }) {
           </p>
         </div>
 
-        <Card className="border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900 sm:p-8">
+        <Card className="border-zinc-950 bg-white p-6 shadow-xl dark:border-white dark:bg-zinc-950 sm:p-8">
           <div className="space-y-4">
             {error && (
               <Alert variant="danger" title="Authentication notice">
@@ -183,7 +185,7 @@ export function AuthCard({ initialTab }: { initialTab: Tab }) {
               <Button
                 type="submit"
                 size="lg"
-                className="mt-2 w-full"
+                className="mt-2 w-full !bg-zinc-950 !text-white hover:!bg-zinc-800 dark:!bg-white dark:!text-zinc-950 dark:hover:!bg-zinc-200"
                 isLoading={busy}
                 rightIcon={<ArrowRight className="h-4 w-4" />}
               >
@@ -194,7 +196,7 @@ export function AuthCard({ initialTab }: { initialTab: Tab }) {
         </Card>
 
         <p className="flex items-center justify-center gap-1.5 text-center text-xs font-medium text-zinc-600 dark:text-zinc-300">
-          <ShieldCheck className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
+          <ShieldCheck className="h-3.5 w-3.5 text-zinc-900 dark:text-zinc-100" />
           Funds stay in the wallets you configure.
         </p>
       </div>

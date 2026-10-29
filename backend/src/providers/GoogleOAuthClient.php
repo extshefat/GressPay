@@ -16,6 +16,9 @@ final class GoogleOAuthClient
     {
         $custom = trim((string) $customRedirectUri);
         $configured = trim(GpConfig::get('GOOGLE_REDIRECT_URI', ''));
+        if (self::isLocalhostUri($configured) && self::incomingPublicHost() === 'gresspay.extxcheats.com') {
+            return 'https://gresspay.extxcheats.com/callback/google';
+        }
         $origin = self::requestOrigin();
         if ($custom !== '' && self::isPublicHttps($custom)) {
             return $custom;
@@ -66,6 +69,27 @@ final class GoogleOAuthClient
         $host = strtolower((string) ($parts['host'] ?? ''));
         $scheme = strtolower((string) ($parts['scheme'] ?? ''));
         return $scheme === 'https' && $host !== '' && !self::isLocalHost($host);
+    }
+
+    private static function incomingPublicHost(): string
+    {
+        $origin = trim((string) ($_SERVER['HTTP_ORIGIN'] ?? ''));
+        $originHost = strtolower((string) (parse_url($origin, PHP_URL_HOST) ?? ''));
+        if ($originHost !== '') {
+            return $originHost;
+        }
+        $host = trim((string) ($_SERVER['HTTP_X_FORWARDED_HOST'] ?? $_SERVER['HTTP_HOST'] ?? ''));
+        $host = strtolower(trim(explode(',', $host)[0]));
+        return strtolower(explode(':', $host)[0]);
+    }
+
+    private static function isLocalhostUri(string $uri): bool
+    {
+        if ($uri === '') {
+            return false;
+        }
+        $host = strtolower((string) (parse_url($uri, PHP_URL_HOST) ?? ''));
+        return $host !== '' && self::isLocalHost($host);
     }
 
     private static function isLocalHost(string $host): bool
@@ -274,7 +298,7 @@ final class GoogleOAuthClient
                 if ($merchant !== null) {
                     $isAdmin = GpConfig::isAdmin($email) || (($merchant['role'] ?? '') === 'admin');
                     $role = $isAdmin ? 'admin' : ($merchant['role'] ?? 'merchant');
-                    $planId = $isAdmin ? 'enterprise' : ($merchant['plan_id'] ?? 'starter');
+                    $planId = $isAdmin ? 'lifetime' : ($merchant['plan_id'] ?? 'starter');
                     GpDb::exec(
                         'UPDATE gp_merchants SET google_id = ?, avatar_url = COALESCE(avatar_url, ?), google_email_verified = 1, role = ?, plan_id = ?, updated_at = ? WHERE merchant_id = ?',
                         [$googleId, $picture, $role, $planId, $now, $merchant['merchant_id']]
@@ -288,7 +312,7 @@ final class GoogleOAuthClient
                     $isNew = true;
                     $isAdmin = GpConfig::isAdmin($email);
                     $role = $isAdmin ? 'admin' : 'merchant';
-                    $planId = $isAdmin ? 'enterprise' : 'starter';
+                    $planId = $isAdmin ? 'lifetime' : 'starter';
                     $merchantId = GpIds::make('mrc', 8);
                     $brandId = GpIds::make('brd', 8);
                     $webhookSecret = 'gpwh_' . bin2hex(random_bytes(24));
@@ -341,10 +365,10 @@ final class GoogleOAuthClient
         }
 
         $isAdmin = GpConfig::isAdmin($merchant['email']) || (($merchant['role'] ?? '') === 'admin');
-        if ($isAdmin && (($merchant['role'] ?? '') !== 'admin' || ($merchant['plan_id'] ?? '') !== 'enterprise')) {
-            GpDb::exec("UPDATE gp_merchants SET role = 'admin', plan_id = 'enterprise' WHERE merchant_id = ?", [$merchant['merchant_id']]);
+        if ($isAdmin && (($merchant['role'] ?? '') !== 'admin' || ($merchant['plan_id'] ?? '') !== 'lifetime')) {
+            GpDb::exec("UPDATE gp_merchants SET role = 'admin', plan_id = 'lifetime' WHERE merchant_id = ?", [$merchant['merchant_id']]);
             $merchant['role'] = 'admin';
-            $merchant['plan_id'] = 'enterprise';
+            $merchant['plan_id'] = 'lifetime';
         }
         if ($merchant['status'] !== 'active') {
             return [

@@ -689,6 +689,16 @@ final class CheckoutController
         // - live without SMS: stay PENDING.
         $canComplete = false;
         $evidence = 'none';
+        // Bybit UID and Binance UID are manual rails. A pasted id or SMS row is not a provider result.
+        if (in_array($methodCode, ['bybit_pay', 'binance_pay'], true)) {
+            $row['confirmationState'] = 'verifying';
+            $out = GpPresenters::checkoutStatus($row);
+            $out['confirmationState'] = 'verifying';
+            $out['message'] = $methodCode === 'binance_pay'
+                ? 'Binance Pay stays unpaid until the Merchant API reports the order paid.'
+                : 'Bybit UID transfers stay unpaid until a provider result is recorded.';
+            GpJson::send($out);
+        }
         if ($ledgerMode === 'test' && in_array($methodCode, ['bkash', 'nagad'], true)) {
             $canComplete = true;
             $evidence = 'simulated';
