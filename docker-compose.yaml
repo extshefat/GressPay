@@ -31,21 +31,16 @@ services:
       APP_ENV: production
       APP_URL: ${APP_URL:-https://gresspay.extxcheats.com}
       PUBLIC_APP_URL: ${PUBLIC_APP_URL:-https://gresspay.extxcheats.com}
-      DB_DRIVER: ${DB_CONNECTION:-${DB_DRIVER:-pgsql}}
-      DB_CONNECTION: ${DB_CONNECTION:-${DB_DRIVER:-pgsql}}
+      DB_DRIVER: ${DB_DRIVER:-pgsql}
       DB_HOST: ${DB_HOST:-gresspay-db}
       DB_PORT: ${DB_PORT:-5432}
-      DB_NAME: ${DB_DATABASE:-${DB_NAME:-gresspay}}
-      DB_DATABASE: ${DB_DATABASE:-${DB_NAME:-gresspay}}
-      DB_USER: ${DB_USERNAME:-${DB_USER:-gresspay}}
-      DB_USERNAME: ${DB_USERNAME:-${DB_USER:-gresspay}}
-      DB_PASS: ${DB_PASSWORD:-${DB_PASS:?Set DB_PASS or DB_PASSWORD}}
-      DB_PASSWORD: ${DB_PASSWORD:-${DB_PASS:?Set DB_PASS or DB_PASSWORD}}
+      DB_NAME: ${DB_NAME:-gresspay}
+      DB_USER: ${DB_USER:-gresspay}
+      DB_PASS: ${DB_PASS}
       DB_SSLMODE: ${DB_SSLMODE:-disable}
-      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
-      APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:?Set APP_ENCRYPTION_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+      APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
-      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
       CORS_ORIGINS: ${CORS_ORIGINS:-https://gresspay.extxcheats.com}
       GRESSPAY_CRYPTO_ALLOWED: ${GRESSPAY_CRYPTO_ALLOWED:-0}
       BINANCE_PAY_API_BASE: ${BINANCE_PAY_API_BASE:-https://bpay.binanceapi.com}
@@ -54,5 +49,11 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
+      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
+      R2_BUCKET_NAME: ${R2_BUCKET_NAME:-}
+      R2_ENDPOINT: ${R2_ENDPOINT:-}
+      R2_PUBLIC_BASE_URL: ${R2_PUBLIC_BASE_URL:-}
       PORT: "8080"
     restart: unless-stopped

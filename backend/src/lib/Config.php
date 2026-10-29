@@ -44,7 +44,9 @@ final class GpConfig
             'DB_DRIVER', 'DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASS', 'DB_SSLMODE',
             'DB_CONNECTION', 'DB_DATABASE', 'DB_USERNAME', 'DB_PASSWORD',
             'GRESSPAY_CRYPTO_ALLOWED', 'ADMIN_EMAIL', 'ADMIN_EMAILS',
-            'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI'
+            'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI',
+            'R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY',
+            'R2_BUCKET_NAME', 'R2_ENDPOINT', 'R2_PUBLIC_BASE_URL'
         ] as $k) {
             $g = getenv($k);
             if ($g !== false && $g !== '') {
