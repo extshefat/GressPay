@@ -488,6 +488,12 @@ final class GatewaysController
             $out['apiKeySet'] = trim((string) ($opts['api_key_sealed'] ?? '')) !== '';
             $out['apiSecretSet'] = trim((string) ($opts['api_secret_sealed'] ?? '')) !== '';
         }
+        if (in_array($methodCode, ['bkash', 'nagad', 'rocket', 'upay', 'cellfin'], true)) {
+            $out['usernameSet'] = trim((string) ($opts['username'] ?? '')) !== '';
+            $out['passwordSet'] = trim((string) ($opts['password_sealed'] ?? '')) !== '';
+            $out['apiKeySet'] = trim((string) ($opts['api_key_sealed'] ?? '')) !== '';
+            $out['apiSecretSet'] = trim((string) ($opts['api_secret_sealed'] ?? '')) !== '';
+        }
         if (isset($opts['custom_rate_bdt']) && (float) $opts['custom_rate_bdt'] > 0) {
             $out['custom_rate_bdt'] = (float) $opts['custom_rate_bdt'];
         }
@@ -504,7 +510,7 @@ final class GatewaysController
     private static function accountType(GpRequest $req, string $fallback = 'personal'): string
     {
         $raw = strtolower(trim((string) $req->input('accountType', $req->input('account_type', $fallback))));
-        return in_array($raw, ['personal', 'agent', 'merchant'], true) ? $raw : 'personal';
+        return in_array($raw, ['personal', 'agent', 'merchant', 'payment'], true) ? $raw : 'personal';
     }
 
     /** @param array<string,mixed> $gw */
@@ -536,11 +542,25 @@ final class GatewaysController
         }
 
         if (in_array($method, ['bkash', 'nagad', 'rocket', 'upay', 'cellfin'], true)) {
+            $accountType = strtolower((string) ($gw['account_type'] ?? 'personal'));
             if ($account === '') {
                 return 'setup_incomplete';
             }
             if ($status !== 'active') {
                 return 'configured_disabled';
+            }
+            // Merchant API rails verify via provider credentials — companion optional.
+            if ($accountType === 'merchant') {
+                $profile = GpDb::one(
+                    'SELECT options FROM gp_methods WHERE brand_id = ? AND code = ?',
+                    [(string) ($gw['brand_id'] ?? ''), $method]
+                );
+                $opts = is_array($profile)
+                    ? (json_decode((string) ($profile['options'] ?? '{}'), true) ?: [])
+                    : [];
+                $hasApi = trim((string) ($opts['api_key_sealed'] ?? '')) !== ''
+                    && trim((string) ($opts['api_secret_sealed'] ?? '')) !== '';
+                return $hasApi ? 'live_ready' : 'setup_incomplete';
             }
             try {
                 $hasDevice = (int) (GpDb::one(
@@ -672,7 +692,8 @@ final class GatewaysController
     /** Store manual UID fields. Secrets are sealed and never returned. */
     private static function persistRailProfile(string $brandId, string $methodCode, GpRequest $req, string $account): void
     {
-        if (!in_array($methodCode, ['bybit_pay', 'binance_pay', 'usdt_trc20'], true)) {
+        $mfs = ['bkash', 'nagad', 'rocket', 'upay', 'cellfin'];
+        if (!in_array($methodCode, array_merge(['bybit_pay', 'binance_pay', 'usdt_trc20'], $mfs), true)) {
             return;
         }
         $existing = GpDb::one('SELECT options FROM gp_methods WHERE brand_id = ? AND code = ?', [$brandId, $methodCode]);
@@ -680,6 +701,43 @@ final class GatewaysController
         if ($existing) {
             $decoded = json_decode((string) ($existing['options'] ?? ''), true);
             $prev = is_array($decoded) ? $decoded : [];
+        }
+        if (in_array($methodCode, $mfs, true)) {
+            $accountType = strtolower(trim((string) $req->input('accountType', $req->input('account_type', $prev['account_type'] ?? 'personal'))));
+            if (in_array($accountType, ['personal', 'agent', 'merchant', 'payment'], true)) {
+                $prev['account_type'] = $accountType;
+            }
+            if ($account !== '') {
+                $prev['account'] = $account;
+                $prev['depositAddressOrNumber'] = $account;
+                $prev['mobile_number'] = $account;
+            }
+            foreach (['username', 'password', 'api_key', 'api_secret', 'app_key', 'app_secret'] as $secretKey) {
+                $secret = $req->input($secretKey, null);
+                if (!is_string($secret) || trim($secret) === '') {
+                    continue;
+                }
+                if (in_array($secretKey, ['username'], true)) {
+                    $prev['username'] = trim($secret);
+                    continue;
+                }
+                $prev[$secretKey . '_sealed'] = GpCrypto::seal(trim($secret));
+                unset($prev[$secretKey]);
+            }
+            $json = json_encode($prev, JSON_UNESCAPED_SLASHES);
+            $now = GpIds::now();
+            if ($existing) {
+                GpDb::exec(
+                    'UPDATE gp_methods SET options = ?, updated_at = ? WHERE brand_id = ? AND code = ?',
+                    [$json, $now, $brandId, $methodCode]
+                );
+            } else {
+                GpDb::exec(
+                    'INSERT INTO gp_methods (brand_id, code, status, options, created_at, updated_at) VALUES (?,?,?,?,?,?)',
+                    [$brandId, $methodCode, 'inactive', $json, $now, $now]
+                );
+            }
+            return;
         }
         if ($methodCode === 'bybit_pay') {
             $uid = trim((string) $req->input('bybit_uid', $account));

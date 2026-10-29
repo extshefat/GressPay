@@ -52,12 +52,19 @@ final class MerchantController
         }
         GpJson::send([
             'merchantId' => $actor['merchant_id'],
+            'brandId' => $actor['brand_id'],
+            'hasLiveKey' => $live !== null,
+            'hasSandboxKey' => $test !== null,
             'livePublicKey' => $live ? $live['prefix'] . '…' : '',
             'liveSecretKey' => $live ? $live['prefix'] . '••••' : '',
             'sandboxPublicKey' => $test ? $test['prefix'] . '…' : '',
             'sandboxSecretKey' => $test ? $test['prefix'] . '••••' : '',
-            'webhookSecret' => isset($brand['webhook_secret']) ? substr((string) $brand['webhook_secret'], 0, 8) . '••••' : '',
+            'webhookSecret' => isset($brand['webhook_secret']) && (string) $brand['webhook_secret'] !== ''
+                ? substr((string) $brand['webhook_secret'], 0, 8) . '••••'
+                : '',
+            'hasWebhookSecret' => isset($brand['webhook_secret']) && (string) $brand['webhook_secret'] !== '',
             'webhookUrl' => $brand['webhook_url'] ?? null,
+            'note' => 'Full secrets are only returned once when you Create or Rotate. List views stay masked.',
         ]);
     }
 
@@ -67,15 +74,26 @@ final class MerchantController
         if (!in_array($mode, ['live', 'test'], true)) {
             $mode = 'live';
         }
+        $existing = GpDb::one(
+            'SELECT id FROM gp_api_keys WHERE brand_id = ? AND mode = ? AND status = ?',
+            [$actor['brand_id'], $mode, 'active']
+        );
+        $created = $existing === null;
         GpDb::exec(
             'UPDATE gp_api_keys SET status = ?, updated_at = ? WHERE brand_id = ? AND mode = ? AND status = ?',
             ['inactive', GpIds::now(), $actor['brand_id'], $mode, 'active']
         );
-        $issued = GpAuth::issueKey($actor['brand_id'], $mode, 'Rotated ' . $mode);
+        $issued = GpAuth::issueKey(
+            $actor['brand_id'],
+            $mode,
+            $created ? ('Default ' . $mode) : ('Rotated ' . $mode)
+        );
         GpJson::send([
             'mode' => $mode,
             'key' => $issued['key'],
-            'note' => 'Shown once. Store it now.',
+            'prefix' => $issued['prefix'],
+            'created' => $created,
+            'note' => 'Shown once. Copy and store this secret now — it cannot be retrieved again.',
         ]);
     }
 

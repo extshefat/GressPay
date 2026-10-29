@@ -40,6 +40,7 @@ final class GpRouter
             'rates' => RatesController::handle($req),
             'dashboard' => DashboardController::handle($req),
             'merchant' => MerchantController::handle($req),
+            'brands' => BrandsController::handle($req),
             'webhooks' => WebhooksController::handle($req),
             'companion' => CompanionController::handle($req),
             'admin' => AdminController::handle($req),

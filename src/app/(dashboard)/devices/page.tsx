@@ -98,10 +98,15 @@ export default function CompanionDevicesPage() {
       const res = await api.registerCompanionDevice(deviceLabel);
       setGeneratedDeviceId(res.deviceId);
       setGeneratedToken(res.token);
+      const origin =
+        typeof window !== "undefined"
+          ? window.location.origin
+          : process.env.NEXT_PUBLIC_APP_URL || "https://gresspay.extxcheats.com";
       const payload = JSON.stringify({
-        apiBaseUrl: "https://gresspay.extxcheats.com/api/v1",
+        apiBaseUrl: `${origin.replace(/\/$/, "")}/api/v1`,
         deviceId: res.deviceId,
         token: res.token,
+        brandId: api.getBrandId() || undefined,
       });
       const qr = await QRCode.toDataURL(payload, {
         width: 220,
@@ -141,7 +146,11 @@ export default function CompanionDevicesPage() {
     return diff < 600; // 10 minutes
   };
 
-  const apiBaseUrl = "https://gresspay.extxcheats.com/api/v1";
+  const apiBaseUrl =
+    (typeof window !== "undefined"
+      ? window.location.origin
+      : process.env.NEXT_PUBLIC_APP_URL || "https://gresspay.extxcheats.com"
+    ).replace(/\/$/, "") + "/api/v1";
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
@@ -157,7 +166,8 @@ export default function CompanionDevicesPage() {
             </span>
           </div>
           <p className="text-xs text-zinc-500 mt-1">
-            Pair Android smartphones to auto-verify bKash, Nagad, Rocket, Upay, and Cellfin payments in 1-second.
+            Pair Android phones to the <span className="font-semibold text-zinc-800 dark:text-zinc-200">active brand</span> so
+            Personal / Agent / Payment MFS numbers verify via SMS. Switch brands under Brands, then register a device here.
           </p>
         </div>
 

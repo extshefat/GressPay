@@ -61,12 +61,14 @@ function hydrateMethod(
 class ApiClient {
   private token: string | null = null;
   private ledgerMode: "live" | "test" = "live";
+  private brandId: string | null = null;
 
   constructor() {
     if (typeof window !== "undefined") {
       this.token = localStorage.getItem("gresspay_jwt");
       const mode = localStorage.getItem("gresspay_ledger_mode");
       if (mode === "live" || mode === "test") this.ledgerMode = mode;
+      this.brandId = localStorage.getItem("gresspay_brand_id");
     }
   }
 
@@ -77,6 +79,19 @@ class ApiClient {
       const secure = window.location.protocol === "https:" ? "; Secure" : "";
       document.cookie = `gresspay_jwt=${encodeURIComponent(token)}; Path=/; SameSite=Lax; Max-Age=2592000${secure}`;
     }
+  }
+
+  setBrandId(brandId: string | null) {
+    this.brandId = brandId;
+    if (typeof window !== "undefined") {
+      if (brandId) localStorage.setItem("gresspay_brand_id", brandId);
+      else localStorage.removeItem("gresspay_brand_id");
+      window.dispatchEvent(new Event("gresspay-brand"));
+    }
+  }
+
+  getBrandId(): string | null {
+    return this.brandId;
   }
 
   clearToken() {
@@ -103,6 +118,9 @@ class ApiClient {
     const headers = new Headers(options.headers || {});
     headers.set("Content-Type", "application/json");
     headers.set("X-GressPay-Mode", this.ledgerMode);
+    if (this.brandId) {
+      headers.set("X-GressPay-Brand", this.brandId);
+    }
     if (this.token) {
       headers.set("Authorization", `Bearer ${this.token}`);
     }
@@ -481,11 +499,64 @@ class ApiClient {
     });
   }
 
+  async rotateApiKey(mode: "live" | "test"): Promise<{
+    mode: string;
+    key: string;
+    prefix?: string;
+    created?: boolean;
+    note: string;
+  }> {
+    return this.request("/api/v1/merchant/api-keys/rotate", {
+      method: "POST",
+      body: JSON.stringify({ mode }),
+    });
+  }
+
   async rotateWebhookSecret(): Promise<{ webhookSecret: string; note: string }> {
-        return this.request<{ webhookSecret: string; note: string }>(
+    return this.request<{ webhookSecret: string; note: string }>(
       "/api/v1/merchant/webhook-secret/rotate",
       { method: "POST", body: JSON.stringify({}) }
     );
+  }
+
+  async listBrands(): Promise<{
+    brands: Array<{
+      brandId: string;
+      name: string;
+      currencyCode?: string;
+      timezone?: string;
+      webhookUrl?: string | null;
+      active: boolean;
+      deviceCount: number;
+      gatewayCount: number;
+    }>;
+    activeBrandId: string;
+  }> {
+    return this.request("/api/v1/brands");
+  }
+
+  async createBrand(name: string): Promise<{ brand: { brandId: string; name: string }; token: string }> {
+    const res = await this.request<{ brand: { brandId: string; name: string }; token: string }>(
+      "/api/v1/brands",
+      { method: "POST", body: JSON.stringify({ name }) }
+    );
+    if (res.token) {
+      this.setToken(res.token);
+      this.setBrandId(res.brand.brandId);
+    }
+    return res;
+  }
+
+  async switchBrand(brandId: string): Promise<{ brandId: string; name: string; token: string }> {
+    const res = await this.request<{ brandId: string; name: string; token: string }>(
+      `/api/v1/brands/${brandId}/switch`,
+      { method: "POST", body: "{}" }
+    );
+    if (res.token) {
+      this.setToken(res.token);
+      this.setBrandId(res.brandId);
+    }
+    return res;
   }
 
   async testWebhookPing(): Promise<{ ok: boolean; message: string }> {

@@ -13,6 +13,8 @@ import {
   Settings,
   Smartphone,
   ShieldCheck,
+  Building2,
+  Users,
   X,
 } from "lucide-react";
 import { GpMark } from "@/components/brand/GpMark";
@@ -24,8 +26,10 @@ const NAV_ITEMS = [
   { href: "/dashboard/payment-links", label: "Payment Links", icon: Link2 },
   { href: "/dashboard/invoices", label: "Invoices", icon: FileText },
   { href: "/dashboard/methods", label: "Gateways", icon: Sliders },
+  { href: "/dashboard/brands", label: "Brands", icon: Building2 },
   { href: "/dashboard/devices", label: "Companion devices", icon: Smartphone },
   { href: "/dashboard/api-keys", label: "API & Webhooks", icon: Key },
+  { href: "/dashboard/team", label: "Team", icon: Users },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 

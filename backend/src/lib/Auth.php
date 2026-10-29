@@ -26,7 +26,7 @@ final class GpAuth
                 $merchant['role'] = 'admin';
                 $merchant['plan_id'] = 'lifetime';
             }
-            $brand = GpDb::one('SELECT * FROM gp_brands WHERE merchant_id = ?', [$merchant['merchant_id']]);
+            $brand = self::resolveBrandForMerchant($merchant['merchant_id'], $payload, $req);
             if ($brand === null) {
                 return null;
             }
@@ -214,5 +214,31 @@ final class GpAuth
                 [$brandId, $code, $symbol, $rate, $now, $now]
             );
         }
+    }
+
+    /**
+     * Prefer X-GressPay-Brand header, then JWT brand claim, else first brand for the merchant.
+     *
+     * @param array<string,mixed> $payload
+     * @return array<string,mixed>|null
+     */
+    private static function resolveBrandForMerchant(string $merchantId, array $payload, GpRequest $req): ?array
+    {
+        $headerBrand = trim((string) ($_SERVER['HTTP_X_GRESSPAY_BRAND'] ?? ''));
+        $claimBrand = trim((string) ($payload['brand'] ?? ''));
+        $wanted = $headerBrand !== '' ? $headerBrand : $claimBrand;
+        if ($wanted !== '') {
+            $brand = GpDb::one(
+                'SELECT * FROM gp_brands WHERE brand_id = ? AND merchant_id = ?',
+                [$wanted, $merchantId]
+            );
+            if ($brand !== null) {
+                return $brand;
+            }
+        }
+        return GpDb::one(
+            'SELECT * FROM gp_brands WHERE merchant_id = ? ORDER BY id ASC',
+            [$merchantId]
+        );
     }
 }

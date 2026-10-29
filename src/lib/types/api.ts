@@ -248,12 +248,17 @@ export interface ExchangeRatesResponse {
 
 export interface ApiCredentials {
   merchantId: string;
+  brandId?: string;
+  hasLiveKey?: boolean;
+  hasSandboxKey?: boolean;
+  hasWebhookSecret?: boolean;
   livePublicKey: string;
   liveSecretKey: string;
   sandboxPublicKey: string;
   sandboxSecretKey: string;
   webhookSecret: string;
   webhookUrl?: string;
+  note?: string;
 }
 
 export interface DashboardMetrics {

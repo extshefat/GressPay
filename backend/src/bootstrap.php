@@ -41,6 +41,7 @@ spl_autoload_register(static function (string $class): void {
         'RatesController' => GRESSPAY_SRC . '/features/rates/RatesController.php',
         'DashboardController' => GRESSPAY_SRC . '/features/dashboard/DashboardController.php',
         'MerchantController' => GRESSPAY_SRC . '/features/merchant/MerchantController.php',
+        'BrandsController' => GRESSPAY_SRC . '/features/brands/BrandsController.php',
         'WebhooksController' => GRESSPAY_SRC . '/features/webhooks/WebhooksController.php',
         'CompanionController' => GRESSPAY_SRC . '/features/companion/CompanionController.php',
         'BinancePayController' => GRESSPAY_SRC . '/features/binance/BinancePayController.php',

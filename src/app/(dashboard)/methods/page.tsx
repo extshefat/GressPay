@@ -139,12 +139,19 @@ export default function GatewaysPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
+  const [showLibrary, setShowLibrary] = useState(false);
+  const [libraryFilter, setLibraryFilter] = useState<"all" | "mfs" | "crypto">("all");
+  const [libraryQuery, setLibraryQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<MerchantGateway | null>(null);
   const [formMethod, setFormMethod] = useState("bkash");
   const [formName, setFormName] = useState("");
   const [formAccount, setFormAccount] = useState("");
-  const [formAccountType, setFormAccountType] = useState<"personal" | "agent" | "merchant">("personal");
+  const [formAccountType, setFormAccountType] = useState<"personal" | "agent" | "merchant" | "payment">("personal");
+  const [formUsername, setFormUsername] = useState("");
+  const [formPassword, setFormPassword] = useState("");
+  const [formApiKey, setFormApiKey] = useState("");
+  const [formApiSecret, setFormApiSecret] = useState("");
   const [formInstructions, setFormInstructions] = useState("");
   const [formRateMode, setFormRateMode] = useState<"auto" | "custom">("auto");
   const [formCustomRate, setFormCustomRate] = useState("");
@@ -190,14 +197,27 @@ export default function GatewaysPage() {
 
   const activeMeta = availableOptions.find((m) => m.code === formMethod) || availableOptions[0];
 
+  const resetMerchantCreds = () => {
+    setFormUsername("");
+    setFormPassword("");
+    setFormApiKey("");
+    setFormApiSecret("");
+  };
+
   const openCreate = () => {
     setEditing(null);
-    const initialCode = availableOptions[0]?.code || "bkash";
-    setFormMethod(initialCode);
-    const meta = availableOptions.find((m) => m.code === initialCode);
-    setFormName(meta?.label || "");
+    setLibraryQuery("");
+    setLibraryFilter("all");
+    setShowLibrary(true);
+  };
+
+  const pickFromLibrary = (code: string) => {
+    const meta = availableOptions.find((m) => m.code === code);
+    setFormMethod(code);
+    setFormName(meta?.label || code);
     setFormAccount("");
     setFormAccountType("personal");
+    resetMerchantCreds();
     setFormInstructions("");
     setFormRateMode("auto");
     setFormCustomRate("");
@@ -205,6 +225,7 @@ export default function GatewaysPage() {
     setFormAccountName("");
     setFormUsdtOptional("");
     setPreviewUrl(null);
+    setShowLibrary(false);
     setShowForm(true);
   };
 
@@ -213,7 +234,10 @@ export default function GatewaysPage() {
     setFormMethod(g.methodCode);
     setFormName(g.displayName);
     setFormAccount(g.account || "");
-    setFormAccountType((g.accountType as "personal" | "agent" | "merchant") || "personal");
+    setFormAccountType(
+      (g.accountType as "personal" | "agent" | "merchant" | "payment") || "personal"
+    );
+    resetMerchantCreds();
     setFormInstructions((g.instructions as string) || "");
     setFormRateMode("auto");
     setFormCustomRate("");
@@ -239,6 +263,11 @@ export default function GatewaysPage() {
         if (digits.length < 11 || digits.length > 12) return "Rocket wallet must be 11–12 digits.";
       } else if (!/^01\d{9}$/.test(digits)) {
         return "Bangladesh MFS wallet must be an 11-digit number starting with 01.";
+      }
+      if (formAccountType === "merchant") {
+        if (!formApiKey.trim() || !formApiSecret.trim()) {
+          return "Merchant account type requires API key and API secret (or password).";
+        }
       }
     }
     if (formMethod === "usdt_trc20") {
@@ -274,18 +303,24 @@ export default function GatewaysPage() {
         accountType: MFS_CODES.has(formMethod) ? formAccountType : "personal",
         instructions: formInstructions,
       };
+      if (MFS_CODES.has(formMethod) && formAccountType === "merchant") {
+        if (formUsername.trim()) payload.username = formUsername.trim();
+        if (formPassword.trim()) payload.password = formPassword.trim();
+        if (formApiKey.trim()) payload.api_key = formApiKey.trim();
+        if (formApiSecret.trim()) payload.api_secret = formApiSecret.trim();
+      }
       if (formMethod === "usdt_trc20") {
         payload.exchangeRateMode = formRateMode;
-        if (formRateMode === "custom") payload.customUsdtRate = Number(formCustomRate);
+        if (formRateMode === "custom") payload.custom_rate_bdt = Number(formCustomRate);
       }
       if (formMethod === "binance_pay") {
-        payload.integrationMode = formBinanceMode;
-        payload.accountName = formAccountName;
+        payload.mode = formBinanceMode === "merchant_api" ? "merchant" : "personal";
+        payload.account_name = formAccountName;
         payload.binance_uid = formAccount;
       }
       if (formMethod === "bybit_pay") {
         payload.bybit_uid = formAccount;
-        payload.accountName = formAccountName;
+        payload.account_name = formAccountName;
         if (formUsdtOptional.trim()) payload.wallet_address = formUsdtOptional.trim();
       }
 
@@ -465,6 +500,66 @@ export default function GatewaysPage() {
         </Card>
       )}
 
+      {showLibrary && (
+        <Card className="space-y-4 border-zinc-900 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-950">
+          <div className="flex items-center justify-between border-b border-zinc-100 pb-3 dark:border-zinc-900">
+            <div>
+              <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100">Gateway Library</h2>
+              <p className="text-xs text-zinc-500">Choose a payment channel, then configure account type.</p>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => setShowLibrary(false)}>
+              Cancel
+            </Button>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Input
+              label="Search"
+              value={libraryQuery}
+              onChange={(e) => setLibraryQuery(e.target.value)}
+              placeholder="Search by gateway name…"
+            />
+            <div className="flex flex-wrap gap-1 self-end rounded-xl border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-800 dark:bg-zinc-900">
+              {(["all", "mfs", "crypto"] as const).map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setLibraryFilter(id)}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
+                    libraryFilter === id
+                      ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950"
+                      : "text-zinc-500"
+                  }`}
+                >
+                  {id === "all" ? "All" : id === "mfs" ? "Mobile" : "International"}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {availableOptions
+              .filter((m) => {
+                if (libraryFilter === "mfs" && m.category !== "mfs") return false;
+                if (libraryFilter === "crypto" && m.category !== "crypto") return false;
+                if (libraryQuery && !m.label.toLowerCase().includes(libraryQuery.toLowerCase())) return false;
+                return true;
+              })
+              .map((m) => (
+                <button
+                  key={m.code}
+                  type="button"
+                  onClick={() => pickFromLibrary(m.code)}
+                  className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-left transition hover:border-zinc-900 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-white"
+                >
+                  <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{m.label}</div>
+                  <div className="mt-1 font-mono text-[10px] uppercase text-zinc-500">
+                    {m.category} · {m.currency}
+                  </div>
+                </button>
+              ))}
+          </div>
+        </Card>
+      )}
+
       {/* Destination Form Modal/Drawer */}
       {showForm && (
         <Card className="p-6 space-y-4 border-zinc-900 dark:border-zinc-700 shadow-sm bg-white dark:bg-zinc-950">
@@ -511,17 +606,80 @@ export default function GatewaysPage() {
             />
 
             {MFS_CODES.has(formMethod) && (
-              <label className="block text-xs font-medium space-y-1.5 text-zinc-700 dark:text-zinc-300">
-                <span>Account Type</span>
-                <select
-                  className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100"
-                  value={formAccountType}
-                  onChange={(e) => setFormAccountType(e.target.value as "personal" | "agent" | "merchant")}
-                >
-                  <option value="personal">Personal — Send Money</option>
-                  <option value="agent">Agent — Cash In</option>
-                </select>
-              </label>
+              <div className="space-y-3">
+                <div className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Account Type</div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {(
+                    [
+                      { id: "personal", label: "Personal", hint: "SMS verify · Send Money" },
+                      { id: "agent", label: "Agent", hint: "SMS verify · Cash In" },
+                      { id: "payment", label: "Payment", hint: "SMS verify · Payment number" },
+                      { id: "merchant", label: "Merchant", hint: "API key + secret" },
+                    ] as const
+                  ).map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => setFormAccountType(t.id)}
+                      className={`rounded-xl border px-3 py-2.5 text-left transition ${
+                        formAccountType === t.id
+                          ? "border-zinc-950 bg-zinc-950 text-white dark:border-white dark:bg-white dark:text-zinc-950"
+                          : "border-zinc-200 bg-white text-zinc-800 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
+                      }`}
+                    >
+                      <div className="text-xs font-bold">{t.label}</div>
+                      <div className={`mt-0.5 text-[10px] ${formAccountType === t.id ? "opacity-80" : "text-zinc-500"}`}>
+                        {t.hint}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                {formAccountType === "merchant" && (
+                  <div className="grid grid-cols-1 gap-3 rounded-xl border border-zinc-200 p-3 dark:border-zinc-800 sm:grid-cols-2">
+                    <Input
+                      label={`${formMethod} username (optional)`}
+                      value={formUsername}
+                      onChange={(e) => setFormUsername(e.target.value)}
+                      autoComplete="off"
+                    />
+                    <Input
+                      label={`${formMethod} password`}
+                      type="password"
+                      value={formPassword}
+                      onChange={(e) => setFormPassword(e.target.value)}
+                      autoComplete="new-password"
+                    />
+                    <Input
+                      label="API key"
+                      value={formApiKey}
+                      onChange={(e) => setFormApiKey(e.target.value)}
+                      className="font-mono text-xs"
+                      autoComplete="off"
+                    />
+                    <Input
+                      label="API secret"
+                      type="password"
+                      value={formApiSecret}
+                      onChange={(e) => setFormApiSecret(e.target.value)}
+                      className="font-mono text-xs"
+                      autoComplete="new-password"
+                    />
+                    <p className="col-span-full text-[11px] text-zinc-500">
+                      Secrets are encrypted at rest and never shown again after save. Personal / Agent / Payment
+                      numbers verify via Companion SMS on a paired device for this brand.
+                    </p>
+                  </div>
+                )}
+                {formAccountType !== "merchant" && (
+                  <p className="text-[11px] text-zinc-500">
+                    This number is verified by Companion SMS match. Pair an Android device under{" "}
+                    <Link href="/dashboard/devices" className="font-semibold underline">
+                      Companion devices
+                    </Link>{" "}
+                    for this brand.
+                  </p>
+                )}
+              </div>
             )}
 
             {formMethod === "binance_pay" && (

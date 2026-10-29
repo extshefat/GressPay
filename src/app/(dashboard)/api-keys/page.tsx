@@ -13,12 +13,19 @@ import {
   RefreshCw,
   Send,
   Lock,
-  ShieldCheck,
   KeyRound,
   ExternalLink,
+  Eye,
+  AlertTriangle,
 } from "lucide-react";
 import Link from "next/link";
 import { IntegrationSnippets } from "@/features/developers/IntegrationSnippets";
+
+type RevealState = {
+  title: string;
+  secret: string;
+  note: string;
+} | null;
 
 export default function ApiKeysPage() {
   const { success, error: toastError } = useToast();
@@ -26,8 +33,8 @@ export default function ApiKeysPage() {
   const [credentials, setCredentials] = useState<ApiCredentials | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  // Ping State
+  const [busy, setBusy] = useState<string | null>(null);
+  const [reveal, setReveal] = useState<RevealState>(null);
   const [pingStatus, setPingStatus] = useState<string | null>(null);
   const [isPinging, setIsPinging] = useState(false);
 
@@ -48,6 +55,63 @@ export default function ApiKeysPage() {
     loadCredentials();
   }, []);
 
+  const rotateKey = async (mode: "live" | "test") => {
+    const has =
+      mode === "live"
+        ? Boolean((credentials as { hasLiveKey?: boolean } | null)?.hasLiveKey ?? credentials?.liveSecretKey)
+        : Boolean((credentials as { hasSandboxKey?: boolean } | null)?.hasSandboxKey ?? credentials?.sandboxSecretKey);
+    const label = mode === "live" ? "Live" : "Sandbox";
+    if (
+      has &&
+      !window.confirm(
+        `Rotate the ${label} API key? The previous secret stops working immediately. The new secret is shown only once.`
+      )
+    ) {
+      return;
+    }
+    setBusy(`key-${mode}`);
+    try {
+      const res = await api.rotateApiKey(mode);
+      setReveal({
+        title: `${label} API secret ${res.created ? "created" : "rotated"}`,
+        secret: res.key,
+        note: res.note,
+      });
+      success(res.note, res.created ? "API key created" : "API key rotated");
+      await loadCredentials();
+    } catch (err: unknown) {
+      toastError(err instanceof Error ? err.message : "Could not create/rotate API key.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const rotateWebhook = async () => {
+    if (
+      credentials?.webhookSecret &&
+      !window.confirm(
+        "Rotate the webhook signing secret? Update your server verifier immediately — the old secret stops working."
+      )
+    ) {
+      return;
+    }
+    setBusy("webhook");
+    try {
+      const res = await api.rotateWebhookSecret();
+      setReveal({
+        title: "Webhook signing secret",
+        secret: res.webhookSecret,
+        note: res.note,
+      });
+      success(res.note, "Webhook secret ready");
+      await loadCredentials();
+    } catch (err: unknown) {
+      toastError(err instanceof Error ? err.message : "Could not rotate webhook secret.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const handleTestPing = async () => {
     setIsPinging(true);
     setPingStatus(null);
@@ -66,35 +130,35 @@ export default function ApiKeysPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="mx-auto max-w-4xl space-y-6">
       <IntegrationSnippets />
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
             API Keys & Webhooks
           </h1>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-            Authenticate server-side checkout requests and verify HMAC SHA-256 webhook deliveries.
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+            Create merchant API keys, reveal the full secret once, and verify HMAC webhook deliveries.
           </p>
         </div>
-
         <Button
           variant="outline"
           size="sm"
           onClick={loadCredentials}
           isLoading={isLoading}
-          leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
+          leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
         >
-          Refresh Keys
+          Refresh
         </Button>
       </div>
 
-      {/* Security alert */}
-      <div className="p-4 rounded-xl border border-teal-200/80 bg-teal-50/50 dark:border-teal-900/60 dark:bg-zinc-900/40 flex items-start gap-3 text-xs">
-        <Lock className="w-4 h-4 text-[#077C74] dark:text-[#1BD1C0] shrink-0 mt-0.5" />
-        <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed">
-          Keep your secret keys safe. Never commit them to version control or expose them in client-side code. Use <code className="font-mono text-zinc-900 dark:text-zinc-100 font-bold">gp_live_</code> for production and <code className="font-mono text-zinc-900 dark:text-zinc-100 font-bold">gp_test_</code> for sandboxing.
+      <div className="flex items-start gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-xs dark:border-zinc-800 dark:bg-zinc-900/40">
+        <Lock className="mt-0.5 h-4 w-4 shrink-0 text-zinc-900 dark:text-zinc-100" />
+        <p className="leading-relaxed text-zinc-600 dark:text-zinc-400">
+          Full secrets are returned <strong className="font-semibold text-zinc-900 dark:text-zinc-100">only once</strong> when
+          you Create or Rotate. List views stay masked on purpose — use the eye toggle on the one-time reveal dialog.
+          Never put secrets in frontend code.
         </p>
       </div>
 
@@ -104,119 +168,155 @@ export default function ApiKeysPage() {
         </Alert>
       )}
 
+      {reveal && (
+        <Card className="space-y-4 border-zinc-950 bg-white p-6 shadow-lg dark:border-white dark:bg-zinc-950">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+            <div>
+              <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{reveal.title}</h2>
+              <p className="mt-1 text-xs text-zinc-500">{reveal.note}</p>
+            </div>
+          </div>
+          <CopyField label="Full secret (copy now)" value={reveal.secret} masked canUnmask />
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(reveal.secret);
+                  success("Secret copied to clipboard");
+                } catch {
+                  toastError("Clipboard blocked — select and copy manually.");
+                }
+              }}
+              leftIcon={<Eye className="h-3.5 w-3.5" />}
+            >
+              Copy full secret
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setReveal(null)}>
+              I saved it — dismiss
+            </Button>
+          </div>
+        </Card>
+      )}
+
       {credentials && (
         <div className="space-y-6">
-          {/* Live Production Card */}
-          <Card className="p-6 bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 space-y-4 shadow-xs">
-            <div className="flex items-center justify-between">
+          <Card className="space-y-4 border-zinc-200 bg-white p-6 shadow-xs dark:border-zinc-800 dark:bg-zinc-950">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                  Live Production Environment
-                </h3>
+                <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Live Production</h3>
                 <Badge variant="emerald" size="sm" dot>
                   Live Ledger
                 </Badge>
               </div>
-              <span className="text-[11px] font-mono text-zinc-400">Real Funds</span>
+              <Button
+                size="sm"
+                onClick={() => rotateKey("live")}
+                isLoading={busy === "key-live"}
+                leftIcon={<KeyRound className="h-3.5 w-3.5" />}
+                className="!bg-zinc-950 !text-white dark:!bg-white dark:!text-zinc-950"
+              >
+                {(credentials as { hasLiveKey?: boolean }).hasLiveKey || credentials.liveSecretKey
+                  ? "Rotate Live Key"
+                  : "Create Live Key"}
+              </Button>
             </div>
-
-            <div className="space-y-4">
-              <CopyField
-                label="Public Key"
-                value={credentials.livePublicKey || "gp_live_pk_unavailable"}
-              />
-              <CopyField
-                label="Secret Key (Keep Confidential)"
-                value={credentials.liveSecretKey || "gp_live_sk_unavailable"}
-                masked
-                canUnmask
-              />
-            </div>
+            <CopyField label="Public key (prefix)" value={credentials.livePublicKey || "Not created yet"} />
+            <CopyField
+              label="Secret key (masked after create)"
+              value={credentials.liveSecretKey || "Create a key to receive the full secret once"}
+              masked
+              canUnmask={Boolean(credentials.liveSecretKey)}
+            />
           </Card>
 
-          {/* Test Sandbox Card */}
-          <Card className="p-6 bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 space-y-4 shadow-xs">
-            <div className="flex items-center justify-between">
+          <Card className="space-y-4 border-zinc-200 bg-white p-6 shadow-xs dark:border-zinc-800 dark:bg-zinc-950">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                  Sandbox Test Environment
-                </h3>
+                <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Sandbox Test</h3>
                 <Badge variant="slate" size="sm" dot>
                   Test Ledger
                 </Badge>
               </div>
-              <span className="text-[11px] font-mono text-zinc-400">Simulation Only</span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => rotateKey("test")}
+                isLoading={busy === "key-test"}
+                leftIcon={<KeyRound className="h-3.5 w-3.5" />}
+              >
+                {(credentials as { hasSandboxKey?: boolean }).hasSandboxKey || credentials.sandboxSecretKey
+                  ? "Rotate Test Key"
+                  : "Create Test Key"}
+              </Button>
             </div>
-
-            <div className="space-y-4">
-              <CopyField
-                label="Public Key (Test)"
-                value={credentials.sandboxPublicKey || "gp_test_pk_unavailable"}
-              />
-              <CopyField
-                label="Secret Key (Test)"
-                value={credentials.sandboxSecretKey || "gp_test_sk_unavailable"}
-                masked
-                canUnmask
-              />
-            </div>
+            <CopyField label="Public key (prefix)" value={credentials.sandboxPublicKey || "Not created yet"} />
+            <CopyField
+              label="Secret key (masked after create)"
+              value={credentials.sandboxSecretKey || "Create a key to receive the full secret once"}
+              masked
+              canUnmask={Boolean(credentials.sandboxSecretKey)}
+            />
           </Card>
 
-          {/* Webhook Signatures Card */}
-          <Card className="p-6 bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 space-y-4 shadow-xs">
-            <div className="flex items-center justify-between">
+          <Card className="space-y-4 border-zinc-200 bg-white p-6 shadow-xs dark:border-zinc-800 dark:bg-zinc-950">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                  Webhook Signature Secret
-                </h3>
+                <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Webhook Signature Secret</h3>
                 <Badge variant="cyan" size="sm">
                   HMAC SHA-256
                 </Badge>
               </div>
-              <Link
-                href="/dashboard/settings"
-                className="text-xs text-[#077C74] dark:text-[#1BD1C0] hover:underline flex items-center gap-1 font-medium"
-              >
-                <span>Configure URL</span>
-                <ExternalLink className="w-3 h-3" />
-              </Link>
-            </div>
-
-            <div className="space-y-4">
-              <CopyField
-                label="Signing Secret"
-                value={credentials.webhookSecret || "whsec_unavailable"}
-                masked
-                canUnmask
-              />
-
-              <div className="p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                <div>
-                  <span className="font-semibold text-zinc-900 dark:text-zinc-100">
-                    Webhook Destination:
-                  </span>
-                  <div className="font-mono text-zinc-500 mt-0.5 truncate max-w-sm">
-                    {credentials.webhookUrl || "No endpoint configured (configure in Settings)"}
-                  </div>
-                </div>
-
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  href="/dashboard/settings"
+                  className="inline-flex items-center gap-1 text-xs font-medium text-zinc-700 underline dark:text-zinc-300"
+                >
+                  Configure URL
+                  <ExternalLink className="h-3 w-3" />
+                </Link>
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={handleTestPing}
-                  isLoading={isPinging}
-                  leftIcon={<Send className="w-3.5 h-3.5" />}
+                  onClick={rotateWebhook}
+                  isLoading={busy === "webhook"}
+                  leftIcon={<KeyRound className="h-3.5 w-3.5" />}
                 >
-                  Send Test Ping
+                  {credentials.webhookSecret ? "Rotate Secret" : "Create Secret"}
                 </Button>
               </div>
-
-              {pingStatus && (
-                <div className="text-xs font-mono p-2.5 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300">
-                  {pingStatus}
-                </div>
-              )}
             </div>
+
+            <CopyField
+              label="Signing secret (masked after create)"
+              value={credentials.webhookSecret || "Create a signing secret"}
+              masked
+              canUnmask={Boolean(credentials.webhookSecret)}
+            />
+
+            <div className="flex flex-col justify-between gap-3 rounded-xl border border-zinc-200 bg-zinc-50/50 p-3.5 text-xs dark:border-zinc-800 dark:bg-zinc-900/40 sm:flex-row sm:items-center">
+              <div>
+                <span className="font-semibold text-zinc-900 dark:text-zinc-100">Webhook destination</span>
+                <div className="mt-0.5 max-w-sm truncate font-mono text-zinc-500">
+                  {credentials.webhookUrl || "No endpoint configured (Settings → General)"}
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleTestPing}
+                isLoading={isPinging}
+                leftIcon={<Send className="h-3.5 w-3.5" />}
+              >
+                Send Test Ping
+              </Button>
+            </div>
+            {pingStatus && (
+              <div className="rounded-lg bg-zinc-100 p-2.5 font-mono text-xs text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
+                {pingStatus}
+              </div>
+            )}
           </Card>
         </div>
       )}

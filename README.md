@@ -15,9 +15,9 @@ Customers pay **directly into wallets you configure**. GressPay never holds fund
 | Pricing (`/fees`) | Starter / Pro / Enterprise Lifetime · Monthly/Yearly (−20%) · BDT/USD · `?plan=` signup |
 | Developer hub (`/developers`) | Stripe-style docs · production API base · cURL / PHP / Laravel / Node / WordPress |
 | Hosted checkout (`/pay/{sessionId}`) | Multi-rail buyer UI · QR for crypto · TrxID verify |
-| Merchant dashboard | Overview, methods, devices, transactions, payment links, invoices, settings, API keys |
+| Merchant dashboard | Overview, gateways (library + account types), brands, devices, transactions, payment links, invoices, settings, API keys, team |
 | Platform admin (`/admin`) | Merchant control, lifetime unlock, readiness |
-| Android companion | Pairing, SMS match (~1s), inbox backfill, WorkManager queue · APK download |
+| Android companion | Website-matched launcher icon · pairing · SMS match (~1s) · inbox backfill · APK `v1.1.0` |
 | PHP REST API (`/api/v1`) | Auth, checkout/payment aliases, webhooks (HMAC), companion, admin |
 
 ---
