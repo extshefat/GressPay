@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "bash scripts/check-no-conflict-markers.sh && next build",
+    "build": "sh scripts/check-no-conflict-markers.sh && next build",
     "start": "next start",
     "lint": "next lint"
   },
