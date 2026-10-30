@@ -1,19 +1,6 @@
-# Android local SDK path & builds (Android Studio regenerates)
-*.iml
-.gradle/
 local.properties
+.gradle/
+build/
+app/build/
+*.iml
 .idea/
-.DS_Store
-/build
-/app/build
-/captures
-.externalNativeBuild
-.cxx
-.kotlin/
-*.apk
-*.aab
-*.ap_
-*.dex
-
-# Keep gradle wrapper (gradlew, gradlew.bat, gradle/wrapper/)
-!gradle/wrapper/gradle-wrapper.jar
