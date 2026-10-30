@@ -728,7 +728,7 @@ $limMerch = GpIds::make('m', 6);
 $limNow = GpIds::now();
 GpDb::exec(
     'INSERT INTO gp_merchants (merchant_id, full_name, email, password_hash, plan_id, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)',
-    [$limMerch, 'Limit Merchant', 'lim_' . bin2hex(random_bytes(3)) . '@test.local', password_hash('x', PASSWORD_BCRYPT), 'plan_starter', 'active', $limNow, $limNow]
+    [$limMerch, 'Limit Merchant', 'lim_' . bin2hex(random_bytes(3)) . '@test.local', password_hash('x', PASSWORD_BCRYPT), 'starter', 'active', $limNow, $limNow]
 );
 GpDb::exec(
     'INSERT INTO gp_brands (brand_id, merchant_id, name, currency_code, timezone, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
