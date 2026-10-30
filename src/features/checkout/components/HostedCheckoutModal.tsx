@@ -96,9 +96,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
   const [senderNumber, setSenderNumber] = useState<string>("");
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const [checkoutStatus, setCheckoutStatus] = useState<TransactionStatus>(
-    (session as unknown as { status?: TransactionStatus }).status || "PENDING"
-  );
+  const [checkoutStatus, setCheckoutStatus] = useState<TransactionStatus>("PENDING");
   const [isPollingVerification, setIsPollingVerification] = useState(false);
   const [pollingSeconds, setPollingSeconds] = useState<number>(0);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);

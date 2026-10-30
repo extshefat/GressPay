@@ -32,6 +32,7 @@ export default function DashboardLayout({
       } catch {
         if (isMounted) {
           api.clearToken();
+          setIsLoading(false);
           router.push("/login");
         }
       }

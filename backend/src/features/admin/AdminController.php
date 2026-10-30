@@ -101,7 +101,7 @@ final class AdminController
 
         // Webhook Deliveries
         $totalWebhooks = (int) (GpDb::one('SELECT COUNT(*) as c FROM gp_webhook_deliveries')['c'] ?? 0);
-        $deliveredWebhooks = (int) (GpDb::one("SELECT COUNT(*) as c FROM gp_webhook_deliveries WHERE status = 'delivered'")['c'] ?? 0);
+        $deliveredWebhooks = (int) (GpDb::one("SELECT COUNT(*) as c FROM gp_webhook_deliveries WHERE status IN ('completed', 'delivered')")['c'] ?? 0);
         $webhookHealth = $totalWebhooks > 0 ? round(($deliveredWebhooks / $totalWebhooks) * 100, 1) : 100.0;
 
         $plansCount = (int) (GpDb::one("SELECT COUNT(*) as c FROM gp_subscription_plans WHERE status = 'active'")['c'] ?? 0);
@@ -271,6 +271,16 @@ final class AdminController
         $validPlans = !empty($dbPlans)
             ? array_map(static fn($p) => strtolower((string) $p['plan_id']), $dbPlans)
             : ['starter', 'growth', 'pro', 'enterprise', 'lifetime'];
+
+        if (!in_array($planId, $validPlans, true)) {
+            $resolved = GpDb::one(
+                'SELECT plan_id FROM gp_plans WHERE LOWER(code) = ? OR LOWER(plan_id) = ? LIMIT 1',
+                [$planId, $planId]
+            );
+            if ($resolved !== null) {
+                $planId = strtolower((string) $resolved['plan_id']);
+            }
+        }
 
         if (!in_array($planId, $validPlans, true)) {
             GpJson::error('VALIDATION', 'Invalid plan ID. Must be one of: ' . implode(', ', $validPlans));
