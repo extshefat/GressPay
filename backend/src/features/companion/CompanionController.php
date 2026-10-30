@@ -17,6 +17,7 @@ final class CompanionController
         if ($req->method === 'POST' && $action === 'register') {
             $actor = GpAuth::requireActor($req);
             GpAuth::requireScope($actor, 'manage_devices');
+            GpPlatform::assertDeviceRegistrationAllowed($actor['brand_id']);
             $now = GpIds::now();
             $deviceId = GpIds::make('dev', 8);
             $plain = 'gpdev_' . bin2hex(random_bytes(20));
@@ -28,6 +29,7 @@ final class CompanionController
             );
             GpJson::send([
                 'deviceId' => $deviceId,
+                'brandId' => $actor['brand_id'],
                 'token' => $plain,
                 'note' => 'Shown once. Store in the Android companion encrypted prefs. Token is never returned again.',
             ], 201);
@@ -70,26 +72,18 @@ final class CompanionController
 
         if ($req->method === 'POST' && $action === 'sms') {
             GpRateLimiter::guard('sms:' . GpRateLimiter::ip(), 120, 60);
+            $brandId = trim((string) ($_SERVER['HTTP_X_GRESSPAY_BRAND'] ?? ''));
+            if ($brandId === '') {
+                GpJson::error('MISSING_HEADER', 'X-GressPay-Brand header is required for companion SMS uploads.', 400);
+            }
             $token = $req->bearer() ?? ($req->deviceToken() ?? '');
             if (!is_string($token) || $token === '') {
                 GpJson::error('UNAUTHORIZED', 'Device token required.', 401);
             }
 
-            // Prefer brand-scoped lookup via optional header; still verify hash.
-            $brandHint = (string) ($_SERVER['HTTP_X_GRESSPAY_BRAND'] ?? '');
-            $devices = $brandHint !== ''
-                ? GpDb::all('SELECT * FROM gp_devices WHERE brand_id = ? AND status = ?', [$brandHint, 'active'])
-                : GpDb::all('SELECT * FROM gp_devices WHERE status = ?', ['active']);
-
-            $device = null;
-            foreach ($devices as $row) {
-                if (password_verify($token, $row['token_hash'])) {
-                    $device = $row;
-                    break;
-                }
-            }
+            $device = self::deviceForSmsToken($brandId, $token);
             if ($device === null) {
-                GpJson::error('UNAUTHORIZED', 'Invalid or revoked device token.', 401);
+                GpJson::error('UNAUTHORIZED', 'Invalid or revoked device token for this brand.', 401);
             }
 
             GpDb::exec(
@@ -230,6 +224,28 @@ final class CompanionController
         }
 
         GpJson::error('NOT_FOUND', 'Unknown companion route.', 404);
+    }
+
+    /**
+     * Brand-scoped device lookup for SMS uploads (avoids scanning all merchants).
+     *
+     * @return array<string,mixed>|null
+     */
+    public static function deviceForSmsToken(string $brandId, string $token): ?array
+    {
+        if ($brandId === '' || $token === '') {
+            return null;
+        }
+        $devices = GpDb::all(
+            'SELECT * FROM gp_devices WHERE brand_id = ? AND status = ?',
+            [$brandId, 'active']
+        );
+        foreach ($devices as $row) {
+            if (password_verify($token, $row['token_hash'])) {
+                return $row;
+            }
+        }
+        return null;
     }
 
     private static function listDevices(array $actor): never

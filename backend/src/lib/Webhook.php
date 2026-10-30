@@ -146,38 +146,65 @@ final class GpWebhook
         $payload['event'] = $event;
         $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}';
         $sig = self::sign($json, self::secret($brand));
+        $maxAttempts = GpConfig::webhookMaxRetries();
+        $timeout = GpConfig::webhookTimeoutSeconds();
         $code = 0;
         $status = 'pending';
+        $note = '';
 
-        if (function_exists('curl_init')) {
-            $ch = curl_init($target);
-            curl_setopt_array($ch, [
-                CURLOPT_POST => true,
-                CURLOPT_POSTFIELDS => $json,
-                CURLOPT_HTTPHEADER => [
-                    'Content-Type: application/json',
-                    'X-GressPay-Signature: ' . $sig,
-                    'X-GressPay-Event: ' . $event,
-                    'X-GressPay-Event-Id: ' . ($payload['eventId'] ?? ''),
-                    'User-Agent: GressPay-Webhook/1.0',
-                ],
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_CONNECTTIMEOUT => 4,
-                CURLOPT_TIMEOUT => 8,
-                CURLOPT_SSL_VERIFYPEER => true,
-                CURLOPT_SSL_VERIFYHOST => 2,
-                CURLOPT_FOLLOWLOCATION => false,
-                CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
-                CURLOPT_REDIR_PROTOCOLS => 0,
-                CURLOPT_MAXREDIRS => 0,
-            ]);
-            curl_exec($ch);
-            $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-            $status = ($code >= 200 && $code < 300) ? 'completed' : 'pending';
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            $code = self::postJson($target, $json, $sig, $event, $payload, $timeout);
+            if ($code >= 200 && $code < 300) {
+                $status = 'completed';
+                $note = $attempt > 1 ? 'succeeded_after_retry' : '';
+                self::logDelivery($brand, $payload, $target, $sig, $code, $status, $event, $note, $attempt);
+                return $code;
+            }
+            $note = 'attempt_failed_http_' . $code;
+            self::logDelivery($brand, $payload, $target, $sig, $code, 'pending', $event, $note, $attempt);
+            if ($attempt < $maxAttempts) {
+                usleep(200_000);
+            }
         }
 
-        self::logDelivery($brand, $payload, $target, $sig, $code, $status, $event);
+        return $code;
+    }
+
+    private static function postJson(
+        string $target,
+        string $json,
+        string $sig,
+        string $event,
+        array $payload,
+        int $timeout
+    ): int {
+        if (!function_exists('curl_init')) {
+            return 0;
+        }
+        $ch = curl_init($target);
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $json,
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/json',
+                'X-GressPay-Signature: ' . $sig,
+                'X-GressPay-Event: ' . $event,
+                'X-GressPay-Event-Id: ' . ($payload['eventId'] ?? ''),
+                'User-Agent: GressPay-Webhook/1.0',
+            ],
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CONNECTTIMEOUT => min(4, $timeout),
+            CURLOPT_TIMEOUT => $timeout,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+            CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
+            CURLOPT_REDIR_PROTOCOLS => 0,
+            CURLOPT_MAXREDIRS => 0,
+        ]);
+        curl_exec($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
         return $code;
     }
 
@@ -190,7 +217,8 @@ final class GpWebhook
         int $code,
         string $status,
         string $event,
-        string $note = ''
+        string $note = '',
+        int $attempt = 1
     ): void {
         $now = GpIds::now();
         $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}';
@@ -213,7 +241,7 @@ final class GpWebhook
                     $code,
                     $status,
                     $note,
-                    1,
+                    $attempt,
                     $now,
                     $now,
                 ]

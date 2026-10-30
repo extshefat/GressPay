@@ -8,7 +8,7 @@ Open this folder in **Android Studio**. Package: `com.gresspay.companion`.
 1. Register via `POST /api/v1/companion/register` (merchant `gp_live_` / `gp_test_` key).
 2. After **explicit opt-in** + `RECEIVE_SMS` (+ notifications on Android 13+), listen for payment SMS.
 3. Parse only amount + TxID + rail; reject OTP / promo noise.
-4. Upload via WorkManager with idempotency keys — never full message bodies. Permanent HTTP 4xx (e.g. 409) is not retried.
+4. Upload via WorkManager with idempotency keys — never full message bodies. Sends `X-GressPay-Brand` (returned at register) with the device token.
 5. Optional **Scan Inbox (24h)** backfill requests `READ_SMS` at runtime when used.
 6. Server matches pending checkouts; revoked devices cannot upload.
 
@@ -34,7 +34,7 @@ Open this folder in **Android Studio**. Package: `com.gresspay.companion`.
 3. API base e.g. `https://gresspay.extxcheats.com` or emulator `http://10.0.2.2:8080`
 4. Register device → consent → enable matching → optional inbox scan
 
-Public download (after assemble): `/download/gresspay-companion.apk` (version `1.0.0`).
+Public download (after assemble): `/download/gresspay-companion.apk` (version `1.1.0`).
 
 ## Tests / build
 
