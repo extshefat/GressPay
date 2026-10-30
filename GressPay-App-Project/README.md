@@ -34,14 +34,14 @@ Open this folder in **Android Studio**. Package: `com.gresspay.companion`.
 3. API base e.g. `https://gresspay.extxcheats.com` or emulator `http://10.0.2.2:8080`
 4. Register device → consent → enable matching → optional inbox scan
 
-Public download (after assemble): `/download/gresspay-companion.apk` (version `1.1.0`).
+Public download (after assemble): `/download/gresspay-companion.apk` (version `1.1.1`).
 
 ## Tests / build
 
 ```bash
 ./gradlew test --tests com.gresspay.companion.sms.PaymentSmsParserTest
 ./gradlew assembleDebug
-cp app/build/outputs/apk/debug/app-debug.apk ../public/download/gresspay-companion.apk
+cp app/build/outputs/apk/release/app-release.apk ../public/download/gresspay-companion.apk
 ```
 
 ## Related
