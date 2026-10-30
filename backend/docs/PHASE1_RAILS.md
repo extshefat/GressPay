@@ -2,14 +2,22 @@
 
 ## Release rails
 
+Catalog source of truth: `backend/src/lib/Catalog.php` (`releaseScope` + super-admin `gp_platform_gateways.is_enabled`).
+
 | Code | Verification | Live when |
 |------|----------------|-----------|
-| `bkash` | Android SMS companion match | One or more gateway instances (number + optional R2 QR); device uploading SMS |
+| `bkash` | Android SMS companion match | Gateway instance(s) + active companion uploading SMS |
 | `nagad` | Android SMS companion match | Same |
-| `binance_pay` | Binance Pay Merchant API (create + signed callback + order query) | `GRESSPAY_CRYPTO_ALLOWED=1`, merchant `cryptoEnabled`, credentials configured |
-| `usdt_trc20` | TronGrid on-chain verify | Same crypto gate + receiving address + (recommended) `TRON_API_KEY` |
+| `rocket` | Android SMS companion match | Same |
+| `upay` | Android SMS companion match | Same |
+| `cellfin` | Android SMS companion match | Same |
+| `binance_pay` | Binance Pay Merchant API (create + signed callback + order query) | Platform `GRESSPAY_CRYPTO_ALLOWED=1`, merchant `crypto_enabled`, credentials sealed on brand; catalog `releaseScope: false` until operator enables via admin platform gateways |
+| `usdt_trc20` | TronGrid on-chain verify | Same crypto gate + merchant receiving address + (recommended) `TRON_API_KEY` |
+| `bybit_pay` | Manual TxID / UID (no automated provider API in this build) | Merchant gateway configured; optional platform toggle |
 
-India, Pakistan, Nepal, Rocket/Upay/Cellfin, Bybit are **out of scope** (`releaseScope: false`).
+**Not in catalog (plugins only):** India / Pakistan / Nepal rails (`esewa`, `phonepe`, `jazzcash`, etc.) — UI may show “Coming Soon”; not first-release checkout.
+
+**Companion SMS uploads** require header `X-GressPay-Brand` (brand id) plus device token — no global device scan.
 
 ## Secrets (production)
 
@@ -39,3 +47,4 @@ Set strong values (no placeholders). API refuses to boot when `APP_ENV=productio
 - HTTPS only; private/link-local IPs blocked after DNS.
 - Destinations from merchant settings / payment-link create only (not public checkout body).
 - Signed with `X-GressPay-Signature` over exact raw JSON; stable `eventId`.
+- `GpWebhook::dispatch()` retries failed deliveries in-process up to `WEBHOOK_MAX_RETRIES` (default 5) with `WEBHOOK_TIMEOUT_SECONDS` per attempt (default 8). Each attempt is logged in `gp_webhook_deliveries`.

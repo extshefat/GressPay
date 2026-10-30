@@ -290,6 +290,9 @@ class MainActivity : AppCompatActivity() {
                 }
                 prefs.deviceId = result.deviceId
                 prefs.deviceToken = result.token
+                if (result.brandId.isNotBlank()) {
+                    prefs.brandId = result.brandId
+                }
                 binding.inputDeviceToken.setText(result.token)
                 binding.textDeviceId.text = "Device ID: ${result.deviceId}"
                 appendLog("Registered device ${result.deviceId}")

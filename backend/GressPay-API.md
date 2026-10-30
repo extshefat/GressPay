@@ -52,7 +52,7 @@ Webhook URLs on public init are ignored; only merchant settings / link create-ti
 | `GET /companion/devices` | Merchant + `manage_devices` | List; no tokens |
 | `POST /companion/devices/{id}/revoke` | Merchant | Blocks further SMS uploads |
 | `POST /companion/devices/{id}/rotate` | Merchant | New token once |
-| `POST /companion/sms` | Device token | Idempotent; stores amount/TxID/rail/device only — **no SMS body** |
+| `POST /companion/sms` | Device token + **`X-GressPay-Brand`** | Idempotent; stores amount/TxID/rail/device only — **no SMS body** |
 
 Live completion requires matching SMS (brand, rail, TxID, amount±tolerance, age). TxID alone → stays PENDING.
 
@@ -88,7 +88,7 @@ Body: `{ "reason": "…" }` (min 8 chars). Audited in metadata. **Blocked** for 
 
 ## Webhooks
 
-Signed HMAC-SHA256 of the raw body (`X-GressPay-Signature`), stable `eventId`, HTTPS-only destinations, private IP blocked after DNS. `GpWebhook::dispatch()` performs one attempt and logs it with `attempt = 1`. There is no retry worker.
+Signed HMAC-SHA256 of the raw body (`X-GressPay-Signature`), stable `eventId`, HTTPS-only destinations, private IP blocked after DNS. `GpWebhook::dispatch()` retries failed HTTP deliveries in-process up to `WEBHOOK_MAX_RETRIES` (default 5) with `WEBHOOK_TIMEOUT_SECONDS` per attempt (default 8). Each attempt is logged in `gp_webhook_deliveries` with an incrementing `attempt` counter.
 
 ---
 

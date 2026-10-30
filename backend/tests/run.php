@@ -712,15 +712,66 @@ assert_true(
 );
 
 // —— Webhook delivery stats use completed status (not legacy delivered) ——
-$whBrand = GpIds::make('b', 6);
+$whBrandStat = GpIds::make('b', 6);
 $whNow = GpIds::now();
 GpDb::exec(
     'INSERT INTO gp_webhook_deliveries (event_id, brand_id, session_id, event_name, url, payload, signature, http_code, status, note, attempt, created_at, updated_at)
      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
-    ['evt_stat_test', $whBrand, null, 'payment.completed', 'https://example.com/h', '{}', 'sig', 200, 'completed', '', 1, $whNow, $whNow]
+    ['evt_stat_test', $whBrandStat, null, 'payment.completed', 'https://example.com/h', '{}', 'sig', 200, 'completed', '', 1, $whNow, $whNow]
 );
 $completedWh = (int) (GpDb::one("SELECT COUNT(*) AS c FROM gp_webhook_deliveries WHERE status IN ('completed', 'delivered')")['c'] ?? 0);
 assert_true($completedWh >= 1, 'webhook health query counts completed deliveries');
+
+// —— Plan device limit (companion register) ——
+$limBrand = GpIds::make('b', 6);
+$limMerch = GpIds::make('m', 6);
+$limNow = GpIds::now();
+GpDb::exec(
+    'INSERT INTO gp_merchants (merchant_id, full_name, email, password_hash, plan_id, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)',
+    [$limMerch, 'Limit Merchant', 'lim_' . bin2hex(random_bytes(3)) . '@test.local', password_hash('x', PASSWORD_BCRYPT), 'starter', 'active', $limNow, $limNow]
+);
+GpDb::exec(
+    'INSERT INTO gp_brands (brand_id, merchant_id, name, currency_code, timezone, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    [$limBrand, $limMerch, 'Limit Brand', 'BDT', 'Asia/Dhaka', $limNow, $limNow]
+);
+$starterLimits = GpPlatform::planLimitsForBrand($limBrand);
+assert_true(($starterLimits['deviceLimit'] ?? 0) >= 1, 'starter plan exposes deviceLimit');
+GpDb::exec(
+    'INSERT INTO gp_devices (device_id, brand_id, label, token_hash, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    [GpIds::make('dev', 8), $limBrand, 'first', password_hash('gpdev_test1', PASSWORD_BCRYPT), 'active', $limNow, $limNow]
+);
+$activeDev = (int) (GpDb::one(
+    "SELECT COUNT(*) AS c FROM gp_devices WHERE brand_id = ? AND status = 'active'",
+    [$limBrand]
+)['c'] ?? 0);
+assert_true(
+    $activeDev >= $starterLimits['deviceLimit'],
+    'starter deviceLimit reached after registering one companion device'
+);
+
+// —— Companion SMS brand-scoped token lookup ——
+$smsBrand = GpIds::make('b', 6);
+$smsDevId = GpIds::make('dev', 8);
+$plainTok = 'gpdev_' . bin2hex(random_bytes(8));
+GpDb::exec(
+    'INSERT INTO gp_devices (device_id, brand_id, label, token_hash, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    [$smsDevId, $smsBrand, 'sms', password_hash($plainTok, PASSWORD_BCRYPT), 'active', $limNow, $limNow]
+);
+$otherBrand = GpIds::make('b', 6);
+assert_true(CompanionController::deviceForSmsToken($otherBrand, $plainTok) === null, 'wrong brand header scope rejects token');
+$found = CompanionController::deviceForSmsToken($smsBrand, $plainTok);
+assert_true(is_array($found) && ($found['device_id'] ?? '') === $smsDevId, 'correct brand resolves device');
+
+// —— Webhook retry attempts logged ——
+putenv('WEBHOOK_MAX_RETRIES=2');
+$_ENV['WEBHOOK_MAX_RETRIES'] = '2';
+$whBrand = ['brand_id' => $limBrand, 'webhook_secret' => 'gpwh_testsecret'];
+$beforeWh = (int) (GpDb::one('SELECT COUNT(*) AS c FROM gp_webhook_deliveries')['c'] ?? 0);
+GpWebhook::dispatch($whBrand, 'https://example.com/gresspay-webhook-test', ['eventId' => 'evt_retry_test', 'sessionId' => 'chs_none'], 'payment.completed');
+$afterWh = (int) (GpDb::one('SELECT COUNT(*) AS c FROM gp_webhook_deliveries')['c'] ?? 0);
+assert_true($afterWh - $beforeWh >= 2, 'failed webhook dispatch logs multiple attempts when WEBHOOK_MAX_RETRIES=2');
+putenv('WEBHOOK_MAX_RETRIES=5');
+$_ENV['WEBHOOK_MAX_RETRIES'] = '5';
 
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

@@ -89,6 +89,7 @@ final class GatewaysController
         if ($count >= self::MAX_GATEWAYS_PER_BRAND) {
             GpJson::error('QUOTA', 'Gateway limit reached for this brand.', 400);
         }
+        GpPlatform::assertGatewayCreationAllowed($actor['brand_id']);
 
         $methodCode = GpCatalog::publicCode((string) $req->input('methodCode', $req->input('method_code', '')));
         $cat = GpCatalog::find($methodCode);
