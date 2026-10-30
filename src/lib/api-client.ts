@@ -228,17 +228,26 @@ class ApiClient {
   }
 
   async listCompanionDevices(): Promise<{
-    devices: { deviceId: string; label: string; status: string; lastSeenAt?: string; createdAt?: string }[];
+    devices: {
+      deviceId: string;
+      label: string;
+      status: string;
+      lastSeenAt?: string | null;
+      online?: boolean;
+      onlineWindowSec?: number;
+      createdAt?: string;
+    }[];
   }> {
         return this.request("/api/v1/companion/devices");
   }
 
   async registerCompanionDevice(label: string = "Android Companion"): Promise<{
     deviceId: string;
+    brandId?: string;
     token: string;
     note: string;
   }> {
-    return this.request<{ deviceId: string; token: string; note: string }>(
+    return this.request<{ deviceId: string; brandId?: string; token: string; note: string }>(
       "/api/v1/companion/register",
       {
         method: "POST",
@@ -270,7 +279,7 @@ class ApiClient {
         device_label?: string;
         created_at: string;
       }[];
-    }>("/api/v1/companion/sms");
+    }>("/api/v1/companion/sms-logs");
   }
 
   async cancelTransaction(id: string, reason?: string): Promise<Transaction> {
@@ -595,7 +604,8 @@ class ApiClient {
     trxId: string,
     method: string,
     gatewayId?: string,
-    senderNumber?: string
+    senderNumber?: string,
+    customFields?: Record<string, string>
   ): Promise<CheckoutStatusResponse> {
         return this.request<CheckoutStatusResponse>(`/api/v1/checkout/${sessionId}/verify`, {      method: "POST",
       body: JSON.stringify({
@@ -603,6 +613,7 @@ class ApiClient {
         method,
         ...(gatewayId ? { gatewayId } : {}),
         ...(senderNumber ? { sender_number: senderNumber } : {}),
+        ...(customFields && Object.keys(customFields).length > 0 ? { customFields } : {}),
       }),
     });
   }

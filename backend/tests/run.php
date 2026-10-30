@@ -773,5 +773,73 @@ assert_true($afterWh - $beforeWh >= 2, 'failed webhook dispatch logs multiple at
 putenv('WEBHOOK_MAX_RETRIES=5');
 $_ENV['WEBHOOK_MAX_RETRIES'] = '5';
 
+// —— Payment link custom fields & presenter ——
+$normFields = PaymentLinksController::normalizeCustomFields([
+    ['label' => 'WhatsApp', 'required' => true, 'type' => 'phone'],
+    ['label' => '', 'type' => 'text'],
+]);
+assert_true(count($normFields) === 1 && $normFields[0]['type'] === 'phone', 'normalizeCustomFields keeps valid phone field');
+GpDb::exec(
+    'UPDATE gp_payment_links SET success_redirect_url = ?, product_image_url = ?, custom_fields_json = ? WHERE link_id = ?',
+    [
+        'https://example.com/thanks',
+        'https://cdn.example.com/p.jpg',
+        json_encode($normFields, JSON_UNESCAPED_UNICODE),
+        $linkId,
+    ]
+);
+$linkRow = GpDb::one('SELECT * FROM gp_payment_links WHERE link_id = ?', [$linkId]);
+$brandRow = GpDb::one('SELECT * FROM gp_brands WHERE brand_id = ?', [$brandId]);
+$merchRow = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$merchantId]);
+$plinkOut = GpPresenters::paymentLink($linkRow, $brandRow, $merchRow, ['paymentsCount' => 0, 'totalCollected' => 0]);
+assert_true(
+    ($plinkOut['successRedirectUrl'] ?? '') === 'https://example.com/thanks',
+    'payment link presenter exposes successRedirectUrl'
+);
+assert_true(
+    is_array($plinkOut['customFields'] ?? null) && count($plinkOut['customFields']) === 1,
+    'payment link presenter exposes customFields'
+);
+
+// —— Companion list hides revoked devices; heartbeat updates last_seen ——
+$hbBrand = GpIds::make('b', 6);
+$hbNow = GpIds::now();
+GpDb::exec(
+    'INSERT INTO gp_merchants (merchant_id, full_name, email, password_hash, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    [GpIds::make('m', 6), 'HB Merchant', 'hb_' . bin2hex(random_bytes(3)) . '@test.local', password_hash('x', PASSWORD_BCRYPT), 'active', $hbNow, $hbNow]
+);
+$hbMerch = GpDb::one('SELECT merchant_id FROM gp_merchants ORDER BY id DESC LIMIT 1')['merchant_id'];
+GpDb::exec(
+    'INSERT INTO gp_brands (brand_id, merchant_id, name, currency_code, timezone, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    [$hbBrand, $hbMerch, 'HB Brand', 'BDT', 'Asia/Dhaka', $hbNow, $hbNow]
+);
+$devActive = GpIds::make('dev', 8);
+$devRevoked = GpIds::make('dev', 8);
+$tokActive = 'gpdev_' . bin2hex(random_bytes(8));
+GpDb::exec(
+    'INSERT INTO gp_devices (device_id, brand_id, label, token_hash, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    [$devActive, $hbBrand, 'active node', password_hash($tokActive, PASSWORD_BCRYPT), 'active', $hbNow, $hbNow]
+);
+GpDb::exec(
+    'INSERT INTO gp_devices (device_id, brand_id, label, token_hash, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    [$devRevoked, $hbBrand, 'revoked node', password_hash('gpdev_revoked', PASSWORD_BCRYPT), 'revoked', $hbNow, $hbNow]
+);
+$listed = GpDb::all(
+    'SELECT device_id FROM gp_devices WHERE brand_id = ? AND status = ?',
+    [$hbBrand, 'active']
+);
+assert_true(count($listed) === 1 && ($listed[0]['device_id'] ?? '') === $devActive, 'merchant device list query excludes revoked rows');
+
+$deviceRow = CompanionController::deviceForSmsToken($hbBrand, $tokActive);
+assert_true(is_array($deviceRow) && ($deviceRow['device_id'] ?? '') === $devActive, 'active device token resolves');
+CompanionController::touchLastSeen($deviceRow);
+$afterTouch = GpDb::one('SELECT last_seen_at FROM gp_devices WHERE device_id = ?', [$devActive]);
+assert_true(
+    is_array($afterTouch) && !empty($afterTouch['last_seen_at']),
+    'touchLastSeen sets last_seen_at for heartbeat/presence'
+);
+$seenTs = strtotime((string) $afterTouch['last_seen_at']);
+assert_true($seenTs !== false && $seenTs >= time() - 5, 'last_seen_at is recent after heartbeat touch');
+
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

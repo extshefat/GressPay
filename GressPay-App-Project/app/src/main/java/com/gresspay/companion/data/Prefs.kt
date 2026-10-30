@@ -13,8 +13,8 @@ class Prefs(context: Context) {
     private val sp: SharedPreferences = createEncrypted(context)
 
     var baseUrl: String
-        get() = sp.getString(KEY_BASE, "")?.trim()?.trimEnd('/') ?: ""
-        set(value) = sp.edit().putString(KEY_BASE, value.trim().trimEnd('/')).apply()
+        get() = sp.getString(KEY_BASE, "")?.trim()?.trimEnd('/')?.replace(Regex("/api/v1/?$", RegexOption.IGNORE_CASE), "") ?: ""
+        set(value) = sp.edit().putString(KEY_BASE, value.trim().trimEnd('/').replace(Regex("/api/v1/?$", RegexOption.IGNORE_CASE), "")).apply()
 
     var apiKey: String
         get() = sp.getString(KEY_API, "") ?: ""

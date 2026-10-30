@@ -276,7 +276,12 @@ final class GpPresenters
             'currency' => $row['currency'],
             'type' => 'reusable',
             'allowedMethods' => $allowed,
-            'redirectUrl' => null,
+            'redirectUrl' => $row['success_redirect_url'] ?? null,
+            'successRedirectUrl' => $row['success_redirect_url'] ?? null,
+            'productImageUrl' => $row['product_image_url'] ?? null,
+            'customFields' => PaymentLinksController::decodeCustomFieldsJson(
+                isset($row['custom_fields_json']) ? (string) $row['custom_fields_json'] : null
+            ),
             'webhookUrl' => $row['webhook_url'] ?? $brand['webhook_url'] ?? null,
             'isActive' => ($row['status'] ?? '') === 'active',
             'viewsCount' => (int) ($extra['viewsCount'] ?? 0),
@@ -342,6 +347,15 @@ final class GpPresenters
         $app = rtrim(GpConfig::get('PUBLIC_APP_URL', GpConfig::get('APP_URL', '')), '/');
         $payUrl = ($app !== '' ? $app : '') . '/pay/' . $txn['session_id'];
         $returnUrl = isset($meta['returnUrl']) && is_string($meta['returnUrl']) ? $meta['returnUrl'] : null;
+        $productImage = isset($meta['productImageUrl']) && is_string($meta['productImageUrl'])
+            ? $meta['productImageUrl']
+            : (isset($link['product_image_url']) ? (string) $link['product_image_url'] : null);
+        $customFields = $meta['customFields'] ?? PaymentLinksController::decodeCustomFieldsJson(
+            isset($link['custom_fields_json']) ? (string) $link['custom_fields_json'] : null
+        );
+        if (!is_array($customFields)) {
+            $customFields = [];
+        }
         return [
             'status' => true,
             'sessionId' => $txn['session_id'],
@@ -350,6 +364,9 @@ final class GpPresenters
             'payUrl' => $payUrl,
             'payment_url' => $payUrl,
             'returnUrl' => $returnUrl,
+            'successRedirectUrl' => $returnUrl,
+            'productImageUrl' => $productImage !== '' ? $productImage : null,
+            'customFields' => $customFields,
             'merchantName' => $brand['name'] ?? 'GressPay Merchant',
             'merchantLogo' => self::merchantLogoForBrand($brand),
             'merchantVerified' => true,

@@ -3,6 +3,9 @@ declare(strict_types=1);
 
 final class CompanionController
 {
+    /** Devices with last_seen within this window are considered online in dashboard UI. */
+    public const ONLINE_WINDOW_SEC = 600;
+
     public static function handle(GpRequest $req): never
     {
         $action = $req->part(1) ?? '';
@@ -70,26 +73,28 @@ final class CompanionController
             ]);
         }
 
+        if ($req->method === 'GET' && $action === 'sms-logs') {
+            $actor = GpAuth::requireActor($req);
+            GpAuth::requireScope($actor, 'manage_devices');
+            self::listSmsLogs($actor);
+        }
+
+        if ($req->method === 'POST' && $action === 'heartbeat') {
+            GpRateLimiter::guard('heartbeat:' . GpRateLimiter::ip(), 120, 60);
+            $device = self::authenticateActiveDevice($req);
+            self::touchLastSeen($device);
+            GpJson::send([
+                'ok' => true,
+                'deviceId' => $device['device_id'],
+                'lastSeenAt' => GpIds::now(),
+                'onlineWindowSec' => self::ONLINE_WINDOW_SEC,
+            ]);
+        }
+
         if ($req->method === 'POST' && $action === 'sms') {
             GpRateLimiter::guard('sms:' . GpRateLimiter::ip(), 120, 60);
-            $brandId = trim((string) ($_SERVER['HTTP_X_GRESSPAY_BRAND'] ?? ''));
-            if ($brandId === '') {
-                GpJson::error('MISSING_HEADER', 'X-GressPay-Brand header is required for companion SMS uploads.', 400);
-            }
-            $token = $req->bearer() ?? ($req->deviceToken() ?? '');
-            if (!is_string($token) || $token === '') {
-                GpJson::error('UNAUTHORIZED', 'Device token required.', 401);
-            }
-
-            $device = self::deviceForSmsToken($brandId, $token);
-            if ($device === null) {
-                GpJson::error('UNAUTHORIZED', 'Invalid or revoked device token for this brand.', 401);
-            }
-
-            GpDb::exec(
-                'UPDATE gp_devices SET last_seen_at = ?, updated_at = ? WHERE device_id = ?',
-                [GpIds::now(), GpIds::now(), $device['device_id']]
-            );
+            $device = self::authenticateActiveDevice($req);
+            self::touchLastSeen($device);
 
             $sender = GpCatalog::publicCode((string) $req->input('sender_key', $req->input('senderKey', 'bkash')));
             if (!in_array($sender, ['bkash', 'nagad', 'rocket', 'upay', 'cellfin'], true)) {
@@ -227,6 +232,36 @@ final class CompanionController
     }
 
     /**
+     * @return array<string,mixed>
+     */
+    public static function authenticateActiveDevice(GpRequest $req): array
+    {
+        $brandId = trim((string) ($_SERVER['HTTP_X_GRESSPAY_BRAND'] ?? ''));
+        if ($brandId === '') {
+            GpJson::error('MISSING_HEADER', 'X-GressPay-Brand header is required for companion device calls.', 400);
+        }
+        $token = $req->bearer() ?? ($req->deviceToken() ?? '');
+        if (!is_string($token) || $token === '') {
+            GpJson::error('UNAUTHORIZED', 'Device token required.', 401);
+        }
+        $device = self::deviceForSmsToken($brandId, $token);
+        if ($device === null) {
+            GpJson::error('UNAUTHORIZED', 'Invalid or revoked device token for this brand.', 401);
+        }
+        return $device;
+    }
+
+    /** @param array<string,mixed> $device */
+    public static function touchLastSeen(array $device): void
+    {
+        $now = GpIds::now();
+        GpDb::exec(
+            'UPDATE gp_devices SET last_seen_at = ?, updated_at = ? WHERE device_id = ? AND brand_id = ? AND status = ?',
+            [$now, $now, $device['device_id'], $device['brand_id'], 'active']
+        );
+    }
+
+    /**
      * Brand-scoped device lookup for SMS uploads (avoids scanning all merchants).
      *
      * @return array<string,mixed>|null
@@ -251,20 +286,56 @@ final class CompanionController
     private static function listDevices(array $actor): never
     {
         $rows = GpDb::all(
-            'SELECT device_id, label, status, last_seen_at, created_at, updated_at FROM gp_devices WHERE brand_id = ? ORDER BY id DESC',
-            [$actor['brand_id']]
+            'SELECT device_id, label, status, last_seen_at, created_at, updated_at FROM gp_devices WHERE brand_id = ? AND status = ? ORDER BY id DESC',
+            [$actor['brand_id'], 'active']
         );
         $out = [];
+        $onlineCutoff = time() - self::ONLINE_WINDOW_SEC;
         foreach ($rows as $r) {
+            $lastSeen = $r['last_seen_at'] ?? null;
+            $online = false;
+            if (is_string($lastSeen) && $lastSeen !== '') {
+                $ts = strtotime($lastSeen);
+                $online = $ts !== false && $ts >= $onlineCutoff;
+            }
             $out[] = [
                 'deviceId' => $r['device_id'],
                 'label' => $r['label'] ?? '',
                 'status' => $r['status'],
-                'lastSeenAt' => $r['last_seen_at'],
+                'lastSeenAt' => $lastSeen,
+                'online' => $online,
+                'onlineWindowSec' => self::ONLINE_WINDOW_SEC,
                 'createdAt' => $r['created_at'],
                 'updatedAt' => $r['updated_at'],
             ];
         }
         GpJson::send(['devices' => $out]);
+    }
+
+    private static function listSmsLogs(array $actor): never
+    {
+        $rows = GpDb::all(
+            'SELECT s.id, s.sender_key, s.amount, s.trx_id, s.number, s.status, s.created_at, s.device_id, d.label AS device_label
+             FROM gp_sms_data s
+             LEFT JOIN gp_devices d ON d.device_id = s.device_id AND d.brand_id = s.brand_id
+             WHERE s.brand_id = ?
+             ORDER BY s.id DESC
+             LIMIT 100',
+            [$actor['brand_id']]
+        );
+        $out = [];
+        foreach ($rows as $r) {
+            $out[] = [
+                'id' => (string) $r['id'],
+                'sender_key' => (string) ($r['sender_key'] ?? ''),
+                'amount' => (float) ($r['amount'] ?? 0),
+                'trx_id' => (string) ($r['trx_id'] ?? ''),
+                'number' => ($r['number'] ?? '') !== '' ? (string) $r['number'] : null,
+                'status' => (string) ($r['status'] ?? ''),
+                'device_label' => ($r['device_label'] ?? '') !== '' ? (string) $r['device_label'] : null,
+                'created_at' => (string) ($r['created_at'] ?? ''),
+            ];
+        }
+        GpJson::send(['smsLogs' => $out]);
     }
 }

@@ -79,6 +79,21 @@ final class DashboardController
         }
 
         $links = GpDb::all('SELECT id FROM gp_payment_links WHERE brand_id = ? AND status = ?', [$actor['brand_id'], 'active']);
+        $pendingCheckout = 0;
+        foreach ($rows as $r) {
+            $st = strtolower((string) ($r['status'] ?? ''));
+            if (in_array($st, ['initiated', 'pending'], true)) {
+                $pendingCheckout++;
+            }
+        }
+        $unmatchedSms = (int) (GpDb::one(
+            "SELECT COUNT(*) as c FROM gp_sms_data WHERE brand_id = ? AND status = ?",
+            [$actor['brand_id'], 'approved']
+        )['c'] ?? 0);
+        $lastDeviceSync = GpDb::one(
+            'SELECT MAX(last_seen_at) AS last_sync FROM gp_devices WHERE brand_id = ? AND status = ?',
+            [$actor['brand_id'], 'active']
+        );
         $success = count($rows) === 0 ? 0.0 : round(count($completed) / max(count($rows), 1) * 100, 1);
         $activeMethods = (int) (GpDb::one("SELECT COUNT(*) as c FROM gp_gateways WHERE brand_id = ? AND status = ?", [$actor['brand_id'], 'active'])['c'] ?? 0);
         $devices = (int) (GpDb::one("SELECT COUNT(*) as c FROM gp_devices WHERE brand_id = ? AND status = ?", [$actor['brand_id'], 'active'])['c'] ?? 0);
@@ -124,7 +139,9 @@ final class DashboardController
             'onlineDevicesCount' => $onlineDevices,
             'successRate' => $success,
             'activeLinksCount' => count($links),
-            'pendingSettlementUsd' => round($usd * 0.02, 2),
+            'pendingCheckoutCount' => $pendingCheckout,
+            'unmatchedSmsCount' => $unmatchedSms,
+            'lastDeviceSyncAt' => $lastDeviceSync['last_sync'] ?? null,
             'volumeHistory' => array_values($history),
             'railBreakdown' => $railBreakdown,
             'rangeDays' => $range,

@@ -173,7 +173,11 @@ export default function OverviewPage() {
               : "0 / 0"
           }
           icon={<Layers className="w-4 h-4" />}
-          subtitle="Gateways live · devices online"
+          subtitle={
+            metrics
+              ? `${metrics.onlineDevicesCount ?? 0} online · ${metrics.unmatchedSmsCount ?? 0} unmatched SMS · ${metrics.pendingCheckoutCount ?? 0} open checkouts`
+              : undefined
+          }
           loading={isLoading}
         />
       </div>

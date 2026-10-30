@@ -94,6 +94,13 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
 
   const [txidInput, setTxidInput] = useState<string>("");
   const [senderNumber, setSenderNumber] = useState<string>("");
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>(() => {
+    const init: Record<string, string> = {};
+    for (const f of session.customFields || []) {
+      init[f.id] = "";
+    }
+    return init;
+  });
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [checkoutStatus, setCheckoutStatus] = useState<TransactionStatus>("PENDING");
@@ -216,7 +223,9 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
           setIsPollingVerification(false);
           setIsVerifying(false);
           setCheckoutStatus("COMPLETED");
-          handleSuccessfulRedirect(res.redirectUrl || res.returnUrl || session.returnUrl);
+          handleSuccessfulRedirect(
+            res.redirectUrl || res.returnUrl || session.successRedirectUrl || session.returnUrl
+          );
           return;
         }
 
@@ -244,7 +253,8 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
   };
 
   const handleSuccessfulRedirect = (targetUrl?: string | null) => {
-    const finalUrl = targetUrl || session.returnUrl;
+    const finalUrl =
+      targetUrl || session.successRedirectUrl || session.returnUrl;
     if (!finalUrl) return;
 
     let countdown = 4;
@@ -286,6 +296,14 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
       return;
     }
 
+    for (const field of session.customFields || []) {
+      const val = (customFieldValues[field.id] || "").trim();
+      if (field.required && !val) {
+        setErrorMessage(`Please fill in: ${field.label}`);
+        return;
+      }
+    }
+
     setIsVerifying(true);
     try {
       if (demoMode) {
@@ -315,13 +333,16 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
         cleanTrx,
         selectedMethod.code,
         selectedMethod.gatewayId,
-        senderNumber.trim() || undefined
+        senderNumber.trim() || undefined,
+        customFieldValues
       );
 
       if (res.status === "COMPLETED") {
         setIsVerifying(false);
         setCheckoutStatus("COMPLETED");
-        handleSuccessfulRedirect(res.redirectUrl || res.returnUrl || session.returnUrl);
+        handleSuccessfulRedirect(
+          res.redirectUrl || res.returnUrl || session.successRedirectUrl || session.returnUrl
+        );
       } else {
         // Scenario B: Customer submitted TxID first, awaiting SMS from companion APK
         setStatusMessage("Verifying your Transaction ID automatically... Please wait");
@@ -645,6 +666,37 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
 
       {/* Main Body */}
       <div className="p-5 sm:p-6 space-y-6">
+        {session.productImageUrl && (
+          <div className="rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={session.productImageUrl}
+              alt={session.orderTitle || "Product"}
+              className="w-full max-h-48 object-cover"
+            />
+          </div>
+        )}
+
+        {(session.customFields?.length ?? 0) > 0 && (
+          <div className="space-y-3">
+            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider font-mono">
+              Your details
+            </label>
+            {session.customFields!.map((field) => (
+              <Input
+                key={field.id}
+                label={`${field.label}${field.required ? " *" : ""}`}
+                type={field.type === "email" ? "email" : field.type === "phone" ? "tel" : "text"}
+                value={customFieldValues[field.id] || ""}
+                onChange={(e) =>
+                  setCustomFieldValues((prev) => ({ ...prev, [field.id]: e.target.value }))
+                }
+                placeholder={field.label}
+              />
+            ))}
+          </div>
+        )}
+
         {errorMessage && (
           <Alert variant="danger" title="Payment Error">
             {errorMessage}

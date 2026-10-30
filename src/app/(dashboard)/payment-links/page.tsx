@@ -40,6 +40,12 @@ export default function PaymentLinksPage() {
   const [currency, setCurrency] = useState<Currency>("BDT");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [successRedirectUrl, setSuccessRedirectUrl] = useState("");
+  const [productImageUrl, setProductImageUrl] = useState("");
+  const [customFieldLabel, setCustomFieldLabel] = useState("");
+  const [customFieldsDraft, setCustomFieldsDraft] = useState<
+    { id: string; label: string; required: boolean; type: "text" | "email" | "phone" }[]
+  >([]);
 
   // QR Modal
   const [qrLink, setQrLink] = useState<PaymentLink | null>(null);
@@ -79,11 +85,18 @@ export default function PaymentLinksPage() {
         description,
         amount: amount ? parseFloat(amount) : null,
         currency,
+        successRedirectUrl: successRedirectUrl.trim() || undefined,
+        productImageUrl: productImageUrl.trim() || undefined,
+        customFields: customFieldsDraft.length ? customFieldsDraft : undefined,
       });
       setLinks([res.link, ...links]);
       setIsModalOpen(false);
       setTitle("");
       setDescription("");
+      setSuccessRedirectUrl("");
+      setProductImageUrl("");
+      setCustomFieldsDraft([]);
+      setCustomFieldLabel("");
       success(`Payment link '${res.link.title}' created.`, "Link Ready");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to create payment link.";
@@ -263,6 +276,78 @@ export default function PaymentLinksPage() {
             onChange={(e) => setDescription(e.target.value)}
             rows={2}
           />
+
+          <Input
+            label="Success redirect URL (HTTPS, optional)"
+            placeholder="https://yourstore.com/thank-you"
+            value={successRedirectUrl}
+            onChange={(e) => setSuccessRedirectUrl(e.target.value)}
+          />
+
+          <Input
+            label="Product image URL (HTTPS, optional)"
+            placeholder="https://cdn.example.com/product.jpg"
+            value={productImageUrl}
+            onChange={(e) => setProductImageUrl(e.target.value)}
+          />
+
+          <div className="space-y-2">
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+              Custom checkout fields (optional)
+            </label>
+            {customFieldsDraft.map((f) => (
+              <div
+                key={f.id}
+                className="flex items-center justify-between gap-2 text-[11px] px-2 py-1.5 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800"
+              >
+                <span>
+                  {f.label}
+                  {f.required ? " *" : ""}{" "}
+                  <span className="text-zinc-400 font-mono">({f.type})</span>
+                </span>
+                <button
+                  type="button"
+                  className="text-red-600 hover:underline"
+                  onClick={() =>
+                    setCustomFieldsDraft((prev) => prev.filter((x) => x.id !== f.id))
+                  }
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            <div className="flex gap-2">
+              <Input
+                placeholder="Field label e.g. WhatsApp number"
+                value={customFieldLabel}
+                onChange={(e) => setCustomFieldLabel(e.target.value)}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={!customFieldLabel.trim() || customFieldsDraft.length >= 8}
+                onClick={() => {
+                  const label = customFieldLabel.trim();
+                  if (!label) return;
+                  const id =
+                    "field_" +
+                    label
+                      .toLowerCase()
+                      .replace(/[^a-z0-9]+/g, "_")
+                      .replace(/^_|_$/g, "")
+                      .slice(0, 32);
+                  setCustomFieldsDraft((prev) => [
+                    ...prev,
+                    { id: id || `field_${prev.length + 1}`, label, required: false, type: "text" },
+                  ]);
+                  setCustomFieldLabel("");
+                }}
+              >
+                Add field
+              </Button>
+            </div>
+          </div>
 
           <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-zinc-100 dark:border-zinc-800">
             <Button
