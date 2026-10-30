@@ -801,5 +801,45 @@ assert_true(
     'payment link presenter exposes customFields'
 );
 
+// —— Companion list hides revoked devices; heartbeat updates last_seen ——
+$hbBrand = GpIds::make('b', 6);
+$hbNow = GpIds::now();
+GpDb::exec(
+    'INSERT INTO gp_merchants (merchant_id, full_name, email, password_hash, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    [GpIds::make('m', 6), 'HB Merchant', 'hb_' . bin2hex(random_bytes(3)) . '@test.local', password_hash('x', PASSWORD_BCRYPT), 'active', $hbNow, $hbNow]
+);
+$hbMerch = GpDb::one('SELECT merchant_id FROM gp_merchants ORDER BY id DESC LIMIT 1')['merchant_id'];
+GpDb::exec(
+    'INSERT INTO gp_brands (brand_id, merchant_id, name, currency_code, timezone, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    [$hbBrand, $hbMerch, 'HB Brand', 'BDT', 'Asia/Dhaka', $hbNow, $hbNow]
+);
+$devActive = GpIds::make('dev', 8);
+$devRevoked = GpIds::make('dev', 8);
+$tokActive = 'gpdev_' . bin2hex(random_bytes(8));
+GpDb::exec(
+    'INSERT INTO gp_devices (device_id, brand_id, label, token_hash, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    [$devActive, $hbBrand, 'active node', password_hash($tokActive, PASSWORD_BCRYPT), 'active', $hbNow, $hbNow]
+);
+GpDb::exec(
+    'INSERT INTO gp_devices (device_id, brand_id, label, token_hash, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    [$devRevoked, $hbBrand, 'revoked node', password_hash('gpdev_revoked', PASSWORD_BCRYPT), 'revoked', $hbNow, $hbNow]
+);
+$listed = GpDb::all(
+    'SELECT device_id FROM gp_devices WHERE brand_id = ? AND status = ?',
+    [$hbBrand, 'active']
+);
+assert_true(count($listed) === 1 && ($listed[0]['device_id'] ?? '') === $devActive, 'merchant device list query excludes revoked rows');
+
+$deviceRow = CompanionController::deviceForSmsToken($hbBrand, $tokActive);
+assert_true(is_array($deviceRow) && ($deviceRow['device_id'] ?? '') === $devActive, 'active device token resolves');
+CompanionController::touchLastSeen($deviceRow);
+$afterTouch = GpDb::one('SELECT last_seen_at FROM gp_devices WHERE device_id = ?', [$devActive]);
+assert_true(
+    is_array($afterTouch) && !empty($afterTouch['last_seen_at']),
+    'touchLastSeen sets last_seen_at for heartbeat/presence'
+);
+$seenTs = strtotime((string) $afterTouch['last_seen_at']);
+assert_true($seenTs !== false && $seenTs >= time() - 5, 'last_seen_at is recent after heartbeat touch');
+
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

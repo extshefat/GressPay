@@ -31,6 +31,32 @@ class CompanionApi(
         }
     }
 
+    fun postHeartbeat(deviceToken: String, brandId: String): PingResult {
+        val url = "$baseUrl/api/v1/companion/heartbeat"
+        val req = Request.Builder()
+            .url(url)
+            .header("Authorization", "Bearer $deviceToken")
+            .header("X-GressPay-Device", deviceToken)
+            .header("X-GressPay-Brand", brandId)
+            .header("Content-Type", "application/json")
+            .post("{}".toRequestBody(JSON))
+            .build()
+        val started = System.nanoTime()
+        return try {
+            client.newCall(req).execute().use { res ->
+                val ms = (System.nanoTime() - started) / 1_000_000L
+                if (res.isSuccessful) {
+                    PingResult(true, ms, "heartbeat OK")
+                } else {
+                    PingResult(false, ms, parseError(res.body?.string().orEmpty(), res.code))
+                }
+            }
+        } catch (e: Exception) {
+            val ms = (System.nanoTime() - started) / 1_000_000L
+            PingResult(false, ms, e.message ?: "network_error")
+        }
+    }
+
     fun ping(deviceToken: String = ""): PingResult {
         val url = "$baseUrl/api/v1/health"
         val builder = Request.Builder().url(url).get()

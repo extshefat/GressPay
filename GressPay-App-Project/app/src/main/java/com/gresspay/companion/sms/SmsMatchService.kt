@@ -7,13 +7,16 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.provider.Telephony
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.gresspay.companion.GressPayApp
 import com.gresspay.companion.R
 import com.gresspay.companion.data.Prefs
+import com.gresspay.companion.sync.CompanionHeartbeat
 import com.gresspay.companion.ui.MainActivity
 
 /**
@@ -22,6 +25,15 @@ import com.gresspay.companion.ui.MainActivity
  */
 class SmsMatchService : Service() {
     private var smsReceiver: SmsBroadcastReceiver? = null
+    private val heartbeatHandler = Handler(Looper.getMainLooper())
+    private val heartbeatRunnable = object : Runnable {
+        override fun run() {
+            Thread {
+                CompanionHeartbeat.sendIfConfigured(this@SmsMatchService)
+            }.start()
+            heartbeatHandler.postDelayed(this, HEARTBEAT_INTERVAL_MS)
+        }
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -57,6 +69,9 @@ class SmsMatchService : Service() {
         }
 
         registerSmsReceiver()
+        heartbeatHandler.removeCallbacks(heartbeatRunnable)
+        Thread { CompanionHeartbeat.sendIfConfigured(this) }.start()
+        heartbeatHandler.postDelayed(heartbeatRunnable, HEARTBEAT_INTERVAL_MS)
         return START_STICKY
     }
 
@@ -86,11 +101,13 @@ class SmsMatchService : Service() {
             }
         }
         smsReceiver = null
+        heartbeatHandler.removeCallbacks(heartbeatRunnable)
         super.onDestroy()
     }
 
     companion object {
         private const val NOTIF_ID = 4201
+        private const val HEARTBEAT_INTERVAL_MS = 180_000L
 
         /** @return false when the FGS could not be started (caller should surface in UI). */
         fun start(context: android.content.Context): Boolean {

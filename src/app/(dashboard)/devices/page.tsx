@@ -26,8 +26,12 @@ type DeviceRow = {
   label: string;
   status: string;
   lastSeenAt?: string | null;
+  online?: boolean;
   createdAt?: string;
 };
+
+/** Match backend CompanionController::ONLINE_WINDOW_SEC (10 minutes). */
+const DEVICE_ONLINE_WINDOW_SEC = 600;
 
 type SmsRow = {
   id: string;
@@ -67,7 +71,9 @@ export default function CompanionDevicesPage() {
     setErrorMessage(null);
     try {
       const data = await api.listCompanionDevices();
-      setDevices(data.devices || []);
+      setDevices(
+        (data.devices || []).filter((d) => (d.status || "active").toLowerCase() === "active")
+      );
     } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : "Failed to load companion devices.");
     } finally {
@@ -129,10 +135,12 @@ export default function CompanionDevicesPage() {
 
   const handleConfirmRevoke = async () => {
     if (!revokeDevice) return;
+    const revokedId = revokeDevice.deviceId;
     setIsRevoking(true);
     try {
-      await api.revokeCompanionDevice(revokeDevice.deviceId);
-      success(`Device ${revokeDevice.deviceId} revoked successfully.`, "Device Disconnected");
+      await api.revokeCompanionDevice(revokedId);
+      setDevices((prev) => prev.filter((d) => d.deviceId !== revokedId));
+      success(`Device ${revokedId} revoked successfully.`, "Device Disconnected");
       setRevokeDevice(null);
       await loadDevices();
     } catch (err: unknown) {
@@ -143,10 +151,12 @@ export default function CompanionDevicesPage() {
     }
   };
 
-  const isOnline = (lastSeen?: string | null) => {
+  const isOnline = (device: DeviceRow) => {
+    if (typeof device.online === "boolean") return device.online;
+    const lastSeen = device.lastSeenAt;
     if (!lastSeen) return false;
     const diff = (Date.now() - new Date(lastSeen).getTime()) / 1000;
-    return diff < 600; // 10 minutes
+    return diff >= 0 && diff < DEVICE_ONLINE_WINDOW_SEC;
   };
 
   const apiBaseUrl = (
@@ -246,7 +256,7 @@ export default function CompanionDevicesPage() {
             Connected Companion Nodes ({devices.length})
           </h3>
           <span className="text-[11px] font-mono text-zinc-500">
-            {devices.filter((d) => isOnline(d.lastSeenAt)).length} Active Online
+            {devices.filter((d) => isOnline(d)).length} Active Online
           </span>
         </div>
 
@@ -277,7 +287,7 @@ export default function CompanionDevicesPage() {
         ) : (
           <div className="divide-y divide-zinc-100 dark:divide-zinc-900">
             {devices.map((device) => {
-              const online = isOnline(device.lastSeenAt);
+              const online = isOnline(device);
 
               return (
                 <div

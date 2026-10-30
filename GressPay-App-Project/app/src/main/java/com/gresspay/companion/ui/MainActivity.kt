@@ -17,6 +17,7 @@ import com.gresspay.companion.data.Prefs
 import com.gresspay.companion.databinding.ActivityMainBinding
 import com.gresspay.companion.sms.InboxScanner
 import com.gresspay.companion.sms.SmsMatchService
+import com.gresspay.companion.sync.CompanionHeartbeat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -84,6 +85,12 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         refreshUi()
+        if (prefs.deviceToken.isNotBlank() && prefs.brandId.isNotBlank() && prefs.baseUrl.isNotBlank()) {
+            lifecycleScope.launch(Dispatchers.IO) {
+                CompanionHeartbeat.sendIfConfigured(this@MainActivity)
+                withContext(Dispatchers.Main) { refreshUi() }
+            }
+        }
     }
 
     private fun refreshUi() {
@@ -176,6 +183,10 @@ class MainActivity : AppCompatActivity() {
         prefs.apiKey = binding.inputApiKey.text?.toString().orEmpty()
         Toast.makeText(this, "Saved", Toast.LENGTH_SHORT).show()
         appendLog("Credentials saved")
+        lifecycleScope.launch(Dispatchers.IO) {
+            CompanionHeartbeat.sendIfConfigured(this@MainActivity)
+            withContext(Dispatchers.Main) { refreshUi() }
+        }
         refreshUi()
     }
 
@@ -191,7 +202,11 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 val result = withContext(Dispatchers.IO) {
-                    CompanionApi(base).ping(prefs.deviceToken)
+                    if (prefs.deviceToken.isNotBlank() && prefs.brandId.isNotBlank()) {
+                        CompanionApi(base).postHeartbeat(prefs.deviceToken, prefs.brandId)
+                    } else {
+                        CompanionApi(base).ping(prefs.deviceToken)
+                    }
                 }
                 binding.textPingLatency.text = if (result.ok) "${result.latencyMs} ms" else "ERR"
                 if (result.ok) {
@@ -297,6 +312,9 @@ class MainActivity : AppCompatActivity() {
                 }
                 binding.inputDeviceToken.setText(result.token)
                 binding.textDeviceId.text = "Device ID: ${result.deviceId}"
+                withContext(Dispatchers.IO) {
+                    CompanionHeartbeat.sendIfConfigured(this@MainActivity)
+                }
                 appendLog("Registered device ${result.deviceId}")
                 AlertDialog.Builder(this@MainActivity)
                     .setTitle("Device registered")

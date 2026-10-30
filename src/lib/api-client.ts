@@ -228,7 +228,15 @@ class ApiClient {
   }
 
   async listCompanionDevices(): Promise<{
-    devices: { deviceId: string; label: string; status: string; lastSeenAt?: string; createdAt?: string }[];
+    devices: {
+      deviceId: string;
+      label: string;
+      status: string;
+      lastSeenAt?: string | null;
+      online?: boolean;
+      onlineWindowSec?: number;
+      createdAt?: string;
+    }[];
   }> {
         return this.request("/api/v1/companion/devices");
   }
