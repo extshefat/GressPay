@@ -52,12 +52,12 @@ final class CheckoutController
     }
 
     /** Merchant verifies payment status by sessionId (API key / JWT). */
-    public static function verifyPaymentMerchant(GpRequest $req): never
+    public static function verifyPaymentMerchant(GpRequest $req, ?string $sessionIdOverride = null): never
     {
         $actor = GpAuth::requireActor($req);
         GpAuth::requireScope($actor, 'verify_payment');
         GpRateLimiter::guard('verify-payment:' . $actor['brand_id'], 60, 60);
-        $sessionId = trim((string) $req->input('sessionId', $req->input('session_id', '')));
+        $sessionId = trim((string) ($sessionIdOverride ?? $req->input('sessionId', $req->input('session_id', ''))));
         if ($sessionId === '') {
             GpJson::error('MISSING_FIELD', 'sessionId is required.');
         }

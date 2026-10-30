@@ -17,7 +17,8 @@ class SmsUploadWorker(
         if (!prefs.matchingEnabled || !prefs.consentAccepted) return Result.success()
         val base = prefs.baseUrl
         val token = prefs.deviceToken
-        if (base.isBlank() || token.isBlank()) return Result.failure()
+        val brandId = prefs.brandId
+        if (base.isBlank() || token.isBlank() || brandId.isBlank()) return Result.failure()
         if (!Prefs.isAllowedBaseUrl(base)) {
             prefs.lastError = "Insecure API URL blocked"
             return Result.failure()
@@ -32,7 +33,7 @@ class SmsUploadWorker(
 
         return try {
             val api = CompanionApi(base)
-            val res = api.postPaymentSms(token, senderKey, amount, trx, number, idem)
+            val res = api.postPaymentSms(token, brandId, senderKey, amount, trx, number, idem)
             if (res.ok) {
                 prefs.lastSyncAt = System.currentTimeMillis()
                 prefs.lastError = ""

@@ -8,7 +8,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
-data class RegisterResult(val deviceId: String, val token: String)
+data class RegisterResult(val deviceId: String, val token: String, val brandId: String)
 data class PingResult(val ok: Boolean, val latencyMs: Long, val message: String)
 data class SmsPostResult(
     val ok: Boolean,
@@ -70,13 +70,15 @@ class CompanionApi(
             val json = JSONObject(raw)
             return RegisterResult(
                 deviceId = json.getString("deviceId"),
-                token = json.getString("token")
+                token = json.getString("token"),
+                brandId = json.optString("brandId", "")
             )
         }
     }
 
     fun postPaymentSms(
         deviceToken: String,
+        brandId: String,
         senderKey: String,
         amount: String,
         trxId: String,
@@ -95,6 +97,7 @@ class CompanionApi(
             .url(url)
             .header("Authorization", "Bearer $deviceToken")
             .header("X-GressPay-Device", deviceToken)
+            .header("X-GressPay-Brand", brandId)
             .header("Content-Type", "application/json")
             .post(payload.toRequestBody(JSON))
             .build()

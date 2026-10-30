@@ -15,10 +15,7 @@ final class PaymentController
             CheckoutController::verifyPaymentMerchant($req);
         }
         if ($req->method === 'GET' && $action === 'status' && $id !== '') {
-            $_GET['sessionId'] = $id;
-            $_GET['session_id'] = $id;
-            $_SERVER['REQUEST_METHOD'] = 'POST';
-            CheckoutController::verifyPaymentMerchant($req);
+            CheckoutController::verifyPaymentMerchant($req, $id);
         }
         GpJson::error('NOT_FOUND', 'Unknown payment route.', 404);
     }

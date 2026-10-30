@@ -225,6 +225,20 @@ final class GpConfig
         return max(1, min(100, $n));
     }
 
+    public static function webhookMaxRetries(): int
+    {
+        $g = getenv('WEBHOOK_MAX_RETRIES');
+        $n = ($g !== false && $g !== '') ? (int) $g : (int) self::get('WEBHOOK_MAX_RETRIES', '5');
+        return max(1, min(10, $n));
+    }
+
+    public static function webhookTimeoutSeconds(): int
+    {
+        $g = getenv('WEBHOOK_TIMEOUT_SECONDS');
+        $n = ($g !== false && $g !== '') ? (int) $g : (int) self::get('WEBHOOK_TIMEOUT_SECONDS', '8');
+        return max(2, min(30, $n));
+    }
+
     public static function publicAppUrl(): string
     {
         return rtrim(self::get('APP_URL', self::get('PUBLIC_APP_URL', '')), '/');
