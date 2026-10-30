@@ -63,7 +63,8 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         prefs = Prefs(this)
 
-        binding.inputBaseUrl.setText(prefs.baseUrl)
+        val defaultBase = "https://gresspay.extxcheats.com"
+        binding.inputBaseUrl.setText(prefs.baseUrl.ifBlank { defaultBase })
         binding.inputApiKey.setText(prefs.apiKey)
         binding.inputDeviceToken.setText(prefs.deviceToken)
         binding.textDeviceId.text = "Device ID: ${prefs.deviceId.ifBlank { "—" }}"
@@ -89,6 +90,7 @@ class MainActivity : AppCompatActivity() {
         val parts = mutableListOf<String>()
         parts += if (prefs.baseUrl.isNotBlank()) "server ok" else "no server"
         parts += if (prefs.deviceToken.isNotBlank()) "token set" else "no token"
+        if (prefs.brandId.isNotBlank()) parts += "brand ${prefs.brandId.take(8)}…"
         parts += if (prefs.consentAccepted) "consent yes" else "consent no"
         parts += if (prefs.matchingEnabled) "matching ON" else "matching OFF"
         setStatus("Status: ${parts.joinToString(" · ")}")

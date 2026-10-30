@@ -58,6 +58,7 @@ export default function CompanionDevicesPage() {
   const [deviceLabel, setDeviceLabel] = useState("bKash & Nagad Primary Phone");
   const [generatedDeviceId, setGeneratedDeviceId] = useState("");
   const [generatedToken, setGeneratedToken] = useState("");
+  const [registeredBrandId, setRegisteredBrandId] = useState("");
   const [pairingQr, setPairingQr] = useState<string | null>(null);
   const [isRegistering, setIsRegistering] = useState(false);
 
@@ -98,15 +99,17 @@ export default function CompanionDevicesPage() {
       const res = await api.registerCompanionDevice(deviceLabel);
       setGeneratedDeviceId(res.deviceId);
       setGeneratedToken(res.token);
+      setRegisteredBrandId(res.brandId || api.getBrandId() || "");
       const origin =
         typeof window !== "undefined"
           ? window.location.origin
           : process.env.NEXT_PUBLIC_APP_URL || "https://gresspay.extxcheats.com";
+      const siteBase = origin.replace(/\/$/, "").replace(/\/api\/v1\/?$/i, "");
       const payload = JSON.stringify({
-        apiBaseUrl: `${origin.replace(/\/$/, "")}/api/v1`,
+        apiBaseUrl: siteBase,
         deviceId: res.deviceId,
         token: res.token,
-        brandId: api.getBrandId() || undefined,
+        brandId: res.brandId || api.getBrandId() || undefined,
       });
       const qr = await QRCode.toDataURL(payload, {
         width: 220,
@@ -146,11 +149,13 @@ export default function CompanionDevicesPage() {
     return diff < 600; // 10 minutes
   };
 
-  const apiBaseUrl =
-    (typeof window !== "undefined"
+  const apiBaseUrl = (
+    typeof window !== "undefined"
       ? window.location.origin
       : process.env.NEXT_PUBLIC_APP_URL || "https://gresspay.extxcheats.com"
-    ).replace(/\/$/, "") + "/api/v1";
+  )
+    .replace(/\/$/, "")
+    .replace(/\/api\/v1\/?$/i, "");
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
@@ -215,7 +220,7 @@ export default function CompanionDevicesPage() {
               GressPay Companion APK
             </span>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-bold border border-emerald-200 dark:border-emerald-800">
-              v1.4.0 • Android 8.0 – 15
+              v1.1.0 • Android 8.0 – 15
             </span>
           </div>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-xl">
@@ -472,7 +477,10 @@ export default function CompanionDevicesPage() {
               </p>
             </div>
 
-            <CopyField label="API Base URL" value={apiBaseUrl} />
+            <CopyField label="API Base URL (site root, no /api/v1)" value={apiBaseUrl} />
+            {registeredBrandId ? (
+              <CopyField label="Brand ID (X-GressPay-Brand)" value={registeredBrandId} />
+            ) : null}
             <CopyField label="Device ID" value={generatedDeviceId} />
             <CopyField label="Device Token (Copy Now)" value={generatedToken} />
 
@@ -498,7 +506,7 @@ export default function CompanionDevicesPage() {
               <span className="font-semibold text-zinc-900 dark:text-zinc-100">Setup Instructions:</span>
               <ol className="list-decimal pl-4 space-y-1 text-[11px]">
                 <li>Install the GressPay Companion APK on your phone.</li>
-                <li>Scan the QR or paste API Base URL + Device Token.</li>
+                <li>Paste API Base URL (site root only), Device Token, and confirm Brand ID if shown.</li>
                 <li>Grant SMS &amp; Notification permissions.</li>
                 <li>Disable battery optimization for 24/7 syncing.</li>
               </ol>

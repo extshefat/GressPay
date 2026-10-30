@@ -170,8 +170,23 @@ final class CheckoutController
         $returnUrl = trim((string) $req->input('return_url', $req->input('returnUrl', $req->input('success_url', $req->input('redirect_url', '')))));
         $cancelUrl = trim((string) $req->input('cancel_url', ''));
         $orderId = trim((string) $req->input('order_id', $req->input('orderId', '')));
+        if ($fixed && $link !== null) {
+            $linkRedirect = trim((string) ($link['success_redirect_url'] ?? ''));
+            if ($linkRedirect !== '') {
+                if ($returnUrl !== '' && $returnUrl !== $linkRedirect) {
+                    GpJson::error('RETURN_LOCKED', 'Success redirect URL is fixed for this payment link.', 400);
+                }
+                $returnUrl = $linkRedirect;
+            }
+        }
         if ($returnUrl !== '' && !filter_var($returnUrl, FILTER_VALIDATE_URL)) {
             GpJson::error('INVALID_URL', 'return_url must be a valid URL.');
+        }
+        if ($fixed && $link !== null && $returnUrl !== '') {
+            $rd = GpWebhook::validateDestination($returnUrl);
+            if (!$rd['ok']) {
+                GpJson::error('INVALID_URL', 'Configured success redirect URL is not allowed.', 400);
+            }
         }
         if ($webhook !== '') {
             $wh = GpWebhook::validateDestination($webhook);
@@ -204,6 +219,18 @@ final class CheckoutController
         }
         if ($orderDescription !== '') {
             $meta['orderDescription'] = $orderDescription;
+        }
+        if ($fixed && $link !== null) {
+            $productImage = trim((string) ($link['product_image_url'] ?? ''));
+            if ($productImage !== '') {
+                $meta['productImageUrl'] = $productImage;
+            }
+            $customFields = PaymentLinksController::decodeCustomFieldsJson(
+                isset($link['custom_fields_json']) ? (string) $link['custom_fields_json'] : null
+            );
+            if ($customFields !== []) {
+                $meta['customFields'] = $customFields;
+            }
         }
 
         GpDb::exec(
@@ -573,6 +600,7 @@ final class CheckoutController
 
         $now = GpIds::now();
         $meta = self::decodeMeta($row);
+        $meta = PaymentLinksController::mergeCustomFieldResponses($meta, $req);
         $meta['confirmationState'] = 'verifying';
         $meta['submittedAt'] = $now;
         $meta['submittedMethod'] = $methodCode;

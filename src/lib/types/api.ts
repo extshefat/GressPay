@@ -148,6 +148,13 @@ export interface Transaction {
 
 export type PaymentLinkType = "single_use" | "reusable";
 
+export interface PaymentLinkCustomField {
+  id: string;
+  label: string;
+  required?: boolean;
+  type?: "text" | "email" | "phone";
+}
+
 export interface PaymentLink {
   id: string;
   merchantId: string;
@@ -158,6 +165,9 @@ export interface PaymentLink {
   type: PaymentLinkType;
   allowedMethods: string[];
   redirectUrl?: string;
+  successRedirectUrl?: string;
+  productImageUrl?: string;
+  customFields?: PaymentLinkCustomField[];
   webhookUrl?: string;
   isActive: boolean;
   viewsCount: number;
@@ -203,6 +213,9 @@ export interface CheckoutSession {
   linkId: string;
   payUrl?: string;
   returnUrl?: string | null;
+  successRedirectUrl?: string | null;
+  productImageUrl?: string | null;
+  customFields?: PaymentLinkCustomField[];
   merchantName: string;
   merchantLogo?: string;
   merchantVerified: boolean;
@@ -271,7 +284,9 @@ export interface DashboardMetrics {
   activeMethodsCount?: number;
   connectedDevicesCount?: number;
   onlineDevicesCount?: number;
-  pendingSettlementUsd: number;
+  pendingCheckoutCount?: number;
+  unmatchedSmsCount?: number;
+  lastDeviceSyncAt?: string | null;
   rangeDays?: number;
   volumeHistory: {
     date: string;

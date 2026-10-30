@@ -114,6 +114,9 @@ final class GpDb
             'ALTER TABLE gp_payment_links ADD COLUMN webhook_url TEXT',
             // Phase 1: server-side test/live stamp for public checkout (buyers cannot choose).
             "ALTER TABLE gp_payment_links ADD COLUMN ledger_mode VARCHAR(8) NOT NULL DEFAULT 'live'",
+            'ALTER TABLE gp_payment_links ADD COLUMN success_redirect_url TEXT',
+            'ALTER TABLE gp_payment_links ADD COLUMN product_image_url TEXT',
+            'ALTER TABLE gp_payment_links ADD COLUMN custom_fields_json TEXT',
         ];
         foreach ($alters as $sql) {
             try {

@@ -773,5 +773,33 @@ assert_true($afterWh - $beforeWh >= 2, 'failed webhook dispatch logs multiple at
 putenv('WEBHOOK_MAX_RETRIES=5');
 $_ENV['WEBHOOK_MAX_RETRIES'] = '5';
 
+// —— Payment link custom fields & presenter ——
+$normFields = PaymentLinksController::normalizeCustomFields([
+    ['label' => 'WhatsApp', 'required' => true, 'type' => 'phone'],
+    ['label' => '', 'type' => 'text'],
+]);
+assert_true(count($normFields) === 1 && $normFields[0]['type'] === 'phone', 'normalizeCustomFields keeps valid phone field');
+GpDb::exec(
+    'UPDATE gp_payment_links SET success_redirect_url = ?, product_image_url = ?, custom_fields_json = ? WHERE link_id = ?',
+    [
+        'https://example.com/thanks',
+        'https://cdn.example.com/p.jpg',
+        json_encode($normFields, JSON_UNESCAPED_UNICODE),
+        $linkId,
+    ]
+);
+$linkRow = GpDb::one('SELECT * FROM gp_payment_links WHERE link_id = ?', [$linkId]);
+$brandRow = GpDb::one('SELECT * FROM gp_brands WHERE brand_id = ?', [$brandId]);
+$merchRow = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$merchantId]);
+$plinkOut = GpPresenters::paymentLink($linkRow, $brandRow, $merchRow, ['paymentsCount' => 0, 'totalCollected' => 0]);
+assert_true(
+    ($plinkOut['successRedirectUrl'] ?? '') === 'https://example.com/thanks',
+    'payment link presenter exposes successRedirectUrl'
+);
+assert_true(
+    is_array($plinkOut['customFields'] ?? null) && count($plinkOut['customFields']) === 1,
+    'payment link presenter exposes customFields'
+);
+
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

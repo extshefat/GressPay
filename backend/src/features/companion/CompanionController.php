@@ -70,6 +70,12 @@ final class CompanionController
             ]);
         }
 
+        if ($req->method === 'GET' && $action === 'sms-logs') {
+            $actor = GpAuth::requireActor($req);
+            GpAuth::requireScope($actor, 'manage_devices');
+            self::listSmsLogs($actor);
+        }
+
         if ($req->method === 'POST' && $action === 'sms') {
             GpRateLimiter::guard('sms:' . GpRateLimiter::ip(), 120, 60);
             $brandId = trim((string) ($_SERVER['HTTP_X_GRESSPAY_BRAND'] ?? ''));
@@ -266,5 +272,32 @@ final class CompanionController
             ];
         }
         GpJson::send(['devices' => $out]);
+    }
+
+    private static function listSmsLogs(array $actor): never
+    {
+        $rows = GpDb::all(
+            'SELECT s.id, s.sender_key, s.amount, s.trx_id, s.number, s.status, s.created_at, s.device_id, d.label AS device_label
+             FROM gp_sms_data s
+             LEFT JOIN gp_devices d ON d.device_id = s.device_id AND d.brand_id = s.brand_id
+             WHERE s.brand_id = ?
+             ORDER BY s.id DESC
+             LIMIT 100',
+            [$actor['brand_id']]
+        );
+        $out = [];
+        foreach ($rows as $r) {
+            $out[] = [
+                'id' => (string) $r['id'],
+                'sender_key' => (string) ($r['sender_key'] ?? ''),
+                'amount' => (float) ($r['amount'] ?? 0),
+                'trx_id' => (string) ($r['trx_id'] ?? ''),
+                'number' => ($r['number'] ?? '') !== '' ? (string) $r['number'] : null,
+                'status' => (string) ($r['status'] ?? ''),
+                'device_label' => ($r['device_label'] ?? '') !== '' ? (string) $r['device_label'] : null,
+                'created_at' => (string) ($r['created_at'] ?? ''),
+            ];
+        }
+        GpJson::send(['smsLogs' => $out]);
     }
 }

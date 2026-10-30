@@ -186,6 +186,29 @@ export function IntegrationSnippets() {
           <code>{active.code}</code>
         </pre>
       </div>
+
+      <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950">
+        <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-2">
+          <span className="font-mono text-[11px] uppercase tracking-wide text-zinc-500">
+            Verify payment status (merchant server)
+          </span>
+          <CopyButton
+            text={`curl -s ${HOST}/checkout/verify-payment \\
+  -H "Authorization: Bearer gp_live_your_key" \\
+  -H "Content-Type: application/json" \\
+  -d '{"sessionId":"chs_your_session_id"}'`}
+          />
+        </div>
+        <pre className="overflow-x-auto p-4 text-xs leading-relaxed text-zinc-100">
+          <code>{`// Buyer-facing status (public, no API key)
+GET ${HOST}/checkout/{sessionId}/status
+
+// Merchant verify by session id
+POST ${HOST}/checkout/verify-payment
+Authorization: Bearer gp_live_…
+{ "sessionId": "chs_…" }`}</code>
+        </pre>
+      </div>
     </section>
   );
 }
