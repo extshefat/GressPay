@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { planIdsMatch, planMarketingCode } from "@/lib/plan-utils";
 import { api } from "@/lib/api-client";
 import {
   AdminMerchant,
@@ -201,7 +202,7 @@ export default function AdminPage() {
       (merchantRoleFilter === "merchant" && m.role !== "admin");
 
     const matchStatus = merchantStatusFilter === "all" || m.status === merchantStatusFilter;
-    const matchPlan = merchantPlanFilter === "all" || (m.planId || "starter") === merchantPlanFilter;
+    const matchPlan = planIdsMatch(m.planId, merchantPlanFilter);
 
     return matchSearch && matchRole && matchStatus && matchPlan;
   });
@@ -217,7 +218,11 @@ export default function AdminPage() {
       tx.merchantEmail.toLowerCase().includes(q) ||
       tx.brandName.toLowerCase().includes(q);
 
-    const matchStatus = txStatusFilter === "all" || tx.status === txStatusFilter;
+    const matchStatus =
+      txStatusFilter === "all" ||
+      tx.status === txStatusFilter ||
+      (txStatusFilter === "pending" && tx.status === "initiated") ||
+      (txStatusFilter === "failed" && (tx.status === "failed" || tx.status === "expired"));
     return matchSearch && matchStatus;
   });
 
@@ -761,7 +766,7 @@ export default function AdminPage() {
                             type="button"
                             onClick={() => {
                               setTargetMerchant(m);
-                              setTargetPlanId(m.planId || "starter");
+                              setTargetPlanId(m.planId || "plan_starter");
                               setTargetPlanExpiresAt(m.planExpiresAt ? m.planExpiresAt.split("T")[0] : "");
                               setTargetPlanIsLifetime(m.planId === "lifetime" || !m.planExpiresAt);
                               setTargetBonusCredits(0);
@@ -828,7 +833,7 @@ export default function AdminPage() {
                             variant="ghost"
                             onClick={() => {
                               setTargetMerchant(m);
-                              setTargetPlanId(m.planId || "starter");
+                              setTargetPlanId(m.planId || "plan_starter");
                               setTargetPlanExpiresAt(m.planExpiresAt ? m.planExpiresAt.split("T")[0] : "");
                               setTargetPlanIsLifetime(m.planId === "lifetime" || !m.planExpiresAt);
                               setTargetBonusCredits(0);
@@ -1284,7 +1289,7 @@ export default function AdminPage() {
                 onChange={(e) => {
                   const p = e.target.value;
                   setTargetPlanId(p);
-                  if (p === "lifetime") {
+                  if (p === "plan_lifetime" || p === "lifetime" || planMarketingCode(p) === "lifetime") {
                     setTargetPlanIsLifetime(true);
                     setTargetPlanExpiresAt("");
                   }
@@ -1293,17 +1298,16 @@ export default function AdminPage() {
               >
                 {plans.length > 0 ? (
                   plans.map((p) => (
-                    <option key={p.code} value={p.code}>
+                    <option key={p.id} value={p.id}>
                       {p.name} ({p.code.toUpperCase()}) — ৳{p.priceBdt} / {p.billingCycle} ({p.creditAllowance.toLocaleString()} credits/mo)
                     </option>
                   ))
                 ) : (
                   <>
-                    <option value="starter">Starter Plan (৳1,200/mo — 1 Device, 1,000 credits)</option>
-                    <option value="growth">Growth Plan (৳2,500/mo — 3 Devices, 3,000 credits)</option>
-                    <option value="pro">Pro Plan (৳4,500/mo — 5 Devices, 5,000 credits, Crypto)</option>
-                    <option value="enterprise">Enterprise Plan (৳12,000/mo — Unlimited Devices, Dedicated)</option>
-                    <option value="lifetime">Lifetime Deal (Unlimited Access, No Expiry)</option>
+                    <option value="plan_starter">Starter Plan</option>
+                    <option value="plan_pro">Pro Plan</option>
+                    <option value="plan_enterprise">Enterprise Plan</option>
+                    <option value="plan_lifetime">Lifetime Deal</option>
                   </>
                 )}
               </select>

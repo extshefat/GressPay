@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { Transaction } from "@/lib/types/api";
 import { Card } from "@/components/ui/card";
@@ -29,6 +30,7 @@ import {
 
 export default function TransactionsPage() {
   const { success, error: toastError } = useToast();
+  const searchParams = useSearchParams();
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -69,6 +71,15 @@ export default function TransactionsPage() {
   useEffect(() => {
     loadTransactions();
   }, []);
+
+  useEffect(() => {
+    const wanted = searchParams.get("id")?.trim();
+    if (!wanted || transactions.length === 0) return;
+    const match = transactions.find(
+      (t) => t.id === wanted || (t.txid && t.txid === wanted)
+    );
+    if (match) setSelectedTx(match);
+  }, [searchParams, transactions]);
 
   // Filtered list
   const filteredTransactions = useMemo(() => {
