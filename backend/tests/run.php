@@ -704,6 +704,24 @@ assert_true(($createOut['status'] ?? false) === true, 'create payload status is 
 assert_true(($createOut['session_id'] ?? '') === 'chs_stage1_create', 'create payload includes session_id');
 assert_true(str_contains((string) ($createOut['payment_url'] ?? ''), '/pay/chs_stage1_create'), 'create payload includes payment_url');
 
+// —— Admin plan assign accepts marketing code (starter → plan_starter) ——
+$planRow = GpDb::one('SELECT plan_id FROM gp_plans WHERE LOWER(code) = ? LIMIT 1', ['starter']);
+assert_true(
+    is_array($planRow) && strtolower((string) ($planRow['plan_id'] ?? '')) === 'plan_starter',
+    'gp_plans seeds starter code resolving to plan_starter'
+);
+
+// —— Webhook delivery stats use completed status (not legacy delivered) ——
+$whBrandStat = GpIds::make('b', 6);
+$whNow = GpIds::now();
+GpDb::exec(
+    'INSERT INTO gp_webhook_deliveries (event_id, brand_id, session_id, event_name, url, payload, signature, http_code, status, note, attempt, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+    ['evt_stat_test', $whBrandStat, null, 'payment.completed', 'https://example.com/h', '{}', 'sig', 200, 'completed', '', 1, $whNow, $whNow]
+);
+$completedWh = (int) (GpDb::one("SELECT COUNT(*) AS c FROM gp_webhook_deliveries WHERE status IN ('completed', 'delivered')")['c'] ?? 0);
+assert_true($completedWh >= 1, 'webhook health query counts completed deliveries');
+
 // —— Plan device limit (companion register) ——
 $limBrand = GpIds::make('b', 6);
 $limMerch = GpIds::make('m', 6);

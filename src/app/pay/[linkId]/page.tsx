@@ -20,7 +20,11 @@ export default function CheckoutPage() {
   useEffect(() => {
     let alive = true;
     async function load() {
-      if (!linkId) return;
+      if (!linkId) {
+        setError("Invalid checkout link.");
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       setError(null);
       try {
