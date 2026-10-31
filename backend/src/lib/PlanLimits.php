@@ -9,8 +9,8 @@ final class GpPlanLimits
 {
     public const BILLING_TIMEZONE = 'Asia/Dhaka';
 
-    /** Soft dashboard warning when Free-tier monthly completed count reaches this value (limit 50). */
-    public const FREE_WARNING_COMPLETED = 40;
+    /** Soft dashboard warning when Trial monthly completed count reaches this value (limit 50). */
+    public const TRIAL_WARNING_COMPLETED = 40;
 
     public static function marketingCode(string $planId): string
     {
@@ -47,7 +47,7 @@ final class GpPlanLimits
             return 'lifetime';
         }
         $code = self::marketingCode((string) ($merchant['plan_id'] ?? 'starter'));
-        if (in_array($code, ['starter', 'lifetime'], true)) {
+        if (in_array($code, ['trial', 'lifetime'], true)) {
             return $code;
         }
         $expRaw = trim((string) ($merchant['plan_expires_at'] ?? ''));
@@ -56,7 +56,7 @@ final class GpPlanLimits
         }
         $expTs = strtotime($expRaw);
         if ($expTs !== false && $expTs < time()) {
-            return 'starter';
+            return 'trial';
         }
         return $code;
     }
@@ -66,6 +66,8 @@ final class GpPlanLimits
         return match (self::marketingCode($planCode)) {
             'lifetime', 'enterprise' => 50,
             'pro' => 5,
+            'premium' => 2,
+            'trial', 'starter' => 1,
             default => 1,
         };
     }
@@ -177,8 +179,8 @@ final class GpPlanLimits
         $monthlyUsed = self::countMonthlyCompletedLive($merchantId);
         $window = self::currentBillingMonthWindow();
         $unlimited = $monthlyLimit === 0;
-        $warningThreshold = $planCode === 'starter' && !$unlimited
-            ? self::FREE_WARNING_COMPLETED
+        $warningThreshold = $planCode === 'trial' && !$unlimited
+            ? self::TRIAL_WARNING_COMPLETED
             : (int) max(1, floor($monthlyLimit * 0.8));
 
         return [
@@ -208,10 +210,10 @@ final class GpPlanLimits
         }
         $max = (int) $usage['brands']['limit'];
         $planCode = (string) $usage['planCode'];
-        if ($max <= 1 || $planCode === 'starter') {
+        if ($max <= 1 || in_array($planCode, ['trial', 'starter'], true)) {
             GpJson::error(
                 'BRAND_QUOTA',
-                'Your account is on the Free plan, which includes 1 website. Upgrade your account on the Pricing page to add more.',
+                'Your account includes 1 website on Trial or Starter. Upgrade on the Pricing page to add more websites.',
                 403
             );
         }
@@ -235,10 +237,10 @@ final class GpPlanLimits
         $limit = (int) ($usage['monthlyCompleted']['limit'] ?? self::FREE_MONTHLY_COMPLETED_DEFAULT);
         $label = (string) $usage['billingMonthLabel'];
         $planCode = (string) $usage['planCode'];
-        if ($planCode === 'starter') {
+        if ($planCode === 'trial') {
             GpJson::error(
                 'TRANSACTION_QUOTA',
-                "Your account reached the Free plan limit of {$limit} completed checkouts for {$label}. Upgrade your account to keep accepting payments.",
+                "Your account reached the Trial limit of {$limit} completed checkouts for {$label}. Subscribe to a paid plan for unlimited checkouts.",
                 403
             );
         }

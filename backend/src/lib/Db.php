@@ -795,41 +795,79 @@ final class GpDb
             $now = GpIds::now();
             $plans = [
                 [
-                    'plan_id' => 'plan_starter',
-                    'name' => 'Starter',
-                    'code' => 'starter',
+                    'plan_id' => 'plan_trial',
+                    'name' => 'Trial',
+                    'code' => 'trial',
                     'price_bdt' => 0.00,
                     'credit_allowance' => 50,
                     'device_limit' => 1,
                     'method_limit' => 2,
                     'is_free' => 1,
-                    'description' => 'Essential payment automation for small businesses, personal stores, and developers.',
+                    'description' => 'Automatic on new registration — explore live checkouts with Bangladesh MFS.',
                     'features_json' => json_encode([
                         '1 Website on Your Account',
-                        '1 Connected Android Companion Device',
-                        'Up to 2 Active Payment Destinations',
-                        '50 Completed Checkouts per Month (Asia/Dhaka)',
-                        'Standard Webhook HMAC Notifications',
-                        'Instant Direct-to-Wallet Settlement',
+                        '50 Completed Checkouts / Calendar Month (Asia/Dhaka)',
+                        '1 Android Companion Device',
+                        'All Bangladesh MFS Rails',
+                        'Standard REST API & Webhooks',
+                        '0% Transaction Fee',
+                    ], JSON_UNESCAPED_SLASHES),
+                ],
+                [
+                    'plan_id' => 'plan_starter',
+                    'name' => 'Starter',
+                    'code' => 'starter',
+                    'price_bdt' => 499.00,
+                    'credit_allowance' => 999999,
+                    'device_limit' => 1,
+                    'method_limit' => 4,
+                    'is_free' => 0,
+                    'description' => 'One website, unlimited live checkouts, full MFS automation.',
+                    'features_json' => json_encode([
+                        '1 Website on Your Account',
+                        'Unlimited Completed Checkouts',
+                        '1 Android Companion Device',
+                        'All Bangladesh MFS: bKash, Nagad, Rocket, Upay',
+                        'Standard REST API & Webhooks',
+                        '0% Transaction Fee',
+                    ], JSON_UNESCAPED_SLASHES),
+                ],
+                [
+                    'plan_id' => 'plan_premium',
+                    'name' => 'Premium',
+                    'code' => 'premium',
+                    'price_bdt' => 999.00,
+                    'credit_allowance' => 999999,
+                    'device_limit' => 3,
+                    'method_limit' => 8,
+                    'is_free' => 0,
+                    'description' => 'Two websites plus crypto suite, branding, and instant alerts.',
+                    'features_json' => json_encode([
+                        '2 Websites on Your Account',
+                        'Unlimited Completed Checkouts',
+                        'Up to 3 Android Companion Devices',
+                        'All MFS + Full Crypto Suite (USDT TRC20, Binance Pay, Bybit Pay)',
+                        'Custom Brand Logo & Name on Checkout',
+                        'Instant Telegram & Discord Alerts',
                     ], JSON_UNESCAPED_SLASHES),
                 ],
                 [
                     'plan_id' => 'plan_pro',
-                    'name' => 'Pro Business',
+                    'name' => 'Pro',
                     'code' => 'pro',
                     'price_bdt' => 1499.00,
-                    'credit_allowance' => 2500,
-                    'device_limit' => 3,
-                    'method_limit' => 5,
+                    'credit_allowance' => 999999,
+                    'device_limit' => 5,
+                    'method_limit' => 12,
                     'is_free' => 0,
-                    'description' => 'High-throughput companion automation with multiple devices and Priority SLA.',
+                    'description' => 'Scale to five websites with priority webhook retries and higher device limits.',
                     'features_json' => json_encode([
-                        'Up to 3 Connected Android Devices',
-                        'Up to 5 Active Payment Gateways',
-                        '2,500 Monthly Transactions Included',
-                        'Priority Companion SMS Match Delivery',
-                        'All Bangladesh MFS + USDT TRC-20 Rails',
-                        'High-speed Webhook Retry Mechanism',
+                        '5 Websites on Your Account',
+                        'Unlimited Completed Checkouts',
+                        'Up to 5 Android Companion Devices',
+                        'Full MFS + Crypto Suite',
+                        'Custom Checkout Branding',
+                        'Priority Webhook Retries',
                     ], JSON_UNESCAPED_SLASHES),
                 ],
                 [
@@ -837,15 +875,15 @@ final class GpDb
                     'name' => 'Enterprise Scale',
                     'code' => 'enterprise',
                     'price_bdt' => 4999.00,
-                    'credit_allowance' => 15000,
+                    'credit_allowance' => 999999,
                     'device_limit' => 10,
                     'method_limit' => 20,
                     'is_free' => 0,
-                    'description' => 'Maximum volume, dedicated companion workers, multi-device failover, and direct support.',
+                    'description' => 'Legacy high-volume tier — contact support for assignment.',
                     'features_json' => json_encode([
                         'Up to 10 Connected Android Devices',
                         'Up to 20 Active Payment Gateways',
-                        '15,000 Monthly Transactions Included',
+                        'Unlimited Automated Transactions',
                         'Multi-device Failover & Load Balancing',
                         'Dedicated Companion Worker Thread',
                         'Priority Telegram & Direct Channel Support',
@@ -903,8 +941,21 @@ final class GpDb
                         $p['plan_id'], $p['name'], $p['code'], $p['description'], $p['price_bdt'],
                         $p['credit_allowance'], $p['device_limit'], $p['method_limit'], $p['features_json'], $p['is_free'], $now, $now
                     ]);
+                } else {
+                    self::exec(
+                        "UPDATE gp_subscription_plans SET name = ?, description = ?, price_bdt = ?, credit_allowance = ?, device_limit = ?, method_limit = ?, features_json = ?, is_free = ?, updated_at = ? WHERE id = ?",
+                        [$p['name'], $p['description'], $p['price_bdt'], $p['credit_allowance'], $p['device_limit'], $p['method_limit'], $p['features_json'], $p['is_free'], $now, $subExists['id']]
+                    );
                 }
             }
+
+            // Legacy free-tier accounts (starter without a paid expiry) → Trial.
+            self::exec(
+                "UPDATE gp_merchants SET plan_id = 'trial'
+                 WHERE LOWER(plan_id) IN ('starter', 'plan_starter')
+                   AND role != 'admin'
+                   AND (plan_expires_at IS NULL OR TRIM(plan_expires_at) = '')"
+            );
         } catch (Throwable $e) {
             error_log('[GpDb] seedDefaultPlans failed: ' . $e->getMessage());
         }

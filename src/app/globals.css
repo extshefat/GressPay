@@ -7,10 +7,10 @@
     /* Offline-safe stacks (no Google Fonts network fetch at build). */
     --font-sora: "Segoe UI", "Helvetica Neue", ui-sans-serif, system-ui, sans-serif;
     --font-ibm-plex-mono: "Cascadia Mono", "Consolas", ui-monospace, monospace;
-    --bg-page: #ffffff;
-    --bg-surface: #f8fafc;
-    --bg-card: #ffffff;
-    --bg-muted: #f1f5f9;
+    --bg-page: #f4f4f5;
+    --bg-surface: #ececee;
+    --bg-card: #fafafa;
+    --bg-muted: #e4e4e7;
     --border-color: #e2e8f0;
     --border-subtle: #f1f5f9;
     --text-primary: #09090b;

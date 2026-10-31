@@ -103,7 +103,7 @@ final class AuthController
         $now = GpIds::now();
         $isAdmin = GpConfig::isAdmin($email);
         $role = $isAdmin ? 'admin' : 'merchant';
-        $planId = $isAdmin ? 'lifetime' : 'starter';
+        $planId = $isAdmin ? 'lifetime' : 'trial';
         $merchantId = GpIds::make('mrc', 8);
         $brandId = GpIds::make('brd', 8);
         $webhookSecret = 'gpwh_' . bin2hex(random_bytes(24));
