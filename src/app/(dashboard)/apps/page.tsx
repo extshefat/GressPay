@@ -16,6 +16,14 @@ const TOOLS = [
     icon: Smartphone,
   },
   {
+    title: "PSP minimal sample (PHP)",
+    description:
+      "Four-step copy-paste: account → API keys → create payment → webhook. Single-file PHP + optional Node.",
+    href: "/download/gresspay-psp-example.zip",
+    cta: "Download sample zip",
+    icon: Code2,
+  },
+  {
     title: "PHP Library",
     description: "Lightweight helpers for create + verify against the GressPay REST API.",
     href: "https://github.com/extshefat/gresspay/tree/main/sdk/php",
