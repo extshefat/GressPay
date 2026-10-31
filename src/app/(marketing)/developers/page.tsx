@@ -115,7 +115,34 @@ export default function DevelopersPage() {
             <Code2 className="mr-2 h-4 w-4" />
             View examples
           </a>
+          <a
+            href="/download/gresspay-psp-example.zip"
+            className="inline-flex items-center rounded-xl border border-teal-600/30 bg-teal-50 px-4 py-2.5 text-sm font-semibold text-teal-900 hover:bg-teal-100 dark:border-teal-500/30 dark:bg-teal-950/40 dark:text-teal-100 dark:hover:bg-teal-950/60"
+          >
+            Download PSP minimal sample
+          </a>
         </div>
+        <p className="text-xs text-zinc-500">
+          Full walkthrough + source:{" "}
+          <a
+            href="https://github.com/extshefat/gresspay/tree/main/sdk/examples/psp-minimal"
+            className="font-semibold underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            sdk/examples/psp-minimal
+          </a>
+          . APK security notes:{" "}
+          <a
+            href="https://github.com/extshefat/gresspay/blob/main/docs/APK_SECURITY_REVIEW.md"
+            className="font-semibold underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            docs/APK_SECURITY_REVIEW.md
+          </a>
+          .
+        </p>
       </div>
 
       <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-12">
