@@ -200,6 +200,7 @@ final class GpDb
             'ALTER TABLE gp_merchants ADD COLUMN telegram_chat_id VARCHAR(64)',
             'ALTER TABLE gp_merchants ADD COLUMN discord_webhook_url TEXT',
             'ALTER TABLE gp_merchants ADD COLUMN receipt_footer TEXT',
+            'ALTER TABLE gp_merchants ADD COLUMN notify_prefs_json TEXT',
             'ALTER TABLE gp_api_keys ADD COLUMN key_sealed TEXT',
             'ALTER TABLE gp_devices ADD COLUMN token_sealed TEXT',
         ];
@@ -539,6 +540,35 @@ final class GpDb
                 created_at TEXT NOT NULL
               )";
         self::execDdl($creditsTable);
+
+        $supportTickets = self::$driver === 'mysql'
+            ? "CREATE TABLE IF NOT EXISTS gp_support_tickets (
+                id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                ticket_id VARCHAR(32) NOT NULL,
+                merchant_id VARCHAR(24) NOT NULL,
+                brand_id VARCHAR(24) NOT NULL,
+                contact_email VARCHAR(190) NOT NULL,
+                subject VARCHAR(200) NOT NULL,
+                message TEXT NOT NULL,
+                status VARCHAR(20) NOT NULL DEFAULT 'open',
+                created_at VARCHAR(32) NOT NULL,
+                updated_at VARCHAR(32) NOT NULL,
+                UNIQUE KEY uq_gp_support_ticket (ticket_id),
+                KEY idx_gp_support_merchant (merchant_id)
+              ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+            : "CREATE TABLE IF NOT EXISTS gp_support_tickets (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ticket_id VARCHAR(32) NOT NULL UNIQUE,
+                merchant_id VARCHAR(24) NOT NULL,
+                brand_id VARCHAR(24) NOT NULL,
+                contact_email VARCHAR(190) NOT NULL,
+                subject VARCHAR(200) NOT NULL,
+                message TEXT NOT NULL,
+                status VARCHAR(20) NOT NULL DEFAULT 'open',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+              )";
+        self::execDdl($supportTickets);
 
         $adminAuditTable = self::$driver === 'mysql'
             ? "CREATE TABLE IF NOT EXISTS gp_admin_audit_logs (
