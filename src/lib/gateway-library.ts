@@ -22,7 +22,7 @@ export const GATEWAY_LOGO_FILES: Record<string, string> = {
   bkash: "bkash.svg",
   nagad: "nagad.svg",
   rocket: "rocket.svg",
-  upay: "upay.png",
+  upay: "upay.svg",
   cellfin: "cellfin.png",
   bangla_qr: "bangla_qr.svg",
   bangla_qr_v2: "bangla_qr_v2.svg",
