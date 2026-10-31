@@ -35,8 +35,8 @@ export const Footer: React.FC = () => {
                 </Link>
               </li>
               <li>
-                <Link href="/dashboard/devices" className="hover:text-teal-400 transition-colors">
-                  Android SMS Companion
+                <Link href="/download" className="hover:text-teal-400 transition-colors">
+                  Android Companion APK
                 </Link>
               </li>
             </ul>

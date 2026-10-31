@@ -31,8 +31,48 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
+        source: "/downloads",
+        destination: "/download",
+        permanent: true,
+      },
+      {
+        source: "/downloads/",
+        destination: "/download",
+        permanent: true,
+      },
+      {
         source: "/downloads/:path*",
         destination: "/download/:path*",
+        permanent: true,
+      },
+      {
+        source: "/pricing",
+        destination: "/fees",
+        permanent: true,
+      },
+      {
+        source: "/pricing/",
+        destination: "/fees",
+        permanent: true,
+      },
+      {
+        source: "/docs",
+        destination: "/developers",
+        permanent: true,
+      },
+      {
+        source: "/docs/",
+        destination: "/developers",
+        permanent: true,
+      },
+      {
+        source: "/companion",
+        destination: "/download",
+        permanent: true,
+      },
+      {
+        source: "/companion/",
+        destination: "/download",
         permanent: true,
       },
     ];
