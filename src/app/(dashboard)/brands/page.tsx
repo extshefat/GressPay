@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
-import { CopyField } from "@/components/ui/copy-field";
 import { useToast } from "@/components/ui/toast";
 import { MerchantEnvSnippet } from "@/features/developers/MerchantEnvSnippet";
-import { Building2, Plus, RefreshCw, Check, Copy } from "lucide-react";
+import { Plus, RefreshCw, Copy, MoreVertical, Check } from "lucide-react";
+import Link from "next/link";
 
 type BrandRow = {
   brandId: string;
@@ -18,7 +18,8 @@ type BrandRow = {
   active: boolean;
   deviceCount: number;
   gatewayCount: number;
-  apiKeyMasked?: string;
+  websiteApiKey?: string;
+  websiteApiKeyMasked?: string;
   webhookUrl?: string | null;
 };
 
@@ -30,6 +31,7 @@ export default function BrandsPage() {
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -57,7 +59,7 @@ export default function BrandsPage() {
     try {
       await api.createBrand(name.trim());
       setName("");
-      success("Brand created and selected");
+      success("Brand created with a live website API key — use Copy in the table anytime.");
       await load();
     } catch (err: unknown) {
       toastError(err instanceof Error ? err.message : "Could not create brand.");
@@ -68,6 +70,7 @@ export default function BrandsPage() {
 
   const switchTo = async (brandId: string) => {
     setBusy(brandId);
+    setMenuOpen(null);
     try {
       const res = await api.switchBrand(brandId);
       success(`Switched to ${res.name}`);
@@ -79,20 +82,37 @@ export default function BrandsPage() {
     }
   };
 
-  const activeBrand = brands.find((b) => b.brandId === activeBrandId || b.active);
+  const copyWebsiteKey = async (b: BrandRow) => {
+    const full = b.websiteApiKey?.trim();
+    if (!full) {
+      toastError(
+        "No re-copyable key on file. Create a new live key under API & Webhooks — keys issued after this update stay copyable here.",
+        "Key unavailable"
+      );
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(full);
+      success("Website API key copied to clipboard");
+    } catch {
+      toastError("Clipboard blocked — select and copy manually.");
+    }
+  };
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">My Brands</h1>
           <p className="mt-1 text-xs text-zinc-500">
-            Each brand has its own API keys, gateways, devices, and webhooks. Switch brands from this page.
+            Brand website API keys for <code className="font-mono">POST /payment/create</code> on your store. Copy anytime from this table.
           </p>
         </div>
-        <Button size="sm" variant="outline" onClick={load} isLoading={loading} leftIcon={<RefreshCw className="h-3.5 w-3.5" />}>
-          Refresh
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={load} isLoading={loading} leftIcon={<RefreshCw className="h-3.5 w-3.5" />}>
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -103,14 +123,7 @@ export default function BrandsPage() {
 
       <MerchantEnvSnippet />
 
-      {activeBrand?.apiKeyMasked && activeBrand.apiKeyMasked !== "—" && (
-        <CopyField label="Active brand API key (masked)" value={activeBrand.apiKeyMasked} masked canUnmask={false} />
-      )}
-
       <Card className="space-y-4 border-zinc-200 p-6 dark:border-zinc-800">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Add New Brand</h2>
-        </div>
         <form onSubmit={create} className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <div className="flex-1">
             <Input
@@ -127,15 +140,15 @@ export default function BrandsPage() {
         </form>
       </Card>
 
-      <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800">
+      <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
         <table className="min-w-full text-left text-xs">
-          <thead className="border-b border-zinc-200 bg-zinc-50 font-mono text-[10px] uppercase text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
+          <thead className="border-b border-zinc-200 bg-zinc-50 font-mono text-[10px] uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
             <tr>
-              <th className="px-4 py-2">#</th>
-              <th className="px-4 py-2">Brand name</th>
-              <th className="px-4 py-2">Brand key (website)</th>
-              <th className="px-4 py-2">Status</th>
-              <th className="px-4 py-2">Actions</th>
+              <th className="px-4 py-3">#</th>
+              <th className="px-4 py-3">Brand name</th>
+              <th className="px-4 py-3">Brand key / API key (for website)</th>
+              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -144,25 +157,18 @@ export default function BrandsPage() {
                 <td className="px-4 py-3 text-zinc-500">{idx + 1}</td>
                 <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-zinc-100">{b.name}</td>
                 <td className="px-4 py-3">
-                  <div className="flex items-center gap-2 font-mono text-[11px]">
-                    <span>{b.apiKeyMasked || "—"}</span>
-                    {b.apiKeyMasked && b.apiKeyMasked !== "—" && (
-                      <button
-                        type="button"
-                        className="text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
-                        aria-label="Copy masked key prefix"
-                        onClick={async () => {
-                          try {
-                            await navigator.clipboard.writeText(b.apiKeyMasked || "");
-                            success("Prefix copied (full secret is only shown when you create a key)");
-                          } catch {
-                            toastError("Could not copy");
-                          }
-                        }}
-                      >
-                        <Copy className="h-3.5 w-3.5" />
-                      </button>
-                    )}
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-[11px] text-zinc-600 dark:text-zinc-400">
+                      {b.websiteApiKeyMasked || "—"}
+                    </span>
+                    <button
+                      type="button"
+                      className="inline-flex items-center justify-center rounded-md border border-zinc-200 p-1.5 text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                      aria-label={`Copy website API key for ${b.name}`}
+                      onClick={() => copyWebsiteKey(b)}
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                    </button>
                   </div>
                 </td>
                 <td className="px-4 py-3">
@@ -176,15 +182,46 @@ export default function BrandsPage() {
                     </Badge>
                   )}
                 </td>
-                <td className="px-4 py-3">
-                  {b.active || b.brandId === activeBrandId ? (
-                    <Button size="sm" variant="outline" disabled leftIcon={<Check className="h-3.5 w-3.5" />}>
-                      Selected
-                    </Button>
-                  ) : (
-                    <Button size="sm" onClick={() => switchTo(b.brandId)} isLoading={busy === b.brandId}>
-                      Switch
-                    </Button>
+                <td className="px-4 py-3 text-right relative">
+                  <button
+                    type="button"
+                    className="inline-flex rounded-lg p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                    aria-label="Brand actions"
+                    onClick={() => setMenuOpen(menuOpen === b.brandId ? null : b.brandId)}
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </button>
+                  {menuOpen === b.brandId && (
+                    <div className="absolute right-4 top-10 z-20 min-w-[160px] rounded-xl border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+                      {!(b.active || b.brandId === activeBrandId) && (
+                        <button
+                          type="button"
+                          className="block w-full px-3 py-2 text-left text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                          onClick={() => switchTo(b.brandId)}
+                        >
+                          Switch to brand
+                        </button>
+                      )}
+                      {(b.active || b.brandId === activeBrandId) && (
+                        <div className="flex items-center gap-2 px-3 py-2 text-xs text-zinc-500">
+                          <Check className="h-3.5 w-3.5" /> Selected
+                        </div>
+                      )}
+                      <Link
+                        href="/dashboard/api-keys"
+                        className="block px-3 py-2 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                        onClick={() => setMenuOpen(null)}
+                      >
+                        Manage API keys
+                      </Link>
+                      <Link
+                        href="/dashboard/methods"
+                        className="block px-3 py-2 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                        onClick={() => setMenuOpen(null)}
+                      >
+                        Configure gateways
+                      </Link>
+                    </div>
                   )}
                 </td>
               </tr>
@@ -192,7 +229,7 @@ export default function BrandsPage() {
           </tbody>
         </table>
         {!loading && brands.length === 0 && (
-          <p className="p-4 text-xs text-zinc-500">No brands yet — create your first store above.</p>
+          <p className="p-6 text-center text-xs text-zinc-500">No brands yet — add your first store above.</p>
         )}
       </div>
     </div>

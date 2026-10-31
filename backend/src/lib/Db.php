@@ -200,6 +200,8 @@ final class GpDb
             'ALTER TABLE gp_merchants ADD COLUMN telegram_chat_id VARCHAR(64)',
             'ALTER TABLE gp_merchants ADD COLUMN discord_webhook_url TEXT',
             'ALTER TABLE gp_merchants ADD COLUMN receipt_footer TEXT',
+            'ALTER TABLE gp_api_keys ADD COLUMN key_sealed TEXT',
+            'ALTER TABLE gp_devices ADD COLUMN token_sealed TEXT',
         ];
         foreach ($deviceAlters as $sql) {
             try {

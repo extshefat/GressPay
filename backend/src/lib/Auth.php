@@ -173,14 +173,16 @@ final class GpAuth
         $plain = ($mode === 'test' ? 'gp_test_' : 'gp_live_') . bin2hex(random_bytes(18));
         $prefix = substr($plain, 0, 16);
         $now = GpIds::now();
+        $sealed = GpCrypto::seal($plain);
         GpDb::exec(
-            'INSERT INTO gp_api_keys (brand_id, name, prefix, key_hash, mode, scopes, status, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO gp_api_keys (brand_id, name, prefix, key_hash, key_sealed, mode, scopes, status, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 $brandId,
                 $name,
                 $prefix,
                 password_hash($plain, PASSWORD_BCRYPT),
+                $sealed,
                 $mode,
                 GpIds::defaultScopes(),
                 'active',

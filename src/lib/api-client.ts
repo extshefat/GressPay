@@ -558,7 +558,8 @@ class ApiClient {
       active: boolean;
       deviceCount: number;
       gatewayCount: number;
-      apiKeyMasked?: string;
+      websiteApiKey?: string;
+      websiteApiKeyMasked?: string;
     }>;
     activeBrandId: string;
   }> {
