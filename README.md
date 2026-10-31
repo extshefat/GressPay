@@ -153,7 +153,7 @@ cd GressPay-App-Project
 cp app/build/outputs/apk/debug/app-debug.apk ../public/download/gresspay-companion.apk
 ```
 
-Pair with a merchant `gp_live_` / `gp_test_` API key → opt-in → enable matching.  
+Pair with your brand website `gp_live_` API key (Dashboard → Brands) → opt-in → enable matching.  
 `READ_SMS` is requested only when the merchant taps **Scan Inbox (24h)**.
 
 ---

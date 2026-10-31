@@ -18,6 +18,9 @@ final class BrandsController
         if ($req->method === 'POST' && $id !== null && $action === 'switch') {
             self::switchBrand($actor, $id);
         }
+        if ($req->method === 'POST' && $id !== null && $action === 'rotate-website-key') {
+            self::rotateWebsiteKey($actor, $id);
+        }
         if ($req->method === 'PUT' && $id !== null && $action === null) {
             self::update($actor, $id, $req);
         }
@@ -59,11 +62,10 @@ final class BrandsController
                 'deviceCount' => $deviceCount,
                 'gatewayCount' => $gwCount,
                 'websiteApiKey' => $websitePlain,
-                'websiteApiKeyMasked' => $websitePlain !== ''
-                    ? substr($websitePlain, 0, 12) . '••••••••'
-                    : (is_array($liveKey) && ($liveKey['prefix'] ?? '') !== ''
-                        ? $liveKey['prefix'] . '••••••••'
-                        : '—'),
+                'websiteApiKeyMasked' => ($websitePlain !== '' || (is_array($liveKey) && ($liveKey['prefix'] ?? '') !== ''))
+                    ? '**********'
+                    : '—',
+                'websiteApiKeyCopyable' => $websitePlain !== '',
                 'createdAt' => $row['created_at'] ?? null,
             ];
         }
@@ -122,8 +124,7 @@ final class BrandsController
                 [$brandId, $code, 'inactive', '{}', $now, $now]
             );
         }
-        GpAuth::issueKey($brandId, 'live', 'Default live');
-        GpAuth::issueKey($brandId, 'test', 'Default test');
+        GpAuth::issueKey($brandId, 'live', 'Website API key');
 
         $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$actor['merchant_id']]);
         $token = GpJwt::encode([
@@ -143,6 +144,28 @@ final class BrandsController
             'token' => $token,
             'note' => 'Brand created. Use the returned token (or X-GressPay-Brand) for subsequent calls.',
         ], 201);
+    }
+
+    /** @param array<string,mixed> $actor */
+    private static function rotateWebsiteKey(array $actor, string $brandId): never
+    {
+        $brand = GpDb::one(
+            'SELECT * FROM gp_brands WHERE brand_id = ? AND merchant_id = ?',
+            [$brandId, $actor['merchant_id']]
+        );
+        if ($brand === null) {
+            GpJson::error('NOT_FOUND', 'Brand not found for this merchant.', 404);
+        }
+        GpDb::exec(
+            'UPDATE gp_api_keys SET status = ?, updated_at = ? WHERE brand_id = ? AND mode = ? AND status = ?',
+            ['inactive', GpIds::now(), $brandId, 'live', 'active']
+        );
+        $issued = GpAuth::issueKey($brandId, 'live', 'Website API key (rotated)');
+        GpJson::send([
+            'brandId' => $brandId,
+            'websiteApiKey' => $issued['key'],
+            'note' => 'New website API key issued. Copy anytime from the Brands table.',
+        ]);
     }
 
     /** @param array<string,mixed> $actor */

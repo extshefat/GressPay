@@ -262,17 +262,19 @@ export interface ExchangeRatesResponse {
 export interface ApiCredentials {
   merchantId: string;
   brandId?: string;
-  hasLiveKey?: boolean;
-  hasSandboxKey?: boolean;
   hasWebhookSecret?: boolean;
-  livePublicKey: string;
-  liveSecretKey: string;
-  sandboxPublicKey: string;
-  sandboxSecretKey: string;
   webhookSecret: string;
   webhookUrl?: string;
   checkoutUrl?: string;
   verifyUrl?: string;
+  note?: string;
+  /** @deprecated Legacy merchant-wide keys removed from dashboard — use Brands. */
+  hasLiveKey?: boolean;
+  hasSandboxKey?: boolean;
+  livePublicKey?: string;
+  liveSecretKey?: string;
+  sandboxPublicKey?: string;
+  sandboxSecretKey?: string;
   keys?: Array<{
     id: number;
     name: string;
@@ -282,7 +284,6 @@ export interface ApiCredentials {
     createdAt?: string | null;
     lastUsedAt?: string | null;
   }>;
-  note?: string;
 }
 
 export interface DashboardMetrics {

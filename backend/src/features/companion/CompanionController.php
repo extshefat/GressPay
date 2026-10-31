@@ -96,7 +96,8 @@ final class CompanionController
             GpJson::send([
                 'deviceId' => $devicePart,
                 'token' => $plain,
-                'note' => 'Shown once. Previous token is invalid.',
+                'deviceAppKey' => $plain,
+                'note' => 'Device API key rotated. Copy anytime from the Devices table.',
             ]);
         }
 
@@ -346,9 +347,8 @@ final class CompanionController
                 'createdAt' => $r['created_at'],
                 'updatedAt' => $r['updated_at'],
                 'deviceAppKey' => $plain,
-                'deviceAppKeyMasked' => $plain !== ''
-                    ? substr($plain, 0, 12) . '••••••••'
-                    : 'gpdev_••••••••',
+                'deviceAppKeyMasked' => $plain !== '' ? '**********' : '**********',
+                'deviceAppKeyCopyable' => $plain !== '',
             ];
         }
         GpJson::send(['devices' => $out]);

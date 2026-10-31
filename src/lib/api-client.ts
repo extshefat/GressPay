@@ -310,6 +310,18 @@ class ApiClient {
         return this.request(`/api/v1/companion/devices/${deviceId}/revoke`, { method: "POST", body: "{}" });
   }
 
+  async rotateCompanionDevice(deviceId: string): Promise<{
+    deviceId: string;
+    token: string;
+    deviceAppKey?: string;
+    note: string;
+  }> {
+    return this.request(`/api/v1/companion/devices/${deviceId}/rotate`, {
+      method: "POST",
+      body: "{}",
+    });
+  }
+
   async getBinancePayStatus(): Promise<{
     configured: boolean;
     liveReady: boolean;
@@ -602,6 +614,13 @@ class ApiClient {
       this.setBrandId(res.brandId);
     }
     return res;
+  }
+
+  async rotateBrandWebsiteKey(brandId: string): Promise<{ brandId: string; websiteApiKey: string; note: string }> {
+    return this.request(`/api/v1/brands/${brandId}/rotate-website-key`, {
+      method: "POST",
+      body: "{}",
+    });
   }
 
   async testWebhookPing(): Promise<{ ok: boolean; httpCode?: number; message?: string }> {

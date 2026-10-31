@@ -32,9 +32,9 @@ const FAQS = [
       "The buyer sends USDT on TRON only, then pastes the 64-character hash. The server checks the official USDT contract, your Base58 receive address, exact micro-amount, and confirmations. A pasted hash alone never completes a live payment.",
   },
   {
-    question: "Live vs test in the dashboard?",
+    question: "Where do I get my API key?",
     answer:
-      "The Live / Test toggle sends X-GressPay-Mode for JWT sessions, or uses gp_live_ / gp_test_ API keys. Hosted checkout inherits the payment link’s ledger mode. Test ledger may simulate SMS rails; live never marks paid from TxID format alone.",
+      "Each brand has its own live gp_live_ website key under Dashboard → Brands (Copy puts the full secret on your clipboard). Register Companion phones under Devices for gpdev_ device keys. Webhook signing secrets are under Webhooks & Integration.",
   },
 ];
 
