@@ -10,7 +10,7 @@ const TOOLS = [
   {
     title: "GressPay Companion v1.2",
     description:
-      "Android app for SMS payment verification. Set as default SMS app or grant permissions for real-time MFS matching.",
+      "Android SMS verification app. Download the APK, then pair using the Device API key from Dashboard → Devices.",
     href: "/download/gresspay-companion.apk",
     cta: "Download APK",
     icon: Smartphone,
