@@ -767,7 +767,7 @@ export default function AdminPage() {
                             type="button"
                             onClick={() => {
                               setTargetMerchant(m);
-                              setTargetPlanId(m.planId || "plan_starter");
+                              setTargetPlanId(m.planId || "plan_trial");
                               setTargetPlanExpiresAt(m.planExpiresAt ? m.planExpiresAt.split("T")[0] : "");
                               setTargetPlanIsLifetime(m.planId === "lifetime" || !m.planExpiresAt);
                               setTargetBonusCredits(0);
@@ -834,7 +834,7 @@ export default function AdminPage() {
                             variant="ghost"
                             onClick={() => {
                               setTargetMerchant(m);
-                              setTargetPlanId(m.planId || "plan_starter");
+                              setTargetPlanId(m.planId || "plan_trial");
                               setTargetPlanExpiresAt(m.planExpiresAt ? m.planExpiresAt.split("T")[0] : "");
                               setTargetPlanIsLifetime(m.planId === "lifetime" || !m.planExpiresAt);
                               setTargetBonusCredits(0);
@@ -1305,8 +1305,10 @@ export default function AdminPage() {
                   ))
                 ) : (
                   <>
-                    <option value="plan_starter">Starter Plan</option>
-                    <option value="plan_pro">Pro Plan</option>
+                    <option value="plan_trial">Trial</option>
+                    <option value="plan_starter">Starter (paid)</option>
+                    <option value="plan_premium">Premium</option>
+                    <option value="plan_pro">Pro</option>
                     <option value="plan_enterprise">Enterprise Plan</option>
                     <option value="plan_lifetime">Lifetime Deal</option>
                   </>

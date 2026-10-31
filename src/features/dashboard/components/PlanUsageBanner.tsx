@@ -68,7 +68,7 @@ export function PlanUsageBanner({ usage, className = "" }: Props) {
       <Alert variant="warning" className={className}>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <p className="text-sm">
-            Your account is on the Free plan (1 website). Upgrade to add more websites to your account.
+            Your account is on Trial or Starter (1 website). Upgrade to add more websites to your account.
           </p>
           <Link href="/fees">
             <Button size="sm" variant="secondary" rightIcon={<ArrowRight className="w-4 h-4" />}>

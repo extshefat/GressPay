@@ -11,8 +11,12 @@ import { PricingSection } from "@/features/marketing/components/PricingSection";
 export default function FeesPage() {
   const faqs = [
     {
-      q: "What is included on the Free plan?",
-      a: "Each account on the Free plan (Starter) includes 1 website and up to 50 completed checkouts per calendar month, counted in the Asia/Dhaka timezone. Payment links and API checkout both count toward completed checkouts when they settle.",
+      q: "What is included on the Trial plan?",
+      a: "Every new account starts on Trial automatically. You get 1 website and up to 50 completed checkouts per calendar month (Asia/Dhaka timezone). Payment links and API checkout both count when they settle. Subscribe to Starter, Premium, or Pro for unlimited checkouts and more websites.",
+    },
+    {
+      q: "How do Starter, Premium, and Pro differ?",
+      a: "All paid plans include unlimited completed checkouts and 0% transaction fees. Starter includes 1 website, Premium includes 2 websites plus crypto and branding, and Pro includes 5 websites with priority webhook retries.",
     },
     {
       q: "Do you take any percentage commission from my transactions?",
@@ -24,7 +28,7 @@ export default function FeesPage() {
     },
     {
       q: "Can I use multiple SIMs and phones simultaneously?",
-      a: "Yes! On the Pro Plan you can pair up to 5 Android devices, and on the Enterprise or Lifetime plans you can pair unlimited devices to handle high-concurrency payment volume.",
+      a: "Yes. Trial and Starter support 1 companion device, Premium up to 3, and Pro up to 5 Android devices for high-concurrency payment volume.",
     },
     {
       q: "What happens if my phone temporarily loses internet connection?",
@@ -52,7 +56,7 @@ export default function FeesPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="p-6 space-y-3 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40">
+          <Card className="p-6 space-y-3 border-void-border bg-void-card dark:bg-zinc-900/40">
             <div className="w-10 h-10 rounded-xl bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 flex items-center justify-center font-mono font-bold text-sm">
               01
             </div>
@@ -64,7 +68,7 @@ export default function FeesPage() {
             </p>
           </Card>
 
-          <Card className="p-6 space-y-3 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40">
+          <Card className="p-6 space-y-3 border-void-border bg-void-card dark:bg-zinc-900/40">
             <div className="w-10 h-10 rounded-xl bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 flex items-center justify-center font-mono font-bold text-sm">
               02
             </div>
@@ -76,7 +80,7 @@ export default function FeesPage() {
             </p>
           </Card>
 
-          <Card className="p-6 space-y-3 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40">
+          <Card className="p-6 space-y-3 border-void-border bg-void-card dark:bg-zinc-900/40">
             <div className="w-10 h-10 rounded-xl bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 flex items-center justify-center font-mono font-bold text-sm">
               03
             </div>
@@ -91,7 +95,7 @@ export default function FeesPage() {
 
         {/* Pricing FAQ */}
         <div className="pt-8">
-          <Card className="p-8 border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30 space-y-6">
+          <Card className="p-8 border-void-border bg-void-muted/80 dark:bg-zinc-900/30 space-y-6">
             <h3 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
               Frequently Asked Questions About Subscriptions
             </h3>

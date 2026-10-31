@@ -704,12 +704,20 @@ assert_true(($createOut['status'] ?? false) === true, 'create payload status is 
 assert_true(($createOut['session_id'] ?? '') === 'chs_stage1_create', 'create payload includes session_id');
 assert_true(str_contains((string) ($createOut['payment_url'] ?? ''), '/pay/chs_stage1_create'), 'create payload includes payment_url');
 
-// —— Admin plan assign accepts marketing code (starter → plan_starter) ——
-$planRow = GpDb::one('SELECT plan_id FROM gp_plans WHERE LOWER(code) = ? LIMIT 1', ['starter']);
+// —— Plan seeds: trial + paid starter ——
+$trialRow = GpDb::one('SELECT plan_id, credit_allowance FROM gp_plans WHERE LOWER(code) = ? LIMIT 1', ['trial']);
+assert_true(
+    is_array($trialRow) && strtolower((string) ($trialRow['plan_id'] ?? '')) === 'plan_trial',
+    'gp_plans seeds trial code resolving to plan_trial'
+);
+assert_true((int) ($trialRow['credit_allowance'] ?? 0) === 50, 'trial credit_allowance is 50');
+
+$planRow = GpDb::one('SELECT plan_id, credit_allowance FROM gp_plans WHERE LOWER(code) = ? LIMIT 1', ['starter']);
 assert_true(
     is_array($planRow) && strtolower((string) ($planRow['plan_id'] ?? '')) === 'plan_starter',
     'gp_plans seeds starter code resolving to plan_starter'
 );
+assert_true((int) ($planRow['credit_allowance'] ?? 0) >= 999999, 'paid starter has unlimited checkout allowance');
 
 // —— Webhook delivery stats use completed status (not legacy delivered) ——
 $whBrandStat = GpIds::make('b', 6);
@@ -728,14 +736,14 @@ $limMerch = GpIds::make('m', 6);
 $limNow = GpIds::now();
 GpDb::exec(
     'INSERT INTO gp_merchants (merchant_id, full_name, email, password_hash, plan_id, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)',
-    [$limMerch, 'Limit Merchant', 'lim_' . bin2hex(random_bytes(3)) . '@test.local', password_hash('x', PASSWORD_BCRYPT), 'starter', 'active', $limNow, $limNow]
+    [$limMerch, 'Limit Merchant', 'lim_' . bin2hex(random_bytes(3)) . '@test.local', password_hash('x', PASSWORD_BCRYPT), 'trial', 'active', $limNow, $limNow]
 );
 GpDb::exec(
     'INSERT INTO gp_brands (brand_id, merchant_id, name, currency_code, timezone, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
     [$limBrand, $limMerch, 'Limit Brand', 'BDT', 'Asia/Dhaka', $limNow, $limNow]
 );
 $starterLimits = GpPlatform::planLimitsForBrand($limBrand);
-assert_true(($starterLimits['deviceLimit'] ?? 0) >= 1, 'starter plan exposes deviceLimit');
+assert_true(($starterLimits['deviceLimit'] ?? 0) >= 1, 'trial plan exposes deviceLimit');
 GpDb::exec(
     'INSERT INTO gp_devices (device_id, brand_id, label, token_hash, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
     [GpIds::make('dev', 8), $limBrand, 'first', password_hash('gpdev_test1', PASSWORD_BCRYPT), 'active', $limNow, $limNow]
@@ -746,7 +754,7 @@ $activeDev = (int) (GpDb::one(
 )['c'] ?? 0);
 assert_true(
     $activeDev >= $starterLimits['deviceLimit'],
-    'starter deviceLimit reached after registering one companion device'
+    'trial deviceLimit reached after registering one companion device'
 );
 
 // —— Companion SMS brand-scoped token lookup ——
@@ -865,21 +873,21 @@ $devSealed = GpDb::one('SELECT token_sealed FROM gp_devices WHERE brand_id = ? O
 $devReopened = is_array($devSealed) ? (GpCrypto::open((string) ($devSealed['token_sealed'] ?? '')) ?? '') : '';
 assert_true($devReopened === $devPlain, 'token_sealed decrypts to full device key for owner copy');
 
-// —— Wave 3: Free plan brand cap + monthly completed checkout cap ——
+// —— Wave 3: Trial brand cap + monthly completed checkout cap ——
 $quotaMerchant = GpIds::make('m', 6);
 $quotaBrand1 = GpIds::make('b', 6);
 $nowQ = GpIds::now();
 GpDb::exec(
     "INSERT INTO gp_merchants (merchant_id, full_name, email, password_hash, role, status, plan_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)",
-    [$quotaMerchant, 'Quota User', 'quota-free@test.local', password_hash('x', PASSWORD_BCRYPT), 'merchant', 'active', 'plan_starter', $nowQ, $nowQ]
+    [$quotaMerchant, 'Quota User', 'quota-free@test.local', password_hash('x', PASSWORD_BCRYPT), 'merchant', 'active', 'plan_trial', $nowQ, $nowQ]
 );
 GpDb::exec(
     'INSERT INTO gp_brands (brand_id, merchant_id, name, currency_code, timezone, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
     [$quotaBrand1, $quotaMerchant, 'Only Site', 'BDT', 'Asia/Dhaka', $nowQ, $nowQ]
 );
 $usageQ = GpPlanLimits::usageForMerchant($quotaMerchant);
-assert_true($usageQ['brands']['used'] === 1 && $usageQ['brands']['limit'] === 1 && $usageQ['brands']['atLimit'] === true, 'Free account at 1-brand cap');
-assert_true($usageQ['monthlyCompleted']['limit'] === 50, 'Free monthly completed cap is 50');
+assert_true($usageQ['brands']['used'] === 1 && $usageQ['brands']['limit'] === 1 && $usageQ['brands']['atLimit'] === true, 'Trial account at 1-brand cap');
+assert_true($usageQ['monthlyCompleted']['limit'] === 50, 'Trial monthly completed cap is 50');
 
 $windowQ = GpPlanLimits::currentBillingMonthWindow();
 for ($i = 0; $i < 50; $i++) {
@@ -897,7 +905,7 @@ $usageWarnMerchant = GpIds::make('m', 6);
 $usageWarnBrand = GpIds::make('b', 6);
 GpDb::exec(
     "INSERT INTO gp_merchants (merchant_id, full_name, email, password_hash, role, status, plan_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)",
-    [$usageWarnMerchant, 'Warn User', 'quota-warn@test.local', password_hash('x', PASSWORD_BCRYPT), 'merchant', 'active', 'starter', $nowQ, $nowQ]
+    [$usageWarnMerchant, 'Warn User', 'quota-warn@test.local', password_hash('x', PASSWORD_BCRYPT), 'merchant', 'active', 'trial', $nowQ, $nowQ]
 );
 GpDb::exec(
     'INSERT INTO gp_brands (brand_id, merchant_id, name, currency_code, timezone, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
@@ -919,6 +927,21 @@ GpDb::exec(
     [$proMerchant, 'Pro User', 'quota-pro@test.local', password_hash('x', PASSWORD_BCRYPT), 'merchant', 'active', 'pro', $nowQ, $nowQ]
 );
 assert_true(GpPlanLimits::maxBrandsForMerchant($proMerchant) === 5, 'Pro plan allows 5 websites');
+
+$premiumMerchant = GpIds::make('m', 6);
+GpDb::exec(
+    "INSERT INTO gp_merchants (merchant_id, full_name, email, password_hash, role, status, plan_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)",
+    [$premiumMerchant, 'Premium User', 'quota-premium@test.local', password_hash('x', PASSWORD_BCRYPT), 'merchant', 'active', 'premium', $nowQ, $nowQ]
+);
+assert_true(GpPlanLimits::maxBrandsForMerchant($premiumMerchant) === 2, 'Premium plan allows 2 websites');
+
+$paidStarterMerchant = GpIds::make('m', 6);
+GpDb::exec(
+    "INSERT INTO gp_merchants (merchant_id, full_name, email, password_hash, role, status, plan_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)",
+    [$paidStarterMerchant, 'Paid Starter', 'quota-paid-starter@test.local', password_hash('x', PASSWORD_BCRYPT), 'merchant', 'active', 'starter', $nowQ, $nowQ]
+);
+$paidUsage = GpPlanLimits::usageForMerchant($paidStarterMerchant);
+assert_true($paidUsage['monthlyCompleted']['unlimited'] === true, 'paid starter has unlimited monthly checkouts');
 
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);
