@@ -79,9 +79,9 @@ export const GlobeHero: React.FC = () => {
             >
               Connect your store to{" "}
               <span className="font-semibold text-zinc-900 dark:text-zinc-100">gresspay.extxcheats.com</span> with real
-              API keys. Funds settle to your wallets; the Companion app matches SMS in seconds. Use{" "}
+              API keys, then call{" "}
               <code className="font-mono text-xs">POST /payment/create</code> and{" "}
-              <code className="font-mono text-xs">POST /payment/verify</code> on your site — no toy sandbox required.
+              <code className="font-mono text-xs">POST /payment/verify</code> on your site.
             </motion.p>
 
             <motion.ol

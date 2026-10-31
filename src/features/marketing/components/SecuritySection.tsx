@@ -13,8 +13,8 @@ export const SecuritySection: React.FC = () => {
     },
     {
       icon: <Server className="w-5 h-5 text-[#077C74] dark:text-[#1BD1C0]" />,
-      title: "Strict Ledger Separation",
-      desc: "Live and Sandbox transactions are isolated at the database and API header level (`X-GressPay-Mode`). Test simulations can never impact real settlement balances.",
+      title: "Multi-tenant brand isolation",
+      desc: "Every gateway, device, API key, and transaction is scoped to your brand_id. Provider credentials are encrypted at rest and never shared across merchants.",
     },
     {
       icon: <EyeOff className="w-5 h-5 text-[#077C74] dark:text-[#1BD1C0]" />,

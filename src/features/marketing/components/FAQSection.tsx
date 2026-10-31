@@ -26,7 +26,7 @@ export const FAQSection: React.FC = () => {
     {
       question: "How does USDT TRC-20 verification work on GressPay?",
       answer:
-        "This is separate from Binance Pay. The customer sends USDT on TRON to the address you saved and submits the transaction hash. The server asks TronGrid for the transfer, then checks the token contract, recipient, exact amount, and the configured confirmation count. A hash that fails those checks does not mark the live checkout paid. A test-ledger session can simulate this and is not a chain payment.",
+        "This is separate from Binance Pay. The customer sends USDT on TRON to the address you saved and submits the transaction hash. The server asks TronGrid for the transfer, then checks the token contract, recipient, exact amount, and the configured confirmation count. A hash that fails those checks does not mark the checkout paid.",
     },
     {
       question: "Is my Android device secure? What permissions does the companion app require?",
@@ -44,9 +44,9 @@ export const FAQSection: React.FC = () => {
         "A completed bKash, Nagad, or TRON identifier cannot be used again for another checkout in the same brand. The check is per brand, not a global block across every merchant on the platform.",
     },
     {
-      question: "How does Sandbox mode differ from Live mode?",
+      question: "How do I integrate GressPay on my website?",
       answer:
-        "A gp_test_ API key writes to the test ledger. On that ledger, bKash, Nagad, and USDT can be marked complete without a real SMS or chain transfer. Live keys do not do that. The two ledgers are stored separately.",
+        "Create a merchant account, add your receiving gateways, copy your live API key from Brands or API settings, then call POST /api/v1/payment/create from your server and redirect buyers to the returned payment_url. Confirm settlement with POST /api/v1/payment/verify or signed webhooks before fulfilling orders.",
     },
     {
       question: "What is GressPay's webhook delivery and retry policy?",
