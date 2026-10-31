@@ -7,7 +7,7 @@ class McashPersonalGateway extends GressPayBaseGateway
     {
         return [
             'title' => 'mCash',
-            'logo' => '/methods/mcash.svg',
+            'logo' => '/methods/mcash.png',
             'currency' => 'BDT',
             'tab' => 'mfs',
             'gateway_type' => 'manual',

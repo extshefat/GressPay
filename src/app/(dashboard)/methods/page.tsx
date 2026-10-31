@@ -666,7 +666,7 @@ export default function GatewaysPage() {
                   onClick={() => pickFromLibrary(m.code)}
                   className="group flex flex-col items-center rounded-xl border border-zinc-800 bg-zinc-900/80 p-4 text-center transition hover:border-sky-500/60 hover:bg-zinc-900"
                 >
-                  <div className="relative mb-3 flex h-14 w-14 items-center justify-center rounded-xl bg-zinc-950 ring-1 ring-zinc-800">
+                  <div className="relative mb-3 flex h-14 w-14 items-center justify-center rounded-xl bg-white p-2 ring-1 ring-zinc-700/80">
                     <Image
                       src={gatewayLogoPath(m.code)}
                       alt=""

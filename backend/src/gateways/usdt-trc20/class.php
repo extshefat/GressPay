@@ -7,7 +7,7 @@ class UsdtTrc20Gateway extends GressPayBaseGateway
     {
         return [
             'title' => 'USDT TRC-20',
-            'logo' => '/methods/usdt_trc20.svg',
+            'logo' => '/methods/usdt_trc20.png',
             'currency' => 'USDT',
             'tab' => 'crypto',
             'gateway_type' => 'onchain',

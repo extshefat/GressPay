@@ -7,7 +7,7 @@ class UpayPersonalGateway extends GressPayBaseGateway
     {
         return [
             'title' => 'Upay',
-            'logo' => '/methods/upay.svg',
+            'logo' => '/methods/upay.png',
             'currency' => 'BDT',
             'tab' => 'mfs',
             'gateway_type' => 'automation',

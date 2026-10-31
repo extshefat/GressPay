@@ -29,6 +29,31 @@ final class GpPresenters
         return round((float) $v, 2);
     }
 
+    /** Real brand asset path under /methods/ (extension varies: svg|png). */
+    public static function methodLogoPath(string $code): string
+    {
+        static $files = [
+            'bkash' => 'bkash.svg',
+            'nagad' => 'nagad.svg',
+            'rocket' => 'rocket.svg',
+            'upay' => 'upay.png',
+            'cellfin' => 'cellfin.png',
+            'bangla_qr' => 'bangla_qr.svg',
+            'bangla_qr_v2' => 'bangla_qr_v2.svg',
+            'pathaopay' => 'pathaopay.svg',
+            'mcash' => 'mcash.png',
+            'ok_wallet' => 'ok_wallet.png',
+            'tap' => 'tap.png',
+            'aamar_pay' => 'aamar_pay.png',
+            'usdt_trc20' => 'usdt_trc20.png',
+            'binance_pay' => 'binance_pay.png',
+            'bybit_pay' => 'bybit_pay.png',
+        ];
+        $key = strtolower(trim($code));
+        $file = $files[$key] ?? ($key . '.svg');
+        return '/methods/' . $file;
+    }
+
     public static function user(array $merchant, array $brand): array
     {
         $email = strtolower(trim((string) ($merchant['email'] ?? '')));
@@ -137,7 +162,7 @@ final class GpPresenters
             'name' => $ready['label'] !== '' ? $ready['label'] : $catalog['title'],
             'country' => $catalog['country'],
             'category' => $catalog['category'],
-            'logo' => '/methods/' . $catalog['code'] . '.svg',
+            'logo' => self::methodLogoPath((string) $catalog['code']),
             'currency' => $methodCurrency,
             'feePercentage' => (float) ($catalog['feePercentage'] ?? 0),
             'fixedFee' => (float) ($catalog['fixedFee'] ?? 0),

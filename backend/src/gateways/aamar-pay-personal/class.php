@@ -7,7 +7,7 @@ class AamarPayPersonalGateway extends GressPayBaseGateway
     {
         return [
             'title' => 'aamarPay',
-            'logo' => '/methods/aamar_pay.svg',
+            'logo' => '/methods/aamar_pay.png',
             'currency' => 'BDT',
             'tab' => 'mfs',
             'gateway_type' => 'manual',
