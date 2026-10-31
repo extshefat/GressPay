@@ -12,17 +12,36 @@ final class GpCatalog
     public static function methods(): array
     {
         return [
-            // Core Bangladesh MFS
+            // Core Bangladesh MFS (Companion SMS)
             self::row('bkash', 'bkash-personal', 'bKash Personal (Direct Wallet + SMS Match)', 'BD', 'BDT', 'mfs', 'automation', true, true, 1.2, 10, 25000),
             self::row('nagad', 'nagad-personal', 'Nagad Personal (Direct Wallet + SMS Match)', 'BD', 'BDT', 'mfs', 'automation', true, true, 1.0, 10, 25000),
             self::row('rocket', 'rocket-personal', 'Rocket Personal (Direct Wallet + SMS Match)', 'BD', 'BDT', 'mfs', 'automation', true, true, 1.2, 10, 25000),
             self::row('upay', 'upay-personal', 'Upay Personal (Direct Wallet + SMS Match)', 'BD', 'BDT', 'mfs', 'automation', true, true, 1.0, 10, 25000),
             self::row('cellfin', 'cellfin-personal', 'Cellfin IBBL (Smart Banking + SMS Match)', 'BD', 'BDT', 'mfs', 'automation', true, true, 1.0, 10, 50000),
 
+            // Bangladesh QR & extended MFS (manual TxID / optional QR; Companion when sender matches)
+            self::row('bangla_qr', 'bangla-qr-personal', 'Bangla QR', 'BD', 'BDT', 'mfs', 'manual', true, true, 0.0, 10, 100000),
+            self::row('bangla_qr_v2', 'bangla-qr-v2-personal', 'Bangla QR V2', 'BD', 'BDT', 'mfs', 'manual', true, true, 0.0, 10, 100000),
+            self::row('pathaopay', 'pathaopay-personal', 'Pathao Pay', 'BD', 'BDT', 'mfs', 'manual', true, true, 0.0, 10, 100000),
+            self::row('mcash', 'mcash-personal', 'mCash', 'BD', 'BDT', 'mfs', 'manual', true, true, 0.0, 10, 100000),
+            self::row('ok_wallet', 'ok-wallet-personal', 'OK Wallet', 'BD', 'BDT', 'mfs', 'manual', true, true, 0.0, 10, 100000),
+            self::row('tap', 'tap-personal', 'Tap', 'BD', 'BDT', 'mfs', 'manual', true, true, 0.0, 10, 100000),
+            self::row('aamar_pay', 'aamar-pay-personal', 'aamarPay', 'BD', 'BDT', 'mfs', 'manual', true, true, 0.0, 10, 100000),
+            self::row('custom_provider', 'custom-provider', 'Custom provider (manual)', 'BD', 'BDT', 'mfs', 'manual', true, true, 0.0, 10, 100000),
+
             // Crypto Rails
             self::row('usdt_trc20', 'usdt-trc20', 'USDT TRC-20 (TRON Blockchain)', 'GLOBAL', 'USDT', 'crypto', 'onchain', true, true, 0.0, 1, 100000),
             self::row('binance_pay', 'binance-personal', 'Binance Pay (Merchant API / QR)', 'GLOBAL', 'USDT', 'crypto', 'binance_pay_merchant', true, false, 0.0, 1, 100000),
             self::row('bybit_pay', 'bybit-pay', 'Bybit Pay (Internal Transfer / UID)', 'GLOBAL', 'USDT', 'crypto', 'manual', true, true, 0.0, 1, 100000),
+        ];
+    }
+
+    /** @return list<string> */
+    public static function bdMobileWalletCodes(): array
+    {
+        return [
+            'bkash', 'nagad', 'rocket', 'upay', 'cellfin',
+            'bangla_qr', 'bangla_qr_v2', 'pathaopay', 'mcash', 'ok_wallet', 'tap', 'aamar_pay', 'custom_provider',
         ];
     }
 

@@ -203,6 +203,10 @@ final class GpDb
             'ALTER TABLE gp_merchants ADD COLUMN notify_prefs_json TEXT',
             'ALTER TABLE gp_api_keys ADD COLUMN key_sealed TEXT',
             'ALTER TABLE gp_devices ADD COLUMN token_sealed TEXT',
+            'ALTER TABLE gp_gateways ADD COLUMN gateway_fee DECIMAL(20,8)',
+            'ALTER TABLE gp_gateways ADD COLUMN gateway_fee_type VARCHAR(16) NOT NULL DEFAULT \'percentage\'',
+            'ALTER TABLE gp_gateways ADD COLUMN exchange_rate DECIMAL(20,8)',
+            'ALTER TABLE gp_gateways ADD COLUMN gateway_category VARCHAR(32)',
         ];
         foreach ($deviceAlters as $sql) {
             try {
@@ -443,6 +447,41 @@ final class GpDb
                 UNIQUE(brand_id, gateway_id)
               )";
         self::execDdl($gateways);
+
+        $planOrders = self::$driver === 'mysql'
+            ? "CREATE TABLE IF NOT EXISTS gp_account_plan_orders (
+                id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                order_id VARCHAR(32) NOT NULL UNIQUE,
+                merchant_id VARCHAR(24) NOT NULL,
+                plan_id VARCHAR(32) NOT NULL,
+                plan_code VARCHAR(40) NOT NULL,
+                plan_name VARCHAR(80) NOT NULL,
+                amount DECIMAL(20,8) NOT NULL,
+                currency VARCHAR(8) NOT NULL DEFAULT 'BDT',
+                status VARCHAR(16) NOT NULL DEFAULT 'pending',
+                session_id VARCHAR(32) NULL,
+                trx_id VARCHAR(80) NULL,
+                created_at VARCHAR(32) NOT NULL,
+                updated_at VARCHAR(32) NOT NULL,
+                KEY idx_gp_apo_merchant (merchant_id),
+                KEY idx_gp_apo_session (session_id)
+              ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+            : "CREATE TABLE IF NOT EXISTS gp_account_plan_orders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                order_id VARCHAR(32) NOT NULL UNIQUE,
+                merchant_id VARCHAR(24) NOT NULL,
+                plan_id VARCHAR(32) NOT NULL,
+                plan_code VARCHAR(40) NOT NULL,
+                plan_name VARCHAR(80) NOT NULL,
+                amount DECIMAL(20,8) NOT NULL,
+                currency VARCHAR(8) NOT NULL DEFAULT 'BDT',
+                status VARCHAR(16) NOT NULL DEFAULT 'pending',
+                session_id VARCHAR(32),
+                trx_id VARCHAR(80),
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+              )";
+        self::execDdl($planOrders);
 
         foreach ([
             'ALTER TABLE gp_transactions ADD COLUMN gateway_id VARCHAR(32)',
@@ -700,6 +739,7 @@ final class GpDb
         self::execDdl($platformSettings);
 
         self::seedDefaultPlatformGateways();
+        self::seedMissingPlatformGateways();
 
         self::seedDefaultPlans();
         self::autoPromoteSuperAdmins();
@@ -768,6 +808,46 @@ final class GpDb
             }
         } catch (Throwable $e) {
             error_log('[GpDb] seedDefaultPlatformGateways failed: ' . $e->getMessage());
+        }
+    }
+
+    private static function seedMissingPlatformGateways(): void
+    {
+        try {
+            $now = GpIds::now();
+            $order = 20;
+            foreach (GpCatalog::methods() as $cat) {
+                if (empty($cat['releaseScope'])) {
+                    continue;
+                }
+                $code = (string) $cat['code'];
+                $exists = self::one(
+                    'SELECT id FROM gp_platform_gateways WHERE gateway_code = ? OR slug = ? LIMIT 1',
+                    [$code, $cat['slug'] ?? $code]
+                );
+                if ($exists !== null) {
+                    continue;
+                }
+                self::exec(
+                    'INSERT INTO gp_platform_gateways (gateway_code, slug, display_name, category, currency, is_enabled, display_order, min_amount, max_amount, created_at, updated_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    [
+                        $code,
+                        (string) ($cat['slug'] ?? $code),
+                        (string) ($cat['title'] ?? $code),
+                        (string) ($cat['category'] ?? 'mfs'),
+                        (string) ($cat['currency'] ?? 'BDT'),
+                        1,
+                        $order++,
+                        (float) ($cat['minAmount'] ?? 10),
+                        (float) ($cat['maxAmount'] ?? 100000),
+                        $now,
+                        $now,
+                    ]
+                );
+            }
+        } catch (Throwable $e) {
+            error_log('[GpDb] seedMissingPlatformGateways failed: ' . $e->getMessage());
         }
     }
 

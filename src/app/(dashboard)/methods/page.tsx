@@ -74,6 +74,70 @@ const ALL_METHOD_OPTIONS: MethodMeta[] = [
     placeholder: "01XXXXXXXXX",
   },
   {
+    code: "bangla_qr",
+    label: "Bangla QR",
+    category: "mfs",
+    currency: "BDT",
+    accountLabel: "Receiving account / merchant number",
+    placeholder: "01XXXXXXXXX",
+  },
+  {
+    code: "bangla_qr_v2",
+    label: "Bangla QR V2",
+    category: "mfs",
+    currency: "BDT",
+    accountLabel: "Receiving account / merchant number",
+    placeholder: "01XXXXXXXXX",
+  },
+  {
+    code: "pathaopay",
+    label: "Pathao Pay",
+    category: "mfs",
+    currency: "BDT",
+    accountLabel: "Pathao Pay number",
+    placeholder: "01XXXXXXXXX",
+  },
+  {
+    code: "mcash",
+    label: "mCash",
+    category: "mfs",
+    currency: "BDT",
+    accountLabel: "mCash wallet number",
+    placeholder: "01XXXXXXXXX",
+  },
+  {
+    code: "ok_wallet",
+    label: "OK Wallet",
+    category: "mfs",
+    currency: "BDT",
+    accountLabel: "OK Wallet number",
+    placeholder: "01XXXXXXXXX",
+  },
+  {
+    code: "tap",
+    label: "Tap",
+    category: "mfs",
+    currency: "BDT",
+    accountLabel: "Tap wallet number",
+    placeholder: "01XXXXXXXXX",
+  },
+  {
+    code: "aamar_pay",
+    label: "aamarPay",
+    category: "mfs",
+    currency: "BDT",
+    accountLabel: "aamarPay account number",
+    placeholder: "01XXXXXXXXX",
+  },
+  {
+    code: "custom_provider",
+    label: "Custom provider (manual)",
+    category: "mfs",
+    currency: "BDT",
+    accountLabel: "Account / wallet number",
+    placeholder: "01XXXXXXXXX or provider ID",
+  },
+  {
     code: "usdt_trc20",
     label: "USDT TRC-20 (TRON Blockchain)",
     category: "crypto",
@@ -98,17 +162,25 @@ const ALL_METHOD_OPTIONS: MethodMeta[] = [
     placeholder: "e.g. 78291044",
   },
 ];
-const MFS_CODES = new Set(["bkash", "nagad", "rocket", "upay", "cellfin"]);
+const MFS_CODES = new Set([
+  "bkash",
+  "nagad",
+  "rocket",
+  "upay",
+  "cellfin",
+  "bangla_qr",
+  "bangla_qr_v2",
+  "pathaopay",
+  "mcash",
+  "ok_wallet",
+  "tap",
+  "aamar_pay",
+  "custom_provider",
+]);
 
 const LIBRARY_PLACEHOLDERS: { label: string; category: string }[] = [
-  { label: "Stripe (manual)", category: "international" },
-  { label: "PayPal (manual)", category: "international" },
-  { label: "Wise (manual)", category: "international" },
-  { label: "Bangla QR V2", category: "mfs" },
-  { label: "Telecash", category: "mfs" },
-  { label: "BRAC Bank PLC", category: "bank" },
-  { label: "Islami Bank Bangladesh PLC", category: "bank" },
-  { label: "Dutch-Bangla Bank PLC", category: "bank" },
+  { label: "SSLCommerz bKash (later)", category: "mfs" },
+  { label: "Foreign bank transfer (later)", category: "bank" },
 ];
 const CRYPTO_CODES = new Set(["usdt_trc20", "binance_pay", "bybit_pay"]);
 
@@ -171,6 +243,15 @@ export default function GatewaysPage() {
   const [categoryFilter, setCategoryFilter] = useState<"all" | "mfs" | "crypto">("all");
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [formMinAmount, setFormMinAmount] = useState("10");
+  const [formMaxAmount, setFormMaxAmount] = useState("100000");
+  const [formCurrency, setFormCurrency] = useState("BDT");
+  const [formGatewayFee, setFormGatewayFee] = useState("0");
+  const [formGatewayFeeType, setFormGatewayFeeType] = useState<"percentage" | "fixed">("percentage");
+  const [formGatewayCategory, setFormGatewayCategory] = useState("mobile_banking");
+  const [formExchangeRate, setFormExchangeRate] = useState("");
+  const [formBinanceApiKey, setFormBinanceApiKey] = useState("");
+  const [formBinanceApiSecret, setFormBinanceApiSecret] = useState("");
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -234,6 +315,15 @@ export default function GatewaysPage() {
     setFormBinanceMode("uid");
     setFormAccountName("");
     setFormUsdtOptional("");
+    setFormMinAmount("10");
+    setFormMaxAmount("100000");
+    setFormCurrency(meta?.currency || "BDT");
+    setFormGatewayFee("0");
+    setFormGatewayFeeType("percentage");
+    setFormGatewayCategory("mobile_banking");
+    setFormExchangeRate("");
+    setFormBinanceApiKey("");
+    setFormBinanceApiSecret("");
     setPreviewUrl(null);
     setShowLibrary(false);
     setShowForm(true);
@@ -254,6 +344,15 @@ export default function GatewaysPage() {
     setFormBinanceMode(g.methodCode === "binance_pay" ? "merchant_api" : "uid");
     setFormAccountName("");
     setFormUsdtOptional("");
+    setFormMinAmount(g.minAmount || "10");
+    setFormMaxAmount(g.maxAmount || "100000");
+    setFormCurrency(g.currency || "BDT");
+    setFormGatewayFee(g.gatewayFee || "0");
+    setFormGatewayFeeType((g.gatewayFeeType as "percentage" | "fixed") || "percentage");
+    setFormGatewayCategory(g.gatewayCategory || "mobile_banking");
+    setFormExchangeRate(g.exchangeRate || "");
+    setFormBinanceApiKey("");
+    setFormBinanceApiSecret("");
     setPreviewUrl(null);
     setShowForm(true);
     if (g.qrStatus === "ready") {
@@ -312,6 +411,12 @@ export default function GatewaysPage() {
         account: formAccount,
         accountType: MFS_CODES.has(formMethod) ? formAccountType : "personal",
         instructions: formInstructions,
+        minAmount: formMinAmount,
+        maxAmount: formMaxAmount,
+        currency: formCurrency,
+        gatewayFee: formGatewayFee,
+        gatewayFeeType: formGatewayFeeType,
+        gatewayCategory: formGatewayCategory,
       };
       if (MFS_CODES.has(formMethod) && formAccountType === "merchant") {
         if (formUsername.trim()) payload.username = formUsername.trim();
@@ -327,6 +432,11 @@ export default function GatewaysPage() {
         payload.mode = formBinanceMode === "merchant_api" ? "merchant" : "personal";
         payload.account_name = formAccountName;
         payload.binance_uid = formAccount;
+        if (formMinAmount) payload.minAmount = formMinAmount;
+        if (formMaxAmount) payload.maxAmount = formMaxAmount;
+        if (formExchangeRate.trim()) payload.exchangeRate = Number(formExchangeRate);
+        if (formBinanceApiKey.trim()) payload.api_key = formBinanceApiKey.trim();
+        if (formBinanceApiSecret.trim()) payload.api_secret = formBinanceApiSecret.trim();
       }
       if (formMethod === "bybit_pay") {
         payload.bybit_uid = formAccount;
@@ -546,6 +656,16 @@ export default function GatewaysPage() {
             </div>
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            <button
+              type="button"
+              onClick={() => pickFromLibrary("custom_provider")}
+              className="rounded-xl border border-dashed border-zinc-400 bg-zinc-50 p-4 text-left dark:border-zinc-600 dark:bg-zinc-900"
+            >
+              <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100">+ Custom provider</div>
+              <div className="mt-1 text-[10px] text-zinc-500">
+                Your own name, SMS source, account number, QR, and checkout instructions.
+              </div>
+            </button>
             {availableOptions
               .filter((m) => {
                 if (libraryFilter === "mfs" && m.category !== "mfs") return false;
@@ -631,6 +751,56 @@ export default function GatewaysPage() {
               placeholder="e.g. bKash Personal 017..."
               required
             />
+
+            <div className="grid grid-cols-1 gap-3 rounded-xl border border-zinc-200 p-3 dark:border-zinc-800 sm:grid-cols-2 lg:grid-cols-3">
+              <Input
+                label="Minimum amount"
+                value={formMinAmount}
+                onChange={(e) => setFormMinAmount(e.target.value)}
+                className="font-mono text-xs"
+              />
+              <Input
+                label="Maximum amount"
+                value={formMaxAmount}
+                onChange={(e) => setFormMaxAmount(e.target.value)}
+                className="font-mono text-xs"
+              />
+              <Input
+                label="Payment currency"
+                value={formCurrency}
+                onChange={(e) => setFormCurrency(e.target.value.toUpperCase())}
+                className="font-mono text-xs"
+              />
+              <Input
+                label="Gateway fee"
+                value={formGatewayFee}
+                onChange={(e) => setFormGatewayFee(e.target.value)}
+                className="font-mono text-xs"
+              />
+              <label className="block space-y-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                <span>Fee type</span>
+                <select
+                  className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs dark:border-zinc-700 dark:bg-zinc-900"
+                  value={formGatewayFeeType}
+                  onChange={(e) => setFormGatewayFeeType(e.target.value as "percentage" | "fixed")}
+                >
+                  <option value="percentage">Percentage (%)</option>
+                  <option value="fixed">Fixed amount</option>
+                </select>
+              </label>
+              <label className="block space-y-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                <span>Gateway category</span>
+                <select
+                  className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs dark:border-zinc-700 dark:bg-zinc-900"
+                  value={formGatewayCategory}
+                  onChange={(e) => setFormGatewayCategory(e.target.value)}
+                >
+                  <option value="mobile_banking">Mobile Banking</option>
+                  <option value="bangla_qr">Bangla QR</option>
+                  <option value="international">International / Crypto</option>
+                </select>
+              </label>
+            </div>
 
             {MFS_CODES.has(formMethod) && (
               <div className="space-y-3">
@@ -786,13 +956,44 @@ export default function GatewaysPage() {
               </div>
             )}
 
+            {formMethod === "binance_pay" && (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Input
+                  label="Exchange rate (1 USD = BDT)"
+                  value={formExchangeRate}
+                  onChange={(e) => setFormExchangeRate(e.target.value)}
+                  placeholder="e.g. 130"
+                  className="font-mono text-xs"
+                />
+                {formBinanceMode === "merchant_api" && (
+                  <>
+                    <Input
+                      label="API key"
+                      value={formBinanceApiKey}
+                      onChange={(e) => setFormBinanceApiKey(e.target.value)}
+                      className="font-mono text-xs"
+                      autoComplete="off"
+                    />
+                    <Input
+                      label="API secret"
+                      type="password"
+                      value={formBinanceApiSecret}
+                      onChange={(e) => setFormBinanceApiSecret(e.target.value)}
+                      className="font-mono text-xs"
+                      autoComplete="new-password"
+                    />
+                  </>
+                )}
+              </div>
+            )}
+
             {formMethod === "binance_pay" && formBinanceMode === "merchant_api" && (
               <p className="text-[11px] text-zinc-500 rounded-xl border border-zinc-200 dark:border-zinc-800 p-3">
-                Store API Key &amp; Secret under{" "}
+                You can also store Binance Pay credentials under{" "}
                 <Link href="/dashboard/settings#binance-pay" className="underline font-semibold text-zinc-900 dark:text-zinc-100">
                   Settings → Binance Pay
                 </Link>
-                . This gateway row only toggles checkout availability.
+                . Keys entered here are sealed per brand and never shown again.
               </p>
             )}
 
@@ -925,20 +1126,30 @@ export default function GatewaysPage() {
                         {credParts.join(" | ") || "—"}
                       </td>
                       <td className="px-3 py-2 font-mono text-[10px] text-zinc-500">
-                        {g.minAmount ?? "—"} – {g.maxAmount ?? "—"} {g.currency}
+                        Min: {g.minAmount ?? "—"} | Max: {g.maxAmount ?? "—"}
+                        <br />
+                        Fee: {g.gatewayFee ?? "0"} ({g.gatewayFeeType === "fixed" ? "fixed" : "%"})
                       </td>
                       <td className="px-3 py-2">
                         <button
                           type="button"
+                          role="switch"
+                          aria-checked={g.enabled}
                           onClick={() => toggle(g)}
-                          className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                            g.enabled
-                              ? "bg-emerald-600 text-white"
-                              : "bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
+                            g.enabled ? "bg-emerald-500" : "bg-zinc-300 dark:bg-zinc-700"
                           }`}
                         >
-                          {g.enabled ? "ON" : "OFF"}
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                              g.enabled ? "translate-x-6" : "translate-x-1"
+                            }`}
+                          />
+                          <span className="sr-only">{g.enabled ? "ON" : "OFF"}</span>
                         </button>
+                        <span className="ml-2 text-[10px] font-bold text-zinc-600 dark:text-zinc-400">
+                          {g.enabled ? "ON" : "OFF"}
+                        </span>
                       </td>
                       <td className="px-3 py-2">
                         <div className="flex gap-1">

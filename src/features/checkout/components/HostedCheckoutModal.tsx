@@ -109,6 +109,10 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [redirectCountdown, setRedirectCountdown] = useState<number>(4);
+  const [cancelRedirectSec, setCancelRedirectSec] = useState(2);
+  const [cancelRedirectUrl, setCancelRedirectUrl] = useState<string | null>(null);
+  const [cancelMessage, setCancelMessage] = useState<string | null>(null);
+  const [isCanceling, setIsCanceling] = useState(false);
   const [generatedQr, setGeneratedQr] = useState<string | null>(null);
   const [locale, setLocale] = useState<"en" | "bn">("en");
 
@@ -192,6 +196,34 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
     navigator.clipboard.writeText(text);
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 2500);
+  };
+
+  const handleCancelCheckout = async () => {
+    if (demoMode || isCanceling) return;
+    if (!window.confirm(locale === "bn" ? "ইনভয়েস বাতিল করবেন?" : "Cancel this invoice?")) return;
+    setIsCanceling(true);
+    setErrorMessage(null);
+    try {
+      const res = await api.cancelCheckout(session.sessionId);
+      setCancelMessage(res.message || "Invoice canceled successfully.");
+      const target = res.redirectUrl || "/dashboard/my-payments?canceled=1";
+      setCancelRedirectUrl(target);
+      setCheckoutStatus("FAILED");
+      const timer = setInterval(() => {
+        setCancelRedirectSec((s) => {
+          if (s <= 1) {
+            clearInterval(timer);
+            window.location.href = target;
+            return 0;
+          }
+          return s - 1;
+        });
+      }, 1000);
+    } catch (err: unknown) {
+      setErrorMessage(err instanceof Error ? err.message : "Could not cancel checkout.");
+    } finally {
+      setIsCanceling(false);
+    }
   };
 
   // Start 3-second status polling for Scenario B (customer enters TxID before SMS arrives)
@@ -417,6 +449,27 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
   };
 
   // 1. EXPIRED STATE
+  if (cancelMessage && cancelRedirectUrl) {
+    return (
+      <div className="w-full max-w-lg mx-auto bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-2xl p-8 text-center space-y-4">
+        <div className="w-14 h-14 rounded-full bg-rose-100 dark:bg-rose-950/40 text-rose-600 flex items-center justify-center mx-auto">
+          <AlertCircle className="w-8 h-8" />
+        </div>
+        <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">Invoice Canceled</h2>
+        <p className="text-xs text-zinc-500">{cancelMessage}</p>
+        <p className="text-[11px] font-mono text-zinc-400">
+          Redirecting in {cancelRedirectSec} seconds…
+        </p>
+        <div className="h-1.5 w-full rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
+          <div
+            className="h-full bg-rose-500 transition-all duration-1000"
+            style={{ width: `${Math.max(0, (cancelRedirectSec / 2) * 100)}%` }}
+          />
+        </div>
+      </div>
+    );
+  }
+
   if (checkoutStatus === "EXPIRED") {
     return (
       <div className="w-full max-w-lg mx-auto bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-xl p-8 text-center space-y-4">
@@ -676,6 +729,16 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
             <Clock className="w-3.5 h-3.5 text-zinc-400" />
             <span>Expires in {timeFormatted}</span>
           </div>
+          {!demoMode && (
+            <button
+              type="button"
+              onClick={handleCancelCheckout}
+              disabled={isCanceling}
+              className="mt-2 text-[10px] font-semibold text-rose-600 hover:underline disabled:opacity-50"
+            >
+              {isCanceling ? "Canceling…" : locale === "bn" ? "ইনভয়েস বাতিল" : "Cancel invoice"}
+            </button>
+          )}
         </div>
       </div>
 

@@ -68,6 +68,11 @@ final class AdminController
                 'PUT', 'POST' => self::putPlatformPaymentSettings($actor, $req),
                 default => GpJson::error('METHOD_NOT_ALLOWED', 'Method not allowed.', 405),
             },
+            'billing-brand' => match ($req->method) {
+                'GET' => self::getBillingBrand(),
+                'PUT', 'POST' => self::putBillingBrand($actor, $req),
+                default => GpJson::error('METHOD_NOT_ALLOWED', 'Method not allowed.', 405),
+            },
             default => GpJson::error('NOT_FOUND', 'Unknown admin route.', 404),
         };
     }
@@ -1007,6 +1012,28 @@ final class AdminController
             'keys' => array_keys(array_filter($clean)),
         ]);
         GpJson::send(['ok' => true, 'wallets' => $clean]);
+    }
+
+    private static function getBillingBrand(): never
+    {
+        $brandId = GpPlatformBilling::billingBrandId();
+        $brand = $brandId ? GpDb::one('SELECT brand_id, name FROM gp_brands WHERE brand_id = ?', [$brandId]) : null;
+        GpJson::send([
+            'billingBrandId' => $brandId,
+            'billingBrandName' => $brand['name'] ?? null,
+            'note' => 'Configure gateways on this brand for account plan checkout (My Payments).',
+        ]);
+    }
+
+    /** @param array{email?:string} $actor */
+    private static function putBillingBrand(array $actor, GpRequest $req): never
+    {
+        $brandId = trim((string) $req->input('billingBrandId', $req->input('brandId', '')));
+        GpPlatformBilling::setBillingBrandId($brandId);
+        self::logAudit((string) ($actor['email'] ?? ''), 'platform_settings', GpPlatformBilling::SETTING_BILLING_BRAND, 'set_billing_brand', [
+            'brandId' => $brandId,
+        ]);
+        GpJson::send(['ok' => true, 'billingBrandId' => $brandId]);
     }
 
     /** @param array{email?:string} $actor */

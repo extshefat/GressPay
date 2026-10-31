@@ -943,5 +943,17 @@ GpDb::exec(
 $paidUsage = GpPlanLimits::usageForMerchant($paidStarterMerchant);
 assert_true($paidUsage['monthlyCompleted']['unlimited'] === true, 'paid starter has unlimited monthly checkouts');
 
+// —— Gateway fee persistence ——
+$feeGwId = 'gw_feetest01';
+GpDb::exec(
+    'INSERT INTO gp_gateways (gateway_id, brand_id, method_code, display_name, account, currency, country, display_order, status, qr_status, gateway_fee, gateway_fee_type, min_amount, max_amount, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+    [$feeGwId, $brandId, 'bkash', 'Fee GW', '01711112222', 'BDT', 'BD', 0, 'inactive', 'none', '2.50', 'percentage', '10', '50000', $nowQ, $nowQ]
+);
+$feeRow = GpDb::one('SELECT * FROM gp_gateways WHERE gateway_id = ?', [$feeGwId]);
+$feePresent = GatewaysController::present($feeRow ?? []);
+assert_true((float) ($feePresent['gatewayFee'] ?? 0) === 2.5, 'gateway fee exposed on present()');
+assert_true(($feePresent['gatewayFeeType'] ?? '') === 'percentage', 'gateway fee type exposed on present()');
+
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);
