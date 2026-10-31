@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Smartphone, Download, CheckCircle, Wifi, BatteryCharging, ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { COMPANION_APK } from "@/lib/marketing/companion-download";
+import { COMPANION_APK, companionStatusLine } from "@/lib/marketing/companion-download";
 
 export const CompanionShowcase: React.FC = () => {
   return (
@@ -94,7 +94,7 @@ export const CompanionShowcase: React.FC = () => {
                     <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
                       GressPay Companion
                     </h4>
-                    <span className="text-[10px] text-zinc-500 font-mono">{COMPANION_APK.versionLabel} · Sync active</span>
+                    <span className="text-[10px] text-zinc-500 font-mono">{companionStatusLine()}</span>
                   </div>
                 </div>
 
