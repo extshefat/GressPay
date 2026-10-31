@@ -29,7 +29,7 @@ final class CompanionController
                 [$brandId, $actor['merchant_id']]
             );
             if ($brand === null) {
-                GpJson::error('NOT_FOUND', 'Brand not found for this merchant.', 404);
+                GpJson::error('NOT_FOUND', 'Brand not found for your account.', 404);
             }
             GpPlatform::assertDeviceRegistrationAllowed($brandId);
             $now = GpIds::now();

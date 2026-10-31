@@ -268,7 +268,7 @@ export interface ApiCredentials {
   checkoutUrl?: string;
   verifyUrl?: string;
   note?: string;
-  /** @deprecated Legacy merchant-wide keys removed from dashboard — use Brands. */
+  /** @deprecated Legacy account-wide keys removed from dashboard — use Brands. */
   hasLiveKey?: boolean;
   hasSandboxKey?: boolean;
   livePublicKey?: string;

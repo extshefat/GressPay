@@ -16,7 +16,7 @@ export default function PrivacyPage() {
         <section className="space-y-2">
           <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Who this covers</h2>
           <p>
-            This policy describes data handled by a GressPay merchant instance: merchants who create
+            This policy describes data handled by a GressPay deployment: users who create
             accounts, and buyers who pay through hosted checkout links or invoices.
           </p>
         </section>
@@ -24,7 +24,7 @@ export default function PrivacyPage() {
         <section className="space-y-2">
           <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">What we store</h2>
           <ul className="list-disc pl-5 space-y-1">
-            <li>Merchant account: name, email, password hash, business name</li>
+            <li>User account: name, email, password hash, business name</li>
             <li>API key prefixes and hashed secrets; webhook URL and signing secret</li>
             <li>Payment destinations you publish (bKash or Nagad numbers, Binance Pay is stored server-side, USDT TRC-20 address)</li>
             <li>Checkout sessions: amount, currency, method, customer contact if provided, TxID</li>
@@ -43,7 +43,7 @@ export default function PrivacyPage() {
         <section className="space-y-2">
           <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Sessions and cookies</h2>
           <p>
-            Merchant dashboard auth uses a JWT kept in browser storage. Theme preference may be saved
+            Dashboard sign-in uses a JWT kept in browser storage. Theme preference may be saved
             locally as <code className="font-mono text-zinc-900 dark:text-zinc-100">gresspay_theme</code>.
           </p>
         </section>

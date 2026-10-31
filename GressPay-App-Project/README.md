@@ -1,6 +1,6 @@
 # GressPay Companion (Android)
 
-Merchant SMS companion for **GressPay** Bangladesh rails (bKash / Nagad / Rocket / Upay / Cellfin).  
+SMS companion for **GressPay** Bangladesh rails (bKash / Nagad / Rocket / Upay / Cellfin).  
 Open this folder in **Android Studio**. Package: `com.gresspay.companion`.
 
 ## What it does
@@ -20,7 +20,7 @@ Open this folder in **Android Studio**. Package: `com.gresspay.companion`.
 |---|---|
 | `RECEIVE_SMS` | Required to enable live matching |
 | `POST_NOTIFICATIONS` | Android 13+ for the dataSync foreground service |
-| `READ_SMS` | Requested only when the merchant taps **Scan & Sync Recent Inbox SMS** |
+| `READ_SMS` | Requested only when you tap **Scan & Sync Recent Inbox SMS** |
 
 ## Security
 

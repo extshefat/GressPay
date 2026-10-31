@@ -68,7 +68,7 @@ export const GlobeHero: React.FC = () => {
               transition={{ duration: 0.55, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
               className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-100 leading-[1.12]"
             >
-              Merchant payment automation for Bangladesh MFS &amp; crypto
+              Payment automation for Bangladesh MFS &amp; crypto
             </motion.h1>
 
             <motion.p
@@ -117,7 +117,7 @@ export const GlobeHero: React.FC = () => {
             >
               <Link href="/register">
                 <Button size="lg" variant="primary" rightIcon={<ArrowRight className="w-4 h-4" />}>
-                  Create merchant account
+                  Create your account
                 </Button>
               </Link>
               <Link href="/developers">

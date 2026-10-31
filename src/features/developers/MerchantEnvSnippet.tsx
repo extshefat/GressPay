@@ -6,7 +6,7 @@ import { Check, Copy } from "lucide-react";
 const DEFAULT_HOST = "https://gresspay.extxcheats.com/api/v1";
 
 export function MerchantEnvSnippet({ host = DEFAULT_HOST }: { host?: string }) {
-  const envBlock = `GRESSPAY_API_KEY=gp_live_your_secret_here
+  const envBlock = `GRESSPAY_WEBSITE_API_KEY=gp_live_your_secret_here
 GRESSPAY_CHECKOUT_URL=${host}/payment/create
 GRESSPAY_VERIFY_URL=${host}/payment/verify`;
 
@@ -16,7 +16,7 @@ GRESSPAY_VERIFY_URL=${host}/payment/verify`;
     <div className="overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950">
       <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-2 dark:border-zinc-800">
         <span className="font-mono text-[11px] uppercase tracking-wide text-zinc-500">
-          .env integration (server-side)
+          Website API key — server-side .env only
         </span>
         <button
           type="button"

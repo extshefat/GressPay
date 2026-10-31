@@ -154,7 +154,7 @@ final class BrandsController
             [$brandId, $actor['merchant_id']]
         );
         if ($brand === null) {
-            GpJson::error('NOT_FOUND', 'Brand not found for this merchant.', 404);
+            GpJson::error('NOT_FOUND', 'Brand not found for your account.', 404);
         }
         GpDb::exec(
             'UPDATE gp_api_keys SET status = ?, updated_at = ? WHERE brand_id = ? AND mode = ? AND status = ?',
@@ -176,7 +176,7 @@ final class BrandsController
             [$brandId, $actor['merchant_id']]
         );
         if ($brand === null) {
-            GpJson::error('NOT_FOUND', 'Brand not found for this merchant.', 404);
+            GpJson::error('NOT_FOUND', 'Brand not found for your account.', 404);
         }
         $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$actor['merchant_id']]);
         $token = GpJwt::encode([

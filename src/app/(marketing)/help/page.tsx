@@ -14,17 +14,17 @@ const FAQS = [
   {
     question: "Where does the money go?",
     answer:
-      "To the wallet or address you configure: your bKash/Nagad number, Binance Pay merchant settlement, or your TRC-20 USDT address. GressPay does not hold merchant balances.",
+      "To the wallet or address you configure: your bKash/Nagad number, Binance Pay settlement to your account, or your TRC-20 USDT address. GressPay does not hold your balances.",
   },
   {
     question: "Which rails are in this release?",
     answer:
-      "Bangladesh: bKash and Nagad (personal + SMS companion). Crypto when operator-enabled: Binance Pay (official merchant API) and USDT TRC-20 (on-chain verify). India, Pakistan, Nepal, Rocket/Upay/Cellfin, and Bybit are not live in this milestone.",
+      "Bangladesh: bKash and Nagad (personal + SMS companion). Crypto when operator-enabled: Binance Pay (official Binance Pay API) and USDT TRC-20 (on-chain verify). India, Pakistan, Nepal, Rocket/Upay/Cellfin, and Bybit are not live in this milestone.",
   },
   {
     question: "Is Binance Pay the same as Spot API keys?",
     answer:
-      "No. GressPay uses Binance Pay Merchant credentials only. Spot trading, withdrawals, and unrestricted personal API keys are out of scope and must not be pasted into the browser. Buyers never enter an order ID; the server creates the order. Merchant reconcile requires login and is rate-limited.",
+      "No. GressPay uses Binance Pay API credentials only (not Spot trading keys). Spot trading, withdrawals, and unrestricted personal API keys are out of scope and must not be pasted into the browser. Buyers never enter an order ID; the server creates the order. Signed-in account holders can reconcile from the dashboard; reconcile is rate-limited.",
   },
   {
     question: "How is USDT TRC-20 verified?",

@@ -51,7 +51,7 @@ final class MerchantController
         if ($a === 'binance-pay' && $req->method === 'GET') {
             self::getBinancePay($actor);
         }
-        GpJson::error('NOT_FOUND', 'Unknown merchant route.', 404);
+        GpJson::error('NOT_FOUND', 'Unknown account route.', 404);
     }
 
     public static function keys(array $actor): never
@@ -77,7 +77,7 @@ final class MerchantController
         if ($mode === 'test') {
             GpJson::error(
                 'FORBIDDEN',
-                'Sandbox/test API keys are not issued from the merchant dashboard. Create or rotate keys under Brands.',
+                'Sandbox/test API keys are not issued from the dashboard. Create or rotate keys under Brands.',
                 403
             );
         }
@@ -120,7 +120,7 @@ final class MerchantController
         }
         GpJson::error(
             'MOVED',
-            'Merchant-wide API key rotation moved to Dashboard → Brands (website key per brand).',
+            'Account-wide API key rotation moved to Dashboard → Brands (website key per brand).',
             410
         );
     }
@@ -455,7 +455,7 @@ final class MerchantController
             'configured' => $configured,
             'certificateSnSet' => $configured,
             'liveReady' => $configured && GpConfig::cryptoAllowed() && !empty($brand['crypto_enabled']),
-            'note' => 'Binance Pay Merchant API credentials only. Secrets are write-only and never returned. Not Spot trading keys.',
+            'note' => 'Binance Pay API credentials only. Secrets are write-only and never returned. Not Spot trading keys.',
         ];
         $encoded = json_encode($payload);
         if ($encoded !== false && (str_contains($encoded, 'apiKey') || str_contains(strtolower($encoded), 'secret'))) {

@@ -38,7 +38,7 @@ keytool -genkeypair -v -keystore gresspay-companion-release.jks \
 
 ## Sideload honesty
 
-Installing from **unknown sources** (APK outside Google Play) will still trigger Android warnings and may show Play Protect prompts for apps that are not widely installed. A proper release signature and minified build reduce false positives but **do not guarantee zero warnings**. Merchants should install only from your official download URL on the Devices / Apps & Plugins pages.
+Installing from **unknown sources** (APK outside Google Play) will still trigger Android warnings and may show Play Protect prompts for apps that are not widely installed. A proper release signature and minified build reduce false positives but **do not guarantee zero warnings**. Install only from your official download URL on the Devices / Apps & Plugins pages.
 
 ## Version
 

@@ -13,13 +13,13 @@ export const AboutSection: React.FC = () => {
         </h2>
         <div className="space-y-4 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
           <p>
-            GressPay is a Bangladesh-first checkout and verification console. A customer pays a wallet the merchant configured. The server marks that checkout complete only after evidence it can check: a paired Android companion SMS for bKash or Nagad, a Binance Pay order query for Merchant API payments, or a TRON transfer for USDT TRC-20.
+            GressPay is a Bangladesh-first checkout and verification console. A customer pays a wallet you configured. The server marks that checkout complete only after evidence it can check: a paired Android companion SMS for bKash or Nagad, a Binance Pay order query for Binance Pay API payments, or a TRON transfer for USDT TRC-20.
           </p>
           <p>
-            Each merchant is a separate brand. Binance Pay credentials are sealed per brand and are not returned to the browser. A return URL does not mark a payment paid. The product does not hold, settle, or move the customer&apos;s money.
+            Each brand is an isolated store on your account. Binance Pay credentials are sealed per brand and are not returned to the browser. A return URL does not mark a payment paid. The product does not hold, settle, or move the customer&apos;s money.
           </p>
           <p>
-            Account type on a bKash or Nagad number is a label for the merchant&apos;s own instructions. It is not an official bKash or Nagad API connection. Binance Pay is optional and uses Binance Pay Merchant API credentials, which are not Spot trading keys. USDT TRC-20 is a separate on-chain check and is not a Binance Pay receipt.
+            Account type on a bKash or Nagad number is a label for your own instructions. It is not an official bKash or Nagad API connection. Binance Pay is optional and uses Binance Pay API credentials, which are not Spot trading keys. USDT TRC-20 is a separate on-chain check and is not a Binance Pay receipt.
           </p>
         </div>
       </div>

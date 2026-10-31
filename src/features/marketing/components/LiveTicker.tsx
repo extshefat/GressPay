@@ -10,7 +10,7 @@ const CAPABILITY_ITEMS = [
   { label: "Upay", detail: "SMS auto-match", icon: Smartphone },
   { label: "Cellfin", detail: "SMS auto-match", icon: Smartphone },
   { label: "USDT TRC-20", detail: "On-chain TRON verify", icon: Cpu },
-  { label: "Binance Pay", detail: "Merchant API", icon: Cpu },
+  { label: "Binance Pay", detail: "Binance Pay API", icon: Cpu },
   { label: "Bybit Pay", detail: "UID transfer", icon: Cpu },
   { label: "Direct wallet", detail: "0% commission held", icon: ShieldCheck },
   { label: "Webhooks", detail: "HMAC signed IPN", icon: Plug },

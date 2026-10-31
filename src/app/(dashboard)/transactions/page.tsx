@@ -136,7 +136,7 @@ export default function TransactionsPage() {
     try {
       const updated = await api.cancelTransaction(
         cancelModalTx.id,
-        cancelReason.trim() || "Rejected by merchant"
+        cancelReason.trim() || "Rejected from dashboard"
       );
       setTransactions((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
       if (selectedTx?.id === updated.id) {
@@ -195,7 +195,7 @@ export default function TransactionsPage() {
         timestamp: formatDate(tx.completedAt || tx.updatedAt || tx.createdAt),
         description:
           tx.confirmationState === "merchant_confirmed"
-            ? `Manually reconciled by merchant: "${tx.confirmationReason || "Verified"}"`
+            ? `Manually confirmed from dashboard: "${tx.confirmationReason || "Verified"}"`
             : "Direct-to-wallet SMS or on-chain transaction auto-verified.",
         status: "completed",
       });
@@ -204,7 +204,7 @@ export default function TransactionsPage() {
         id: "failed",
         title: "Rejected / Expired",
         timestamp: formatDate(tx.updatedAt || tx.createdAt),
-        description: "Transaction was marked failed or rejected by merchant audit.",
+        description: "Transaction was marked failed or rejected during account review.",
         status: "failed",
       });
     } else {
@@ -212,7 +212,7 @@ export default function TransactionsPage() {
         id: "awaiting",
         title: "Awaiting Verification",
         timestamp: "Now",
-        description: "Listening for Android Companion SMS match or manual merchant confirmation.",
+        description: "Listening for Android Companion SMS match or manual confirmation from your dashboard.",
         status: "current",
       });
     }
@@ -492,7 +492,7 @@ export default function TransactionsPage() {
                 </span>
               </div>
               <div className="flex justify-between py-1">
-                <span className="text-zinc-500">Net Merchant Settlement:</span>
+                <span className="text-zinc-500">Net settlement to you:</span>
                 <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
                   {formatCurrency(selectedTx.amount - selectedTx.fee, selectedTx.currency)}
                 </span>
@@ -573,7 +573,7 @@ export default function TransactionsPage() {
 
           <Textarea
             label="Auditable Confirmation Reason"
-            placeholder="e.g. Verified via direct merchant bKash app statement receipt #88192"
+            placeholder="e.g. Verified via direct bKash app statement receipt #88192"
             value={confirmReason}
             onChange={(e) => setConfirmReason(e.target.value)}
             rows={3}

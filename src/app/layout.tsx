@@ -6,7 +6,7 @@ import { ToastProvider } from "@/components/ui/toast";
 export const metadata: Metadata = {
   title: "GressPay — Bangladesh MFS, Binance Pay & USDT",
   description:
-    "First release: bKash and Nagad via merchant wallet + SMS companion, Binance Pay merchant checkout, and USDT TRC-20 on-chain verification.",
+    "First release: bKash and Nagad via your configured wallet + SMS companion, Binance Pay checkout, and USDT TRC-20 on-chain verification.",
   icons: {
     icon: "/brand/gresspay-app-icon.png",
     apple: "/brand/gresspay-app-icon.png",

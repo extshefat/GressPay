@@ -190,7 +190,7 @@ export function IntegrationSnippets() {
       <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950">
         <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-2">
           <span className="font-mono text-[11px] uppercase tracking-wide text-zinc-500">
-            Verify payment status (merchant server)
+            Verify payment status (your server)
           </span>
           <CopyButton
             text={`curl -s ${HOST}/checkout/verify-payment \\
@@ -203,7 +203,7 @@ export function IntegrationSnippets() {
           <code>{`// Buyer-facing status (public, no API key)
 GET ${HOST}/checkout/{sessionId}/status
 
-// Merchant verify by session id
+// Verify by session id from your backend
 POST ${HOST}/checkout/verify-payment
 Authorization: Bearer gp_live_…
 { "sessionId": "chs_…" }`}</code>

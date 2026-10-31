@@ -148,7 +148,7 @@ export default function DevelopersPage() {
               </h2>
             </div>
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              All merchant endpoints live under this production host. Prefer the{" "}
+              All authenticated API routes live under this production host. Prefer the{" "}
               <code className="font-mono text-xs">/payment/*</code> aliases (they map to the
               same checkout handlers).
             </p>
@@ -156,7 +156,7 @@ export default function DevelopersPage() {
             <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">
               Aliases: <code className="font-mono">POST /payment/create</code> →{" "}
               <code className="font-mono">POST /checkout/create</code>,{" "}
-              <code className="font-mono">POST /payment/verify</code> → merchant verify,{" "}
+              <code className="font-mono">POST /payment/verify</code> → server-side verify,{" "}
               <code className="font-mono">GET /payment/status/{"{session_id}"}</code> → same
               verify payload.
             </div>
@@ -170,8 +170,9 @@ export default function DevelopersPage() {
               </h2>
             </div>
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Authenticate every merchant call with a live or test API key. Never expose secret
-              keys in browser JavaScript.
+              Authenticate every server-side call with your brand website API key (
+              <code className="font-mono">gp_live_…</code>). Never expose secret keys in browser
+              JavaScript.
             </p>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">

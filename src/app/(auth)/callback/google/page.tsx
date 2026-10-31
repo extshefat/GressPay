@@ -84,7 +84,7 @@ function GoogleCallbackContent() {
             Verifying Google Account
           </h2>
           <p className="text-xs text-zinc-500">
-            Completing OpenID Connect token exchange and linking your merchant profile…
+            Completing OpenID Connect token exchange and linking your account…
           </p>
         </div>
       )}

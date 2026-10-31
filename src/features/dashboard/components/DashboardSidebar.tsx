@@ -86,7 +86,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
           <GpMark />
           <div>
             <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">GressPay</div>
-            <div className="text-[10px] font-mono tracking-wider text-zinc-500 uppercase">Merchant Console</div>
+            <div className="text-[10px] font-mono tracking-wider text-zinc-500 uppercase">Dashboard</div>
           </div>
         </Link>
         {onClose && (

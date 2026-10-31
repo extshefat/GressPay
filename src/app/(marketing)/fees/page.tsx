@@ -16,7 +16,7 @@ export default function FeesPage() {
     },
     {
       q: "How does GressPay verify that a customer actually paid?",
-      a: "You install the GressPay Companion Android APK on the phone holding your merchant SIM cards. When customer money arrives, the app securely captures the provider SMS and auto-matches the TrxID and amount to the pending checkout session within 1-2 seconds.",
+      a: "You install the GressPay Companion Android APK on the phone holding your payment SIM cards. When customer money arrives, the app securely captures the provider SMS and auto-matches the TrxID and amount to the pending checkout session within 1-2 seconds.",
     },
     {
       q: "Can I use multiple SIMs and phones simultaneously?",
@@ -40,7 +40,7 @@ export default function FeesPage() {
             Enterprise Architecture
           </Badge>
           <h2 className="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-zinc-100">
-            Why Merchants Choose GressPay Over Traditional Gateways
+            Why teams choose GressPay over traditional gateways
           </h2>
           <p className="text-xs sm:text-sm text-zinc-500">
             Engineered for speed, total financial custody, and zero downtime.
@@ -68,7 +68,7 @@ export default function FeesPage() {
               Personal & Agent Support
             </h3>
             <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-              No expensive merchant trade licenses or merchant accounts required. Automate payments using your standard personal SIM cards with USSD and App support.
+              No expensive trade licenses or separate payment-processor accounts required. Automate payments using your standard personal SIM cards with USSD and App support.
             </p>
           </Card>
 
@@ -111,7 +111,7 @@ export default function FeesPage() {
               </span>
               <Link href="/register">
                 <Button size="md" variant="primary" rightIcon={<ArrowRight className="w-4 h-4" />}>
-                  Create Merchant Account
+                  Create your account
                 </Button>
               </Link>
             </div>

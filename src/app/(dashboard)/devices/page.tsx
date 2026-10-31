@@ -22,6 +22,7 @@ import {
   Copy,
   RotateCw,
 } from "lucide-react";
+import Link from "next/link";
 
 type DeviceRow = {
   deviceId: string;
@@ -68,7 +69,8 @@ export default function CompanionDevicesPage() {
   const [isRevoking, setIsRevoking] = useState(false);
 
   const [isPairModalOpen, setIsPairModalOpen] = useState(false);
-  const [deviceLabel, setDeviceLabel] = useState("bKash & Nagad Primary Phone");
+  const [addDeviceStep, setAddDeviceStep] = useState<1 | 2>(1);
+  const [deviceLabel, setDeviceLabel] = useState("");
   const [selectedBrandId, setSelectedBrandId] = useState("");
   const [generatedDeviceId, setGeneratedDeviceId] = useState("");
   const [generatedToken, setGeneratedToken] = useState("");
@@ -243,29 +245,30 @@ export default function CompanionDevicesPage() {
     setGeneratedDeviceId("");
     setGeneratedToken("");
     setPairingQr(null);
+    setAddDeviceStep(1);
+    setDeviceLabel("");
     setIsPairModalOpen(true);
   };
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-200 dark:border-zinc-800">
+    <div className="mx-auto max-w-6xl space-y-6">
+      <div className="flex flex-col justify-between gap-4 border-b border-zinc-200 pb-4 dark:border-zinc-800 sm:flex-row sm:items-start">
         <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-              Companion Devices
-            </h1>
-            <span className="text-[10px] font-mono font-bold tracking-wider uppercase px-2 py-0.5 rounded bg-zinc-900 text-white dark:bg-white dark:text-zinc-900">
-              SMS AUTOMATION
-            </span>
+          <div className="flex items-center gap-2">
+            <Smartphone className="h-6 w-6 text-sky-600 dark:text-sky-400" />
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">Manage Devices</h1>
           </div>
-          <p className="text-xs text-zinc-500 mt-1">
-            Register Android phones per brand. Each device has its own{" "}
-            <span className="font-mono font-semibold text-zinc-700 dark:text-zinc-300">gpdev_</span> API key for the
-            Companion app — copy from this table anytime.
+          <p className="mt-1 max-w-xl text-xs leading-relaxed text-zinc-500">
+            Pair Android phones per brand for bKash/Nagad SMS matching. Copy the{" "}
+            <span className="font-mono font-semibold text-zinc-700 dark:text-zinc-300">Device API key (for app)</span>{" "}
+            into the Companion Setup screen — not your brand website key.
+          </p>
+          <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-400/90">
+            Having trouble pairing? Download the APK below, add a device, then paste the key from this table.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -274,12 +277,18 @@ export default function CompanionDevicesPage() {
               loadSmsLogs();
             }}
             isLoading={isLoading}
-            leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
+            leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
           >
             Refresh
           </Button>
-
-          <Button variant="primary" size="sm" onClick={openAddModal} leftIcon={<Plus className="w-3.5 h-3.5" />}>
+          <a
+            href="/download/gresspay-companion.apk"
+            className="inline-flex items-center gap-2 rounded-lg border border-zinc-900 bg-zinc-900 px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-zinc-800 dark:border-white dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-100"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Direct Download
+          </a>
+          <Button variant="primary" size="sm" onClick={openAddModal} leftIcon={<Plus className="h-3.5 w-3.5" />}>
             Add New Device
           </Button>
         </div>
@@ -291,33 +300,9 @@ export default function CompanionDevicesPage() {
         </Alert>
       )}
 
-      <div className="p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100">GressPay Companion APK</span>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-bold border border-emerald-200 dark:border-emerald-800">
-              v1.2.0 • Direct download
-            </span>
-          </div>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-xl">
-            Install from this direct APK link only (no Play Store). Pair using the Device API key from the table below.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <a
-            href="/download/gresspay-companion.apk"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-100 shadow-sm transition-all"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Download APK</span>
-          </a>
-        </div>
-      </div>
-
-      <Card className="bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-xs">
-        <div className="p-4 border-b border-zinc-100 dark:border-zinc-900 flex items-center justify-between">
-          <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">My Devices ({devices.length})</h3>
+      <Card className="overflow-hidden border-zinc-200 bg-white shadow-xs dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="flex items-center justify-between border-b border-zinc-100 p-4 dark:border-zinc-900">
+          <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Registered devices ({devices.length})</h3>
           <span className="text-[11px] font-mono text-zinc-500">
             {devices.filter((d) => isOnline(d)).length} online
           </span>
@@ -342,82 +327,94 @@ export default function CompanionDevicesPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-zinc-50 dark:bg-zinc-900/50 text-[11px] font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800">
+              <thead className="border-b border-zinc-200 bg-zinc-50 text-[10px] font-mono uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
                 <tr>
-                  <th className="py-3 px-4 w-10">#</th>
-                  <th className="py-3 px-4">Device name</th>
-                  <th className="py-3 px-4">Device API key (for app)</th>
-                  <th className="py-3 px-4">Brand name</th>
-                  <th className="py-3 px-4">Last updated</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
+                  <th className="px-4 py-3">Device Name</th>
+                  <th className="px-4 py-3">Device API Key (For App)</th>
+                  <th className="px-4 py-3">Brand Name</th>
+                  <th className="px-4 py-3">Last Updated</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-900">
-                {devices.map((device, idx) => {
+                {devices.map((device) => {
                   const online = isOnline(device);
                   const lastTouch = device.updatedAt || device.lastSeenAt || device.createdAt;
                   return (
                     <tr key={device.deviceId} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30">
-                      <td className="py-3 px-4 font-mono text-zinc-400">{idx + 1}</td>
-                      <td className="py-3 px-4">
+                      <td className="px-4 py-3.5">
                         <div className="flex items-center gap-2">
-                          <Smartphone className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                          <Smartphone className="h-3.5 w-3.5 shrink-0 text-zinc-400" />
                           <div>
                             <div className="font-semibold text-zinc-900 dark:text-zinc-100">
                               {device.label || "Android device"}
                             </div>
-                            <div className="text-[10px] font-mono text-zinc-500">{device.deviceId}</div>
-                            <span
-                              className={`inline-flex mt-1 items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase border ${
-                                online
-                                  ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300"
-                                  : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border-zinc-200 dark:border-zinc-700"
-                              }`}
-                            >
-                              {online ? "Online" : "Offline"}
-                            </span>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-[10px] font-mono text-zinc-500">{device.deviceId}</span>
+                              <span
+                                className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-mono font-bold uppercase ${
+                                  online
+                                    ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+                                    : "border-zinc-200 bg-zinc-100 text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800"
+                                }`}
+                              >
+                                {online ? "Online" : "Offline"}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="px-4 py-3.5">
                         <div className="flex items-center gap-2">
-                          <code className="font-mono text-[11px] text-zinc-700 dark:text-zinc-300">
+                          <code className="font-mono text-[11px] tracking-wider text-zinc-700 dark:text-zinc-300">
                             {device.deviceAppKeyMasked || "**********"}
                           </code>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 px-2"
+                          <button
+                            type="button"
+                            className="inline-flex items-center justify-center rounded-md border border-zinc-200 p-1.5 text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                            aria-label={`Copy device API key for ${device.label}`}
+                            title="Copy device key"
                             onClick={() => copyDeviceKey(device)}
-                            leftIcon={<Copy className="w-3 h-3" />}
                           >
-                            Copy
-                          </Button>
+                            <Copy className="h-3.5 w-3.5" />
+                          </button>
                         </div>
                       </td>
-                      <td className="py-3 px-4 text-zinc-700 dark:text-zinc-300">{device.brandName || "—"}</td>
-                      <td className="py-3 px-4 font-mono text-[11px] text-zinc-500">
+                      <td className="px-4 py-3.5">
+                        {device.brandName ? (
+                          <span className="inline-flex rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1 text-[11px] font-semibold text-sky-800 dark:border-sky-900 dark:bg-sky-950/50 dark:text-sky-200">
+                            {device.brandName}
+                          </span>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className="px-4 py-3.5 font-mono text-[11px] text-zinc-500">
                         {lastTouch ? formatDate(lastTouch) : "—"}
                       </td>
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
+                      <td className="px-4 py-3.5 text-right">
+                        <div className="inline-flex items-center justify-end gap-1">
+                          <button
+                            type="button"
+                            className="inline-flex rounded-lg p-2 text-sky-700 hover:bg-sky-50 dark:text-sky-300 dark:hover:bg-sky-950/40"
+                            aria-label={`Rotate device key for ${device.label}`}
+                            title="Rotate device key"
+                            disabled={rotatingId === device.deviceId}
                             onClick={() => rotateDeviceKey(device)}
-                            isLoading={rotatingId === device.deviceId}
-                            leftIcon={<RotateCw className="w-3.5 h-3.5" />}
                           >
-                            Rotate key
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="danger"
+                            <RotateCw
+                              className={`h-4 w-4 ${rotatingId === device.deviceId ? "animate-spin" : ""}`}
+                            />
+                          </button>
+                          <button
+                            type="button"
+                            className="inline-flex rounded-lg p-2 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+                            aria-label={`Remove device ${device.label}`}
+                            title="Remove device"
                             onClick={() => setRevokeDevice(device)}
-                            leftIcon={<Trash2 className="w-3.5 h-3.5" />}
                           >
-                            Revoke
-                          </Button>
+                            <Trash2 className="h-4 w-4" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -512,51 +509,82 @@ export default function CompanionDevicesPage() {
         loading={isRevoking}
       />
 
-      <Modal open={isPairModalOpen} onClose={() => setIsPairModalOpen(false)} title="Add New Companion Device">
+      <Modal open={isPairModalOpen} onClose={() => setIsPairModalOpen(false)} title="Add New Device">
         {!generatedToken ? (
-          <form onSubmit={handleCreateDevice} className="space-y-4 text-xs">
-            <div>
-              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">Brand</label>
-              <select
-                className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 py-2 text-sm"
-                value={selectedBrandId}
-                onChange={(e) => setSelectedBrandId(e.target.value)}
-                required
-              >
-                {brands.length === 0 ? (
-                  <option value="">Create a brand first</option>
-                ) : (
-                  brands.map((b) => (
+          addDeviceStep === 1 ? (
+            <div className="space-y-4 text-xs">
+              <p className="leading-relaxed text-zinc-500">
+                Select a brand to associate with the new device. SMS from this phone will match payments for that brand.
+              </p>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-zinc-700 dark:text-zinc-300">Select a brand…</label>
+                <select
+                  className="w-full rounded-lg border border-sky-500/50 bg-white px-3 py-2.5 text-sm dark:border-sky-700 dark:bg-zinc-950"
+                  value={selectedBrandId}
+                  onChange={(e) => setSelectedBrandId(e.target.value)}
+                  required
+                >
+                  <option value="" disabled>
+                    Select a brand…
+                  </option>
+                  {brands.map((b) => (
                     <option key={b.brandId} value={b.brandId}>
                       {b.name}
                     </option>
-                  ))
+                  ))}
+                </select>
+                {brands.length === 0 && (
+                  <p className="mt-2 text-[11px] text-amber-700 dark:text-amber-400">
+                    Create a brand first under{" "}
+                    <Link href="/dashboard/brands" className="underline">
+                      My Brands
+                    </Link>
+                    .
+                  </p>
                 )}
-              </select>
-              <p className="text-[11px] text-zinc-500 mt-1">SMS from this phone will match payments for the selected brand.</p>
+              </div>
+              <div className="flex justify-end gap-2 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+                <Button type="button" variant="outline" onClick={() => setIsPairModalOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  disabled={!selectedBrandId}
+                  onClick={() => setAddDeviceStep(2)}
+                >
+                  Next
+                </Button>
+              </div>
             </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-                Device name
-              </label>
-              <Input
-                value={deviceLabel}
-                onChange={(e) => setDeviceLabel(e.target.value)}
-                placeholder="e.g. bKash SIM Phone #1"
-                required
-              />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
-              <Button type="button" variant="outline" onClick={() => setIsPairModalOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" variant="primary" disabled={isRegistering || !selectedBrandId}>
-                {isRegistering ? "Creating…" : "Create device"}
-              </Button>
-            </div>
-          </form>
+          ) : (
+            <form onSubmit={handleCreateDevice} className="space-y-4 text-xs">
+              <p className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-[11px] text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-400">
+                Brand:{" "}
+                <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                  {brands.find((b) => b.brandId === selectedBrandId)?.name || selectedBrandId}
+                </span>
+              </p>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-zinc-700 dark:text-zinc-300">Device name</label>
+                <Input
+                  value={deviceLabel}
+                  onChange={(e) => setDeviceLabel(e.target.value)}
+                  placeholder="e.g. samsung, vivo, bKash SIM #1"
+                  required
+                  autoFocus
+                />
+              </div>
+              <div className="flex justify-end gap-2 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+                <Button type="button" variant="outline" onClick={() => setAddDeviceStep(1)}>
+                  Back
+                </Button>
+                <Button type="submit" variant="primary" disabled={isRegistering || !selectedBrandId}>
+                  {isRegistering ? "Creating…" : "Create device"}
+                </Button>
+              </div>
+            </form>
+          )
         ) : (
           <div className="space-y-4 text-xs">
             <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl text-emerald-800 dark:text-emerald-300 space-y-1">

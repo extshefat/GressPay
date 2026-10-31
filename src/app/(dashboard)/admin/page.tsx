@@ -291,16 +291,17 @@ export default function AdminPage() {
     const promptText =
       nextRole === "admin"
         ? `Promote ${merchant.name} (${merchant.email}) to SUPER ADMIN? They will have full platform control.`
-        : `Demote ${merchant.name} (${merchant.email}) to standard Merchant?`;
+        : `Demote ${merchant.name} (${merchant.email}) to standard account holder?`;
 
     if (!confirm(promptText)) return;
 
     try {
       await api.updateAdminMerchantRole(merchant.id, nextRole);
-      setSuccessMessage(`Updated ${merchant.name} role to ${nextRole.toUpperCase()}.`);
+      const roleLabel = nextRole === "merchant" ? "account holder" : nextRole.toUpperCase();
+      setSuccessMessage(`Updated ${merchant.name} role to ${roleLabel}.`);
       await loadData();
     } catch (err: unknown) {
-      setErrorMessage(err instanceof Error ? err.message : "Failed to change merchant role.");
+      setErrorMessage(err instanceof Error ? err.message : "Failed to change account role.");
     }
   };
 
@@ -310,10 +311,10 @@ export default function AdminPage() {
     if (!confirm(`Are you sure you want to mark ${merchant.name} as ${nextStatus}?`)) return;
     try {
       await api.updateAdminMerchantStatus(merchant.id, nextStatus);
-      setSuccessMessage(`Merchant ${merchant.name} is now ${nextStatus}.`);
+      setSuccessMessage(`Account ${merchant.name} is now ${nextStatus}.`);
       await loadData();
     } catch (err: unknown) {
-      setErrorMessage(err instanceof Error ? err.message : "Failed to update merchant status.");
+      setErrorMessage(err instanceof Error ? err.message : "Failed to update account status.");
     }
   };
 
@@ -336,7 +337,7 @@ export default function AdminPage() {
       setPlanModalOpen(false);
       await loadData();
     } catch (err: unknown) {
-      setErrorMessage(err instanceof Error ? err.message : "Failed to update merchant plan.");
+      setErrorMessage(err instanceof Error ? err.message : "Failed to update account plan.");
     } finally {
       setIsSubmittingPlanAssign(false);
     }
@@ -397,7 +398,7 @@ export default function AdminPage() {
         </p>
         <div className="pt-2">
           <Button variant="outline" onClick={() => (window.location.href = "/overview")}>
-            Return to Merchant Console
+            Return to dashboard
           </Button>
         </div>
       </div>
@@ -418,7 +419,7 @@ export default function AdminPage() {
             </span>
           </div>
           <p className="text-xs text-zinc-500 mt-1">
-            Platform governance, global payment gateways, merchant role assignment, and live companion telemetry.
+            Platform governance, global payment gateways, account role assignment, and live companion telemetry.
           </p>
         </div>
 
@@ -450,7 +451,7 @@ export default function AdminPage() {
       <div className="flex gap-1.5 overflow-x-auto pb-1 border-b border-zinc-200 dark:border-zinc-800 scrollbar-none">
         {[
           { key: "gateways", label: "Global Gateway Control", icon: Sliders },
-          { key: "merchants", label: "Merchants & Subscriptions", icon: Users },
+          { key: "merchants", label: "Accounts & subscriptions", icon: Users },
           { key: "pricing", label: "Pricing & Admin Wallets", icon: CreditCard },
           { key: "health", label: "Transactions & Health", icon: Activity },
         ].map((tab) => {
@@ -490,9 +491,9 @@ export default function AdminPage() {
               icon={<Coins className="w-4 h-4" />}
             />
             <StatCard
-              title="Merchants Registered"
+              title="Accounts registered"
               value={stats.merchants.total.toString()}
-              change={{ value: `${stats.merchants.active} Active`, trend: "neutral", label: "merchants" }}
+              change={{ value: `${stats.merchants.active} Active`, trend: "neutral", label: "accounts" }}
               icon={<Users className="w-4 h-4" />}
             />
             <StatCard
@@ -571,7 +572,7 @@ export default function AdminPage() {
                 Platform-Wide Gateway Controls
               </h2>
               <p className="text-xs text-zinc-500">
-                Disabling a payment gateway here instantly hides it platform-wide across all merchant dashboards and hosted checkout pages.
+                Disabling a payment gateway here instantly hides it platform-wide across all dashboards and hosted checkout pages.
               </p>
             </div>
           </div>
@@ -659,10 +660,10 @@ export default function AdminPage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
-                Merchants, Roles & SaaS Subscriptions
+                Accounts, roles & SaaS subscriptions
               </h2>
               <p className="text-xs text-zinc-500">
-                Promote merchants to Super Admin, assign subscription tiers, modify credit balances, and activate or suspend accounts.
+                Promote account holders to Super Admin, assign subscription tiers, modify credit balances, and activate or suspend accounts.
               </p>
             </div>
           </div>
@@ -683,7 +684,7 @@ export default function AdminPage() {
                 className="w-full text-xs rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 px-3 py-2"
               >
                 <option value="all">All Roles</option>
-                <option value="merchant">Merchants Only</option>
+                <option value="merchant">Account holders only</option>
                 <option value="admin">Super Admins Only</option>
               </select>
             </div>
@@ -718,7 +719,7 @@ export default function AdminPage() {
             <table className="w-full text-left text-xs text-zinc-600 dark:text-zinc-400">
               <thead className="bg-zinc-50 dark:bg-zinc-900/50 text-[11px] font-mono uppercase tracking-wider text-zinc-700 dark:text-zinc-300 border-b border-zinc-200 dark:border-zinc-800">
                 <tr>
-                  <th className="py-3 px-4">Merchant & Store</th>
+                  <th className="py-3 px-4">Account & store</th>
                   <th className="py-3 px-4">Role</th>
                   <th className="py-3 px-4">SaaS Plan</th>
                   <th className="py-3 px-4">Volume & Devices</th>
@@ -731,7 +732,7 @@ export default function AdminPage() {
                 {filteredMerchants.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="text-center py-8 text-zinc-500">
-                      No merchants match the selected filters.
+                      No accounts match the selected filters.
                     </td>
                   </tr>
                 ) : (
@@ -877,7 +878,7 @@ export default function AdminPage() {
                 Platform-Wide Transactions
               </h2>
               <p className="text-xs text-zinc-500">
-                Real-time transaction feed across all merchants. Provides one-click manual approval for edge cases.
+                Real-time transaction feed across all accounts. Provides one-click manual approval for edge cases.
               </p>
             </div>
           </div>
@@ -886,7 +887,7 @@ export default function AdminPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-zinc-50 dark:bg-zinc-900/50 rounded-xl border border-zinc-200 dark:border-zinc-800">
             <div className="sm:col-span-2">
               <Input
-                placeholder="Search TrxID, Session ID, Customer number, Merchant email..."
+                placeholder="Search TrxID, Session ID, Customer number, Account email..."
                 value={txSearch}
                 onChange={(e) => setTxSearch(e.target.value)}
               />
@@ -911,7 +912,7 @@ export default function AdminPage() {
               <thead className="bg-zinc-50 dark:bg-zinc-900/50 text-[11px] font-mono uppercase tracking-wider text-zinc-700 dark:text-zinc-300 border-b border-zinc-200 dark:border-zinc-800">
                 <tr>
                   <th className="py-3 px-4">Session & Trx ID</th>
-                  <th className="py-3 px-4">Merchant & Store</th>
+                  <th className="py-3 px-4">Account & store</th>
                   <th className="py-3 px-4">Method</th>
                   <th className="py-3 px-4">Amount</th>
                   <th className="py-3 px-4">Status</th>
@@ -1009,7 +1010,7 @@ export default function AdminPage() {
                 Live Companion SMS Feed
               </h2>
               <p className="text-xs text-zinc-500">
-                Real-time stream of parsed SMS notifications ingested from merchant Android phones.
+                Real-time stream of parsed SMS notifications ingested from Companion Android phones.
               </p>
             </div>
           </div>
@@ -1113,7 +1114,7 @@ export default function AdminPage() {
                 SaaS Subscription Plans
               </h2>
               <p className="text-xs text-zinc-500">
-                Commercial tiers defining pricing, device limits, and feature availability for merchants.
+                Commercial tiers defining pricing, device limits, and feature availability for account holders.
               </p>
             </div>
           </div>
@@ -1149,7 +1150,7 @@ export default function AdminPage() {
                 Super Admin Receiving Wallets
               </h3>
               <p className="text-xs text-zinc-500 mt-0.5">
-                Merchants pay these wallets when upgrading plans. MFS numbers and crypto destinations for platform revenue.
+                Account holders pay these wallets when upgrading plans. MFS numbers and crypto destinations for platform revenue.
               </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1425,7 +1426,7 @@ export default function AdminPage() {
         <Modal
           open={creditModalOpen}
           onClose={() => setCreditModalOpen(false)}
-          title={`Merchant Balance & Top-up — ${selectedMerchant.name}`}
+          title={`Account balance & top-up — ${selectedMerchant.name}`}
         >
           <form onSubmit={handleCreditSubmit} className="space-y-4">
             {/* Current Balance Display */}
@@ -1644,7 +1645,7 @@ export default function AdminPage() {
           <form onSubmit={handleResolveTx} className="space-y-4">
             <div className="p-3 bg-zinc-50 dark:bg-zinc-900 rounded-lg text-xs space-y-1">
               <div className="flex justify-between">
-                <span className="text-zinc-500">Merchant Store:</span>
+                <span className="text-zinc-500">Store:</span>
                 <span className="font-semibold">{resolvingTx.brandName}</span>
               </div>
               <div className="flex justify-between">

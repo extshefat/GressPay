@@ -219,7 +219,7 @@ export default function SettingsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-            Merchant Settings
+            Account settings
           </h1>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
             Branding, instant alerts, webhooks, and provider credentials.
@@ -433,7 +433,7 @@ export default function SettingsPage() {
         <Card id="binance-pay" className="p-6 bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
-              Binance Pay Merchant Credentials
+              Binance Pay API credentials
             </h3>
             <Badge variant={binanceLiveReady ? "emerald" : "amber"} size="sm" dot>
               {binanceLiveReady ? "Live-ready" : binanceConfigured ? "Stored" : "Not configured"}

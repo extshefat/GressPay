@@ -37,7 +37,7 @@ export default function StatusPage() {
       </Card>
 
       <p className="text-xs text-slate-400 leading-relaxed">
-        Operators: check Docker / nginx and PHP-FPM on the VPS. Merchants: if checkout fails, confirm
+        Operators: check Docker / nginx and PHP-FPM on the VPS. Account holders: if checkout fails, confirm
         the method is enabled and a deposit number is set. See{" "}
         <Link href="/help" className="text-brand-cyan hover:underline">
           Help

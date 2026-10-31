@@ -19,7 +19,7 @@ export const FAQSection: React.FC = () => {
         "The customer sends money to the bKash or Nagad number you saved. The Android companion on a phone you paired reads the provider SMS and posts the amount and TrxID. The server completes the live checkout only when that SMS matches the same brand, rail, TrxID, and amount. A typed TrxID without a matching SMS stays pending. The account type you pick is a label for your instructions, not an official provider API.",
     },
     {
-      question: "Does GressPay hold or escrow our merchant money?",
+      question: "Does GressPay hold or escrow our money?",
       answer:
         "No. The customer pays the bKash number, Nagad number, Binance Pay checkout, or TRON address you configured. GressPay records whether the evidence matched. It does not hold, settle, or move those funds.",
     },
@@ -41,12 +41,12 @@ export const FAQSection: React.FC = () => {
     {
       question: "How does GressPay prevent duplicate transaction and replay attacks?",
       answer:
-        "A completed bKash, Nagad, or TRON identifier cannot be used again for another checkout in the same brand. The check is per brand, not a global block across every merchant on the platform.",
+        "A completed bKash, Nagad, or TRON identifier cannot be used again for another checkout in the same brand. The check is per brand, not a global block across every account on the platform.",
     },
     {
       question: "How do I integrate GressPay on my website?",
       answer:
-        "Create a merchant account, add your receiving gateways, copy your live API key from Brands or API settings, then call POST /api/v1/payment/create from your server and redirect buyers to the returned payment_url. Confirm settlement with POST /api/v1/payment/verify or signed webhooks before fulfilling orders.",
+        "Create your account, add your receiving gateways, copy your website API key from Dashboard → Brands, then call POST /api/v1/payment/create from your server and redirect buyers to the returned payment_url. Confirm settlement with POST /api/v1/payment/verify or signed webhooks before fulfilling orders.",
     },
     {
       question: "What is GressPay's webhook delivery and retry policy?",

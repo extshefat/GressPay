@@ -16,14 +16,14 @@ export default function SecurityPage() {
           <p>
             Live keys start with <code className="font-mono text-brand-cyan">gp_live_</code>. Test keys
             start with <code className="font-mono text-brand-cyan">gp_test_</code>. Only a prefix is
-            shown after creation. The full secret is stored hashed. Rotate from Dashboard → API Keys.
+            shown after creation. The full secret is stored hashed. Rotate website keys from Dashboard → Brands.
           </p>
         </section>
 
         <section className="space-y-2">
           <h2 className="text-lg font-semibold text-white">Dashboard sessions</h2>
           <p>
-            Merchant login issues a JWT. The dashboard sends it as Bearer and, when you switch Live /
+            Sign-in issues a JWT for your account. The dashboard sends it as Bearer and, when you switch Live /
             Test, adds <code className="font-mono text-slate-200">X-GressPay-Mode</code>.
           </p>
         </section>

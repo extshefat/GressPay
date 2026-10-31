@@ -1,4 +1,4 @@
-# GressPay Merchant API
+# GressPay API
 
 Native GressPay JSON API. Base path: `/api/v1` · `Content-Type: application/json`  
 Errors: `{ "error": { "code": "...", "message": "..." } }`
@@ -11,7 +11,7 @@ See also [`docs/PHASE1_RAILS.md`](docs/PHASE1_RAILS.md) for ops/credentials.
 
 | Method | How |
 |--------|-----|
-| API key | `Authorization: Bearer gp_live_…` / `gp_test_…` or `X-GressPay-Key` |
+| Website API key | `Authorization: Bearer gp_live_…` / `gp_test_…` or `X-GressPay-Key` |
 | Dashboard JWT | `Authorization: Bearer <jwt>` + optional `X-GressPay-Mode: live\|test` |
 
 **Scopes** (enforced): `create_payment`, `verify_payment`, `read_transactions`, `manage_links`, `manage_invoices`, `manage_methods`, `manage_devices`, `manage_provider`.
@@ -27,7 +27,7 @@ See also [`docs/PHASE1_RAILS.md`](docs/PHASE1_RAILS.md) for ops/credentials.
 `POST /api/v1/checkout/{linkOrInvoiceId}/init` uses the **stored** payment-link / invoice amount & currency.  
 Buyer-supplied overrides → `AMOUNT_LOCKED`. Variable amounts only via authenticated `POST /checkout/create`.
 
-Webhook URLs on public init are ignored; only merchant settings / link create-time URLs are used (HTTPS + SSRF checks).
+Webhook URLs on public init are ignored; only account settings / link create-time URLs are used (HTTPS + SSRF checks).
 
 ---
 
@@ -40,7 +40,7 @@ Webhook URLs on public init are ignored; only merchant settings / link create-ti
 | completed | COMPLETED | Evidence verified |
 | expired / failed / refunded | matching | Terminal |
 
-**Evidence types:** `matched` (SMS), `simulated` (test ledger only), `provider_confirmed` (Binance), `on_chain` (USDT), `merchant_confirmed` (audited manual).
+**Evidence types:** `matched` (SMS), `simulated` (test ledger only), `provider_confirmed` (Binance), `on_chain` (USDT), `merchant_confirmed` (manual confirmation from dashboard; enum name unchanged).
 
 ---
 
@@ -48,10 +48,10 @@ Webhook URLs on public init are ignored; only merchant settings / link create-ti
 
 | Route | Auth | Notes |
 |-------|------|-------|
-| `POST /companion/register` | Merchant + `manage_devices` | Returns `deviceId` + token **once** |
-| `GET /companion/devices` | Merchant + `manage_devices` | List; no tokens |
-| `POST /companion/devices/{id}/revoke` | Merchant | Blocks further SMS uploads |
-| `POST /companion/devices/{id}/rotate` | Merchant | New token once |
+| `POST /companion/register` | Dashboard JWT + `manage_devices` | Returns `deviceId` + token **once** |
+| `GET /companion/devices` | Dashboard JWT + `manage_devices` | List; no tokens |
+| `POST /companion/devices/{id}/revoke` | Dashboard JWT | Blocks further SMS uploads |
+| `POST /companion/devices/{id}/rotate` | Dashboard JWT | New token once |
 | `POST /companion/sms` | Device token + **`X-GressPay-Brand`** | Idempotent; stores amount/TxID/rail/device only — **no SMS body** |
 
 Live completion requires matching SMS (brand, rail, TxID, amount±tolerance, age). TxID alone → stays PENDING.
@@ -60,16 +60,16 @@ Android app: `GressPay-App/` (`com.gresspay.companion`).
 
 ---
 
-## Binance Pay (merchant API — not Spot)
+## Binance Pay (Binance Pay API — not Spot)
 
 | Route | Notes |
 |-------|--------|
 | `PUT/GET /merchant/binance-pay` | Write-only secrets; status never returns secrets |
 | `POST /checkout/{sessionId}/binance/create` | Server creates order; idempotent |
-| `POST /checkout/{sessionId}/binance/reconcile` | **Merchant auth** (`verify_payment`) + brand ownership; query Binance then complete if PAID+exact amount/currency. Not public. |
+| `POST /checkout/{sessionId}/binance/reconcile` | **Signed-in account** (`verify_payment`) + brand ownership; query Binance then complete if PAID+exact amount/currency. Not public. |
 | `POST /binance-pay/callback` | Verify signature → always query order before COMPLETED |
 
-Live-ready only when: `GRESSPAY_CRYPTO_ALLOWED=1`, merchant `cryptoEnabled`, credentials present.
+Live-ready only when: `GRESSPAY_CRYPTO_ALLOWED=1`, brand `cryptoEnabled`, credentials present.
 
 ---
 
@@ -96,13 +96,13 @@ Signed HMAC-SHA256 of the raw body (`X-GressPay-Signature`), stable `eventId`, H
 
 Required when `APP_ENV=production`: `JWT_SECRET`, `APP_ENCRYPTION_KEY`, MySQL `DB_PASS` (≥32 chars recommended).  
 **Platform env:** `GRESSPAY_CRYPTO_ALLOWED`, `BINANCE_PAY_API_BASE`, `TRON_API_BASE`, `TRON_API_KEY`, `USDT_TRC20_CONTRACT`, `USDT_CONFIRMATIONS`, optional Cloudflare `R2_*` (API only).  
-**Merchant (dashboard/DB):** gateway instances in `gp_gateways` (destinations + QR metadata); Binance Pay Merchant API key, secret, and certificate serial sealed per brand — never in `.env`, never returned on GET. These are not Spot trading keys. QR **bytes** in private R2 only.
+**Account (dashboard/DB):** gateway instances in `gp_gateways` (destinations + QR metadata); Binance Pay API key, secret, and certificate serial sealed per brand — never in `.env`, never returned on GET. These are not Spot trading keys. QR **bytes** in private R2 only.
 
 ## Binance Pay vs USDT TRC-20
 
 Binance Pay create uses `POST /binancepay/openapi/v2/order` and stores `prepayId` / `checkoutUrl`. Reconciliation reads Query Order `data.totalFee` ([query order](https://developers.binance.com/docs/binance-pay/api-order-query)). `orderAmount` is accepted only when `totalFee` is absent or both amounts match. A missing or conflicting amount does not mark the session paid. Currency, `merchantTradeNo`, and status `PAID` are still required.
 
-Outbound requests are HMAC-SHA512 over `timestamp\nnonce\nbody\n` ([common rules](https://developers.binance.com/docs/binance-pay/api-common)). Official webhook examples verify RSA-SHA256 with Binance's certificate ([example](https://github.com/binance/binance-pay-signature-examples/blob/master/python/webhook.py)). This build still checks the merchant HMAC on callbacks, so an RSA callback is rejected. The callback body is never treated as proof; a successful order query is required. Create still sends `goodsDetails` on the v2 path. The current v2 document shows a `goods` object ([create order v2](https://developers.binance.com/docs/binance-pay/api-order-create-v2)), and the public query path is `/binancepay/openapi/order/query` rather than `/v2/order/query`. Those request shapes are unchanged until a sandbox call is allowed.
+Outbound requests are HMAC-SHA512 over `timestamp\nnonce\nbody\n` ([common rules](https://developers.binance.com/docs/binance-pay/api-common)). Official webhook examples verify RSA-SHA256 with Binance's certificate ([example](https://github.com/binance/binance-pay-signature-examples/blob/master/python/webhook.py)). This build still checks the platform HMAC on callbacks, so an RSA callback is rejected. The callback body is never treated as proof; a successful order query is required. Create still sends `goodsDetails` on the v2 path. The current v2 document shows a `goods` object ([create order v2](https://developers.binance.com/docs/binance-pay/api-order-create-v2)), and the public query path is `/binancepay/openapi/order/query` rather than `/v2/order/query`. Those request shapes are unchanged until a sandbox call is allowed.
 
 USDT TRC-20 is a TronGrid transfer check: contract, recipient, exact amount, and `USDT_CONFIRMATIONS`. A pasted hash or screenshot does not complete the live ledger. A payment into a Binance deposit address is not a Binance Pay order.
 
@@ -123,7 +123,7 @@ Scope: `manage_methods`. Brand-scoped. Max ~40 gateways/brand.
 | POST | `/gateways/{id}/qr/upload-intent` | `{ contentType, byteSize }` → short-lived PUT URL + `objectKey` |
 | POST | `/gateways/{id}/qr/complete` | `{ objectKey }` → HEAD verify + metadata |
 | DELETE | `/gateways/{id}/qr` | Clear QR |
-| GET | `/gateways/{id}/qr/preview` | Short-lived GET URL for merchant |
+| GET | `/gateways/{id}/qr/preview` | Short-lived GET URL for dashboard preview |
 
 Allowed MIME: `image/png`, `image/jpeg`, `image/webp` (max `R2_MAX_UPLOAD_BYTES`, default 5MB).  
 Checkout `availableMethods` may include `gatewayId`, `qrImageUrl` (signed GET). Buyer verify may send `gatewayId`. **QR scan ≠ paid.**

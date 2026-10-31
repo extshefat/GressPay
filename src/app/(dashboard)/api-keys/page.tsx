@@ -107,9 +107,11 @@ export default function ApiKeysPage() {
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
             Webhooks & Integration
           </h1>
-          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-            Manage HMAC webhook signing, test delivery, and server-side checkout examples. Website and device API keys
-            live under Brands and Devices.
+          <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+            Webhooks, HMAC signing, and checkout examples live here. Copy{" "}
+            <strong className="font-semibold text-zinc-700 dark:text-zinc-300">website keys</strong> from Brands and{" "}
+            <strong className="font-semibold text-zinc-700 dark:text-zinc-300">device keys</strong> from Devices — this
+            page does not issue those secrets.
           </p>
         </div>
         <Button
@@ -130,8 +132,8 @@ export default function ApiKeysPage() {
             <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Brand website API key</h3>
           </div>
           <p className="text-xs leading-relaxed text-zinc-500">
-            Each brand has its own live <code className="font-mono">gp_live_</code> secret for{" "}
-            <code className="font-mono">POST /payment/create</code>. Copy the full key anytime from the Brands table.
+            One live <code className="font-mono">gp_live_</code> secret per brand for your website or backend. Copy from
+            the Brands table — never paste into the Companion app.
           </p>
           <Link href="/dashboard/brands">
             <Button size="sm" variant="primary" className="w-full sm:w-auto">
@@ -145,8 +147,8 @@ export default function ApiKeysPage() {
             <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Companion device API key</h3>
           </div>
           <p className="text-xs leading-relaxed text-zinc-500">
-            Register phones per brand and paste the <code className="font-mono">gpdev_</code> Device API key into the
-            Companion app Setup screen only.
+            Each registered phone gets a <code className="font-mono">gpdev_</code> Device API key. Copy from Devices and
+            paste into Companion → Setup only.
           </p>
           <Link href="/dashboard/devices">
             <Button size="sm" variant="outline" className="w-full sm:w-auto">

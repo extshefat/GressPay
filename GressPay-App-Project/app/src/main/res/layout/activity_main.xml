@@ -222,7 +222,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
-                    android:hint="Merchant API Key (gp_live_…)">
+                    android:hint="Website API key (gp_live_…) — use Device key in Companion">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/inputApiKey"

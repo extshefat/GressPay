@@ -14,12 +14,12 @@ export const SecuritySection: React.FC = () => {
     {
       icon: <Server className="w-5 h-5 text-[#077C74] dark:text-[#1BD1C0]" />,
       title: "Multi-tenant brand isolation",
-      desc: "Every gateway, device, API key, and transaction is scoped to your brand_id. Provider credentials are encrypted at rest and never shared across merchants.",
+      desc: "Every gateway, device, API key, and transaction is scoped to your brand_id. Provider credentials are encrypted at rest and never shared across accounts.",
     },
     {
       icon: <EyeOff className="w-5 h-5 text-[#077C74] dark:text-[#1BD1C0]" />,
       title: "Zero Secret Exposure",
-      desc: "Client-facing checkout pages never see your merchant API secrets. Verification occurs strictly server-to-server or via verified background companion feeds.",
+      desc: "Client-facing checkout pages never see your website API secrets. Verification occurs strictly server-to-server or via verified background companion feeds.",
     },
     {
       icon: <KeyRound className="w-5 h-5 text-[#077C74] dark:text-[#1BD1C0]" />,

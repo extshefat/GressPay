@@ -40,7 +40,7 @@ Then `GET http://127.0.0.1:8080/api/v1/health`. SQLite is used under `storage/` 
 | GET | `/api/v1/transactions` | JWT or API key |
 | GET/POST | `/api/v1/methods` | JWT or API key |
 | GET | `/api/v1/rates` | JWT or API key |
-| POST | `/api/v1/companion/register` | merchant API key |
+| POST | `/api/v1/companion/register` | Website API key (legacy) or dashboard JWT |
 | POST | `/api/v1/companion/sms` | device token |
 | * | `/api/v1/admin/*` | platform admin |
 
