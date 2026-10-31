@@ -3,7 +3,14 @@ declare(strict_types=1);
 
 final class GatewaysController
 {
-    private const QR_METHODS = ['bkash', 'nagad', 'usdt_trc20'];
+    /** Methods that support optional checkout QR image upload (R2). */
+    private static function qrCapableMethods(): array
+    {
+        return array_merge(
+            GpCatalog::bdMobileWalletCodes(),
+            ['usdt_trc20', 'binance_pay']
+        );
+    }
     private const MAX_GATEWAYS_PER_BRAND = 40;
 
     public static function handle(GpRequest $req): never
@@ -132,12 +139,17 @@ final class GatewaysController
             $status = 'active';
         }
 
+        [$gatewayFee, $feeType] = self::feeFromRequest($req, null);
+        $exchangeRate = self::nullableAmount($req->input('exchangeRate', $req->input('custom_rate_bdt', null)));
+        $gwCategory = trim((string) $req->input('gatewayCategory', $req->input('category', $cat['category'] ?? 'mfs')));
+
         GpDb::exec(
             'INSERT INTO gp_gateways (
                 gateway_id, brand_id, method_code, display_name, account_type, account,
-                currency, country, instructions, min_amount, max_amount, display_order,
+                currency, country, instructions, min_amount, max_amount, gateway_fee, gateway_fee_type,
+                exchange_rate, gateway_category, display_order,
                 status, qr_status, created_at, updated_at
-             ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+             ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
             [
                 $gwId,
                 $actor['brand_id'],
@@ -148,8 +160,12 @@ final class GatewaysController
                 strtoupper((string) $req->input('currency', $cat['currency'] ?? 'BDT')),
                 strtoupper((string) $req->input('country', $cat['country'] ?? 'BD')),
                 trim((string) $req->input('instructions', '')) ?: null,
-                self::nullableAmount($req->input('minAmount', null)),
-                self::nullableAmount($req->input('maxAmount', null)),
+                self::nullableAmount($req->input('minAmount', $req->input('min_amount', 10))),
+                self::nullableAmount($req->input('maxAmount', $req->input('max_amount', 100000))),
+                $gatewayFee,
+                $feeType,
+                $exchangeRate,
+                $gwCategory !== '' ? $gwCategory : null,
                 $order,
                 $status,
                 'none',
@@ -159,6 +175,7 @@ final class GatewaysController
         );
         self::mirrorPrimaryMethod($actor['brand_id'], $methodCode);
         self::persistRailProfile($actor['brand_id'], $methodCode, $req, $account);
+        self::syncMethodFeesFromGateway($actor['brand_id'], $methodCode, $gatewayFee, $feeType, $exchangeRate);
         self::audit($actor, 'gateway.create', ['gatewayId' => $gwId]);
         $row = self::owned($actor['brand_id'], $gwId);
         GpJson::send(['gateway' => self::present($row)], 201);
@@ -206,9 +223,17 @@ final class GatewaysController
             }
         }
 
+        [$gatewayFee, $feeType] = self::feeFromRequest($req, $gw);
+        $exchangeRate = self::nullableAmount($req->input('exchangeRate', $req->input('custom_rate_bdt', $gw['exchange_rate'] ?? null)));
+        $gwCategoryIn = $req->input('gatewayCategory', $req->input('category', null));
+        $gwCategory = $gwCategoryIn !== null
+            ? trim((string) $gwCategoryIn)
+            : (string) ($gw['gateway_category'] ?? '');
+
         GpDb::exec(
             'UPDATE gp_gateways SET display_name = ?, account_type = ?, account = ?, currency = ?, country = ?,
-             instructions = ?, min_amount = ?, max_amount = ?, status = ?, updated_at = ?
+             instructions = ?, min_amount = ?, max_amount = ?, gateway_fee = ?, gateway_fee_type = ?,
+             exchange_rate = ?, gateway_category = ?, status = ?, updated_at = ?
              WHERE brand_id = ? AND gateway_id = ?',
             [
                 $displayName,
@@ -219,6 +244,10 @@ final class GatewaysController
                 trim((string) $req->input('instructions', $gw['instructions'] ?? '')) ?: null,
                 self::nullableAmount($req->input('minAmount', $gw['min_amount'] ?? null)),
                 self::nullableAmount($req->input('maxAmount', $gw['max_amount'] ?? null)),
+                $gatewayFee,
+                $feeType,
+                $exchangeRate,
+                $gwCategory !== '' ? $gwCategory : null,
                 $status,
                 GpIds::now(),
                 $actor['brand_id'],
@@ -227,6 +256,7 @@ final class GatewaysController
         );
         self::mirrorPrimaryMethod($actor['brand_id'], $methodCode);
         self::persistRailProfile($actor['brand_id'], $methodCode, $req, $account);
+        self::syncMethodFeesFromGateway($actor['brand_id'], $methodCode, $gatewayFee, $feeType, $exchangeRate);
         self::audit($actor, 'gateway.update', ['gatewayId' => $gw['gateway_id']]);
         GpJson::send(['gateway' => self::present(self::owned($actor['brand_id'], (string) $gw['gateway_id']))]);
     }
@@ -287,7 +317,7 @@ final class GatewaysController
     private static function uploadIntent(array $actor, array $gw, GpRequest $req): never
     {
         GpRateLimiter::guard('qr-upload:' . $actor['brand_id'], 20, 60);
-        if (!in_array((string) $gw['method_code'], self::QR_METHODS, true)) {
+        if (!in_array((string) $gw['method_code'], self::qrCapableMethods(), true)) {
             GpJson::error('QR_UNSUPPORTED', 'This payment method does not support QR image upload.', 400);
         }
         if (!R2Client::isConfigured()) {
@@ -456,13 +486,17 @@ final class GatewaysController
             'instructions' => $gw['instructions'] ?? null,
             'minAmount' => $gw['min_amount'] !== null && $gw['min_amount'] !== '' ? (string) $gw['min_amount'] : null,
             'maxAmount' => $gw['max_amount'] !== null && $gw['max_amount'] !== '' ? (string) $gw['max_amount'] : null,
+            'gatewayFee' => $gw['gateway_fee'] !== null && $gw['gateway_fee'] !== '' ? (string) $gw['gateway_fee'] : '0',
+            'gatewayFeeType' => (string) ($gw['gateway_fee_type'] ?? 'percentage'),
+            'exchangeRate' => $gw['exchange_rate'] !== null && $gw['exchange_rate'] !== '' ? (string) $gw['exchange_rate'] : null,
+            'gatewayCategory' => $gw['gateway_category'] ?? null,
             'displayOrder' => (int) ($gw['display_order'] ?? 0),
             'enabled' => $status === 'active',
             'status' => $status,
             'qrStatus' => $qrStatus,
             'qrMime' => $gw['qr_mime'] ?? null,
             'qrBytes' => isset($gw['qr_bytes']) ? (int) $gw['qr_bytes'] : null,
-            'supportsQr' => in_array($methodCode, self::QR_METHODS, true),
+            'supportsQr' => in_array($methodCode, self::qrCapableMethods(), true),
             'readiness' => $readiness,
             'r2Configured' => R2Client::isConfigured(),
             'createdAt' => $gw['created_at'] ?? null,
@@ -489,7 +523,7 @@ final class GatewaysController
             $out['apiKeySet'] = trim((string) ($opts['api_key_sealed'] ?? '')) !== '';
             $out['apiSecretSet'] = trim((string) ($opts['api_secret_sealed'] ?? '')) !== '';
         }
-        if (in_array($methodCode, ['bkash', 'nagad', 'rocket', 'upay', 'cellfin'], true)) {
+        if (in_array($methodCode, GpCatalog::bdMobileWalletCodes(), true)) {
             $out['usernameSet'] = trim((string) ($opts['username'] ?? '')) !== '';
             $out['passwordSet'] = trim((string) ($opts['password_sealed'] ?? '')) !== '';
             $out['apiKeySet'] = trim((string) ($opts['api_key_sealed'] ?? '')) !== '';
@@ -542,7 +576,7 @@ final class GatewaysController
             return !empty($ready['liveReady']) ? 'live_ready' : 'needs_attention';
         }
 
-        if (in_array($method, ['bkash', 'nagad', 'rocket', 'upay', 'cellfin'], true)) {
+        if (in_array($method, GpCatalog::bdMobileWalletCodes(), true)) {
             $accountType = strtolower((string) ($gw['account_type'] ?? 'personal'));
             if ($account === '') {
                 return 'setup_incomplete';
@@ -583,7 +617,7 @@ final class GatewaysController
         if ($qr === 'pending') {
             return 'qr_pending';
         }
-        if (in_array($method, self::QR_METHODS, true) && !R2Client::isConfigured() && $qr !== 'ready') {
+        if (in_array($method, self::qrCapableMethods(), true) && !R2Client::isConfigured() && $qr !== 'ready') {
             // Account ok; QR optional when R2 missing
             if ($status !== 'active') {
                 return 'configured_disabled';
@@ -605,8 +639,17 @@ final class GatewaysController
         if ($dest === '') {
             return '';
         }
-        if (in_array($methodCode, ['bkash', 'nagad', 'upay', 'cellfin'], true)) {
+        if (in_array($methodCode, GpCatalog::bdMobileWalletCodes(), true)) {
             $digits = preg_replace('/\D+/', '', $dest) ?? '';
+            if ($methodCode === 'rocket') {
+                if (preg_match('/^8801[3-9]\d{8,9}$/', $digits)) {
+                    return '0' . substr($digits, 3);
+                }
+                if (preg_match('/^01[3-9]\d{8,9}$/', $digits)) {
+                    return $digits;
+                }
+                GpJson::error('INVALID_ACCOUNT', 'Enter a valid Rocket account number (11 or 12 digits).', 400);
+            }
             if (preg_match('/^8801[3-9]\d{8}$/', $digits)) {
                 return '0' . substr($digits, 3);
             }
@@ -614,16 +657,6 @@ final class GatewaysController
                 return $digits;
             }
             GpJson::error('INVALID_ACCOUNT', 'Enter a valid Bangladesh mobile number (01XXXXXXXXX).', 400);
-        }
-        if ($methodCode === 'rocket') {
-            $digits = preg_replace('/\D+/', '', $dest) ?? '';
-            if (preg_match('/^8801[3-9]\d{8,9}$/', $digits)) {
-                return '0' . substr($digits, 3);
-            }
-            if (preg_match('/^01[3-9]\d{8,9}$/', $digits)) {
-                return $digits;
-            }
-            GpJson::error('INVALID_ACCOUNT', 'Enter a valid Rocket account number (11 or 12 digits).', 400);
         }
         if ($methodCode === 'bybit_pay') {
             $cleaned = trim($dest);
@@ -693,7 +726,7 @@ final class GatewaysController
     /** Store manual UID fields. Secrets are sealed and never returned. */
     private static function persistRailProfile(string $brandId, string $methodCode, GpRequest $req, string $account): void
     {
-        $mfs = ['bkash', 'nagad', 'rocket', 'upay', 'cellfin'];
+        $mfs = GpCatalog::bdMobileWalletCodes();
         if (!in_array($methodCode, array_merge(['bybit_pay', 'binance_pay', 'usdt_trc20'], $mfs), true)) {
             return;
         }
@@ -812,6 +845,72 @@ final class GatewaysController
             return null;
         }
         return GpMoney::sanitize((string) $v);
+    }
+
+    /** @return array{0:string,1:string} */
+    private static function feeFromRequest(GpRequest $req, ?array $gw): array
+    {
+        $type = strtolower(trim((string) $req->input(
+            'gatewayFeeType',
+            $req->input('feeType', $gw['gateway_fee_type'] ?? 'percentage')
+        )));
+        if (!in_array($type, ['percentage', 'fixed'], true)) {
+            GpJson::error('INVALID_FEE_TYPE', 'gatewayFeeType must be percentage or fixed.', 400);
+        }
+        $rawFee = $req->input('gatewayFee', $req->input('fee', null));
+        if ($rawFee === null && $gw !== null) {
+            $fee = self::nullableAmount($gw['gateway_fee'] ?? '0') ?? '0';
+        } else {
+            $fee = self::nullableAmount($rawFee) ?? '0';
+        }
+        if ((float) $fee < 0) {
+            GpJson::error('INVALID_FEE', 'gatewayFee cannot be negative.', 400);
+        }
+        return [$fee, $type];
+    }
+
+    /** @param array<string,mixed> $opts */
+    private static function applyFeeToOptions(array &$opts, string $fee, string $feeType): void
+    {
+        if ($feeType === 'fixed') {
+            $opts['fixed_charge'] = $fee;
+            $opts['percentage_charge'] = '0';
+        } else {
+            $opts['percentage_charge'] = $fee;
+            $opts['fixed_charge'] = '0';
+        }
+    }
+
+    private static function syncMethodFeesFromGateway(
+        string $brandId,
+        string $methodCode,
+        string $fee,
+        string $feeType,
+        ?string $exchangeRate
+    ): void {
+        $existing = GpDb::one('SELECT options FROM gp_methods WHERE brand_id = ? AND code = ?', [$brandId, $methodCode]);
+        $prev = [];
+        if ($existing) {
+            $decoded = json_decode((string) ($existing['options'] ?? ''), true);
+            $prev = is_array($decoded) ? $decoded : [];
+        }
+        self::applyFeeToOptions($prev, $fee, $feeType);
+        if ($exchangeRate !== null && $exchangeRate !== '' && (float) $exchangeRate > 0) {
+            $prev['custom_rate_bdt'] = (float) $exchangeRate;
+        }
+        $json = json_encode($prev, JSON_UNESCAPED_SLASHES);
+        $now = GpIds::now();
+        if ($existing) {
+            GpDb::exec(
+                'UPDATE gp_methods SET options = ?, updated_at = ? WHERE brand_id = ? AND code = ?',
+                [$json, $now, $brandId, $methodCode]
+            );
+            return;
+        }
+        GpDb::exec(
+            'INSERT INTO gp_methods (brand_id, code, status, options, created_at, updated_at) VALUES (?,?,?,?,?,?)',
+            [$brandId, $methodCode, 'inactive', $json, $now, $now]
+        );
     }
 
     private static function mirrorPrimaryMethod(string $brandId, string $methodCode): void

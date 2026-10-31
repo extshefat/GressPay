@@ -135,12 +135,15 @@ export default function AdminPage() {
   const [planDefDescription, setPlanDefDescription] = useState("");
   const [planDefIsFree, setPlanDefIsFree] = useState(false);
   const [isSubmittingPlanDef, setIsSubmittingPlanDef] = useState(false);
+  const [billingBrandId, setBillingBrandId] = useState("");
+  const [billingBrandName, setBillingBrandName] = useState<string | null>(null);
+  const [savingBillingBrand, setSavingBillingBrand] = useState(false);
 
   const loadData = async () => {
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const [s, m, g, t, sms, p, sub, a, wallets] = await Promise.all([
+      const [s, m, g, t, sms, p, sub, a, wallets, billingBrand] = await Promise.all([
         api.getAdminStats(),
         api.getAdminMerchants(),
         api.getAdminPlatformGateways().catch(() => ({ gateways: [] })),
@@ -160,6 +163,7 @@ export default function AdminPage() {
             bybit_uid: "",
           },
         })),
+        api.getAdminBillingBrand().catch(() => ({ billingBrandId: null, billingBrandName: null })),
       ]);
       setStats(s);
       setMerchants(m.merchants || []);
@@ -170,6 +174,8 @@ export default function AdminPage() {
       setSubscriptions(sub.subscriptions || []);
       setAuditLogs(a.auditLogs || []);
       setAdminWallets(wallets.wallets);
+      setBillingBrandId(billingBrand.billingBrandId || "");
+      setBillingBrandName(billingBrand.billingBrandName ?? null);
       setIsForbidden(false);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Access denied or failed to load admin console.";
@@ -576,6 +582,48 @@ export default function AdminPage() {
               </p>
             </div>
           </div>
+
+          <Card className="space-y-3 p-4 border-emerald-200 dark:border-emerald-900">
+            <div>
+              <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Account plan billing brand</h3>
+              <p className="text-xs text-zinc-500 mt-1">
+                My Payments checkout uses gateways configured on this brand (platform owner wallets — not each account&apos;s own View Gateways).
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Input
+                label="Billing brand ID"
+                value={billingBrandId}
+                onChange={(e) => setBillingBrandId(e.target.value)}
+                placeholder="e.g. br_..."
+                className="font-mono text-xs flex-1"
+              />
+              <Button
+                size="sm"
+                variant="primary"
+                className="self-end"
+                isLoading={savingBillingBrand}
+                onClick={async () => {
+                  setSavingBillingBrand(true);
+                  try {
+                    await api.setAdminBillingBrand(billingBrandId.trim());
+                    await loadData();
+                  } catch (err: unknown) {
+                    setErrorMessage(err instanceof Error ? err.message : "Failed to save billing brand.");
+                  } finally {
+                    setSavingBillingBrand(false);
+                  }
+                }}
+              >
+                Save billing brand
+              </Button>
+            </div>
+            {billingBrandName && (
+              <p className="text-[11px] text-zinc-500">
+                Current: <span className="font-semibold">{billingBrandName}</span>
+              </p>
+            )}
+          </Card>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {gateways.map((gw) => {

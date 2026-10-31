@@ -428,6 +428,39 @@ class ApiClient {
     });
   }
 
+  async cancelCheckout(sessionId: string): Promise<{ ok: boolean; redirectUrl?: string; message?: string }> {
+    return this.request(`/api/v1/checkout/${sessionId}/cancel`, { method: "POST", body: "{}" });
+  }
+
+  async getMyPlanPayments(): Promise<{ payments: import("@/lib/types/api").AccountPlanPayment[] }> {
+    return this.request("/api/v1/billing/payments");
+  }
+
+  async getBillingPlans(): Promise<{
+    plans: { planId: string; code: string; name: string; priceBdt: string; billingCycle: string }[];
+    billingBrandConfigured: boolean;
+  }> {
+    return this.request("/api/v1/billing/plans");
+  }
+
+  async createPlanOrder(planCode: string): Promise<{ order: import("@/lib/types/api").AccountPlanPayment }> {
+    return this.request("/api/v1/billing/orders", {
+      method: "POST",
+      body: JSON.stringify({ planCode }),
+    });
+  }
+
+  async getAdminBillingBrand(): Promise<{ billingBrandId: string | null; billingBrandName?: string | null }> {
+    return this.request("/api/v1/admin/billing-brand");
+  }
+
+  async setAdminBillingBrand(billingBrandId: string): Promise<{ ok: boolean; billingBrandId: string }> {
+    return this.request("/api/v1/admin/billing-brand", {
+      method: "PUT",
+      body: JSON.stringify({ billingBrandId }),
+    });
+  }
+
   async qrUploadIntent(
     id: string,
     contentType: string,

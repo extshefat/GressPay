@@ -111,6 +111,13 @@ export interface MerchantGateway {
   instructions?: string | null;
   minAmount?: string | null;
   maxAmount?: string | null;
+  gatewayFee?: string | null;
+  gatewayFeeType?: "percentage" | "fixed" | string;
+  exchangeRate?: string | null;
+  gatewayCategory?: string | null;
+  binance_uid?: string;
+  apiKeySet?: boolean;
+  apiSecretSet?: boolean;
   displayOrder: number;
   enabled: boolean;
   status: string;
@@ -126,6 +133,23 @@ export interface MerchantGateway {
 }
 
 export type TransactionStatus = "PENDING" | "COMPLETED" | "EXPIRED" | "FAILED" | "REFUNDED";
+
+export interface AccountPlanPayment {
+  id: string;
+  orderId: string;
+  planId: string;
+  planCode: string;
+  planName: string;
+  amount: string;
+  currency: string;
+  status: "PENDING" | "COMPLETED" | "FAILED" | "CANCELED";
+  trxId?: string | null;
+  sessionId?: string | null;
+  checkoutUrl?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 
 export type ConfirmationState =
   | "none"

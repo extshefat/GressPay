@@ -27,6 +27,9 @@ final class CheckoutController
         if ($req->method === 'POST' && $a !== null && $b === 'verify') {
             self::verifyPublic($req, $a);
         }
+        if ($req->method === 'POST' && $a !== null && $b === 'cancel') {
+            self::cancelPublic($req, $a);
+        }
         if ($req->method === 'POST' && $a !== null && $b === 'binance' && $req->part(3) === 'create') {
             BinancePayController::createForSession($req, $a);
         }
@@ -74,6 +77,53 @@ final class CheckoutController
         }
         $row = self::expireIfNeeded($row);
         GpJson::send(GpPresenters::checkoutStatus($row));
+    }
+
+    private static function cancelPublic(GpRequest $req, string $sessionId): never
+    {
+        GpRateLimiter::guard('checkout-cancel:' . GpRateLimiter::ip(), 30, 60);
+        $row = GpDb::one('SELECT * FROM gp_transactions WHERE session_id = ?', [$sessionId]);
+        if ($row === null) {
+            GpJson::error('NOT_FOUND', 'Checkout session not found.', 404);
+        }
+        $row = self::expireIfNeeded($row);
+        $st = strtolower((string) ($row['status'] ?? ''));
+        if ($st === 'completed') {
+            GpJson::error('ALREADY_PAID', 'This payment is already completed.', 409);
+        }
+        if (in_array($st, ['failed', 'expired', 'refunded'], true)) {
+            GpJson::send([
+                'ok' => true,
+                'status' => strtoupper($st),
+                'redirectUrl' => self::cancelRedirect($row),
+                'message' => 'Session already closed.',
+            ]);
+        }
+        $meta = self::decodeMeta($row);
+        $meta['canceledAt'] = GpIds::now();
+        $meta['confirmationState'] = 'canceled';
+        GpDb::exec(
+            'UPDATE gp_transactions SET status = ?, metadata = ?, updated_at = ? WHERE session_id = ?',
+            ['failed', json_encode($meta, JSON_UNESCAPED_SLASHES), GpIds::now(), $sessionId]
+        );
+        GpPlatformBilling::onCheckoutCanceled($sessionId);
+        GpJson::send([
+            'ok' => true,
+            'status' => 'CANCELED',
+            'redirectUrl' => self::cancelRedirect($row),
+            'message' => 'Payment canceled successfully.',
+        ]);
+    }
+
+    /** @param array<string,mixed> $row */
+    private static function cancelRedirect(array $row): string
+    {
+        $meta = self::decodeMeta($row);
+        $fromMeta = trim((string) ($meta['cancelRedirect'] ?? $meta['cancelUrl'] ?? ''));
+        if ($fromMeta !== '' && (str_starts_with($fromMeta, '/') || filter_var($fromMeta, FILTER_VALIDATE_URL))) {
+            return $fromMeta;
+        }
+        return '/dashboard/my-payments?canceled=1';
     }
 
     private static function initPublic(GpRequest $req, string $linkId): never
@@ -969,6 +1019,9 @@ final class CheckoutController
                     'UPDATE gp_invoices SET status = ?, updated_at = ? WHERE invoice_id = ? AND brand_id = ?',
                     ['paid', $now, $paid['source_id'], $paid['brand_id']]
                 );
+            }
+            if ($paid && ($paid['source'] ?? '') === 'account-plan') {
+                GpPlatformBilling::onCheckoutCompleted($paid);
             }
             $pdo->commit();
         } catch (Throwable $e) {

@@ -21,6 +21,7 @@ import {
   Users,
   X,
   Activity,
+  CreditCard,
 } from "lucide-react";
 import { GpMark } from "@/components/brand/GpMark";
 import { User } from "@/lib/types/api";
@@ -30,6 +31,7 @@ const CORE_NAV = [
   { href: "/dashboard/transactions", label: "Transactions", icon: ArrowLeftRight },
   { href: "/dashboard/payment-links", label: "Payment Links", icon: Link2 },
   { href: "/dashboard/invoices", label: "Invoices", icon: FileText },
+  { href: "/dashboard/my-payments", label: "My Payments", icon: CreditCard },
   { href: "/dashboard/methods", label: "View Gateways", icon: Sliders },
   { href: "/dashboard/brands", label: "Brands", icon: Building2 },
   { href: "/dashboard/devices", label: "Devices", icon: Smartphone },
