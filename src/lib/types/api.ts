@@ -15,10 +15,29 @@ export interface User {
   planId?: string;
   plan_id?: string;
   planExpiresAt?: string | null;
+  planUsage?: PlanUsage | null;
   status?: string;
   isVerified: boolean;
   avatarUrl?: string;
   createdAt: string;
+}
+
+export interface PlanUsage {
+  billingTimezone: string;
+  billingMonthLabel: string;
+  planCode: string;
+  brands: {
+    used: number;
+    limit: number;
+    atLimit: boolean;
+  };
+  monthlyCompleted: {
+    used: number;
+    limit: number | null;
+    unlimited: boolean;
+    atLimit: boolean;
+    warning: boolean;
+  };
 }
 
 export type Currency = "BDT" | "INR" | "PKR" | "NPR" | "USD" | "USDT";
@@ -319,6 +338,7 @@ export interface DashboardMetrics {
     devicesUsed: number;
     methodsUsed: number;
   };
+  planUsage?: PlanUsage;
 }
 
 export interface MerchantSettings {

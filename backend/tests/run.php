@@ -860,5 +860,60 @@ $devSealed = GpDb::one('SELECT token_sealed FROM gp_devices WHERE brand_id = ? O
 $devReopened = is_array($devSealed) ? (GpCrypto::open((string) ($devSealed['token_sealed'] ?? '')) ?? '') : '';
 assert_true($devReopened === $devPlain, 'token_sealed decrypts to full device key for owner copy');
 
+// —— Wave 3: Free plan brand cap + monthly completed checkout cap ——
+$quotaMerchant = GpIds::make('m', 6);
+$quotaBrand1 = GpIds::make('b', 6);
+$nowQ = GpIds::now();
+GpDb::exec(
+    "INSERT INTO gp_merchants (merchant_id, full_name, email, password_hash, role, status, plan_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)",
+    [$quotaMerchant, 'Quota User', 'quota-free@test.local', password_hash('x', PASSWORD_BCRYPT), 'merchant', 'active', 'plan_starter', $nowQ, $nowQ]
+);
+GpDb::exec(
+    'INSERT INTO gp_brands (brand_id, merchant_id, name, currency_code, timezone, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    [$quotaBrand1, $quotaMerchant, 'Only Site', 'BDT', 'Asia/Dhaka', $nowQ, $nowQ]
+);
+$usageQ = GpPlanLimits::usageForMerchant($quotaMerchant);
+assert_true($usageQ['brands']['used'] === 1 && $usageQ['brands']['limit'] === 1 && $usageQ['brands']['atLimit'] === true, 'Free account at 1-brand cap');
+assert_true($usageQ['monthlyCompleted']['limit'] === 50, 'Free monthly completed cap is 50');
+
+$windowQ = GpPlanLimits::currentBillingMonthWindow();
+for ($i = 0; $i < 50; $i++) {
+    GpDb::exec(
+        'INSERT INTO gp_transactions (session_id, brand_id, source, amount, currency, ledger_mode, status, created_at, updated_at)
+         VALUES (?,?,?,?,?,?,?,?,?)',
+        [GpIds::make('chs', 8), $quotaBrand1, 'api', '10', 'BDT', 'live', 'completed', $nowQ, $nowQ]
+    );
+}
+$usageFull = GpPlanLimits::usageForMerchant($quotaMerchant);
+assert_true($usageFull['monthlyCompleted']['used'] === 50 && $usageFull['monthlyCompleted']['atLimit'] === true, '50 completed live txns hit cap');
+assert_true($usageFull['monthlyCompleted']['warning'] === false, 'atLimit suppresses warning flag');
+
+$usageWarnMerchant = GpIds::make('m', 6);
+$usageWarnBrand = GpIds::make('b', 6);
+GpDb::exec(
+    "INSERT INTO gp_merchants (merchant_id, full_name, email, password_hash, role, status, plan_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)",
+    [$usageWarnMerchant, 'Warn User', 'quota-warn@test.local', password_hash('x', PASSWORD_BCRYPT), 'merchant', 'active', 'starter', $nowQ, $nowQ]
+);
+GpDb::exec(
+    'INSERT INTO gp_brands (brand_id, merchant_id, name, currency_code, timezone, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    [$usageWarnBrand, $usageWarnMerchant, 'Warn Site', 'BDT', 'Asia/Dhaka', $nowQ, $nowQ]
+);
+for ($i = 0; $i < 40; $i++) {
+    GpDb::exec(
+        'INSERT INTO gp_transactions (session_id, brand_id, source, amount, currency, ledger_mode, status, created_at, updated_at)
+         VALUES (?,?,?,?,?,?,?,?,?)',
+        [GpIds::make('chs', 8), $usageWarnBrand, 'api', '5', 'BDT', 'live', 'completed', $nowQ, $nowQ]
+    );
+}
+$usageWarn = GpPlanLimits::usageForMerchant($usageWarnMerchant);
+assert_true($usageWarn['monthlyCompleted']['used'] === 40 && $usageWarn['monthlyCompleted']['warning'] === true, 'soft warning at 40/50');
+
+$proMerchant = GpIds::make('m', 6);
+GpDb::exec(
+    "INSERT INTO gp_merchants (merchant_id, full_name, email, password_hash, role, status, plan_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)",
+    [$proMerchant, 'Pro User', 'quota-pro@test.local', password_hash('x', PASSWORD_BCRYPT), 'merchant', 'active', 'pro', $nowQ, $nowQ]
+);
+assert_true(GpPlanLimits::maxBrandsForMerchant($proMerchant) === 5, 'Pro plan allows 5 websites');
+
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

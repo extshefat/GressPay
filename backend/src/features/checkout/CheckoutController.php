@@ -133,6 +133,9 @@ final class CheckoutController
     private static function openSession(GpRequest $req, string $brandId, string $mode, ?array $link, string $source): array
     {
         $mode = $mode === 'test' ? 'test' : 'live';
+        if ($mode === 'live') {
+            GpPlanLimits::assertCheckoutCreateAllowed($brandId);
+        }
         $fixed = in_array($source, ['payment-link', 'invoice'], true) && $link !== null;
 
         if ($fixed) {

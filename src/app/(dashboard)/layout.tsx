@@ -6,6 +6,7 @@ import { api } from "@/lib/api-client";
 import { User } from "@/lib/types/api";
 import { DashboardSidebar } from "@/features/dashboard/components/DashboardSidebar";
 import { DashboardHeader } from "@/features/dashboard/components/DashboardHeader";
+import { PlanUsageBanner } from "@/features/dashboard/components/PlanUsageBanner";
 import { GpMark } from "@/components/brand/GpMark";
 
 export default function DashboardLayout({
@@ -80,6 +81,7 @@ export default function DashboardLayout({
       <div className="flex-1 flex flex-col min-w-0">
         <DashboardHeader user={user} onMenuClick={() => setMobileNavOpen(true)} />
         <main key={ledgerMode} className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto">
+          <PlanUsageBanner usage={user?.planUsage} className="mb-6 max-w-7xl mx-auto" />
           {children}
         </main>
       </div>

@@ -24,6 +24,7 @@ spl_autoload_register(static function (string $class): void {
         'GpRouter' => GRESSPAY_SRC . '/lib/Router.php',
         'GpMethodReadiness' => GRESSPAY_SRC . '/lib/MethodReadiness.php',
         'GpPlatform' => GRESSPAY_SRC . '/lib/Platform.php',
+        'GpPlanLimits' => GRESSPAY_SRC . '/lib/PlanLimits.php',
         'BinancePayClient' => GRESSPAY_SRC . '/providers/BinancePayClient.php',
         'GoogleOAuthClient' => GRESSPAY_SRC . '/providers/GoogleOAuthClient.php',
         'TronUsdtVerifier' => GRESSPAY_SRC . '/providers/TronUsdtVerifier.php',

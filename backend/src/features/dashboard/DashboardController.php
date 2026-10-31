@@ -154,6 +154,7 @@ final class DashboardController
                 'devicesUsed' => $devices,
                 'methodsUsed' => $activeMethods,
             ],
+            'planUsage' => GpPlanLimits::usageForMerchant((string) $actor['merchant_id']),
         ]);
     }
 }

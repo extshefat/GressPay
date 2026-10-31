@@ -78,23 +78,7 @@ final class BrandsController
     /** @param array<string,mixed> $actor */
     private static function create(array $actor, GpRequest $req): never
     {
-        $count = (int) (GpDb::one(
-            'SELECT COUNT(*) AS c FROM gp_brands WHERE merchant_id = ?',
-            [$actor['merchant_id']]
-        )['c'] ?? 0);
-        $plan = strtolower((string) ($actor['plan_id'] ?? 'starter'));
-        $max = match ($plan) {
-            'lifetime', 'enterprise' => 50,
-            'pro' => 5,
-            default => 1,
-        };
-        if ($count >= $max) {
-            GpJson::error(
-                'BRAND_QUOTA',
-                "Your plan allows {$max} brand(s). Upgrade to add more websites/stores.",
-                403
-            );
-        }
+        GpPlanLimits::assertBrandCreateAllowed((string) $actor['merchant_id']);
 
         $name = trim((string) $req->input('name', $req->input('brand_name', '')));
         if ($name === '') {
