@@ -47,6 +47,8 @@ final class GpPresenters
             'name' => $merchant['full_name'],
             'email' => $merchant['email'],
             'businessName' => $brand['name'] ?? '',
+            'brandId' => (string) ($brand['brand_id'] ?? ''),
+            'hasBrand' => trim((string) ($brand['brand_id'] ?? '')) !== '',
             'role' => $role,
             'isAdmin' => $isAdmin,
             'is_admin' => $isAdmin,

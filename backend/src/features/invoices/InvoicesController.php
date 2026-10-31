@@ -11,6 +11,9 @@ final class InvoicesController
         $id = $req->part(1);
 
         if ($req->method === 'GET' && $id === null) {
+            if (GpAuth::activeBrandId($actor) === '') {
+                GpJson::send(['invoices' => [], 'noBrand' => true]);
+            }
             $rows = GpDb::all(
                 'SELECT * FROM gp_invoices WHERE brand_id = ? ORDER BY id DESC LIMIT 100',
                 [$actor['brand_id']]
@@ -28,6 +31,7 @@ final class InvoicesController
             GpJson::send(['invoice' => GpPresenters::invoice($row, $brand, $merchant)]);
         }
         if ($req->method === 'POST' && $id === null) {
+            GpAuth::requireBrandContext($actor);
             $amount = GpMoney::sanitize((string) $req->input('amount', '0'));
             if ((float) $amount <= 0) {
                 GpJson::error('INVALID_AMOUNT', 'Amount must be a positive number.');

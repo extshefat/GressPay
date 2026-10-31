@@ -410,9 +410,33 @@ final class CheckoutController
                     ? $gwPresent['displayName']
                     : $presented['name'];
                 $presented['depositAddressOrNumber'] = $gwPresent['account'];
+                $presented['accountType'] = $gwPresent['accountType'] ?? 'personal';
                 $presented['qrImageUrl'] = $gwPresent['qrImageUrl'] ?? null;
                 $presented['qrStatus'] = $gwPresent['qrStatus'];
                 $presented['readiness'] = $gwPresent['readiness'];
+                // Rebuild instruction steps with wallet account-type verbs (Personal / Agent / Payment).
+                $accountType = strtolower((string) ($gwPresent['accountType'] ?? 'personal'));
+                $plugin = GpCatalog::loadPlugin((string) ($cat['slug'] ?? $cat['code'] ?? $code));
+                if ($plugin) {
+                    $ins = $plugin->instructions([
+                        'options' => [
+                            'account' => $gwPresent['account'] ?? '',
+                            'account_type' => $accountType,
+                            'accountType' => $accountType,
+                        ],
+                        'transaction' => [
+                            'amount' => $presented['payableAmount'] ?? '',
+                            'currency' => $presented['payableCurrency'] ?? ($presented['currency'] ?? ''),
+                        ],
+                    ]);
+                    if (is_array($ins) && $ins !== []) {
+                        $presented['instructionSteps'] = $ins;
+                        $presented['instructions'] = implode(' ', array_map(
+                            static fn ($s) => is_array($s) ? (string) ($s['text'] ?? '') : '',
+                            $ins
+                        ));
+                    }
+                }
                 $out[] = $presented;
             }
             if ($out !== []) {

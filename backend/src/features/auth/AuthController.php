@@ -90,8 +90,6 @@ final class AuthController
         $name = trim((string) $req->input('full_name', $req->input('name', '')));
         $email = strtolower(trim((string) $req->input('email', '')));
         $password = (string) $req->input('password', '');
-        $brandName = trim((string) $req->input('brand_name', $req->input('businessName', $name ?: 'GressPay Merchant')));
-
         if ($name === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($password) < 8) {
             GpJson::error('VALIDATION', 'full_name, valid email, and password (8+ chars) are required.');
         }
@@ -105,8 +103,6 @@ final class AuthController
         $role = $isAdmin ? 'admin' : 'merchant';
         $planId = $isAdmin ? 'lifetime' : 'trial';
         $merchantId = GpIds::make('mrc', 8);
-        $brandId = GpIds::make('brd', 8);
-        $webhookSecret = 'gpwh_' . bin2hex(random_bytes(24));
 
         $pdo = GpDb::pdo();
         $pdo->beginTransaction();
@@ -117,47 +113,27 @@ final class AuthController
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 [$merchantId, $name, $email, password_hash($password, PASSWORD_BCRYPT), $role, 'active', $planId, 'local', $now, $now]
             );
-            GpDb::exec(
-                'INSERT INTO gp_brands (brand_id, merchant_id, name, currency_code, timezone, webhook_secret, created_at, updated_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                [$brandId, $merchantId, $brandName, 'BDT', 'Asia/Dhaka', $webhookSecret, $now, $now]
-            );
-            GpAuth::seedCurrencies($brandId);
-            // Seed release-scope methods only; crypto rails start inactive until credentials + operator gate.
-            foreach (GpCatalog::releaseMethods() as $m) {
-                GpDb::exec(
-                    'INSERT INTO gp_methods (brand_id, code, status, options, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-                    [$brandId, $m['code'], 'inactive', '{}', $now, $now]
-                );
-            }
-
-            $live = GpAuth::issueKey($brandId, 'live', 'Default live');
-            $test = GpAuth::issueKey($brandId, 'test', 'Default test');
 
             $pdo->commit();
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
             }
-            error_log('Merchant registration transaction failed: ' . $e->getMessage());
+            error_log('Account registration transaction failed: ' . $e->getMessage());
             GpJson::error('TRANSACTION_FAILED', 'Account creation could not be completed. Rolled back.', 500);
         }
 
-        $token = GpJwt::encode(['sub' => $merchantId, 'brand' => $brandId, 'email' => $email, 'role' => $role, 'is_admin' => $isAdmin, 'plan_id' => $planId]);
+        $token = GpJwt::encode(['sub' => $merchantId, 'brand' => '', 'email' => $email, 'role' => $role, 'is_admin' => $isAdmin, 'plan_id' => $planId]);
         $user = GpPresenters::user(
             ['merchant_id' => $merchantId, 'full_name' => $name, 'email' => $email, 'role' => $role, 'status' => 'active', 'plan_id' => $planId, 'created_at' => $now],
-            ['name' => $brandName]
+            ['name' => '', 'brand_id' => '']
         );
 
         GpJson::send([
             'token' => $token,
             'tokenType' => 'Bearer',
             'user' => $user,
-            'keys' => [
-                'live' => $live['key'],
-                'test' => $test['key'],
-            ],
-            'note' => 'API keys are shown once. Store them now.',
+            'note' => 'Create a brand under Dashboard → Brands when you are ready to accept payments.',
         ], 201);
     }
 
@@ -185,10 +161,10 @@ final class AuthController
             $row['role'] = 'admin';
             $row['plan_id'] = 'lifetime';
         }
-        $brand = GpDb::one('SELECT * FROM gp_brands WHERE merchant_id = ?', [$row['merchant_id']]);
+        $brand = GpDb::one('SELECT * FROM gp_brands WHERE merchant_id = ? ORDER BY id ASC', [$row['merchant_id']]);
         $token = GpJwt::encode([
             'sub' => $row['merchant_id'],
-            'brand' => $brand['brand_id'] ?? '',
+            'brand' => is_array($brand) ? (string) ($brand['brand_id'] ?? '') : '',
             'email' => $row['email'],
             'role' => $isAdmin ? 'admin' : ($row['role'] ?? 'merchant'),
             'is_admin' => $isAdmin,
@@ -197,7 +173,7 @@ final class AuthController
         GpJson::send([
             'token' => $token,
             'tokenType' => 'Bearer',
-            'user' => GpPresenters::user($row, $brand ?? ['name' => '']),
+            'user' => GpPresenters::user($row, is_array($brand) ? $brand : ['name' => '', 'brand_id' => '']),
         ]);
     }
 
@@ -217,7 +193,13 @@ final class AuthController
                 $merchant['plan_id'] = 'lifetime';
             }
         }
-        $brand = GpDb::one('SELECT * FROM gp_brands WHERE brand_id = ?', [$actor['brand_id']]);
-        GpJson::send(['user' => GpPresenters::user($merchant, $brand)]);
+        $brand = null;
+        if (GpAuth::activeBrandId($actor) !== '') {
+            $brand = GpDb::one('SELECT * FROM gp_brands WHERE brand_id = ? AND merchant_id = ?', [$actor['brand_id'], $actor['merchant_id']]);
+        }
+        if ($brand === null) {
+            $brand = GpDb::one('SELECT * FROM gp_brands WHERE merchant_id = ? ORDER BY id ASC', [$actor['merchant_id']]);
+        }
+        GpJson::send(['user' => GpPresenters::user($merchant, is_array($brand) ? $brand : ['name' => '', 'brand_id' => ''])]);
     }
 }

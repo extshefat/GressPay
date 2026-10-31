@@ -25,4 +25,8 @@ Stores **account-owner** GressPay plan purchases (My Payments). Checkout session
 
 - No new env vars required for billing.
 - QR uploads still use existing R2 env; extended QR support to all BD MFS + Binance on gateway rows.
-- After deploy, Super Admin should set billing brand ID and enable desired rails on that brand.
+- **Production ops (required for My Payments checkout):**
+  1. Sign in as Super Admin → **Admin → Global Gateway Control** (or billing brand API).
+  2. Set `saas_billing_brand_id` to the `brd_*` of the owner brand that collects plan payments.
+  3. On that same brand, configure live gateways under **View Gateways** (bKash/Nagad/etc.) — plan checkout `/pay/{session}` uses those rails, not the purchaser’s brand.
+  4. Optional SQL seed: `INSERT INTO gp_platform_settings (setting_key, setting_value, updated_at) VALUES ('saas_billing_brand_id', 'brd_xxxxxxxx', NOW()) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = VALUES(updated_at);`

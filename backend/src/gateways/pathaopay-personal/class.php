@@ -7,7 +7,7 @@ class PathaopayPersonalGateway extends GressPayBaseGateway
     {
         return [
             'title' => 'Pathao Pay',
-            'logo' => '/methods/bkash.svg',
+            'logo' => '/methods/pathaopay.svg',
             'currency' => 'BDT',
             'tab' => 'mfs',
             'gateway_type' => 'manual',

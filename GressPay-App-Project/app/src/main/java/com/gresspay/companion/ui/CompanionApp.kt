@@ -248,8 +248,6 @@ private fun SetupScreen(actions: CompanionActions, prefs: Prefs, onDone: () -> U
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var state by remember { mutableStateOf(actions.readState()) }
-    var showAdvancedUrl by remember { mutableStateOf(false) }
-    var baseUrl by remember { mutableStateOf(state.baseUrl.ifBlank { CompanionActions.DEFAULT_BASE }) }
     var deviceKey by remember { mutableStateOf(state.deviceToken) }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
@@ -284,7 +282,7 @@ private fun SetupScreen(actions: CompanionActions, prefs: Prefs, onDone: () -> U
             Column(Modifier.padding(16.dp)) {
                 Text("Device pairing", fontWeight = FontWeight.Bold)
                 Text(
-                    "Create the device in GressPay Dashboard → Devices, then paste only the Device API key (gpdev_…) below. Brand and server URL bind automatically after verify — do not paste gp_live_… website keys or Brand ID.",
+                    "Create the device in GressPay Dashboard → Devices, then paste only your Device API key (gpdev_…) below. Brand and API server bind automatically after verify.",
                     fontSize = 12.sp,
                     color = Color.Gray,
                 )
@@ -304,25 +302,6 @@ private fun SetupScreen(actions: CompanionActions, prefs: Prefs, onDone: () -> U
                     )
                 }
                 Spacer(Modifier.height(8.dp))
-                if (showAdvancedUrl) {
-                    OutlinedTextField(
-                        value = baseUrl,
-                        onValueChange = { baseUrl = it },
-                        label = { Text("API base URL (site root)") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                } else {
-                    Text(
-                        "Server: ${baseUrl.ifBlank { CompanionActions.DEFAULT_BASE }}",
-                        fontSize = 12.sp,
-                        color = Color.DarkGray,
-                    )
-                    TextButton(onClick = { showAdvancedUrl = true }) {
-                        Text("Change server URL", fontSize = 12.sp)
-                    }
-                }
                 OutlinedTextField(
                     value = deviceKey,
                     onValueChange = { deviceKey = it },
@@ -336,10 +315,7 @@ private fun SetupScreen(actions: CompanionActions, prefs: Prefs, onDone: () -> U
                     onClick = {
                         busy = true
                         scope.launch {
-                            val reg = actions.pairDeviceCredentials(
-                                deviceToken = deviceKey,
-                                baseUrlOverride = if (showAdvancedUrl) baseUrl else "",
-                            )
+                            val reg = actions.pairDeviceCredentials(deviceToken = deviceKey)
                             reg.onSuccess {
                                 message = "Verified — device online"
                                 refresh()

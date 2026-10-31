@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import com.gresspay.companion.BuildConfig
 import com.gresspay.companion.api.ApiException
 import com.gresspay.companion.api.CompanionApi
 import com.gresspay.companion.api.VerifyResult
@@ -210,7 +211,7 @@ class CompanionActions(private val context: Context, private val prefs: Prefs) {
         raw.trim().trimEnd('/').replace(Regex("/api/v1/?$", RegexOption.IGNORE_CASE), "")
 
     companion object {
-        const val DEFAULT_BASE = "https://gresspay.extxcheats.com"
+        val DEFAULT_BASE: String = BuildConfig.API_BASE.trimEnd('/')
         const val PRIVACY_URL = "https://gresspay.extxcheats.com/privacy"
         const val TERMS_URL = "https://gresspay.extxcheats.com/terms"
     }

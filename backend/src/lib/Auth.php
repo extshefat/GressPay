@@ -27,13 +27,10 @@ final class GpAuth
                 $merchant['plan_id'] = 'lifetime';
             }
             $brand = self::resolveBrandForMerchant($merchant['merchant_id'], $payload, $req);
-            if ($brand === null) {
-                return null;
-            }
             $mode = self::jwtLedgerMode($req);
             return [
                 'merchant_id' => $merchant['merchant_id'],
-                'brand_id' => $brand['brand_id'],
+                'brand_id' => $brand !== null ? (string) $brand['brand_id'] : '',
                 'email' => $merchant['email'],
                 'role' => $isAdmin ? 'admin' : ($merchant['role'] ?? 'merchant'),
                 'is_admin' => $isAdmin,
@@ -160,6 +157,23 @@ final class GpAuth
             GpJson::error('UNAUTHORIZED', 'Bearer JWT or X-GressPay-Key required.', 401);
         }
         return $actor;
+    }
+
+    public static function activeBrandId(array $actor): string
+    {
+        return trim((string) ($actor['brand_id'] ?? ''));
+    }
+
+    /** @param array<string,mixed> $actor */
+    public static function requireBrandContext(
+        array $actor,
+        string $message = 'Create a brand under Dashboard → Brands before using this feature.'
+    ): string {
+        $brandId = self::activeBrandId($actor);
+        if ($brandId === '') {
+            GpJson::error('NO_BRAND', $message, 400);
+        }
+        return $brandId;
     }
 
     /** @return array{merchant_id:string,brand_id:string,email:string,mode:string,auth:string,scopes:list<string>}|null */

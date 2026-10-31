@@ -54,7 +54,24 @@ abstract class GressPayBaseGateway implements GatewayInterface
 
     public function sendVerb(): string
     {
-        return 'Send Money';
+        return 'Send Money / Cash In';
+    }
+
+    /** BD MFS wallet number type → customer action verb shown on checkout. */
+    public function sendVerbForAccountType(string $accountType): string
+    {
+        $t = strtolower(trim($accountType));
+        if ($t === 'agent') {
+            return 'Cash Out';
+        }
+        if ($t === 'payment') {
+            return 'Payment';
+        }
+        if ($t === 'merchant') {
+            return 'Business payment';
+        }
+        // personal (default): customer may Send Money or Cash In
+        return 'Send Money / Cash In';
     }
 
     public function trxPattern(): string
@@ -93,11 +110,15 @@ abstract class GressPayBaseGateway implements GatewayInterface
         $title = (string) ($this->info()['title'] ?? 'wallet');
         $payLine = trim($amount . ' ' . $currency);
         $accountLine = $account !== '' ? $account : 'the number saved in Methods';
+        $accountType = (string) ($data['options']['account_type']
+            ?? $data['options']['accountType']
+            ?? 'personal');
+        $verb = $this->sendVerbForAccountType($accountType);
 
         return [
             ['text' => 'Open the ' . $title . ' app.', 'copy' => false],
             [
-                'text' => $this->sendVerb() . ($payLine !== '' ? ' exactly ' . $payLine : '') . ' to ' . $accountLine . '.',
+                'text' => $verb . ($payLine !== '' ? ' exactly ' . $payLine : '') . ' to ' . $accountLine . '.',
                 'copy' => $account !== '',
                 'value' => $account,
             ],

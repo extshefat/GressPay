@@ -13,6 +13,9 @@ final class TransactionsController
 
         if ($req->method === 'GET' && $id === null) {
             GpAuth::requireScope($actor, 'read_transactions');
+            if (GpAuth::activeBrandId($actor) === '') {
+                GpJson::send(['transactions' => [], 'total' => 0, 'noBrand' => true]);
+            }
             $status = strtolower((string) ($req->input('status', '')));
             $sql = 'SELECT * FROM gp_transactions WHERE brand_id = ? AND ledger_mode = ?';
             $params = [$actor['brand_id'], $actor['mode']];

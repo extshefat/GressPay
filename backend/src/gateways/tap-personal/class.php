@@ -7,7 +7,7 @@ class TapPersonalGateway extends GressPayBaseGateway
     {
         return [
             'title' => 'Tap',
-            'logo' => '/methods/bkash.svg',
+            'logo' => '/methods/tap.svg',
             'currency' => 'BDT',
             'tab' => 'mfs',
             'gateway_type' => 'manual',

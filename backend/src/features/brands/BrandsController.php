@@ -102,13 +102,14 @@ final class BrandsController
             ]
         );
         GpAuth::seedCurrencies($brandId);
-        foreach (['bkash', 'nagad', 'rocket', 'upay', 'cellfin', 'usdt_trc20', 'binance_pay', 'bybit_pay'] as $code) {
+        foreach (GpCatalog::releaseMethods() as $m) {
             GpDb::exec(
                 'INSERT INTO gp_methods (brand_id, code, status, options, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-                [$brandId, $code, 'inactive', '{}', $now, $now]
+                [$brandId, $m['code'], 'inactive', '{}', $now, $now]
             );
         }
         GpAuth::issueKey($brandId, 'live', 'Website API key');
+        GpAuth::issueKey($brandId, 'test', 'Default test');
 
         $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$actor['merchant_id']]);
         $token = GpJwt::encode([

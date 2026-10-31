@@ -314,32 +314,12 @@ final class GoogleOAuthClient
                     $role = $isAdmin ? 'admin' : 'merchant';
                     $planId = $isAdmin ? 'lifetime' : 'trial';
                     $merchantId = GpIds::make('mrc', 8);
-                    $brandId = GpIds::make('brd', 8);
-                    $webhookSecret = 'gpwh_' . bin2hex(random_bytes(24));
-                    $brandName = $fullName !== '' ? $fullName . ' Store' : 'GressPay Merchant';
 
                     GpDb::exec(
                         "INSERT INTO gp_merchants (merchant_id, full_name, email, password_hash, role, status, plan_id, google_id, auth_provider, avatar_url, google_email_verified, created_at, updated_at)
                          VALUES (?, ?, ?, NULL, ?, 'active', ?, ?, 'google', ?, 1, ?, ?)",
                         [$merchantId, $fullName, $email, $role, $planId, $googleId, $picture, $now, $now]
                     );
-
-                    GpDb::exec(
-                        'INSERT INTO gp_brands (brand_id, merchant_id, name, currency_code, timezone, webhook_secret, created_at, updated_at)
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                        [$brandId, $merchantId, $brandName, 'BDT', 'Asia/Dhaka', $webhookSecret, $now, $now]
-                    );
-
-                    GpAuth::seedCurrencies($brandId);
-                    foreach (GpCatalog::releaseMethods() as $m) {
-                        GpDb::exec(
-                            'INSERT INTO gp_methods (brand_id, code, status, options, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-                            [$brandId, $m['code'], 'inactive', '{}', $now, $now]
-                        );
-                    }
-
-                    GpAuth::issueKey($brandId, 'live', 'Default live');
-                    GpAuth::issueKey($brandId, 'test', 'Default test');
 
                     $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$merchantId]);
                 }
@@ -378,10 +358,10 @@ final class GoogleOAuthClient
             ];
         }
 
-        $brand = GpDb::one('SELECT * FROM gp_brands WHERE merchant_id = ?', [$merchant['merchant_id']]);
+        $brand = GpDb::one('SELECT * FROM gp_brands WHERE merchant_id = ? ORDER BY id ASC', [$merchant['merchant_id']]);
         $token = GpJwt::encode([
             'sub' => $merchant['merchant_id'],
-            'brand' => $brand['brand_id'] ?? '',
+            'brand' => is_array($brand) ? (string) ($brand['brand_id'] ?? '') : '',
             'email' => $merchant['email'],
             'role' => $merchant['role'] ?? 'merchant',
             'is_admin' => ($merchant['role'] ?? '') === 'admin' || GpConfig::isAdmin($merchant['email']),
@@ -391,7 +371,7 @@ final class GoogleOAuthClient
         return [
             'ok' => true,
             'token' => $token,
-            'user' => GpPresenters::user($merchant, $brand ?? ['name' => '']),
+            'user' => GpPresenters::user($merchant, is_array($brand) ? $brand : ['name' => '', 'brand_id' => '']),
             'isNew' => $isNew,
         ];
     }
