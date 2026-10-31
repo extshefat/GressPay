@@ -54,7 +54,7 @@ export const Footer: React.FC = () => {
               </li>
               <li>
                 <Link href="/services" className="hover:text-teal-400 transition-colors">
-                  Binance Pay Merchant API
+                  Binance Pay API
                 </Link>
               </li>
             </ul>

@@ -124,7 +124,7 @@ private fun WelcomeScreen(onStart: () -> Unit, onTerms: () -> Unit, onPrivacy: (
         Text("Welcome to GressPay Companion", fontSize = 22.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
         Spacer(Modifier.height(12.dp))
         Text(
-            "Seamlessly sync your payment notifications to your merchant dashboard in real-time.",
+            "Seamlessly sync payment notifications to your GressPay dashboard in real time.",
             textAlign = TextAlign.Center,
             color = Color.Gray,
             fontSize = 14.sp,
@@ -187,7 +187,7 @@ private fun SmsEducationScreen(onBack: () -> Unit, onGrant: () -> Unit) {
             Text("SMS Permission Required", fontSize = 24.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
             Text(
-                "GressPay Companion requires access to SMS to track merchant payment transactions in real-time.",
+                "GressPay Companion requires access to SMS to track payment transactions in real time.",
                 color = Color.DarkGray,
             )
             Spacer(Modifier.height(16.dp))
@@ -283,14 +283,14 @@ private fun SetupScreen(actions: CompanionActions, prefs: Prefs, onDone: () -> U
         Spacer(Modifier.height(16.dp))
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp)) {
-                Text("Device pairing", fontWeight = FontWeight.Bold)
+                Text("API Configuration", fontWeight = FontWeight.Bold)
                 Text(
-                    "Create the device in GressPay Dashboard → Devices, then paste credentials below.",
+                    "In GressPay Dashboard → Devices, copy the Device API key (gpdev_…). Do not use your brand website key (gp_live_…).",
                     fontSize = 12.sp,
                     color = Color.Gray,
                 )
                 Text(
-                    if (state.paired) "Verified with server" else "Not configured",
+                    if (state.paired) "Configured" else "Not configured",
                     color = if (state.paired) GpGreen else Color.Gray,
                     fontSize = 13.sp,
                     modifier = Modifier.padding(top = 4.dp),
@@ -315,7 +315,8 @@ private fun SetupScreen(actions: CompanionActions, prefs: Prefs, onDone: () -> U
                 OutlinedTextField(
                     value = deviceKey,
                     onValueChange = { deviceKey = it },
-                    label = { Text("Device API key (gpdev_…)") },
+                    label = { Text("Device API key (from Dashboard → Devices)") },
+                    placeholder = { Text("Enter Device API key") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                 )
@@ -338,7 +339,7 @@ private fun SetupScreen(actions: CompanionActions, prefs: Prefs, onDone: () -> U
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = GpBlue),
                 ) {
-                    Text(if (busy) "Verifying…" else "Save & verify")
+                    Text(if (busy) "Saving…" else "SAVE API KEY")
                 }
                 message?.let { Text(it, fontSize = 12.sp, color = Color.DarkGray) }
             }

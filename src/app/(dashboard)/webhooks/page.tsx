@@ -175,9 +175,13 @@ export default function WebhookSettingsPage() {
         <Link href="/dashboard/payment-events" className="font-semibold text-zinc-800 underline dark:text-zinc-200">
           Payment events
         </Link>
-        . Merchant API keys remain under{" "}
-        <Link href="/dashboard/api-keys" className="font-semibold underline">
-          API &amp; Webhooks
+        . Website and device API keys live under{" "}
+        <Link href="/dashboard/brands" className="font-semibold underline">
+          Brands
+        </Link>{" "}
+        and{" "}
+        <Link href="/dashboard/devices" className="font-semibold underline">
+          Devices
         </Link>
         .
       </p>

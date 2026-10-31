@@ -17,8 +17,8 @@ type Prefs = {
 };
 
 const LABELS: { key: keyof Prefs; title: string; hint: string }[] = [
-  { key: "emailEnabled", title: "Email notifications", hint: "Master switch for merchant email alerts (when SMTP is configured on the platform)." },
-  { key: "inAppEnabled", title: "In-app notifications", hint: "Show payment and webhook alerts inside the merchant console." },
+  { key: "emailEnabled", title: "Email notifications", hint: "Master switch for email alerts to your account (when SMTP is configured on the platform)." },
+  { key: "inAppEnabled", title: "In-app notifications", hint: "Show payment and webhook alerts inside your dashboard." },
   { key: "paymentCompleted", title: "Payment completed", hint: "Notify when a checkout settles to completed." },
   { key: "paymentFailed", title: "Payment failed / expired", hint: "Notify on failed verification or session expiry." },
   { key: "webhookDeliveryFailed", title: "Webhook delivery failures", hint: "Notify when outbound webhooks fail after retries." },

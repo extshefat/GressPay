@@ -83,10 +83,10 @@ const ALL_METHOD_OPTIONS: MethodMeta[] = [
   },
   {
     code: "binance_pay",
-    label: "Binance Pay (Merchant API / QR)",
+    label: "Binance Pay (API / QR)",
     category: "crypto",
     currency: "USDT",
-    accountLabel: "Binance Pay ID / Merchant ID (optional notes)",
+    accountLabel: "Binance Pay ID (optional notes)",
     placeholder: "e.g. 19283746",
   },
   {
@@ -276,7 +276,7 @@ export default function GatewaysPage() {
       }
       if (formAccountType === "merchant") {
         if (!formApiKey.trim() || !formApiSecret.trim()) {
-          return "Merchant account type requires API key and API secret (or password).";
+          return "Business (API) account type requires API key and API secret (or password).";
         }
       }
     }
@@ -498,7 +498,7 @@ export default function GatewaysPage() {
             Non-Custodial Direct Settlement Architecture
           </div>
           <p className="text-zinc-500 dark:text-zinc-400">
-            Funds bypass platform escrow and deposit directly into your personal or merchant wallet (bKash, Nagad, Rocket, Upay, Cellfin, or TRON USDT). The Android Companion APK matches incoming SMS messages instantly to settle orders in 1 second.
+            Funds bypass platform escrow and deposit directly into your personal or business wallet (bKash, Nagad, Rocket, Upay, Cellfin, or TRON USDT). The Android Companion APK matches incoming SMS messages instantly to settle orders in 1 second.
           </p>
         </div>
       </div>
@@ -641,7 +641,7 @@ export default function GatewaysPage() {
                       { id: "personal", label: "Personal", hint: "SMS verify · Send Money" },
                       { id: "agent", label: "Agent", hint: "SMS verify · Cash In" },
                       { id: "payment", label: "Payment", hint: "SMS verify · Payment number" },
-                      { id: "merchant", label: "Merchant", hint: "API key + secret" },
+                      { id: "merchant", label: "Business (API)", hint: "API key + secret" },
                     ] as const
                   ).map((t) => (
                     <button
@@ -718,7 +718,7 @@ export default function GatewaysPage() {
                   onChange={(e) => setFormBinanceMode(e.target.value as "uid" | "merchant_api")}
                 >
                   <option value="uid">Personal Binance UID</option>
-                  <option value="merchant_api">Binance Merchant API</option>
+                  <option value="merchant_api">Binance Pay API</option>
                 </select>
               </label>
             )}
@@ -730,7 +730,7 @@ export default function GatewaysPage() {
                   : formMethod === "binance_pay"
                   ? formBinanceMode === "uid"
                     ? "Binance Pay UID"
-                    : "Merchant API Key note / Merchant ID"
+                    : "Binance Pay API key note / Pay ID"
                   : formMethod === "bybit_pay"
                   ? "Bybit UID"
                   : activeMeta?.accountLabel || "Receiving Account / Number"
@@ -975,7 +975,7 @@ export default function GatewaysPage() {
             },
             {
               title: "Cryptocurrency (USDT TRC-20, Binance Pay, Bybit Pay)",
-              hint: "Non-custodial TRON blockchain on-chain verification, Binance Pay Merchant API, and Bybit Pay UID transfers.",
+              hint: "Non-custodial TRON blockchain on-chain verification, Binance Pay API, and Bybit Pay UID transfers.",
               items: filteredGateways.filter((g) => CRYPTO_CODES.has(g.methodCode)),
               icon: <Layers className="w-4 h-4" />,
             },
@@ -1087,9 +1087,9 @@ export default function GatewaysPage() {
 
       {/* Binance Pay Integration Guide */}
       <Card id="binance-pay" className="p-5 space-y-2 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
-        <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Binance Pay Merchant API Integration</h2>
+        <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Binance Pay API integration</h2>
         <p className="text-xs text-zinc-500 leading-relaxed">
-          Binance Pay requires encrypted Merchant API credentials. Configure your API Key, Secret, and Certificate Serial Number in Merchant Settings to enable automated order creation.
+          Binance Pay requires encrypted API credentials. Configure your API Key, Secret, and Certificate Serial Number in Account settings to enable automated order creation.
         </p>
         <Link href="/dashboard/settings#binance-pay" className="inline-block text-xs font-semibold text-zinc-900 dark:text-zinc-100 underline pt-1">
           Configure Binance Pay API Credentials →

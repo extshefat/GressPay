@@ -54,7 +54,7 @@ export default function ServicesPage() {
             Crypto &amp; Binance Pay
           </h3>
           <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-            Accept global payments via TRON USDT TRC-20 with real-time on-chain verification, and Binance Pay with instant merchant order confirmation.
+            Accept global payments via TRON USDT TRC-20 with real-time on-chain verification, and Binance Pay with instant order confirmation.
           </p>
         </Card>
       </div>

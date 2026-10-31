@@ -283,7 +283,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
       selectedMethod.code !== "binance_pay" &&
       !selectedMethod.depositAddressOrNumber
     ) {
-      setErrorMessage("Merchant receiving account has not been configured for this method.");
+      setErrorMessage("Receiving account has not been configured for this method.");
       return;
     }
 
@@ -361,7 +361,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
   // Step-by-Step English Instructions Generator based on Method Code
   const getInstructions = (method: PaymentMethod) => {
     const code = method.code.toLowerCase();
-    const receiver = method.depositAddressOrNumber || "the merchant number above";
+    const receiver = method.depositAddressOrNumber || "the number above";
     const isAgent = (method as unknown as { accountType?: string }).accountType === "agent";
     const action = isAgent ? "Cash In" : "Send Money";
 
@@ -404,7 +404,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
     if (code === "bybit_pay") {
       return [
         `Open the Bybit app and navigate to Bybit Pay / Internal Transfer.`,
-        `Transfer ${formatCurrency(payableAmount, payableCurrency)} to Merchant UID: ${receiver}.`,
+        `Transfer ${formatCurrency(payableAmount, payableCurrency)} to Binance Pay UID: ${receiver}.`,
         `Copy the Bybit Transfer / Order ID and paste it below.`,
       ];
     }
@@ -430,7 +430,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
           Payment Window Ended
         </h2>
         <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed max-w-sm mx-auto">
-          This payment session has timed out for security. Please request a new checkout link or invoice from the merchant.
+          This payment session has timed out for security. Please request a new checkout link or invoice from the seller.
         </p>
         <div className="pt-2">
           <Button
@@ -563,7 +563,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
 
         {returnTarget && redirectCountdown > 0 ? (
           <p className="text-xs text-zinc-500 font-mono">
-            Redirecting to merchant store in{" "}
+            Redirecting to store in{" "}
             <span className="font-bold text-zinc-900 dark:text-zinc-100">
               {redirectCountdown}s
             </span>
@@ -586,7 +586,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
               }
             }}
           >
-            {returnTarget ? "Return to Merchant" : "Close Checkout"}
+            {returnTarget ? "Return to store" : "Close Checkout"}
           </Button>
         </div>
       </div>
@@ -602,7 +602,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
           No Payment Rails Available
         </h2>
         <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-          The merchant has not enabled any active payment methods for this store checkout.
+          The seller has not enabled any active payment methods for this checkout.
         </p>
       </div>
     );
@@ -865,8 +865,8 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
                 <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                   {selectedMethod.accountLabel ||
                     (activeTab === "crypto"
-                      ? "Merchant Receiving Wallet Address"
-                      : "Merchant Wallet Number")}
+                      ? "Receiving wallet address"
+                      : "Receiving wallet number")}
                 </label>
                 <span className="text-[11px] font-mono text-zinc-500">
                   {selectedMethod.code === "usdt_trc20"
@@ -908,7 +908,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
             </div>
           ) : (
             <div className="p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 text-xs text-zinc-600 dark:text-zinc-300">
-              Receiving destination wallet is configured dynamically by the merchant.
+              Receiving destination wallet is configured by the seller for this checkout.
             </div>
           )}
 
@@ -918,7 +918,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
               <label className="block text-xs font-mono text-zinc-500">
                 {activeTab === "crypto"
                   ? "Scan Wallet Address / UID QR"
-                  : "Scan Merchant Deposit QR Code"}
+                  : "Scan deposit QR code"}
               </label>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img

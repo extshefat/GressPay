@@ -3,7 +3,7 @@
 **Non-custodial payment automation for Bangladesh MFS + crypto.**  
 Production: [https://gresspay.extxcheats.com](https://gresspay.extxcheats.com)
 
-Customers pay **directly into wallets you configure**. GressPay never holds funds. Verification comes from companion SMS match (MFS), Binance Pay merchant API, Bybit Pay, or on-chain USDT TRC-20 — never from a frontend button alone.
+Customers pay **directly into wallets you configure**. GressPay never holds funds. Verification comes from companion SMS match (MFS), Binance Pay API, Bybit Pay, or on-chain USDT TRC-20 — never from a frontend button alone.
 
 ---
 
@@ -15,8 +15,8 @@ Customers pay **directly into wallets you configure**. GressPay never holds fund
 | Pricing (`/fees`) | Starter / Pro / Enterprise Lifetime · Monthly/Yearly (−20%) · BDT/USD · `?plan=` signup |
 | Developer hub (`/developers`) | Stripe-style docs · production API base · cURL / PHP / Laravel / Node / WordPress |
 | Hosted checkout (`/pay/{sessionId}`) | Multi-rail buyer UI · QR for crypto · TrxID verify |
-| Merchant dashboard | Overview, gateways (library + account types), brands, devices, transactions, payment links, invoices, settings, API keys, team |
-| Platform admin (`/admin`) | Merchant control, lifetime unlock, readiness |
+| Dashboard | Overview, gateways (library + account types), brands, devices, transactions, payment links, invoices, settings, webhooks, team |
+| Platform admin (`/admin`) | Account control, lifetime unlock, readiness |
 | Android companion | Website-matched launcher icon · pairing · SMS match (~1s) · inbox backfill · APK `v1.1.0` |
 | PHP REST API (`/api/v1`) | Auth, checkout/payment aliases, webhooks (HMAC), companion, admin |
 
@@ -39,7 +39,7 @@ Customers pay **directly into wallets you configure**. GressPay never holds fund
 | Rail | Verification |
 |------|----------------|
 | **USDT TRC-20** | TronGrid on-chain confirmations |
-| **Binance Pay** | Official Binance Pay merchant order API |
+| **Binance Pay** | Official Binance Pay order API |
 | **Bybit Pay** | Provider order verification |
 
 OTP / promo SMS are rejected by the companion parser and never uploaded.
@@ -52,7 +52,7 @@ OTP / promo SMS are rejected by the companion parser and never uploaded.
 .
 ├── src/app/                    # Next.js 15 App Router
 │   ├── (marketing)/            # Homepage, /fees, /developers, legal
-│   ├── (dashboard)/            # Merchant + /admin
+│   ├── (dashboard)/            # User dashboard + /admin
 │   ├── (auth)/                 # Login, register, Google callback
 │   └── pay/[linkId]/           # Hosted checkout
 ├── src/features/               # UI modules (marketing, checkout, auth, …)
@@ -91,7 +91,7 @@ Multi-tenant isolation is by `brand_id`. Provider credentials are encrypted at r
 | Docs | `https://gresspay.extxcheats.com/developers` |
 | Pricing | `https://gresspay.extxcheats.com/fees` |
 
-### Merchant payment aliases (recommended)
+### Website payment aliases (recommended)
 
 | Method | Path | Scope |
 |--------|------|--------|
@@ -154,7 +154,7 @@ cp app/build/outputs/apk/debug/app-debug.apk ../public/download/gresspay-compani
 ```
 
 Pair with your brand website `gp_live_` API key (Dashboard → Brands) → opt-in → enable matching.  
-`READ_SMS` is requested only when the merchant taps **Scan Inbox (24h)**.
+`READ_SMS` is requested only when you tap **Scan Inbox (24h)** in the Companion app.
 
 ---
 
@@ -170,7 +170,7 @@ Pair with your brand website `gp_live_` API key (Dashboard → Brands) → opt-i
 | `DB_*` | PHP | MySQL in production |
 | `CORS_ORIGINS` | PHP | Allowed browser origins |
 
-**Merchant wallets, Binance / Bybit secrets, webhook secrets:** configure in the dashboard only. They are encrypted at rest — do not put them in `.env` or the README.
+**Your wallets, Binance / Bybit secrets, webhook secrets:** configure in the dashboard only. They are encrypted at rest — do not put them in `.env` or the README.
 
 ---
 
@@ -201,19 +201,19 @@ Self-hosted VPS via Coolify + persistent MySQL/MariaDB.
 2. Follow [`COOLIFY_DEPLOYMENT.md`](COOLIFY_DEPLOYMENT.md) and [`DEPLOYMENT_CHECKLIST.md`](DEPLOYMENT_CHECKLIST.md).  
 3. Set live env (`NEXT_PUBLIC_DATA_SOURCE=live`, `APP_URL`, DB, `JWT_SECRET`).  
 4. Deploy from **`main`** — Coolify watches this branch.  
-5. Confirm `GET /api/v1/health`, register a merchant, pair a companion device, run a test checkout.
+5. Confirm `GET /api/v1/health`, register an account, pair a companion device, run a test checkout.
 
-Do **not** claim live Binance/Tron E2E without that merchant’s real credentials configured in Methods.
+Do **not** claim live Binance/Tron E2E without that account’s real credentials configured in Methods.
 
 ---
 
 ## Product principles (invariants)
 
 1. **Self-hosted SaaS** — your VPS, your database; not a laptop daemon.  
-2. **Multi-tenant isolation** — every merchant stays inside their `brand_id`.  
+2. **Multi-tenant isolation** — every account stays inside their `brand_id`.  
 3. **Payment integrity** — completed only after SMS match, provider confirm, or on-chain proof.  
 4. **0% gateway fee** — funds settle to the wallets you own.  
-5. **English UI** — merchant dashboard and marketing copy are English; Bangladeshi rails are first-class.
+5. **English UI** — dashboard and marketing copy are English; Bangladeshi rails are first-class.
 
 ---
 

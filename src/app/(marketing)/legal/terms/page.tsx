@@ -14,7 +14,7 @@ export default function TermsPage() {
         <section className="space-y-2">
           <h2 className="text-lg font-semibold text-white">Who this is for</h2>
           <p>
-            GressPay is a merchant payment gateway. You create an account, publish your own wallet
+            GressPay is a payment gateway for your website or business. You create an account, publish your own wallet
             details, and collect payments from customers via hosted links, invoices, or the REST API.
           </p>
         </section>
@@ -23,7 +23,7 @@ export default function TermsPage() {
           <h2 className="text-lg font-semibold text-white">Your wallets, your funds</h2>
           <p>
             Customers pay the bKash, Nagad, Binance Pay, or USDT TRC-20 destination you configure. GressPay
-            records sessions, matches TxIDs, and sends webhooks. It does not hold a merchant float or
+            records sessions, matches TxIDs, and sends webhooks. It does not hold a float or
             issue card acquiring.
           </p>
         </section>

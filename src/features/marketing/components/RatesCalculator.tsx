@@ -35,7 +35,7 @@ export function RatesCalculator() {
             Indicative Conversion Rate
           </h2>
           <p className="text-sm text-zinc-500">
-            Configured merchant conversion baseline (<code className="font-mono text-xs">GET /api/v1/rates</code>).
+            Configured conversion baseline for your account (<code className="font-mono text-xs">GET /api/v1/rates</code>).
           </p>
         </div>
         <Card className="p-6 space-y-4 border-zinc-200 dark:border-zinc-800">

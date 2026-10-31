@@ -62,7 +62,7 @@ export default function SupportPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Support</h1>
-        <p className="mt-1 text-xs text-zinc-500">Documentation, contact options, and merchant support tickets.</p>
+        <p className="mt-1 text-xs text-zinc-500">Documentation, contact options, and support tickets for your account.</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">

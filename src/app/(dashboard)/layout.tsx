@@ -69,7 +69,7 @@ export default function DashboardLayout({
     return (
       <div className="min-h-screen bg-white dark:bg-zinc-950 flex flex-col items-center justify-center transition-colors">
         <GpMark size="lg" className="animate-pulse mb-3" />
-        <p className="text-xs font-mono text-zinc-500">Authenticating merchant session...</p>
+        <p className="text-xs font-mono text-zinc-500">Loading your account…</p>
       </div>
     );
   }

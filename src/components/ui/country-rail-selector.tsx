@@ -33,7 +33,7 @@ export const SUPPORTED_RAILS: RailOption[] = [
   },
   {
     code: "binance_pay",
-    name: "Binance Pay (Merchant API, optional)",
+    name: "Binance Pay (API, optional)",
     country: "Global",
     currency: "USDT",
     isFirstRelease: true,

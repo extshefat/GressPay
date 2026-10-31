@@ -40,7 +40,7 @@ export const HowItWorks: React.FC = () => {
             Workflow
           </Badge>
           <h2 className="text-3xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-100 tracking-tight">
-            How Merchants Go Live in Minutes
+            How to go live in minutes
           </h2>
           <p className="text-zinc-600 dark:text-zinc-400 text-sm sm:text-base leading-relaxed">
             Non-custodial by design: customer pays you, companion or chain confirms, webhook fires.

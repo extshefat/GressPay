@@ -84,7 +84,7 @@ export const DeveloperPreview: React.FC = () => {
               </p>
               <p className="flex flex-wrap items-center gap-2">
                 <span className="font-bold text-zinc-900 dark:text-zinc-100">POST …/verify-payment</span>
-                <span className="text-zinc-500">— Merchant status</span>
+                <span className="text-zinc-500">— Payment status</span>
               </p>
             </div>
             <div className="pt-2">

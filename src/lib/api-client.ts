@@ -747,7 +747,7 @@ class ApiClient {
     });
   }
 
-  /** Merchant verify — status by sessionId. */
+  /** Server-side verify — status by sessionId. */
   async verifyPayment(sessionId: string): Promise<CheckoutStatusResponse> {
         return this.request<CheckoutStatusResponse>("/api/v1/checkout/verify-payment", {
       method: "POST",
