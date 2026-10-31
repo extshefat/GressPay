@@ -45,10 +45,16 @@ class CompanionApi(
         return try {
             client.newCall(req).execute().use { res ->
                 val ms = (System.nanoTime() - started) / 1_000_000L
+                val raw = res.body?.string().orEmpty()
                 if (res.isSuccessful) {
-                    PingResult(true, ms, "heartbeat OK")
+                    val deviceId = try {
+                        JSONObject(raw).optString("deviceId", "")
+                    } catch (_: Exception) {
+                        ""
+                    }
+                    PingResult(true, ms, deviceId.ifBlank { "heartbeat OK" })
                 } else {
-                    PingResult(false, ms, parseError(res.body?.string().orEmpty(), res.code))
+                    PingResult(false, ms, parseError(raw, res.code))
                 }
             }
         } catch (e: Exception) {

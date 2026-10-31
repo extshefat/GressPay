@@ -55,39 +55,54 @@ class CompanionActions(private val context: Context, private val prefs: Prefs) {
         )
     }
 
-    suspend fun saveApiKey(baseUrl: String, apiKey: String): Result<Unit> = withContext(Dispatchers.IO) {
-        val base = baseUrl.trim().trimEnd('/')
-        if (base.isBlank() || !Prefs.isAllowedBaseUrl(base)) {
-            return@withContext Result.failure(IllegalArgumentException("API URL must be HTTPS"))
-        }
-        if (apiKey.isBlank() || !(apiKey.startsWith("gp_live_") || apiKey.startsWith("gp_test_"))) {
-            return@withContext Result.failure(IllegalArgumentException("Enter a gp_live_ or gp_test_ API key"))
-        }
-        prefs.baseUrl = base
-        prefs.apiKey = apiKey
-        CompanionHeartbeat.sendIfConfigured(context)
-        Result.success(Unit)
-    }
-
-    suspend fun registerDevice(baseUrl: String, apiKey: String): Result<String> = withContext(Dispatchers.IO) {
-        val base = baseUrl.trim().trimEnd('/')
+    suspend fun pairDeviceCredentials(
+        baseUrl: String,
+        brandId: String,
+        deviceToken: String,
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        val base = baseUrl.trim().trimEnd('/').replace(Regex("/api/v1/?$", RegexOption.IGNORE_CASE), "")
         if (!Prefs.isAllowedBaseUrl(base)) {
-            return@withContext Result.failure(IllegalArgumentException("Invalid API URL"))
+            return@withContext Result.failure(IllegalArgumentException("API URL must be HTTPS (site root, no /api/v1)"))
+        }
+        val token = deviceToken.trim()
+        if (!token.startsWith("gpdev_")) {
+            return@withContext Result.failure(
+                IllegalArgumentException("Paste the Device API key (gpdev_…) from Dashboard → Devices")
+            )
+        }
+        val brand = brandId.trim()
+        if (brand.isBlank()) {
+            return@withContext Result.failure(IllegalArgumentException("Brand ID is required (X-GressPay-Brand)"))
         }
         prefs.baseUrl = base
-        prefs.apiKey = apiKey.trim()
+        prefs.brandId = brand
+        prefs.deviceToken = token
+        prefs.apiKey = ""
         try {
-            val result = CompanionApi(base).registerDevice(apiKey.trim())
-            prefs.deviceId = result.deviceId
-            prefs.deviceToken = result.token
-            if (result.brandId.isNotBlank()) prefs.brandId = result.brandId
+            val hb = CompanionApi(base).postHeartbeat(token, brand)
+            if (!hb.ok) {
+                prefs.clearDevice()
+                return@withContext Result.failure(IllegalStateException(hb.message))
+            }
+            if (hb.message.isNotBlank() && hb.message != "heartbeat OK" && !hb.message.startsWith("HTTP")) {
+                prefs.deviceId = hb.message
+            }
             CompanionHeartbeat.sendIfConfigured(context)
-            Result.success(result.token)
+            Result.success(Unit)
         } catch (e: ApiException) {
+            prefs.clearDevice()
             Result.failure(e)
         } catch (e: Exception) {
+            prefs.clearDevice()
             Result.failure(e)
         }
+    }
+
+    /** @deprecated Devices are created in the dashboard; use [pairDeviceCredentials]. */
+    suspend fun registerDevice(baseUrl: String, apiKey: String): Result<String> = withContext(Dispatchers.IO) {
+        Result.failure(
+            IllegalStateException("Create the device in GressPay Dashboard → Devices, then paste the gpdev_ key here.")
+        )
     }
 
     suspend fun ping(): Result<Long> = withContext(Dispatchers.IO) {

@@ -248,8 +248,9 @@ private fun SetupScreen(actions: CompanionActions, prefs: Prefs, onDone: () -> U
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var state by remember { mutableStateOf(actions.readState()) }
-    var apiKey by remember { mutableStateOf(state.apiKey) }
-    var showKey by remember { mutableStateOf(false) }
+    var baseUrl by remember { mutableStateOf(state.baseUrl.ifBlank { CompanionActions.DEFAULT_BASE }) }
+    var brandId by remember { mutableStateOf(prefs.brandId) }
+    var deviceKey by remember { mutableStateOf(state.deviceToken) }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
 
@@ -257,6 +258,8 @@ private fun SetupScreen(actions: CompanionActions, prefs: Prefs, onDone: () -> U
 
     fun refresh() {
         state = actions.readState()
+        brandId = prefs.brandId
+        deviceKey = prefs.deviceToken
     }
 
     val smsReceive = ContextCompat.checkSelfPermission(context, Manifest.permission.RECEIVE_SMS) ==
@@ -280,17 +283,39 @@ private fun SetupScreen(actions: CompanionActions, prefs: Prefs, onDone: () -> U
         Spacer(Modifier.height(16.dp))
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp)) {
-                Text("API Configuration", fontWeight = FontWeight.Bold)
+                Text("Device pairing", fontWeight = FontWeight.Bold)
                 Text(
-                    if (state.paired) "Configured" else "Not configured",
+                    "Create the device in GressPay Dashboard → Devices, then paste credentials below.",
+                    fontSize = 12.sp,
+                    color = Color.Gray,
+                )
+                Text(
+                    if (state.paired) "Verified with server" else "Not configured",
                     color = if (state.paired) GpGreen else Color.Gray,
                     fontSize = 13.sp,
+                    modifier = Modifier.padding(top = 4.dp),
                 )
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
-                    value = apiKey,
-                    onValueChange = { apiKey = it },
-                    label = { Text("Enter API Key") },
+                    value = baseUrl,
+                    onValueChange = { baseUrl = it },
+                    label = { Text("API base URL (site root)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = brandId,
+                    onValueChange = { brandId = it },
+                    label = { Text("Brand ID") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = deviceKey,
+                    onValueChange = { deviceKey = it },
+                    label = { Text("Device API key (gpdev_…)") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                 )
@@ -299,9 +324,9 @@ private fun SetupScreen(actions: CompanionActions, prefs: Prefs, onDone: () -> U
                     onClick = {
                         busy = true
                         scope.launch {
-                            val reg = actions.registerDevice(CompanionActions.DEFAULT_BASE, apiKey)
+                            val reg = actions.pairDeviceCredentials(baseUrl, brandId, deviceKey)
                             reg.onSuccess {
-                                message = "API key saved and device paired"
+                                message = "Device paired — heartbeat OK"
                                 refresh()
                                 actions.enableMatching()
                                 refresh()
@@ -313,7 +338,7 @@ private fun SetupScreen(actions: CompanionActions, prefs: Prefs, onDone: () -> U
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = GpBlue),
                 ) {
-                    Text("SAVE API KEY")
+                    Text(if (busy) "Verifying…" else "Save & verify")
                 }
                 message?.let { Text(it, fontSize = 12.sp, color = Color.DarkGray) }
             }
