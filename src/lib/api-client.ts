@@ -231,29 +231,43 @@ class ApiClient {
     devices: {
       deviceId: string;
       label: string;
+      brandId?: string;
+      brandName?: string;
       status: string;
       lastSeenAt?: string | null;
       online?: boolean;
       onlineWindowSec?: number;
       createdAt?: string;
+      updatedAt?: string;
+      deviceAppKey?: string;
+      deviceAppKeyMasked?: string;
     }[];
   }> {
         return this.request("/api/v1/companion/devices");
   }
 
-  async registerCompanionDevice(label: string = "Android Companion"): Promise<{
+  async registerCompanionDevice(
+    label: string = "Android Companion",
+    brandId?: string
+  ): Promise<{
     deviceId: string;
     brandId?: string;
+    brandName?: string;
     token: string;
+    deviceAppKey?: string;
     note: string;
   }> {
-    return this.request<{ deviceId: string; brandId?: string; token: string; note: string }>(
-      "/api/v1/companion/register",
-      {
-        method: "POST",
-        body: JSON.stringify({ label }),
-      }
-    );
+    return this.request<{
+      deviceId: string;
+      brandId?: string;
+      brandName?: string;
+      token: string;
+      deviceAppKey?: string;
+      note: string;
+    }>("/api/v1/companion/register", {
+      method: "POST",
+      body: JSON.stringify({ label, ...(brandId ? { brandId } : {}) }),
+    });
   }
 
   async listMerchantSmsLogs(): Promise<{

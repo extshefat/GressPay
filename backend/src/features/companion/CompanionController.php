@@ -20,21 +20,43 @@ final class CompanionController
         if ($req->method === 'POST' && $action === 'register') {
             $actor = GpAuth::requireActor($req);
             GpAuth::requireScope($actor, 'manage_devices');
-            GpPlatform::assertDeviceRegistrationAllowed($actor['brand_id']);
+            $brandId = trim((string) $req->input('brandId', $actor['brand_id']));
+            if ($brandId === '') {
+                $brandId = $actor['brand_id'];
+            }
+            $brand = GpDb::one(
+                'SELECT brand_id, name FROM gp_brands WHERE brand_id = ? AND merchant_id = ?',
+                [$brandId, $actor['merchant_id']]
+            );
+            if ($brand === null) {
+                GpJson::error('NOT_FOUND', 'Brand not found for this merchant.', 404);
+            }
+            GpPlatform::assertDeviceRegistrationAllowed($brandId);
             $now = GpIds::now();
             $deviceId = GpIds::make('dev', 8);
             $plain = 'gpdev_' . bin2hex(random_bytes(20));
             $label = trim((string) $req->input('label', 'Android companion'));
             GpDb::exec(
-                'INSERT INTO gp_devices (device_id, brand_id, label, token_hash, status, created_at, updated_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?)',
-                [$deviceId, $actor['brand_id'], $label, password_hash($plain, PASSWORD_BCRYPT), 'active', $now, $now]
+                'INSERT INTO gp_devices (device_id, brand_id, label, token_hash, token_sealed, status, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                [
+                    $deviceId,
+                    $brandId,
+                    $label,
+                    password_hash($plain, PASSWORD_BCRYPT),
+                    GpCrypto::seal($plain),
+                    'active',
+                    $now,
+                    $now,
+                ]
             );
             GpJson::send([
                 'deviceId' => $deviceId,
-                'brandId' => $actor['brand_id'],
+                'brandId' => $brandId,
+                'brandName' => (string) ($brand['name'] ?? ''),
                 'token' => $plain,
-                'note' => 'Shown once. Store in the Android companion encrypted prefs. Token is never returned again.',
+                'deviceAppKey' => $plain,
+                'note' => 'Device API key for the Companion app. Re-copy anytime from Devices.',
             ], 201);
         }
 
@@ -42,8 +64,11 @@ final class CompanionController
             $actor = GpAuth::requireActor($req);
             GpAuth::requireScope($actor, 'manage_devices');
             $n = GpDb::exec(
-                'UPDATE gp_devices SET status = ?, updated_at = ? WHERE device_id = ? AND brand_id = ?',
-                ['revoked', GpIds::now(), $devicePart, $actor['brand_id']]
+                'UPDATE gp_devices d
+                 INNER JOIN gp_brands b ON b.brand_id = d.brand_id
+                 SET d.status = ?, d.updated_at = ?
+                 WHERE d.device_id = ? AND b.merchant_id = ?',
+                ['revoked', GpIds::now(), $devicePart, $actor['merchant_id']]
             );
             if ($n === 0) {
                 GpJson::error('NOT_FOUND', 'Device not found.', 404);
@@ -55,16 +80,18 @@ final class CompanionController
             $actor = GpAuth::requireActor($req);
             GpAuth::requireScope($actor, 'manage_devices');
             $dev = GpDb::one(
-                'SELECT * FROM gp_devices WHERE device_id = ? AND brand_id = ?',
-                [$devicePart, $actor['brand_id']]
+                'SELECT d.* FROM gp_devices d
+                 INNER JOIN gp_brands b ON b.brand_id = d.brand_id
+                 WHERE d.device_id = ? AND b.merchant_id = ?',
+                [$devicePart, $actor['merchant_id']]
             );
             if ($dev === null) {
                 GpJson::error('NOT_FOUND', 'Device not found.', 404);
             }
             $plain = 'gpdev_' . bin2hex(random_bytes(20));
             GpDb::exec(
-                'UPDATE gp_devices SET token_hash = ?, status = ?, updated_at = ? WHERE device_id = ?',
-                [password_hash($plain, PASSWORD_BCRYPT), 'active', GpIds::now(), $devicePart]
+                'UPDATE gp_devices SET token_hash = ?, token_sealed = ?, status = ?, updated_at = ? WHERE device_id = ?',
+                [password_hash($plain, PASSWORD_BCRYPT), GpCrypto::seal($plain), 'active', GpIds::now(), $devicePart]
             );
             GpJson::send([
                 'deviceId' => $devicePart,
@@ -286,8 +313,13 @@ final class CompanionController
     private static function listDevices(array $actor): never
     {
         $rows = GpDb::all(
-            'SELECT device_id, label, status, last_seen_at, created_at, updated_at FROM gp_devices WHERE brand_id = ? AND status = ? ORDER BY id DESC',
-            [$actor['brand_id'], 'active']
+            'SELECT d.device_id, d.label, d.status, d.last_seen_at, d.created_at, d.updated_at, d.token_sealed, d.brand_id,
+                    b.name AS brand_name
+             FROM gp_devices d
+             INNER JOIN gp_brands b ON b.brand_id = d.brand_id
+             WHERE b.merchant_id = ? AND d.status = ?
+             ORDER BY d.id DESC',
+            [$actor['merchant_id'], 'active']
         );
         $out = [];
         $onlineCutoff = time() - self::ONLINE_WINDOW_SEC;
@@ -298,15 +330,25 @@ final class CompanionController
                 $ts = strtotime($lastSeen);
                 $online = $ts !== false && $ts >= $onlineCutoff;
             }
+            $plain = '';
+            if (!empty($r['token_sealed'])) {
+                $plain = GpCrypto::open((string) $r['token_sealed']) ?? '';
+            }
             $out[] = [
                 'deviceId' => $r['device_id'],
                 'label' => $r['label'] ?? '',
+                'brandId' => $r['brand_id'],
+                'brandName' => (string) ($r['brand_name'] ?? ''),
                 'status' => $r['status'],
                 'lastSeenAt' => $lastSeen,
                 'online' => $online,
                 'onlineWindowSec' => self::ONLINE_WINDOW_SEC,
                 'createdAt' => $r['created_at'],
                 'updatedAt' => $r['updated_at'],
+                'deviceAppKey' => $plain,
+                'deviceAppKeyMasked' => $plain !== ''
+                    ? substr($plain, 0, 12) . '••••••••'
+                    : 'gpdev_••••••••',
             ];
         }
         GpJson::send(['devices' => $out]);
