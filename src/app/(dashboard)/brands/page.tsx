@@ -20,6 +20,7 @@ type BrandRow = {
   gatewayCount: number;
   websiteApiKey?: string;
   websiteApiKeyMasked?: string;
+  websiteApiKeyCopyable?: boolean;
   webhookUrl?: string | null;
 };
 
@@ -85,10 +86,18 @@ export default function BrandsPage() {
   const copyWebsiteKey = async (b: BrandRow) => {
     const full = b.websiteApiKey?.trim();
     if (!full) {
-      toastError(
-        "No re-copyable key on file. Create a new live key under API & Webhooks — keys issued after this update stay copyable here.",
-        "Key unavailable"
-      );
+      if (
+        window.confirm(
+          "This brand’s website key cannot be re-copied yet (legacy row). Rotate the website key now? The old secret stops working immediately."
+        )
+      ) {
+        await rotateWebsiteKey(b);
+      } else {
+        toastError(
+          "Use Rotate website key in the actions menu to store a re-copyable secret.",
+          "Key unavailable"
+        );
+      }
       return;
     }
     try {
@@ -96,6 +105,25 @@ export default function BrandsPage() {
       success("Website API key copied to clipboard");
     } catch {
       toastError("Clipboard blocked — select and copy manually.");
+    }
+  };
+
+  const rotateWebsiteKey = async (b: BrandRow) => {
+    setBusy(`rotate-${b.brandId}`);
+    setMenuOpen(null);
+    try {
+      const res = await api.rotateBrandWebsiteKey(b.brandId);
+      await load();
+      try {
+        await navigator.clipboard.writeText(res.websiteApiKey);
+        success("New website API key copied — you can copy again anytime from this table.");
+      } catch {
+        success(res.note, "Website key rotated");
+      }
+    } catch (err: unknown) {
+      toastError(err instanceof Error ? err.message : "Could not rotate website key.");
+    } finally {
+      setBusy(null);
     }
   };
 
@@ -159,7 +187,7 @@ export default function BrandsPage() {
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-[11px] text-zinc-600 dark:text-zinc-400">
-                      {b.websiteApiKeyMasked || "—"}
+                      {b.websiteApiKeyMasked || (b.websiteApiKey ? "**********" : "—")}
                     </span>
                     <button
                       type="button"
@@ -207,12 +235,20 @@ export default function BrandsPage() {
                           <Check className="h-3.5 w-3.5" /> Selected
                         </div>
                       )}
+                      <button
+                        type="button"
+                        className="block w-full px-3 py-2 text-left text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                        onClick={() => rotateWebsiteKey(b)}
+                        disabled={busy === `rotate-${b.brandId}`}
+                      >
+                        Rotate website key
+                      </button>
                       <Link
                         href="/dashboard/api-keys"
                         className="block px-3 py-2 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800"
                         onClick={() => setMenuOpen(null)}
                       >
-                        Manage API keys
+                        Webhooks & integration
                       </Link>
                       <Link
                         href="/dashboard/methods"

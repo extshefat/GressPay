@@ -151,7 +151,7 @@ export function IntegrationSnippets() {
           Language examples
         </h2>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          Create a session with your API key, send the buyer to{" "}
+          Create a session with your brand website API key (Dashboard → Brands), send the buyer to{" "}
           <code className="font-mono text-xs">payment_url</code>, then confirm
           with <code className="font-mono text-xs">POST /payment/verify</code> or{" "}
           <code className="font-mono text-xs">GET /payment/status/{"{session_id}"}</code>.

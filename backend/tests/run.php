@@ -841,5 +841,24 @@ assert_true(
 $seenTs = strtotime((string) $afterTouch['last_seen_at']);
 assert_true($seenTs !== false && $seenTs >= time() - 5, 'last_seen_at is recent after heartbeat touch');
 
+// —— Brand website API key sealed for dashboard re-copy ——
+$issuedBrandKey = GpAuth::issueKey($brandId, 'live', 'PHPUnit sealed');
+assert_true(str_starts_with($issuedBrandKey['key'], 'gp_live_'), 'issueKey mints gp_live_ prefix');
+$sealedRow = GpDb::one(
+    'SELECT key_sealed FROM gp_api_keys WHERE brand_id = ? AND status = ? ORDER BY id DESC LIMIT 1',
+    [$brandId, 'active']
+);
+$reopened = is_array($sealedRow) ? (GpCrypto::open((string) ($sealedRow['key_sealed'] ?? '')) ?? '') : '';
+assert_true($reopened === $issuedBrandKey['key'], 'key_sealed decrypts to full website key for owner copy');
+
+$devPlain = 'gpdev_' . bin2hex(random_bytes(8));
+GpDb::exec(
+    'INSERT INTO gp_devices (device_id, brand_id, label, token_hash, token_sealed, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)',
+    [GpIds::make('dev', 8), $brandId, 'sealed', password_hash($devPlain, PASSWORD_BCRYPT), GpCrypto::seal($devPlain), 'active', $now, $now]
+);
+$devSealed = GpDb::one('SELECT token_sealed FROM gp_devices WHERE brand_id = ? ORDER BY id DESC LIMIT 1', [$brandId]);
+$devReopened = is_array($devSealed) ? (GpCrypto::open((string) ($devSealed['token_sealed'] ?? '')) ?? '') : '';
+assert_true($devReopened === $devPlain, 'token_sealed decrypts to full device key for owner copy');
+
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { User } from "@/lib/types/api";
@@ -17,20 +17,6 @@ interface DashboardHeaderProps {
 
 export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user, onMenuClick }) => {
   const router = useRouter();
-  const [testLedgerAdvanced, setTestLedgerAdvanced] = useState(false);
-
-  useEffect(() => {
-    const sync = () => {
-      const advanced = window.localStorage.getItem("gresspay_advanced_test_ledger") === "1";
-      setTestLedgerAdvanced(advanced);
-      if (!advanced) {
-        api.setLedgerMode("live");
-      }
-    };
-    sync();
-    window.addEventListener("gresspay-mode", sync);
-    return () => window.removeEventListener("gresspay-mode", sync);
-  }, []);
 
   const handleLogout = () => {
     api.clearToken();
@@ -52,7 +38,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user, onMenuCl
         )}
 
         <Badge variant="emerald" size="sm" dot>
-          {testLedgerAdvanced && api.getLedgerMode() === "test" ? "Test ledger (advanced)" : "Live production"}
+          Production
         </Badge>
       </div>
 

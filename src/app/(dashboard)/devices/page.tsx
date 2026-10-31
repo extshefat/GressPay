@@ -20,6 +20,7 @@ import {
   Download,
   Trash2,
   Copy,
+  RotateCw,
 } from "lucide-react";
 
 type DeviceRow = {
@@ -34,6 +35,7 @@ type DeviceRow = {
   updatedAt?: string;
   deviceAppKey?: string;
   deviceAppKeyMasked?: string;
+  deviceAppKeyCopyable?: boolean;
 };
 
 type BrandOption = { brandId: string; name: string };
@@ -74,6 +76,7 @@ export default function CompanionDevicesPage() {
   const [registeredBrandName, setRegisteredBrandName] = useState("");
   const [pairingQr, setPairingQr] = useState<string | null>(null);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [rotatingId, setRotatingId] = useState<string | null>(null);
 
   const loadDevices = useCallback(async () => {
     setIsLoading(true);
@@ -123,10 +126,15 @@ export default function CompanionDevicesPage() {
   const copyDeviceKey = async (device: DeviceRow) => {
     const full = device.deviceAppKey?.trim();
     if (!full) {
-      toastError(
-        "No re-copyable device key on file. Rotate the device or register a new one — keys issued after this update stay copyable here.",
-        "Key unavailable"
-      );
+      if (
+        window.confirm(
+          "This device key cannot be re-copied yet (legacy row). Rotate the device key now? The Companion app must be updated with the new key."
+        )
+      ) {
+        await rotateDeviceKey(device);
+      } else {
+        toastError("Use Rotate key in the row actions to issue a re-copyable secret.", "Key unavailable");
+      }
       return;
     }
     try {
@@ -134,6 +142,25 @@ export default function CompanionDevicesPage() {
       success("Device API key copied — paste into the Companion app Setup screen.");
     } catch {
       toastError("Clipboard blocked — select and copy manually.");
+    }
+  };
+
+  const rotateDeviceKey = async (device: DeviceRow) => {
+    setRotatingId(device.deviceId);
+    try {
+      const res = await api.rotateCompanionDevice(device.deviceId);
+      const key = res.deviceAppKey || res.token;
+      await loadDevices();
+      try {
+        await navigator.clipboard.writeText(key);
+        success("New device API key copied — paste into the Companion app.");
+      } catch {
+        success(res.note, "Device key rotated");
+      }
+    } catch (err: unknown) {
+      toastError(err instanceof Error ? err.message : "Could not rotate device key.");
+    } finally {
+      setRotatingId(null);
     }
   };
 
@@ -355,7 +382,7 @@ export default function CompanionDevicesPage() {
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
                           <code className="font-mono text-[11px] text-zinc-700 dark:text-zinc-300">
-                            {device.deviceAppKeyMasked || "gpdev_••••••••"}
+                            {device.deviceAppKeyMasked || "**********"}
                           </code>
                           <Button
                             size="sm"
@@ -373,14 +400,25 @@ export default function CompanionDevicesPage() {
                         {lastTouch ? formatDate(lastTouch) : "—"}
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <Button
-                          size="sm"
-                          variant="danger"
-                          onClick={() => setRevokeDevice(device)}
-                          leftIcon={<Trash2 className="w-3.5 h-3.5" />}
-                        >
-                          Revoke
-                        </Button>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => rotateDeviceKey(device)}
+                            isLoading={rotatingId === device.deviceId}
+                            leftIcon={<RotateCw className="w-3.5 h-3.5" />}
+                          >
+                            Rotate key
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            onClick={() => setRevokeDevice(device)}
+                            leftIcon={<Trash2 className="w-3.5 h-3.5" />}
+                          >
+                            Revoke
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   );

@@ -192,9 +192,11 @@ export default function DevelopersPage() {
               </div>
             </div>
             <p className="text-xs text-zinc-500">
-              Key prefix selects the ledger: <code className="font-mono">gp_live_</code> vs{" "}
-              <code className="font-mono">gp_test_</code>. Test keys cannot read or complete live
-              sessions.
+              Use the live website API key from{" "}
+              <Link href="/dashboard/brands" className="font-semibold underline">
+                Dashboard → Brands
+              </Link>{" "}
+              (prefix <code className="font-mono">gp_live_</code>). Never expose keys in browser-side code.
             </p>
           </section>
 
@@ -322,7 +324,7 @@ export function verifyGressPayWebhook(rawBody, signatureHeader, secret) {
             </div>
             <ul className="space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
               {[
-                "Create live API keys in the merchant dashboard (never ship test keys).",
+                "Copy the live brand website API key from Dashboard → Brands (server-side only).",
                 "Configure bKash/Nagad wallets and companion devices for SMS matching.",
                 "Set HTTPS webhook destinations and store the webhook secret securely.",
                 "Fulfill only after POST /payment/verify (or webhook) shows COMPLETED.",

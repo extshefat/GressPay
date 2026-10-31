@@ -57,42 +57,9 @@ final class MerchantController
     public static function keys(array $actor): never
     {
         $brand = GpDb::one('SELECT * FROM gp_brands WHERE brand_id = ?', [$actor['brand_id']]);
-        $keys = GpDb::all('SELECT * FROM gp_api_keys WHERE brand_id = ? ORDER BY id ASC', [$actor['brand_id']]);
-        $live = null;
-        $test = null;
-        foreach ($keys as $k) {
-            if ($k['mode'] === 'live' && $k['status'] === 'active' && $live === null) {
-                $live = $k;
-            }
-            if ($k['mode'] === 'test' && $k['status'] === 'active' && $test === null) {
-                $test = $k;
-            }
-        }
-        $list = [];
-        foreach ($keys as $k) {
-            if (($k['status'] ?? '') !== 'active') {
-                continue;
-            }
-            $list[] = [
-                'id' => (int) $k['id'],
-                'name' => (string) ($k['name'] ?? ''),
-                'mode' => (string) ($k['mode'] ?? 'live'),
-                'prefix' => (string) ($k['prefix'] ?? ''),
-                'masked' => ((string) ($k['prefix'] ?? '')) . '••••••••',
-                'createdAt' => $k['created_at'] ?? null,
-                'lastUsedAt' => $k['last_used_at'] ?? null,
-            ];
-        }
         GpJson::send([
             'merchantId' => $actor['merchant_id'],
             'brandId' => $actor['brand_id'],
-            'hasLiveKey' => $live !== null,
-            'hasSandboxKey' => $test !== null,
-            'livePublicKey' => $live ? $live['prefix'] . '…' : '',
-            'liveSecretKey' => $live ? $live['prefix'] . '••••' : '',
-            'sandboxPublicKey' => $test ? $test['prefix'] . '…' : '',
-            'sandboxSecretKey' => $test ? $test['prefix'] . '••••' : '',
-            'keys' => $list,
             'webhookSecret' => isset($brand['webhook_secret']) && (string) $brand['webhook_secret'] !== ''
                 ? substr((string) $brand['webhook_secret'], 0, 8) . '••••'
                 : '',
@@ -100,29 +67,25 @@ final class MerchantController
             'webhookUrl' => $brand['webhook_url'] ?? null,
             'checkoutUrl' => GpPlatform::publicApiBase() . '/payment/create',
             'verifyUrl' => GpPlatform::publicApiBase() . '/payment/verify',
-            'note' => 'Full secrets are only returned once when you Create or Rotate. List views stay masked.',
+            'note' => 'Website and device API keys live under Dashboard → Brands and Devices. This page is for webhook signing secrets.',
         ]);
     }
 
     private static function createKey(array $actor, GpRequest $req): never
     {
         $mode = (string) $req->input('mode', 'live');
-        if (!in_array($mode, ['live', 'test'], true)) {
-            $mode = 'live';
+        if ($mode === 'test') {
+            GpJson::error(
+                'FORBIDDEN',
+                'Sandbox/test API keys are not issued from the merchant dashboard. Create or rotate keys under Brands.',
+                403
+            );
         }
-        $name = trim((string) $req->input('name', 'API key ' . date('Y-m-d H:i')));
-        if ($name === '') {
-            $name = 'API key';
-        }
-        $issued = GpAuth::issueKey($actor['brand_id'], $mode, $name);
-        GpJson::send([
-            'mode' => $mode,
-            'key' => $issued['key'],
-            'prefix' => $issued['prefix'],
-            'name' => $name,
-            'created' => true,
-            'note' => 'Shown once. Copy and store this secret now — it cannot be retrieved again.',
-        ], 201);
+        GpJson::error(
+            'MOVED',
+            'Website API keys are created per brand under Dashboard → Brands.',
+            410
+        );
     }
 
     private static function revokeKey(array $actor, GpRequest $req): never
@@ -148,30 +111,18 @@ final class MerchantController
     private static function rotate(array $actor, GpRequest $req): never
     {
         $mode = (string) $req->input('mode', 'live');
-        if (!in_array($mode, ['live', 'test'], true)) {
-            $mode = 'live';
+        if ($mode === 'test') {
+            GpJson::error(
+                'FORBIDDEN',
+                'Sandbox/test API keys are not issued from the merchant dashboard. Rotate the website key under Brands.',
+                403
+            );
         }
-        $existing = GpDb::one(
-            'SELECT id FROM gp_api_keys WHERE brand_id = ? AND mode = ? AND status = ?',
-            [$actor['brand_id'], $mode, 'active']
+        GpJson::error(
+            'MOVED',
+            'Merchant-wide API key rotation moved to Dashboard → Brands (website key per brand).',
+            410
         );
-        $created = $existing === null;
-        GpDb::exec(
-            'UPDATE gp_api_keys SET status = ?, updated_at = ? WHERE brand_id = ? AND mode = ? AND status = ?',
-            ['inactive', GpIds::now(), $actor['brand_id'], $mode, 'active']
-        );
-        $issued = GpAuth::issueKey(
-            $actor['brand_id'],
-            $mode,
-            $created ? ('Default ' . $mode) : ('Rotated ' . $mode)
-        );
-        GpJson::send([
-            'mode' => $mode,
-            'key' => $issued['key'],
-            'prefix' => $issued['prefix'],
-            'created' => $created,
-            'note' => 'Shown once. Copy and store this secret now — it cannot be retrieved again.',
-        ]);
     }
 
     /** Issue a new webhook HMAC secret (plaintext once). */

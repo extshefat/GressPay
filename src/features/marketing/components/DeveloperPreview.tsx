@@ -66,8 +66,9 @@ export const DeveloperPreview: React.FC = () => {
               Create a session. Host the pay page. Confirm with verify-payment.
             </h2>
             <p className="text-zinc-600 dark:text-zinc-400 text-sm sm:text-base leading-relaxed">
-              Authenticate with <span className="font-mono text-zinc-900 dark:text-zinc-100">gp_live_</span> or{" "}
-              <span className="font-mono text-zinc-900 dark:text-zinc-100">gp_test_</span>. Create returns{" "}
+              Authenticate with your brand website key{" "}
+              <span className="font-mono text-zinc-900 dark:text-zinc-100">gp_live_…</span> from Dashboard → Brands.
+              Create returns{" "}
               <span className="font-mono text-zinc-900 dark:text-zinc-100">payUrl</span> — redirect the customer to
               GressPay hosted checkout, then confirm via webhook HMAC or{" "}
               <span className="font-mono text-zinc-900 dark:text-zinc-100">verify-payment</span>.

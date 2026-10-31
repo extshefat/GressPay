@@ -34,7 +34,7 @@ const CORE_NAV = [
   { href: "/dashboard/brands", label: "Brands", icon: Building2 },
   { href: "/dashboard/devices", label: "Devices", icon: Smartphone },
   { href: "/dashboard/apps", label: "Apps & Plugins", icon: Puzzle },
-  { href: "/dashboard/api-keys", label: "API & Webhooks", icon: Key },
+  { href: "/dashboard/api-keys", label: "Webhooks & Integration", icon: Key },
   { href: "/dashboard/team", label: "Team", icon: Users },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
