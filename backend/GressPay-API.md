@@ -48,11 +48,14 @@ Webhook URLs on public init are ignored; only account settings / link create-tim
 
 | Route | Auth | Notes |
 |-------|------|-------|
+| `GET /companion/public-config` | None | `{ apiBaseUrl }` for Companion default server |
+| `POST /companion/verify` | **`gpdev_` device key** (Bearer) | Binds to brand chosen at device create; returns `brandId`, `apiBaseUrl` |
 | `POST /companion/register` | Dashboard JWT + `manage_devices` | Returns `deviceId` + token **once** |
 | `GET /companion/devices` | Dashboard JWT + `manage_devices` | List; no tokens |
 | `POST /companion/devices/{id}/revoke` | Dashboard JWT | Blocks further SMS uploads |
 | `POST /companion/devices/{id}/rotate` | Dashboard JWT | New token once |
-| `POST /companion/sms` | Device token + **`X-GressPay-Brand`** | Idempotent; stores amount/TxID/rail/device only — **no SMS body** |
+| `POST /companion/heartbeat` | **`gpdev_` device key** | Optional `X-GressPay-Brand`; updates `last_seen` |
+| `POST /companion/sms` | **`gpdev_` device key** | Optional brand header; idempotent SMS ingest |
 
 Live completion requires matching SMS (brand, rail, TxID, amount±tolerance, age). TxID alone → stays PENDING.
 

@@ -26,7 +26,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        if (prefs.deviceToken.isNotBlank() && prefs.brandId.isNotBlank() && prefs.baseUrl.isNotBlank()) {
+        if (prefs.deviceToken.isNotBlank() && prefs.baseUrl.isNotBlank()) {
             CoroutineScope(Dispatchers.IO).launch {
                 CompanionHeartbeat.sendIfConfigured(this@MainActivity)
             }

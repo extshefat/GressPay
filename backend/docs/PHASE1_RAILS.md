@@ -17,7 +17,7 @@ Catalog source of truth: `backend/src/lib/Catalog.php` (`releaseScope` + super-a
 
 **Not in catalog (plugins only):** India / Pakistan / Nepal rails (`esewa`, `phonepe`, `jazzcash`, etc.) — UI may show “Coming Soon”; not first-release checkout.
 
-**Companion SMS uploads** require header `X-GressPay-Brand` (brand id) plus device token — no global device scan.
+**Companion SMS uploads** authenticate with the **`gpdev_` device API key** (Bearer). Brand is inferred from the device row created in the dashboard; `X-GressPay-Brand` is optional when it matches `brd_*`.
 
 ## Secrets (production)
 

@@ -259,9 +259,10 @@ export default function CompanionDevicesPage() {
             <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">Manage Devices</h1>
           </div>
           <p className="mt-1 max-w-xl text-xs leading-relaxed text-zinc-500">
-            Pair Android phones per brand for bKash/Nagad SMS matching. Copy the{" "}
-            <span className="font-mono font-semibold text-zinc-700 dark:text-zinc-300">Device API key (for app)</span>{" "}
-            into the Companion Setup screen — not your brand website key.
+            Pair Android phones per brand for bKash/Nagad SMS matching. In the Companion app, paste only the{" "}
+            <span className="font-mono font-semibold text-zinc-700 dark:text-zinc-300">Device API key (gpdev_…)</span>
+            . Do not paste your website key (<span className="font-mono">gp_live_…</span>) or Brand ID — the app
+            links to your account automatically.
           </p>
           <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-400/90">
             Having trouble pairing? Download the APK below, add a device, then paste the key from this table.
@@ -590,21 +591,27 @@ export default function CompanionDevicesPage() {
             <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl text-emerald-800 dark:text-emerald-300 space-y-1">
               <span className="font-bold">Device created</span>
               <p className="text-[11px]">
-                Paste the Device API key into the Companion app. You can also copy it later from the devices table.
+                Open Companion → Setup, paste the Device API key below, and tap Save &amp; verify. Server URL and account
+                are filled in automatically — no Brand ID or gp_live_ key needed.
               </p>
             </div>
 
-            <CopyField label="API Base URL (site root, no /api/v1)" value={apiBaseUrl} />
-            {registeredBrandId ? (
-              <CopyField label="Brand ID (X-GressPay-Brand)" value={registeredBrandId} />
-            ) : null}
             {registeredBrandName ? (
               <p className="text-[11px] text-zinc-500">
-                Brand: <span className="font-semibold text-zinc-800 dark:text-zinc-200">{registeredBrandName}</span>
+                Linked brand:{" "}
+                <span className="font-semibold text-zinc-800 dark:text-zinc-200">{registeredBrandName}</span>
               </p>
             ) : null}
-            <CopyField label="Device ID" value={generatedDeviceId} />
-            <CopyField label="Device API key (for app)" value={generatedToken} />
+            <CopyField label="Device API key (paste into Companion app)" value={generatedToken} />
+            <details className="rounded-lg border border-zinc-200 p-2 dark:border-zinc-800">
+              <summary className="cursor-pointer text-[11px] font-medium text-zinc-600 dark:text-zinc-400">
+                Advanced (optional)
+              </summary>
+              <div className="mt-2 space-y-2">
+                <CopyField label="API Base URL (site root, no /api/v1)" value={apiBaseUrl} />
+                <CopyField label="Device ID" value={generatedDeviceId} />
+              </div>
+            </details>
 
             {pairingQr && (
               <div className="flex flex-col items-center gap-2 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">

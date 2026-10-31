@@ -248,8 +248,8 @@ private fun SetupScreen(actions: CompanionActions, prefs: Prefs, onDone: () -> U
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var state by remember { mutableStateOf(actions.readState()) }
+    var showAdvancedUrl by remember { mutableStateOf(false) }
     var baseUrl by remember { mutableStateOf(state.baseUrl.ifBlank { CompanionActions.DEFAULT_BASE }) }
-    var brandId by remember { mutableStateOf(prefs.brandId) }
     var deviceKey by remember { mutableStateOf(state.deviceToken) }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
@@ -258,7 +258,6 @@ private fun SetupScreen(actions: CompanionActions, prefs: Prefs, onDone: () -> U
 
     fun refresh() {
         state = actions.readState()
-        brandId = prefs.brandId
         deviceKey = prefs.deviceToken
     }
 
@@ -285,38 +284,50 @@ private fun SetupScreen(actions: CompanionActions, prefs: Prefs, onDone: () -> U
             Column(Modifier.padding(16.dp)) {
                 Text("API Configuration", fontWeight = FontWeight.Bold)
                 Text(
-                    "In GressPay Dashboard → Devices, copy the Device API key (gpdev_…). Do not use your brand website key (gp_live_…).",
+                    "Paste only the Device API key (gpdev_…) from Dashboard → Devices. Your account and server URL are detected automatically — do not paste gp_live_… website keys.",
                     fontSize = 12.sp,
                     color = Color.Gray,
                 )
-                Text(
-                    if (state.paired) "Configured" else "Not configured",
-                    color = if (state.paired) GpGreen else Color.Gray,
-                    fontSize = 13.sp,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
+                if (state.paired && state.brandName.isNotBlank()) {
+                    Text(
+                        "Linked to: ${state.brandName}",
+                        color = GpGreen,
+                        fontSize = 13.sp,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                } else {
+                    Text(
+                        if (state.paired) "Configured" else "Not configured",
+                        color = if (state.paired) GpGreen else Color.Gray,
+                        fontSize = 13.sp,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
                 Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = baseUrl,
-                    onValueChange = { baseUrl = it },
-                    label = { Text("API base URL (site root)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = brandId,
-                    onValueChange = { brandId = it },
-                    label = { Text("Brand ID") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                )
-                Spacer(Modifier.height(8.dp))
+                if (showAdvancedUrl) {
+                    OutlinedTextField(
+                        value = baseUrl,
+                        onValueChange = { baseUrl = it },
+                        label = { Text("API base URL (site root)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                } else {
+                    Text(
+                        "Server: ${baseUrl.ifBlank { CompanionActions.DEFAULT_BASE }}",
+                        fontSize = 12.sp,
+                        color = Color.DarkGray,
+                    )
+                    TextButton(onClick = { showAdvancedUrl = true }) {
+                        Text("Change server URL", fontSize = 12.sp)
+                    }
+                }
                 OutlinedTextField(
                     value = deviceKey,
                     onValueChange = { deviceKey = it },
-                    label = { Text("Device API key (from Dashboard → Devices)") },
-                    placeholder = { Text("Enter Device API key") },
+                    label = { Text("Device API key") },
+                    placeholder = { Text("gpdev_…") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                 )
@@ -325,9 +336,12 @@ private fun SetupScreen(actions: CompanionActions, prefs: Prefs, onDone: () -> U
                     onClick = {
                         busy = true
                         scope.launch {
-                            val reg = actions.pairDeviceCredentials(baseUrl, brandId, deviceKey)
+                            val reg = actions.pairDeviceCredentials(
+                                deviceToken = deviceKey,
+                                baseUrlOverride = if (showAdvancedUrl) baseUrl else "",
+                            )
                             reg.onSuccess {
-                                message = "Device paired — heartbeat OK"
+                                message = "Verified — device online"
                                 refresh()
                                 actions.enableMatching()
                                 refresh()
@@ -339,7 +353,7 @@ private fun SetupScreen(actions: CompanionActions, prefs: Prefs, onDone: () -> U
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = GpBlue),
                 ) {
-                    Text(if (busy) "Saving…" else "SAVE API KEY")
+                    Text(if (busy) "Verifying…" else "Save & verify")
                 }
                 message?.let { Text(it, fontSize = 12.sp, color = Color.DarkGray) }
             }

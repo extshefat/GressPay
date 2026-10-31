@@ -107,16 +107,28 @@ final class CompanionController
             self::listSmsLogs($actor);
         }
 
+        if ($req->method === 'GET' && $action === 'public-config') {
+            GpJson::send([
+                'apiBaseUrl' => GpPlatform::publicSiteRoot(),
+                'apiVersion' => 'v1',
+            ]);
+        }
+
+        if ($req->method === 'POST' && $action === 'verify') {
+            GpRateLimiter::guard('verify:' . GpRateLimiter::ip(), 60, 60);
+            $device = self::authenticateActiveDevice($req);
+            self::touchLastSeen($device);
+            GpJson::send(self::pairingPayload($device));
+        }
+
         if ($req->method === 'POST' && $action === 'heartbeat') {
             GpRateLimiter::guard('heartbeat:' . GpRateLimiter::ip(), 120, 60);
             $device = self::authenticateActiveDevice($req);
             self::touchLastSeen($device);
-            GpJson::send([
-                'ok' => true,
-                'deviceId' => $device['device_id'],
+            GpJson::send(array_merge(self::pairingPayload($device), [
                 'lastSeenAt' => GpIds::now(),
                 'onlineWindowSec' => self::ONLINE_WINDOW_SEC,
-            ]);
+            ]));
         }
 
         if ($req->method === 'POST' && $action === 'sms') {
@@ -264,19 +276,68 @@ final class CompanionController
      */
     public static function authenticateActiveDevice(GpRequest $req): array
     {
-        $brandId = trim((string) ($_SERVER['HTTP_X_GRESSPAY_BRAND'] ?? ''));
-        if ($brandId === '') {
-            GpJson::error('MISSING_HEADER', 'X-GressPay-Brand header is required for companion device calls.', 400);
-        }
         $token = $req->bearer() ?? ($req->deviceToken() ?? '');
         if (!is_string($token) || $token === '') {
-            GpJson::error('UNAUTHORIZED', 'Device token required.', 401);
+            GpJson::error('UNAUTHORIZED', 'Device API key required (gpdev_…).', 401);
         }
-        $device = self::deviceForSmsToken($brandId, $token);
+        if (!str_starts_with($token, 'gpdev_')) {
+            GpJson::error(
+                'UNAUTHORIZED',
+                'Use the Device API key from Dashboard → Devices (gpdev_…), not your website key (gp_live_…).',
+                401
+            );
+        }
+        $brandHint = trim((string) ($_SERVER['HTTP_X_GRESSPAY_BRAND'] ?? ''));
+        $device = self::resolveActiveDevice($brandHint, $token);
         if ($device === null) {
-            GpJson::error('UNAUTHORIZED', 'Invalid or revoked device token for this brand.', 401);
+            GpJson::error('UNAUTHORIZED', 'Invalid or revoked device API key.', 401);
         }
         return $device;
+    }
+
+    /**
+     * Resolve device by token; optional brand hint must match brd_* when provided.
+     *
+     * @return array<string,mixed>|null
+     */
+    public static function resolveActiveDevice(string $brandHint, string $token): ?array
+    {
+        if ($token === '') {
+            return null;
+        }
+        if ($brandHint !== '' && self::looksLikeBrandId($brandHint)) {
+            $scoped = self::deviceForSmsToken($brandHint, $token);
+            if ($scoped !== null) {
+                return $scoped;
+            }
+        }
+        return self::deviceForToken($token);
+    }
+
+    public static function looksLikeBrandId(string $value): bool
+    {
+        return str_starts_with($value, 'brd_');
+    }
+
+    /**
+     * @param array<string,mixed> $device
+     * @return array<string,mixed>
+     */
+    private static function pairingPayload(array $device): array
+    {
+        $brandId = (string) ($device['brand_id'] ?? '');
+        $brandName = '';
+        if ($brandId !== '') {
+            $brandRow = GpDb::one('SELECT name FROM gp_brands WHERE brand_id = ?', [$brandId]);
+            $brandName = is_array($brandRow) ? (string) ($brandRow['name'] ?? '') : '';
+        }
+        return [
+            'ok' => true,
+            'deviceId' => (string) ($device['device_id'] ?? ''),
+            'brandId' => $brandId,
+            'brandName' => $brandName,
+            'apiBaseUrl' => GpPlatform::publicSiteRoot(),
+        ];
     }
 
     /** @param array<string,mixed> $device */
@@ -305,6 +366,27 @@ final class CompanionController
         );
         foreach ($devices as $row) {
             if (password_verify($token, $row['token_hash'])) {
+                return $row;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Token-only lookup (brand chosen when the device was created in the dashboard).
+     *
+     * @return array<string,mixed>|null
+     */
+    public static function deviceForToken(string $token): ?array
+    {
+        if ($token === '') {
+            return null;
+        }
+        $devices = GpDb::all(
+            "SELECT * FROM gp_devices WHERE status = 'active' ORDER BY id DESC LIMIT 500"
+        );
+        foreach ($devices as $row) {
+            if (password_verify($token, (string) ($row['token_hash'] ?? ''))) {
                 return $row;
             }
         }

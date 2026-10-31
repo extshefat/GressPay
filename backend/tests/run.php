@@ -761,6 +761,11 @@ $otherBrand = GpIds::make('b', 6);
 assert_true(CompanionController::deviceForSmsToken($otherBrand, $plainTok) === null, 'wrong brand header scope rejects token');
 $found = CompanionController::deviceForSmsToken($smsBrand, $plainTok);
 assert_true(is_array($found) && ($found['device_id'] ?? '') === $smsDevId, 'correct brand resolves device');
+$byToken = CompanionController::deviceForToken($plainTok);
+assert_true(is_array($byToken) && ($byToken['device_id'] ?? '') === $smsDevId, 'deviceForToken resolves without brand header');
+$wrongLiveBrand = 'gp_live_' . bin2hex(random_bytes(8));
+$viaResolve = CompanionController::resolveActiveDevice($wrongLiveBrand, $plainTok);
+assert_true(is_array($viaResolve) && ($viaResolve['device_id'] ?? '') === $smsDevId, 'gp_live brand hint ignored; token binds to owning brand');
 
 // —— Webhook retry attempts logged ——
 putenv('WEBHOOK_MAX_RETRIES=2');
