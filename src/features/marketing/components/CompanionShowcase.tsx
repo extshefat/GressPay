@@ -75,7 +75,7 @@ export const CompanionShowcase: React.FC = () => {
               </Link>
             </div>
             <div className="text-[11px] font-mono text-zinc-500">
-              v1.1.1 · Android 8.0–15 · /download/gresspay-companion.apk
+              v1.2.1 · Android 8.0–15 · /download/gresspay-companion.apk
             </div>
           </div>
 

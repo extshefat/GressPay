@@ -7,7 +7,7 @@
 | Field | Value |
 |-------|--------|
 | Package | `com.gresspay.companion` |
-| Version | `1.2.0` (`versionCode` 4) |
+| Version | `1.2.1` (`versionCode` 5) |
 | `minSdk` / `targetSdk` | 26 / 35 |
 | Size | ~11 MB (3 DEX files — Compose + Material stack) |
 

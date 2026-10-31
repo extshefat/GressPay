@@ -28,6 +28,15 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [{ source: "/dashboard/:path*", destination: "/:path*" }];
   },
+  async redirects() {
+    return [
+      {
+        source: "/downloads/:path*",
+        destination: "/download/:path*",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
