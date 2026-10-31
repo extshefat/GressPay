@@ -7,7 +7,7 @@ class BybitPayGateway extends GressPayBaseGateway
     {
         return [
             'title' => 'Bybit Pay',
-            'logo' => '/methods/bybit_pay.svg',
+            'logo' => '/methods/bybit_pay.png',
             'currency' => 'USDT',
             'tab' => 'crypto',
             'gateway_type' => 'manual',

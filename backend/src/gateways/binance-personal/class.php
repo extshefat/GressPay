@@ -7,7 +7,7 @@ class BinancePersonalGateway extends GressPayBaseGateway
     {
         return [
             'title' => 'Binance Pay',
-            'logo' => '/methods/binance_pay.svg',
+            'logo' => '/methods/binance_pay.png',
             'currency' => 'USDT',
             'tab' => 'crypto',
             'gateway_type' => 'provider',

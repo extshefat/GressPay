@@ -6,6 +6,7 @@ import { PaymentMethod, CheckoutSession, TransactionStatus } from "@/lib/types/a
 import { formatCurrency } from "@/lib/formatters";
 import { api } from "@/lib/api-client";
 import { foldTxid } from "@/lib/method-theme";
+import { gatewayLogoPath } from "@/lib/gateway-library";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
@@ -842,7 +843,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
                 (method.gatewayId && selectedMethod.gatewayId === method.gatewayId) ||
                 (!method.gatewayId && selectedMethod.code === method.code && !selectedMethod.gatewayId);
 
-              const methodIconUrl = `/methods/${method.code.toLowerCase()}.svg`;
+              const methodIconUrl = gatewayLogoPath(method.code);
 
               return (
                 <button

@@ -7,7 +7,7 @@ class CellfinPersonalGateway extends GressPayBaseGateway
     {
         return [
             'title' => 'Cellfin',
-            'logo' => '/methods/cellfin.svg',
+            'logo' => '/methods/cellfin.png',
             'currency' => 'BDT',
             'tab' => 'mfs',
             'gateway_type' => 'automation',

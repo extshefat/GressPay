@@ -1,4 +1,4 @@
-/** Curated gateway library labels + logo paths (public/methods/*.svg). */
+/** Curated gateway library labels + logo paths (real brand assets under public/methods/). */
 export const GATEWAY_SHORT_LABELS: Record<string, string> = {
   bkash: "bKash",
   nagad: "Nagad",
@@ -17,8 +17,29 @@ export const GATEWAY_SHORT_LABELS: Record<string, string> = {
   bybit_pay: "Bybit Pay",
 };
 
+/** Filename (with extension) for each curated rail — prefer official/Wikimedia/press assets. */
+export const GATEWAY_LOGO_FILES: Record<string, string> = {
+  bkash: "bkash.svg",
+  nagad: "nagad.svg",
+  rocket: "rocket.svg",
+  upay: "upay.png",
+  cellfin: "cellfin.png",
+  bangla_qr: "bangla_qr.svg",
+  bangla_qr_v2: "bangla_qr_v2.svg",
+  pathaopay: "pathaopay.svg",
+  mcash: "mcash.png",
+  ok_wallet: "ok_wallet.png",
+  tap: "tap.png",
+  aamar_pay: "aamar_pay.png",
+  usdt_trc20: "usdt_trc20.png",
+  binance_pay: "binance_pay.png",
+  bybit_pay: "bybit_pay.png",
+};
+
 export function gatewayLogoPath(code: string): string {
-  return `/methods/${code.toLowerCase()}.svg`;
+  const key = code.toLowerCase();
+  const file = GATEWAY_LOGO_FILES[key] ?? `${key}.svg`;
+  return `/methods/${file}`;
 }
 
 export function gatewayShortLabel(code: string, fallback?: string): string {

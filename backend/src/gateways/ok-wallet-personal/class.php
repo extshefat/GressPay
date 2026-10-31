@@ -7,7 +7,7 @@ class OkWalletPersonalGateway extends GressPayBaseGateway
     {
         return [
             'title' => 'OK Wallet',
-            'logo' => '/methods/ok_wallet.svg',
+            'logo' => '/methods/ok_wallet.png',
             'currency' => 'BDT',
             'tab' => 'mfs',
             'gateway_type' => 'manual',
