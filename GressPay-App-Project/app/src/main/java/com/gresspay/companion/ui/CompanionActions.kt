@@ -64,9 +64,14 @@ class CompanionActions(private val context: Context, private val prefs: Prefs) {
     ): Result<Unit> = withContext(Dispatchers.IO) {
         val token = deviceToken.trim()
         if (!token.startsWith("gpdev_")) {
-            return@withContext Result.failure(
-                IllegalArgumentException("Paste the Device API key (gpdev_…) from Dashboard → Devices — not gp_live_…")
-            )
+            val msg = if (token.startsWith("gp_live_")) {
+                "Website key (gp_live_…) গ্রহণযোগ্য নয় — Dashboard → Devices থেকে Device API key (gpdev_…) পেস্ট করুন। " +
+                    "Do not paste gp_live_…; use the Device API key (gpdev_…) from Dashboard → Devices only."
+            } else {
+                "Device API key (gpdev_…) লাগবে — Dashboard → Devices থেকে কপি করুন। " +
+                    "Paste the Device API key (gpdev_…) from Dashboard → Devices."
+            }
+            return@withContext Result.failure(IllegalArgumentException(msg))
         }
         val base = normalizeBase(baseUrlOverride.ifBlank { prefs.baseUrl.ifBlank { DEFAULT_BASE } })
         if (!Prefs.isAllowedBaseUrl(base)) {

@@ -282,9 +282,9 @@ private fun SetupScreen(actions: CompanionActions, prefs: Prefs, onDone: () -> U
         Spacer(Modifier.height(16.dp))
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp)) {
-                Text("API Configuration", fontWeight = FontWeight.Bold)
+                Text("Device pairing", fontWeight = FontWeight.Bold)
                 Text(
-                    "Paste only the Device API key (gpdev_…) from Dashboard → Devices. Your account and server URL are detected automatically — do not paste gp_live_… website keys.",
+                    "Create the device in GressPay Dashboard → Devices, then paste only the Device API key (gpdev_…) below. Brand and server URL bind automatically after verify — do not paste gp_live_… website keys or Brand ID.",
                     fontSize = 12.sp,
                     color = Color.Gray,
                 )

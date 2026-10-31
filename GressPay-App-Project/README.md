@@ -6,7 +6,7 @@ Open this folder in **Android Studio**. Package: `com.gresspay.companion`.
 ## What it does
 
 1. Create a device under **Dashboard → Devices** (choose brand, copy **Device API key** `gpdev_…`).
-2. Install this APK, complete Welcome → SMS → Setup, paste site root URL, Brand ID, and device key.
+2. Install this APK, complete Welcome → SMS → Setup, and paste **only** the Device API key (`gpdev_…`) from Dashboard → Devices.
 3. Grant SMS permissions and disable battery optimization for the app.
 4. After **explicit opt-in** + `RECEIVE_SMS` (+ notifications on Android 13+), listen for payment SMS.
 5. Parse only amount + TxID + rail; reject OTP / promo noise.
@@ -36,7 +36,7 @@ Open this folder in **Android Studio**. Package: `com.gresspay.companion`.
 3. API base e.g. `https://gresspay.extxcheats.com` or emulator `http://10.0.2.2:8080`
 4. Register device → consent → enable matching → optional inbox scan
 
-Public download (after assemble): `/download/gresspay-companion.apk` (version `1.1.1`).
+Public download (after assemble): `/download/gresspay-companion.apk` (version `1.2.1`).
 
 ## Tests / build
 
