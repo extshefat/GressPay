@@ -9,7 +9,23 @@ import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
 data class RegisterResult(val deviceId: String, val token: String, val brandId: String)
-data class PingResult(val ok: Boolean, val latencyMs: Long, val message: String)
+data class PingResult(
+    val ok: Boolean,
+    val latencyMs: Long,
+    val message: String,
+    val brandId: String = "",
+    val apiBaseUrl: String = "",
+    val deviceId: String = "",
+)
+data class VerifyResult(
+    val ok: Boolean,
+    val deviceId: String,
+    val brandId: String,
+    val brandName: String,
+    val apiBaseUrl: String,
+    val latencyMs: Long,
+    val message: String,
+)
 data class SmsPostResult(
     val ok: Boolean,
     val matched: Boolean,
@@ -31,28 +47,80 @@ class CompanionApi(
         }
     }
 
-    fun postHeartbeat(deviceToken: String, brandId: String): PingResult {
-        val url = "$baseUrl/api/v1/companion/heartbeat"
-        val req = Request.Builder()
+    fun postVerify(deviceToken: String, brandIdHint: String = ""): VerifyResult {
+        val url = "$baseUrl/api/v1/companion/verify"
+        val builder = Request.Builder()
             .url(url)
             .header("Authorization", "Bearer $deviceToken")
             .header("X-GressPay-Device", deviceToken)
-            .header("X-GressPay-Brand", brandId)
             .header("Content-Type", "application/json")
-            .post("{}".toRequestBody(JSON))
-            .build()
+        if (brandIdHint.isNotBlank()) {
+            builder.header("X-GressPay-Brand", brandIdHint)
+        }
+        val req = builder.post("{}".toRequestBody(JSON)).build()
         val started = System.nanoTime()
         return try {
             client.newCall(req).execute().use { res ->
                 val ms = (System.nanoTime() - started) / 1_000_000L
                 val raw = res.body?.string().orEmpty()
                 if (res.isSuccessful) {
-                    val deviceId = try {
-                        JSONObject(raw).optString("deviceId", "")
-                    } catch (_: Exception) {
-                        ""
+                    val json = JSONObject(raw)
+                    VerifyResult(
+                        ok = json.optBoolean("ok", true),
+                        deviceId = json.optString("deviceId", ""),
+                        brandId = json.optString("brandId", ""),
+                        brandName = json.optString("brandName", ""),
+                        apiBaseUrl = json.optString("apiBaseUrl", "").trim().trimEnd('/'),
+                        latencyMs = ms,
+                        message = "",
+                    )
+                } else {
+                    VerifyResult(false, "", "", "", "", ms, parseError(raw, res.code))
+                }
+            }
+        } catch (e: Exception) {
+            val ms = (System.nanoTime() - started) / 1_000_000L
+            VerifyResult(false, "", "", "", "", ms, e.message ?: "network_error")
+        }
+    }
+
+    fun fetchPublicConfig(): String {
+        val url = "$baseUrl/api/v1/companion/public-config"
+        val req = Request.Builder().url(url).get().build()
+        client.newCall(req).execute().use { res ->
+            val raw = res.body?.string().orEmpty()
+            if (!res.isSuccessful) return ""
+            return JSONObject(raw).optString("apiBaseUrl", "").trim().trimEnd('/')
+        }
+    }
+
+    fun postHeartbeat(deviceToken: String, brandId: String = ""): PingResult {
+        val url = "$baseUrl/api/v1/companion/heartbeat"
+        val builder = Request.Builder()
+            .url(url)
+            .header("Authorization", "Bearer $deviceToken")
+            .header("X-GressPay-Device", deviceToken)
+            .header("Content-Type", "application/json")
+        if (brandId.isNotBlank()) {
+            builder.header("X-GressPay-Brand", brandId)
+        }
+        val req = builder.post("{}".toRequestBody(JSON)).build()
+        val started = System.nanoTime()
+        return try {
+            client.newCall(req).execute().use { res ->
+                val ms = (System.nanoTime() - started) / 1_000_000L
+                val raw = res.body?.string().orEmpty()
+                if (res.isSuccessful) {
+                    parseAuthResponse(raw, ms).let {
+                        PingResult(
+                            true,
+                            ms,
+                            it.deviceId.ifBlank { "heartbeat OK" },
+                            it.brandId,
+                            it.apiBaseUrl,
+                            it.deviceId,
+                        )
                     }
-                    PingResult(true, ms, deviceId.ifBlank { "heartbeat OK" })
                 } else {
                     PingResult(false, ms, parseError(raw, res.code))
                 }
@@ -125,14 +193,15 @@ class CompanionApi(
             .put("number", number)
             .put("idempotency_key", idempotencyKey)
             .toString()
-        val req = Request.Builder()
+        val builder = Request.Builder()
             .url(url)
             .header("Authorization", "Bearer $deviceToken")
             .header("X-GressPay-Device", deviceToken)
-            .header("X-GressPay-Brand", brandId)
             .header("Content-Type", "application/json")
-            .post(payload.toRequestBody(JSON))
-            .build()
+        if (brandId.isNotBlank()) {
+            builder.header("X-GressPay-Brand", brandId)
+        }
+        val req = builder.post(payload.toRequestBody(JSON)).build()
         client.newCall(req).execute().use { res ->
             val raw = res.body?.string().orEmpty()
             if (!res.isSuccessful) {
@@ -162,6 +231,23 @@ class CompanionApi(
                 ?: "HTTP $code"
         } catch (_: Exception) {
             "HTTP $code"
+        }
+    }
+
+    private fun parseAuthResponse(raw: String, latencyMs: Long): VerifyResult {
+        return try {
+            val json = JSONObject(raw)
+            VerifyResult(
+                ok = json.optBoolean("ok", true),
+                deviceId = json.optString("deviceId", ""),
+                brandId = json.optString("brandId", ""),
+                brandName = json.optString("brandName", ""),
+                apiBaseUrl = json.optString("apiBaseUrl", "").trim().trimEnd('/'),
+                latencyMs = latencyMs,
+                message = "",
+            )
+        } catch (_: Exception) {
+            VerifyResult(false, "", "", "", "", latencyMs, "invalid_response")
         }
     }
 

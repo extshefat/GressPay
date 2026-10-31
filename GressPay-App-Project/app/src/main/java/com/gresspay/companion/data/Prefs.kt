@@ -28,6 +28,10 @@ class Prefs(context: Context) {
         get() = sp.getString(KEY_BRAND_ID, "") ?: ""
         set(value) = sp.edit().putString(KEY_BRAND_ID, value.trim()).apply()
 
+    var brandName: String
+        get() = sp.getString(KEY_BRAND_NAME, "") ?: ""
+        set(value) = sp.edit().putString(KEY_BRAND_NAME, value.trim()).apply()
+
     var deviceToken: String
         get() = sp.getString(KEY_DEVICE_TOKEN, "") ?: ""
         set(value) = sp.edit().putString(KEY_DEVICE_TOKEN, value.trim()).apply()
@@ -70,6 +74,7 @@ class Prefs(context: Context) {
             .remove(KEY_DEVICE_ID)
             .remove(KEY_DEVICE_TOKEN)
             .remove(KEY_BRAND_ID)
+            .remove(KEY_BRAND_NAME)
             .putBoolean(KEY_MATCHING, false)
             .putBoolean(KEY_CONSENT, false)
             .remove(KEY_LAST_ERROR)
@@ -81,6 +86,7 @@ class Prefs(context: Context) {
         private const val KEY_API = "api_key"
         private const val KEY_DEVICE_ID = "device_id"
         private const val KEY_BRAND_ID = "brand_id"
+        private const val KEY_BRAND_NAME = "brand_name"
         private const val KEY_DEVICE_TOKEN = "device_token"
         private const val KEY_MATCHING = "matching_enabled"
         private const val KEY_CONSENT = "consent_accepted"

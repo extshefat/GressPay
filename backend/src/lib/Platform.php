@@ -143,6 +143,17 @@ final class GpPlatform
         if ($fromEnv !== '') {
             return rtrim($fromEnv, '/');
         }
-        return 'https://gresspay.extxcheats.com/api/v1';
+        $site = self::publicSiteRoot();
+        return $site !== '' ? $site . '/api/v1' : 'https://gresspay.extxcheats.com/api/v1';
+    }
+
+    /** Public site root for Companion pairing (no trailing slash, no /api/v1). */
+    public static function publicSiteRoot(): string
+    {
+        $app = rtrim(GpConfig::publicAppUrl(), '/');
+        if ($app !== '') {
+            return preg_replace('#/api/v1/?$#i', '', $app) ?? $app;
+        }
+        return 'https://gresspay.extxcheats.com';
     }
 }
