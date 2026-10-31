@@ -7,7 +7,7 @@ class BanglaQrV2PersonalGateway extends GressPayBaseGateway
     {
         return [
             'title' => 'Bangla QR V2',
-            'logo' => '/methods/bkash.svg',
+            'logo' => '/methods/bangla_qr_v2.svg',
             'currency' => 'BDT',
             'tab' => 'mfs',
             'gateway_type' => 'manual',

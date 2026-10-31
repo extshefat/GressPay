@@ -12,9 +12,10 @@ android {
         applicationId = "com.gresspay.companion"
         minSdk = 26
         targetSdk = 35
-        versionCode = 5
-        versionName = "1.2.1"
+        versionCode = 6
+        versionName = "1.2.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "API_BASE", "\"https://gresspay.extxcheats.com\"")
     }
 
     signingConfigs {
@@ -60,6 +61,7 @@ android {
     buildFeatures {
         viewBinding = true
         compose = true
+        buildConfig = true
     }
 }
 

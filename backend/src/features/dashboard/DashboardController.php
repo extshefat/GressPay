@@ -20,6 +20,37 @@ final class DashboardController
             $range = 7;
         }
 
+        if (GpAuth::activeBrandId($actor) === '') {
+            GpJson::send([
+                'totalRevenueUsd' => 0,
+                'totalRevenueBdt' => 0,
+                'todayTransactions' => 0,
+                'todayRevenueBdt' => 0,
+                'activeMethodsCount' => 0,
+                'connectedDevicesCount' => 0,
+                'onlineDevicesCount' => 0,
+                'successRate' => 0,
+                'activeLinksCount' => 0,
+                'pendingCheckoutCount' => 0,
+                'unmatchedSmsCount' => 0,
+                'lastDeviceSyncAt' => null,
+                'volumeHistory' => [],
+                'railBreakdown' => [],
+                'rangeDays' => $range,
+                'subscription' => [
+                    'planId' => 'starter',
+                    'planName' => 'Starter',
+                    'planExpiresAt' => null,
+                    'deviceLimit' => 1,
+                    'methodLimit' => 2,
+                    'devicesUsed' => 0,
+                    'methodsUsed' => 0,
+                ],
+                'planUsage' => GpPlanLimits::usageForMerchant((string) $actor['merchant_id']),
+                'noBrand' => true,
+            ]);
+        }
+
         $rows = GpDb::all('SELECT * FROM gp_transactions WHERE brand_id = ?', [$actor['brand_id']]);
         $completed = array_values(array_filter($rows, static fn ($r) => $r['status'] === 'completed'));
         $today = gmdate('Y-m-d');

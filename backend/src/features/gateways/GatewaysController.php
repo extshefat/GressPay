@@ -17,7 +17,7 @@ final class GatewaysController
     {
         $actor = GpAuth::requireActor($req);
         GpAuth::requireScope($actor, 'manage_methods');
-        GpRateLimiter::guard('gateways:' . $actor['brand_id'], 60, 60);
+        GpRateLimiter::guard('gateways:' . (GpAuth::activeBrandId($actor) ?: $actor['merchant_id']), 60, 60);
 
         $id = $req->part(1);
         $action = $req->part(2);
@@ -72,6 +72,15 @@ final class GatewaysController
     /** @param array{brand_id:string,merchant_id?:string} $actor */
     private static function list(array $actor): never
     {
+        if (GpAuth::activeBrandId($actor) === '') {
+            GpJson::send([
+                'gateways' => [],
+                'r2Configured' => R2Client::isConfigured(),
+                'maxUploadBytes' => GpConfig::r2MaxUploadBytes(),
+                'allowedQrMime' => ['image/png', 'image/jpeg', 'image/webp'],
+                'noBrand' => true,
+            ]);
+        }
         self::ensureBackfill();
         $rows = GpDb::all(
             'SELECT * FROM gp_gateways WHERE brand_id = ? ORDER BY display_order ASC, id ASC',
@@ -89,16 +98,20 @@ final class GatewaysController
     /** @param array{brand_id:string,merchant_id?:string} $actor */
     private static function create(array $actor, GpRequest $req): never
     {
+        $brandId = GpAuth::requireBrandContext($actor);
         $count = (int) (GpDb::one(
             'SELECT COUNT(*) AS c FROM gp_gateways WHERE brand_id = ?',
-            [$actor['brand_id']]
+            [$brandId]
         )['c'] ?? 0);
         if ($count >= self::MAX_GATEWAYS_PER_BRAND) {
             GpJson::error('QUOTA', 'Gateway limit reached for this brand.', 400);
         }
-        GpPlatform::assertGatewayCreationAllowed($actor['brand_id']);
+        GpPlatform::assertGatewayCreationAllowed($brandId);
 
         $methodCode = GpCatalog::publicCode((string) $req->input('methodCode', $req->input('method_code', '')));
+        if ($methodCode === 'custom_provider') {
+            GpJson::error('METHOD_DISABLED', 'Custom providers are not available in the gateway library.', 400);
+        }
         $cat = GpCatalog::find($methodCode);
         if ($cat === null || empty($cat['releaseScope'])) {
             GpJson::error('METHOD_DISABLED', 'Method is not available in this release.', 400);
@@ -281,6 +294,7 @@ final class GatewaysController
     /** @param array{brand_id:string,merchant_id?:string} $actor */
     private static function reorder(array $actor, GpRequest $req): never
     {
+        GpAuth::requireBrandContext($actor);
         $order = $req->input('order', $req->input('gatewayIds', []));
         if (!is_array($order) || $order === []) {
             GpJson::error('INVALID_ORDER', 'Provide order as an array of gatewayIds.', 400);

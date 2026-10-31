@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
+import { gatewayLogoPath, gatewayShortLabel } from "@/lib/gateway-library";
 import Link from "next/link";
 import { api } from "@/lib/api-client";
 import { MerchantGateway } from "@/lib/types/api";
@@ -78,7 +80,7 @@ const ALL_METHOD_OPTIONS: MethodMeta[] = [
     label: "Bangla QR",
     category: "mfs",
     currency: "BDT",
-    accountLabel: "Receiving account / merchant number",
+    accountLabel: "Receiving account / wallet number",
     placeholder: "01XXXXXXXXX",
   },
   {
@@ -86,7 +88,7 @@ const ALL_METHOD_OPTIONS: MethodMeta[] = [
     label: "Bangla QR V2",
     category: "mfs",
     currency: "BDT",
-    accountLabel: "Receiving account / merchant number",
+    accountLabel: "Receiving account / wallet number",
     placeholder: "01XXXXXXXXX",
   },
   {
@@ -130,14 +132,6 @@ const ALL_METHOD_OPTIONS: MethodMeta[] = [
     placeholder: "01XXXXXXXXX",
   },
   {
-    code: "custom_provider",
-    label: "Custom provider (manual)",
-    category: "mfs",
-    currency: "BDT",
-    accountLabel: "Account / wallet number",
-    placeholder: "01XXXXXXXXX or provider ID",
-  },
-  {
     code: "usdt_trc20",
     label: "USDT TRC-20 (TRON Blockchain)",
     category: "crypto",
@@ -175,13 +169,8 @@ const MFS_CODES = new Set([
   "ok_wallet",
   "tap",
   "aamar_pay",
-  "custom_provider",
 ]);
 
-const LIBRARY_PLACEHOLDERS: { label: string; category: string }[] = [
-  { label: "SSLCommerz bKash (later)", category: "mfs" },
-  { label: "Foreign bank transfer (later)", category: "bank" },
-];
 const CRYPTO_CODES = new Set(["usdt_trc20", "binance_pay", "bybit_pay"]);
 
 function readinessBadge(method: string, r: string): { label: string; variant: "emerald" | "amber" | "slate" | "rose" } {
@@ -621,13 +610,14 @@ export default function GatewaysPage() {
       )}
 
       {showLibrary && (
-        <Card className="space-y-4 border-zinc-900 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-950">
-          <div className="flex items-center justify-between border-b border-zinc-100 pb-3 dark:border-zinc-900">
+        <Card className="space-y-4 border border-zinc-800 bg-zinc-950 p-6 shadow-xl">
+          <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
             <div>
-              <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100">Gateway Library</h2>
-              <p className="text-xs text-zinc-500">Choose a payment channel, then configure account type.</p>
+              <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-sky-400">Gateway library</p>
+              <h2 className="text-lg font-bold text-white">Choose a payment channel</h2>
+              <p className="text-xs text-zinc-400">Logo-forward catalog — then configure account type and limits.</p>
             </div>
-            <Button size="sm" variant="outline" onClick={() => setShowLibrary(false)}>
+            <Button size="sm" variant="outline" onClick={() => setShowLibrary(false)} className="border-zinc-700 text-zinc-200">
               Cancel
             </Button>
           </div>
@@ -637,8 +627,9 @@ export default function GatewaysPage() {
               value={libraryQuery}
               onChange={(e) => setLibraryQuery(e.target.value)}
               placeholder="Search by gateway name…"
+              className="border-zinc-800 bg-zinc-900 text-white"
             />
-            <div className="flex flex-wrap gap-1 self-end rounded-xl border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="flex flex-wrap gap-1 self-end rounded-xl border border-zinc-800 bg-zinc-900 p-1">
               {(["all", "mfs", "crypto", "bank"] as const).map((id) => (
                 <button
                   key={id}
@@ -646,8 +637,8 @@ export default function GatewaysPage() {
                   onClick={() => setLibraryFilter(id)}
                   className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
                     libraryFilter === id
-                      ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950"
-                      : "text-zinc-500"
+                      ? "bg-sky-600 text-white"
+                      : "text-zinc-400 hover:text-white"
                   }`}
                 >
                   {id === "all" ? "All" : id === "mfs" ? "Mobile" : id === "crypto" ? "International" : "Bank"}
@@ -655,22 +646,17 @@ export default function GatewaysPage() {
               ))}
             </div>
           </div>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            <button
-              type="button"
-              onClick={() => pickFromLibrary("custom_provider")}
-              className="rounded-xl border border-dashed border-zinc-400 bg-zinc-50 p-4 text-left dark:border-zinc-600 dark:bg-zinc-900"
-            >
-              <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100">+ Custom provider</div>
-              <div className="mt-1 text-[10px] text-zinc-500">
-                Your own name, SMS source, account number, QR, and checkout instructions.
-              </div>
-            </button>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {availableOptions
               .filter((m) => {
+                if (libraryFilter === "bank") return false;
                 if (libraryFilter === "mfs" && m.category !== "mfs") return false;
                 if (libraryFilter === "crypto" && m.category !== "crypto") return false;
-                if (libraryQuery && !m.label.toLowerCase().includes(libraryQuery.toLowerCase())) return false;
+                const q = libraryQuery.trim().toLowerCase();
+                if (q) {
+                  const short = gatewayShortLabel(m.code, m.label).toLowerCase();
+                  if (!short.includes(q) && !m.label.toLowerCase().includes(q)) return false;
+                }
                 return true;
               })
               .map((m) => (
@@ -678,32 +664,27 @@ export default function GatewaysPage() {
                   key={m.code}
                   type="button"
                   onClick={() => pickFromLibrary(m.code)}
-                  className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-left transition hover:border-zinc-900 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-white"
+                  className="group flex flex-col items-center rounded-xl border border-zinc-800 bg-zinc-900/80 p-4 text-center transition hover:border-sky-500/60 hover:bg-zinc-900"
                 >
-                  <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{m.label}</div>
+                  <div className="relative mb-3 flex h-14 w-14 items-center justify-center rounded-xl bg-zinc-950 ring-1 ring-zinc-800">
+                    <Image
+                      src={gatewayLogoPath(m.code)}
+                      alt=""
+                      width={40}
+                      height={40}
+                      className="h-10 w-10 object-contain"
+                    />
+                  </div>
+                  <div className="text-sm font-semibold text-white">{gatewayShortLabel(m.code, m.label)}</div>
                   <div className="mt-1 font-mono text-[10px] uppercase text-zinc-500">
-                    {m.category} · {m.currency}
+                    {m.category === "crypto" ? "International" : "Mobile"} · {m.currency}
                   </div>
                 </button>
               ))}
-            {LIBRARY_PLACEHOLDERS.filter((p) => {
-              if (libraryFilter === "all") return true;
-              if (libraryFilter === "bank") return p.category === "bank";
-              if (libraryFilter === "mfs") return p.category === "mfs";
-              if (libraryFilter === "crypto") return p.category === "international";
-              return false;
-            })
-              .filter((p) => !libraryQuery || p.label.toLowerCase().includes(libraryQuery.toLowerCase()))
-              .map((p) => (
-                <div
-                  key={p.label}
-                  className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/50 p-4 text-left dark:border-zinc-700 dark:bg-zinc-900/50"
-                >
-                  <div className="text-sm font-bold text-zinc-700 dark:text-zinc-300">{p.label}</div>
-                  <div className="mt-1 text-[10px] text-zinc-500">Placeholder — use supported rails or contact admin to enable.</div>
-                </div>
-              ))}
           </div>
+          {libraryFilter === "bank" && (
+            <p className="text-center text-xs text-zinc-500">Bank rails are not in this release. Use Mobile or International channels.</p>
+          )}
         </Card>
       )}
 
@@ -808,9 +789,9 @@ export default function GatewaysPage() {
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {(
                     [
-                      { id: "personal", label: "Personal", hint: "SMS verify · Send Money" },
-                      { id: "agent", label: "Agent", hint: "SMS verify · Cash In" },
-                      { id: "payment", label: "Payment", hint: "SMS verify · Payment number" },
+                      { id: "personal", label: "Personal", hint: "SMS verify · Send Money / Cash In" },
+                      { id: "agent", label: "Agent", hint: "SMS verify · Cash Out only" },
+                      { id: "payment", label: "Payment", hint: "SMS verify · Payment only" },
                       { id: "merchant", label: "Business (API)", hint: "API key + secret" },
                     ] as const
                   ).map((t) => (

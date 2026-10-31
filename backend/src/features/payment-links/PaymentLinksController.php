@@ -11,6 +11,9 @@ final class PaymentLinksController
         $id = $req->part(1);
 
         if ($req->method === 'GET' && $id === null) {
+            if (GpAuth::activeBrandId($actor) === '') {
+                GpJson::send(['links' => [], 'noBrand' => true]);
+            }
             $rows = GpDb::all(
                 'SELECT * FROM gp_payment_links WHERE brand_id = ? ORDER BY id DESC LIMIT 100',
                 [$actor['brand_id']]
@@ -30,6 +33,7 @@ final class PaymentLinksController
         }
         if ($req->method === 'POST' && $id === null) {
             GpAuth::requireScope($actor, 'manage_links');
+            GpAuth::requireBrandContext($actor);
             $title = trim((string) $req->input('title', 'Payment'));
             $amount = GpMoney::sanitize((string) $req->input('amount', '0'));
             $currency = strtoupper((string) $req->input('currency', 'BDT'));

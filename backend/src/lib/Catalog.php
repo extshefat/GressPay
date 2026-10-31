@@ -27,7 +27,6 @@ final class GpCatalog
             self::row('ok_wallet', 'ok-wallet-personal', 'OK Wallet', 'BD', 'BDT', 'mfs', 'manual', true, true, 0.0, 10, 100000),
             self::row('tap', 'tap-personal', 'Tap', 'BD', 'BDT', 'mfs', 'manual', true, true, 0.0, 10, 100000),
             self::row('aamar_pay', 'aamar-pay-personal', 'aamarPay', 'BD', 'BDT', 'mfs', 'manual', true, true, 0.0, 10, 100000),
-            self::row('custom_provider', 'custom-provider', 'Custom provider (manual)', 'BD', 'BDT', 'mfs', 'manual', true, true, 0.0, 10, 100000),
 
             // Crypto Rails
             self::row('usdt_trc20', 'usdt-trc20', 'USDT TRC-20 (TRON Blockchain)', 'GLOBAL', 'USDT', 'crypto', 'onchain', true, true, 0.0, 1, 100000),
@@ -41,7 +40,7 @@ final class GpCatalog
     {
         return [
             'bkash', 'nagad', 'rocket', 'upay', 'cellfin',
-            'bangla_qr', 'bangla_qr_v2', 'pathaopay', 'mcash', 'ok_wallet', 'tap', 'aamar_pay', 'custom_provider',
+            'bangla_qr', 'bangla_qr_v2', 'pathaopay', 'mcash', 'ok_wallet', 'tap', 'aamar_pay',
         ];
     }
 

@@ -13,6 +13,14 @@ final class MethodsController
         $brand = GpDb::one('SELECT * FROM gp_brands WHERE brand_id = ?', [$actor['brand_id']]);
 
         if ($req->method === 'GET' && $code === null) {
+            if (GpAuth::activeBrandId($actor) === '') {
+                $list = [];
+                foreach (GpCatalog::methods() as $cat) {
+                    if (!GpCatalog::isPlatformEnabled($cat['code'])) { continue; }
+                    $list[] = GpPresenters::method($cat, null, [], null);
+                }
+                GpJson::send(['methods' => $list, 'noBrand' => true]);
+            }
             $connected = GpDb::all('SELECT * FROM gp_methods WHERE brand_id = ?', [$actor['brand_id']]);
             $map = [];
             foreach ($connected as $row) {

@@ -63,6 +63,9 @@ final class WebhooksController
     /** @param array<string,mixed> $actor */
     private static function listDeliveries(array $actor): never
     {
+        if (GpAuth::activeBrandId($actor) === '') {
+            GpJson::send(['deliveries' => [], 'noBrand' => true]);
+        }
         $rows = GpDb::all(
             'SELECT id, event_id, session_id, event_name, url, http_code, status, note, attempt, created_at, updated_at
              FROM gp_webhook_deliveries

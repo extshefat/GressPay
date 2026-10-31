@@ -22,7 +22,7 @@ final class CompanionController
             GpAuth::requireScope($actor, 'manage_devices');
             $brandId = trim((string) $req->input('brandId', $actor['brand_id']));
             if ($brandId === '') {
-                $brandId = $actor['brand_id'];
+                $brandId = GpAuth::requireBrandContext($actor, 'Create a brand under Dashboard → Brands before registering a device.');
             }
             $brand = GpDb::one(
                 'SELECT brand_id, name FROM gp_brands WHERE brand_id = ? AND merchant_id = ?',

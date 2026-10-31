@@ -9,6 +9,8 @@ export interface User {
   name: string;
   email: string;
   businessName: string;
+  hasBrand?: boolean;
+  brandId?: string;
   role: UserRole;
   isAdmin?: boolean;
   is_admin?: boolean;
@@ -81,6 +83,8 @@ export interface PaymentMethod {
   readinessReasons?: string[];
   gatewayId?: string;
   displayName?: string;
+  /** BD MFS wallet number type: personal | agent | payment | merchant (Business API). */
+  accountType?: string;
   qrImageUrl?: string | null;
   qrStatus?: string;
   readiness?: string;
