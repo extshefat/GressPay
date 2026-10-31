@@ -521,6 +521,26 @@ class ApiClient {
     });
   }
 
+  async createApiKey(mode: "live" | "test", name?: string): Promise<{
+    mode: string;
+    key: string;
+    prefix?: string;
+    created?: boolean;
+    note: string;
+  }> {
+    return this.request("/api/v1/merchant/api-keys/create", {
+      method: "POST",
+      body: JSON.stringify({ mode, name }),
+    });
+  }
+
+  async revokeApiKey(keyId: number): Promise<{ ok: boolean; note: string }> {
+    return this.request("/api/v1/merchant/api-keys/revoke", {
+      method: "POST",
+      body: JSON.stringify({ keyId }),
+    });
+  }
+
   async rotateWebhookSecret(): Promise<{ webhookSecret: string; note: string }> {
     return this.request<{ webhookSecret: string; note: string }>(
       "/api/v1/merchant/webhook-secret/rotate",
@@ -538,6 +558,7 @@ class ApiClient {
       active: boolean;
       deviceCount: number;
       gatewayCount: number;
+      apiKeyMasked?: string;
     }>;
     activeBrandId: string;
   }> {

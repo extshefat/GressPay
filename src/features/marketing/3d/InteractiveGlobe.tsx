@@ -277,7 +277,7 @@ export function InteractiveGlobe({ className = "" }: { className?: string }) {
         />
       )}
       <p className="mt-2 text-center text-[11px] font-mono text-zinc-500 dark:text-zinc-400">
-        Illustrative payment routes. Not live transaction data.
+        Supported rails worldwide · Dhaka-first MFS automation
       </p>
     </div>
   );

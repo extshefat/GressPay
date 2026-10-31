@@ -57,6 +57,14 @@ class Prefs(context: Context) {
         get() = sp.getInt(KEY_TOTAL_MATCHED, 0)
         set(value) = sp.edit().putInt(KEY_TOTAL_MATCHED, value).apply()
 
+    var onboardingComplete: Boolean
+        get() = sp.getBoolean(KEY_ONBOARDING, false)
+        set(value) = sp.edit().putBoolean(KEY_ONBOARDING, value).apply()
+
+    var lastPingLatencyMs: Long
+        get() = sp.getLong(KEY_PING_MS, -1L)
+        set(value) = sp.edit().putLong(KEY_PING_MS, value).apply()
+
     fun clearDevice() {
         sp.edit()
             .remove(KEY_DEVICE_ID)
@@ -80,6 +88,8 @@ class Prefs(context: Context) {
         private const val KEY_LAST_ERROR = "last_error"
         private const val KEY_TOTAL_CAPTURED = "total_sms_captured"
         private const val KEY_TOTAL_MATCHED = "total_payments_matched"
+        private const val KEY_ONBOARDING = "onboarding_complete"
+        private const val KEY_PING_MS = "last_ping_ms"
 
         private fun createEncrypted(context: Context): SharedPreferences {
             val masterKey = MasterKey.Builder(context)

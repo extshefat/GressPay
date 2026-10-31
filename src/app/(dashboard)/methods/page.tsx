@@ -98,8 +98,18 @@ const ALL_METHOD_OPTIONS: MethodMeta[] = [
     placeholder: "e.g. 78291044",
   },
 ];
-
 const MFS_CODES = new Set(["bkash", "nagad", "rocket", "upay", "cellfin"]);
+
+const LIBRARY_PLACEHOLDERS: { label: string; category: string }[] = [
+  { label: "Stripe (manual)", category: "international" },
+  { label: "PayPal (manual)", category: "international" },
+  { label: "Wise (manual)", category: "international" },
+  { label: "Bangla QR V2", category: "mfs" },
+  { label: "Telecash", category: "mfs" },
+  { label: "BRAC Bank PLC", category: "bank" },
+  { label: "Islami Bank Bangladesh PLC", category: "bank" },
+  { label: "Dutch-Bangla Bank PLC", category: "bank" },
+];
 const CRYPTO_CODES = new Set(["usdt_trc20", "binance_pay", "bybit_pay"]);
 
 function readinessBadge(method: string, r: string): { label: string; variant: "emerald" | "amber" | "slate" | "rose" } {
@@ -140,7 +150,7 @@ export default function GatewaysPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const [showLibrary, setShowLibrary] = useState(false);
-  const [libraryFilter, setLibraryFilter] = useState<"all" | "mfs" | "crypto">("all");
+  const [libraryFilter, setLibraryFilter] = useState<"all" | "mfs" | "crypto" | "bank">("all");
   const [libraryQuery, setLibraryQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<MerchantGateway | null>(null);
@@ -432,14 +442,14 @@ export default function GatewaysPage() {
         <div>
           <div className="flex items-center gap-2.5">
             <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-              Payment Gateways &amp; Destinations
+              View Gateways
             </h1>
             <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-zinc-900 text-white dark:bg-white dark:text-zinc-900">
               DIRECT SETTLEMENT
             </span>
           </div>
           <p className="text-xs text-zinc-500 mt-1">
-            Configure receiving wallet numbers and blockchain addresses. Only gateways enabled by platform admin are active.
+            Showing wallets for the selected brand. Enable, reorder, and edit credentials per channel.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -452,7 +462,7 @@ export default function GatewaysPage() {
             Refresh
           </Button>
           <Button size="sm" variant="primary" onClick={openCreate} leftIcon={<Plus className="w-3.5 h-3.5" />}>
-            Add Payment Rail
+            Add Gateways
           </Button>
         </div>
       </div>
@@ -519,7 +529,7 @@ export default function GatewaysPage() {
               placeholder="Search by gateway name…"
             />
             <div className="flex flex-wrap gap-1 self-end rounded-xl border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-800 dark:bg-zinc-900">
-              {(["all", "mfs", "crypto"] as const).map((id) => (
+              {(["all", "mfs", "crypto", "bank"] as const).map((id) => (
                 <button
                   key={id}
                   type="button"
@@ -530,7 +540,7 @@ export default function GatewaysPage() {
                       : "text-zinc-500"
                   }`}
                 >
-                  {id === "all" ? "All" : id === "mfs" ? "Mobile" : "International"}
+                  {id === "all" ? "All" : id === "mfs" ? "Mobile" : id === "crypto" ? "International" : "Bank"}
                 </button>
               ))}
             </div>
@@ -555,6 +565,23 @@ export default function GatewaysPage() {
                     {m.category} · {m.currency}
                   </div>
                 </button>
+              ))}
+            {LIBRARY_PLACEHOLDERS.filter((p) => {
+              if (libraryFilter === "all") return true;
+              if (libraryFilter === "bank") return p.category === "bank";
+              if (libraryFilter === "mfs") return p.category === "mfs";
+              if (libraryFilter === "crypto") return p.category === "international";
+              return false;
+            })
+              .filter((p) => !libraryQuery || p.label.toLowerCase().includes(libraryQuery.toLowerCase()))
+              .map((p) => (
+                <div
+                  key={p.label}
+                  className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/50 p-4 text-left dark:border-zinc-700 dark:bg-zinc-900/50"
+                >
+                  <div className="text-sm font-bold text-zinc-700 dark:text-zinc-300">{p.label}</div>
+                  <div className="mt-1 text-[10px] text-zinc-500">Placeholder — use supported rails or contact admin to enable.</div>
+                </div>
               ))}
           </div>
         </Card>
@@ -860,6 +887,85 @@ export default function GatewaysPage() {
         </Card>
       ) : (
         <div className="space-y-8">
+          <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
+            <table className="min-w-full text-left text-xs">
+              <thead className="border-b border-zinc-200 bg-zinc-50 font-mono text-[10px] uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
+                <tr>
+                  <th className="px-3 py-2">Gateway</th>
+                  <th className="px-3 py-2">Type</th>
+                  <th className="px-3 py-2">Account</th>
+                  <th className="px-3 py-2">Method</th>
+                  <th className="px-3 py-2">Credentials</th>
+                  <th className="px-3 py-2">Limits</th>
+                  <th className="px-3 py-2">Status</th>
+                  <th className="px-3 py-2">Order</th>
+                  <th className="px-3 py-2">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredGateways.map((g) => {
+                  const index = gateways.findIndex((row) => row.gatewayId === g.gatewayId);
+                  const credParts = [
+                    g.account ? `Account: ${g.account}` : null,
+                    g.qrStatus === "ready" ? "QR: uploaded" : null,
+                  ].filter(Boolean);
+                  return (
+                    <tr key={g.gatewayId} className="border-b border-zinc-100 dark:border-zinc-900">
+                      <td className="px-3 py-2 font-semibold text-zinc-900 dark:text-zinc-100">{g.displayName}</td>
+                      <td className="px-3 py-2 font-mono text-[10px]">
+                        {MFS_CODES.has(g.methodCode) ? "mobile_banking" : CRYPTO_CODES.has(g.methodCode) ? "international" : "other"}
+                      </td>
+                      <td className="px-3 py-2">
+                        <span className="rounded-full bg-blue-600/10 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:text-blue-400">
+                          {g.accountType || "personal"}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-zinc-500">manual</td>
+                      <td className="px-3 py-2 max-w-[200px] truncate text-zinc-600 dark:text-zinc-400">
+                        {credParts.join(" | ") || "—"}
+                      </td>
+                      <td className="px-3 py-2 font-mono text-[10px] text-zinc-500">
+                        {g.minAmount ?? "—"} – {g.maxAmount ?? "—"} {g.currency}
+                      </td>
+                      <td className="px-3 py-2">
+                        <button
+                          type="button"
+                          onClick={() => toggle(g)}
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                            g.enabled
+                              ? "bg-emerald-600 text-white"
+                              : "bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
+                          }`}
+                        >
+                          {g.enabled ? "ON" : "OFF"}
+                        </button>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex gap-1">
+                          <Button size="sm" variant="secondary" aria-label="Up" onClick={() => move(index, -1)} disabled={index === 0}>
+                            <ArrowUp className="w-3 h-3" />
+                          </Button>
+                          <Button size="sm" variant="secondary" aria-label="Down" onClick={() => move(index, 1)} disabled={index === gateways.length - 1}>
+                            <ArrowDown className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex gap-1">
+                          <Button size="sm" variant="secondary" onClick={() => openEdit(g)}>
+                            Edit
+                          </Button>
+                          <Button size="sm" variant="secondary" onClick={() => remove(g)}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
           {[
             {
               title: "Mobile Banking (bKash, Nagad, Rocket, Upay, Cellfin)",

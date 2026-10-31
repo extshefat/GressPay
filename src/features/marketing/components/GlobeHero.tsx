@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
@@ -17,12 +17,16 @@ const InteractiveGlobe = dynamic(
 import { Button } from "@/components/ui/button";
 import { GressPayLogo } from "@/components/brand/GressPayLogo";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, FlaskConical, ShieldCheck, Zap, Smartphone, CheckCircle2 } from "lucide-react";
-import { LiveDemoCheckout } from "./LiveDemoCheckout";
+import { ArrowRight, ShieldCheck, KeyRound, Smartphone, Sliders, UserPlus } from "lucide-react";
+
+const STEPS = [
+  { n: 1, title: "Create account", href: "/register", icon: UserPlus },
+  { n: 2, title: "Add gateways", href: "/dashboard/methods", icon: Sliders },
+  { n: 3, title: "Pair companion", href: "/dashboard/devices", icon: Smartphone },
+  { n: 4, title: "API keys & integrate", href: "/developers", icon: KeyRound },
+];
 
 export const GlobeHero: React.FC = () => {
-  const [demoOpen, setDemoOpen] = useState(false);
-
   return (
     <section className="relative pt-28 pb-16 md:pt-36 md:pb-24 overflow-hidden bg-white dark:bg-zinc-950 transition-colors">
       <div className="pointer-events-none absolute inset-0" aria-hidden>
@@ -50,11 +54,11 @@ export const GlobeHero: React.FC = () => {
               <div className="flex flex-wrap items-center gap-2">
                 <GressPayLogo size="lg" />
                 <Badge variant="slate" className="gap-1 font-mono text-[10px] uppercase">
-                  <ShieldCheck className="w-3 h-3" /> Non-Custodial · 0% Commission
+                  <ShieldCheck className="w-3 h-3" /> Non-Custodial · Direct Settlement
                 </Badge>
               </div>
               <div className="text-xs font-mono tracking-wider text-zinc-600 dark:text-zinc-400 uppercase font-semibold">
-                bKash · Nagad · Rocket · Crypto
+                bKash · Nagad · Rocket · Upay · USDT · Binance Pay
               </div>
             </motion.div>
 
@@ -64,46 +68,46 @@ export const GlobeHero: React.FC = () => {
               transition={{ duration: 0.55, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
               className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-100 leading-[1.12]"
             >
-              GressPay
+              Merchant payment automation for Bangladesh MFS &amp; crypto
             </motion.h1>
 
             <motion.p
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
-              className="text-lg sm:text-xl font-semibold text-zinc-800 dark:text-zinc-200 max-w-2xl leading-snug"
-            >
-              Accept bKash, Nagad, Rocket &amp; Crypto Directly to Your Personal Wallet — 0% Commission, 1-Second Auto Verification
-            </motion.p>
-
-            <motion.p
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.16, ease: [0.22, 1, 0.36, 1] }}
               className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 max-w-2xl leading-relaxed"
             >
-              The non-custodial MFS &amp; crypto payment automation platform. Funds hit your wallet instantly. Our Android companion matches SMS in about one second. Plug into WordPress, Laravel, PHP, or Next.js with signed webhooks.
+              Connect your store to{" "}
+              <span className="font-semibold text-zinc-900 dark:text-zinc-100">gresspay.extxcheats.com</span> with real
+              API keys. Funds settle to your wallets; the Companion app matches SMS in seconds. Use{" "}
+              <code className="font-mono text-xs">POST /payment/create</code> and{" "}
+              <code className="font-mono text-xs">POST /payment/verify</code> on your site — no toy sandbox required.
             </motion.p>
 
-            <motion.div
+            <motion.ol
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.22, ease: [0.22, 1, 0.36, 1] }}
-              className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 text-xs text-zinc-700 dark:text-zinc-300"
+              transition={{ duration: 0.5, delay: 0.18, ease: [0.22, 1, 0.36, 1] }}
+              className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1"
             >
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-zinc-900 dark:text-zinc-100 shrink-0" />
-                <span>100% Direct-to-Wallet</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Smartphone className="w-4 h-4 text-zinc-900 dark:text-zinc-100 shrink-0" />
-                <span>1-Second Companion Sync</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4 text-zinc-900 dark:text-zinc-100 shrink-0" />
-                <span>Plug &amp; Play Webhooks</span>
-              </div>
-            </motion.div>
+              {STEPS.map((step) => {
+                const Icon = step.icon;
+                return (
+                  <li key={step.n}>
+                    <Link
+                      href={step.href}
+                      className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-50/80 px-3 py-2.5 text-sm font-medium text-zinc-800 transition hover:border-zinc-900 dark:border-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-200 dark:hover:border-zinc-100"
+                    >
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-zinc-900 text-[11px] font-bold text-white dark:bg-white dark:text-zinc-950">
+                        {step.n}
+                      </span>
+                      <Icon className="h-4 w-4 shrink-0 opacity-70" />
+                      <span>{step.title}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </motion.ol>
 
             <motion.div
               initial={{ opacity: 0, y: 14 }}
@@ -113,17 +117,14 @@ export const GlobeHero: React.FC = () => {
             >
               <Link href="/register">
                 <Button size="lg" variant="primary" rightIcon={<ArrowRight className="w-4 h-4" />}>
-                  Start Accepting Payments
+                  Create merchant account
                 </Button>
               </Link>
-              <Button
-                size="lg"
-                variant="secondary"
-                leftIcon={<FlaskConical className="w-4 h-4" />}
-                onClick={() => setDemoOpen(true)}
-              >
-                Try Live Demo Checkout
-              </Button>
+              <Link href="/developers">
+                <Button size="lg" variant="secondary">
+                  Integration docs
+                </Button>
+              </Link>
             </motion.div>
           </div>
 
@@ -137,8 +138,6 @@ export const GlobeHero: React.FC = () => {
           </motion.div>
         </div>
       </div>
-
-      <LiveDemoCheckout open={demoOpen} onClose={() => setDemoOpen(false)} />
     </section>
   );
 };

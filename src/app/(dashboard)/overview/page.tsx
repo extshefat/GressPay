@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api-client";
-import { CheckoutSession, DashboardMetrics, Transaction } from "@/lib/types/api";
+import { DashboardMetrics, Transaction } from "@/lib/types/api";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +12,6 @@ import { ChartContainer, SimpleVolumeChart } from "@/components/ui/chart-contain
 import { EmptyState } from "@/components/ui/empty-state";
 import { Alert } from "@/components/ui/alert";
 import { Modal } from "@/components/ui/modal";
-import { HostedCheckoutModal } from "@/features/checkout/components/HostedCheckoutModal";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import {
   RefreshCw,
@@ -22,9 +21,11 @@ import {
   Activity,
   ShieldCheck,
   Layers,
-  FlaskConical,
   Crown,
-  X,
+  KeyRound,
+  Smartphone,
+  Sliders,
+  Building2,
 } from "lucide-react";
 
 export default function OverviewPage() {
@@ -33,9 +34,6 @@ export default function OverviewPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [rangeDays, setRangeDays] = useState<7 | 30>(7);
-  const [sandboxOpen, setSandboxOpen] = useState(false);
-  const [sandboxSession, setSandboxSession] = useState<CheckoutSession | null>(null);
-  const [sandboxLoading, setSandboxLoading] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   const loadData = async (days: 7 | 30 = rangeDays) => {
@@ -73,30 +71,6 @@ export default function OverviewPage() {
     return Math.max(...rails.map((r) => r.volumeBdt), 1);
   }, [metrics]);
 
-  const launchSandbox = async () => {
-    setSandboxLoading(true);
-    setErrorMessage(null);
-    try {
-      const prevMode = api.getLedgerMode();
-      api.setLedgerMode("test");
-      const session = await api.createCheckout({
-        amount: 100,
-        currency: "BDT",
-        order_title: "Live Sandbox Test Checkout",
-        order_description: "Merchant self-test session — sandbox ledger",
-        full_name: "Sandbox Tester",
-        email: "sandbox@gresspay.local",
-      });
-      api.setLedgerMode(prevMode);
-      setSandboxSession(session);
-      setSandboxOpen(true);
-    } catch (err: unknown) {
-      setErrorMessage(err instanceof Error ? err.message : "Could not launch sandbox checkout.");
-    } finally {
-      setSandboxLoading(false);
-    }
-  };
-
   const sub = metrics?.subscription;
   const planLabel = (sub?.planName || sub?.planId || "Starter").replace(/^\w/, (c) => c.toUpperCase());
   const devicePct = sub ? Math.min(100, Math.round((sub.devicesUsed / Math.max(sub.deviceLimit, 1)) * 100)) : 0;
@@ -110,12 +84,12 @@ export default function OverviewPage() {
             <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
               Command Center
             </h1>
-            <Badge variant="slate" size="sm" dot>
-              {api.getLedgerMode() === "live" ? "Live Ledger" : "Sandbox Mode"}
+            <Badge variant="emerald" size="sm" dot>
+              Live production
             </Badge>
           </div>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-            Verified volume, auto-verification health, and rail distribution.
+            Real settlement metrics for your connected gateways and companion devices.
           </p>
         </div>
 
@@ -241,23 +215,37 @@ export default function OverviewPage() {
         </div>
 
         <div className="space-y-4">
-          <Card className="p-5 space-y-4 bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 border-zinc-900 dark:border-zinc-100">
-            <div className="flex items-center gap-2">
-              <FlaskConical className="w-4 h-4" />
-              <h3 className="text-sm font-semibold">Sandbox Tester</h3>
-            </div>
-            <p className="text-xs opacity-70 leading-relaxed">
-              Launch a live sandbox checkout with your currently enabled methods. Verify end-to-end flow in one click.
+          <Card className="p-5 space-y-4 bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800">
+            <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Go live on your site</h3>
+            <p className="text-xs text-zinc-500 leading-relaxed">
+              Run real checkouts with your API keys — plug create/verify into WordPress, Laravel, PHP, or custom code.
             </p>
-            <Button
-              size="sm"
-              className="w-full bg-white text-zinc-950 hover:bg-zinc-100 dark:bg-zinc-950 dark:text-white dark:hover:bg-zinc-900"
-              isLoading={sandboxLoading}
-              onClick={launchSandbox}
-              leftIcon={<FlaskConical className="w-3.5 h-3.5" />}
-            >
-              Launch Test Checkout (Live Sandbox)
-            </Button>
+            <ol className="space-y-2 text-xs">
+              {[
+                { icon: Building2, label: "Brands & API keys", href: "/dashboard/brands" },
+                { icon: Sliders, label: "Configure gateways", href: "/dashboard/methods" },
+                { icon: Smartphone, label: "Pair companion APK", href: "/dashboard/devices" },
+                { icon: KeyRound, label: "Integration snippets", href: "/dashboard/api-keys" },
+              ].map((item) => {
+                const Icon = item.icon;
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      className="flex items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 font-medium text-zinc-800 hover:border-zinc-900 dark:border-zinc-800 dark:text-zinc-200 dark:hover:border-zinc-100"
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                      {item.label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ol>
+            <Link href="/developers">
+              <Button size="sm" variant="primary" className="w-full">
+                View create / verify API docs
+              </Button>
+            </Link>
           </Card>
 
           <Card className="p-5 space-y-4 bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800">
@@ -312,12 +300,17 @@ export default function OverviewPage() {
             </Link>
             <Link href="/dashboard/devices" className="block">
               <Button className="w-full" size="sm" variant="outline">
-                Pair Companion Device
+                Pair companion device
               </Button>
             </Link>
             <Link href="/dashboard/transactions" className="block">
               <Button className="w-full" size="sm" variant="outline">
-                Browse Transactions
+                Browse transactions
+              </Button>
+            </Link>
+            <Link href="/dashboard/api-keys" className="block">
+              <Button className="w-full" size="sm" variant="outline">
+                Copy API integration
               </Button>
             </Link>
           </Card>
@@ -416,25 +409,6 @@ export default function OverviewPage() {
           </div>
         )}
       </Card>
-
-      {sandboxOpen && sandboxSession && (
-        <div className="fixed inset-0 z-[80] flex items-start justify-center overflow-y-auto bg-zinc-950/70 backdrop-blur-sm p-4 sm:p-8">
-          <div className="relative w-full max-w-2xl my-4">
-            <button
-              type="button"
-              onClick={() => {
-                setSandboxOpen(false);
-                setSandboxSession(null);
-              }}
-              className="absolute -top-2 -right-2 z-10 p-2 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 shadow-lg text-zinc-700 dark:text-zinc-200"
-              aria-label="Close sandbox checkout"
-            >
-              <X className="w-4 h-4" />
-            </button>
-            <HostedCheckoutModal session={sandboxSession} />
-          </div>
-        </div>
-      )}
 
       <Modal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} title="Upgrade Subscription Plan">
         <div className="space-y-4 text-xs">

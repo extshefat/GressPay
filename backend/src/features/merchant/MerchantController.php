@@ -12,6 +12,12 @@ final class MerchantController
         if ($a === 'api-keys' && $req->method === 'GET') {
             self::keys($actor);
         }
+        if ($a === 'api-keys' && $b === 'create' && $req->method === 'POST') {
+            self::createKey($actor, $req);
+        }
+        if ($a === 'api-keys' && $b === 'revoke' && $req->method === 'POST') {
+            self::revokeKey($actor, $req);
+        }
         if ($a === 'api-keys' && $b === 'rotate' && $req->method === 'POST') {
             self::rotate($actor, $req);
         }
@@ -50,6 +56,21 @@ final class MerchantController
                 $test = $k;
             }
         }
+        $list = [];
+        foreach ($keys as $k) {
+            if (($k['status'] ?? '') !== 'active') {
+                continue;
+            }
+            $list[] = [
+                'id' => (int) $k['id'],
+                'name' => (string) ($k['name'] ?? ''),
+                'mode' => (string) ($k['mode'] ?? 'live'),
+                'prefix' => (string) ($k['prefix'] ?? ''),
+                'masked' => ((string) ($k['prefix'] ?? '')) . '••••••••',
+                'createdAt' => $k['created_at'] ?? null,
+                'lastUsedAt' => $k['last_used_at'] ?? null,
+            ];
+        }
         GpJson::send([
             'merchantId' => $actor['merchant_id'],
             'brandId' => $actor['brand_id'],
@@ -59,13 +80,57 @@ final class MerchantController
             'liveSecretKey' => $live ? $live['prefix'] . '••••' : '',
             'sandboxPublicKey' => $test ? $test['prefix'] . '…' : '',
             'sandboxSecretKey' => $test ? $test['prefix'] . '••••' : '',
+            'keys' => $list,
             'webhookSecret' => isset($brand['webhook_secret']) && (string) $brand['webhook_secret'] !== ''
                 ? substr((string) $brand['webhook_secret'], 0, 8) . '••••'
                 : '',
             'hasWebhookSecret' => isset($brand['webhook_secret']) && (string) $brand['webhook_secret'] !== '',
             'webhookUrl' => $brand['webhook_url'] ?? null,
+            'checkoutUrl' => GpPlatform::publicApiBase() . '/payment/create',
+            'verifyUrl' => GpPlatform::publicApiBase() . '/payment/verify',
             'note' => 'Full secrets are only returned once when you Create or Rotate. List views stay masked.',
         ]);
+    }
+
+    private static function createKey(array $actor, GpRequest $req): never
+    {
+        $mode = (string) $req->input('mode', 'live');
+        if (!in_array($mode, ['live', 'test'], true)) {
+            $mode = 'live';
+        }
+        $name = trim((string) $req->input('name', 'API key ' . date('Y-m-d H:i')));
+        if ($name === '') {
+            $name = 'API key';
+        }
+        $issued = GpAuth::issueKey($actor['brand_id'], $mode, $name);
+        GpJson::send([
+            'mode' => $mode,
+            'key' => $issued['key'],
+            'prefix' => $issued['prefix'],
+            'name' => $name,
+            'created' => true,
+            'note' => 'Shown once. Copy and store this secret now — it cannot be retrieved again.',
+        ], 201);
+    }
+
+    private static function revokeKey(array $actor, GpRequest $req): never
+    {
+        $keyId = (int) $req->input('keyId', $req->input('id', 0));
+        if ($keyId <= 0) {
+            GpJson::error('MISSING_FIELD', 'keyId is required.', 400);
+        }
+        $row = GpDb::one(
+            'SELECT * FROM gp_api_keys WHERE id = ? AND brand_id = ?',
+            [$keyId, $actor['brand_id']]
+        );
+        if ($row === null) {
+            GpJson::error('NOT_FOUND', 'API key not found.', 404);
+        }
+        GpDb::exec(
+            'UPDATE gp_api_keys SET status = ?, updated_at = ? WHERE id = ? AND brand_id = ?',
+            ['inactive', GpIds::now(), $keyId, $actor['brand_id']]
+        );
+        GpJson::send(['ok' => true, 'keyId' => $keyId, 'note' => 'Key revoked. Requests using it will fail immediately.']);
     }
 
     private static function rotate(array $actor, GpRequest $req): never

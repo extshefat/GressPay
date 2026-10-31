@@ -271,6 +271,17 @@ export interface ApiCredentials {
   sandboxSecretKey: string;
   webhookSecret: string;
   webhookUrl?: string;
+  checkoutUrl?: string;
+  verifyUrl?: string;
+  keys?: Array<{
+    id: number;
+    name: string;
+    mode: string;
+    prefix: string;
+    masked: string;
+    createdAt?: string | null;
+    lastUsedAt?: string | null;
+  }>;
   note?: string;
 }
 

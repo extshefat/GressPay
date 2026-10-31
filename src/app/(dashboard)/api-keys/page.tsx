@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { IntegrationSnippets } from "@/features/developers/IntegrationSnippets";
+import { MerchantEnvSnippet } from "@/features/developers/MerchantEnvSnippet";
 
 type RevealState = {
   title: string;
@@ -131,6 +132,7 @@ export default function ApiKeysPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
+      <MerchantEnvSnippet />
       <IntegrationSnippets />
 
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
@@ -318,6 +320,66 @@ export default function ApiKeysPage() {
               </div>
             )}
           </Card>
+
+          {credentials.keys && credentials.keys.length > 0 && (
+              <Card className="space-y-3 border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
+                <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">All active API keys</h3>
+                <p className="text-[11px] text-zinc-500">
+                  Create additional keys without revoking older ones. Revoke any key you no longer use.
+                </p>
+                <ul className="divide-y divide-zinc-100 dark:divide-zinc-900">
+                  {credentials.keys.map((k) => (
+                      <li key={k.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-xs">
+                        <div>
+                          <span className="font-semibold text-zinc-900 dark:text-zinc-100">{k.name}</span>
+                          <span className="ml-2 font-mono text-zinc-500">{k.masked}</span>
+                          <Badge variant={k.mode === "live" ? "emerald" : "slate"} size="sm" className="ml-2">
+                            {k.mode}
+                          </Badge>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={async () => {
+                              try {
+                                const res = await api.createApiKey(k.mode as "live" | "test", `${k.name} (new)`);
+                                setReveal({
+                                  title: `New ${k.mode} API secret`,
+                                  secret: res.key,
+                                  note: res.note,
+                                });
+                                await loadCredentials();
+                              } catch (err: unknown) {
+                                toastError(err instanceof Error ? err.message : "Could not create key.");
+                              }
+                            }}
+                          >
+                            Create another
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={async () => {
+                              if (!window.confirm("Revoke this API key immediately?")) return;
+                              try {
+                                await api.revokeApiKey(k.id);
+                                success("Key revoked");
+                                await loadCredentials();
+                              } catch (err: unknown) {
+                                toastError(err instanceof Error ? err.message : "Revoke failed.");
+                              }
+                            }}
+                          >
+                            Revoke
+                          </Button>
+                        </div>
+                      </li>
+                    )
+                  )}
+                </ul>
+              </Card>
+            )}
         </div>
       )}
     </div>

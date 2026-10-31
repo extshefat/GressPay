@@ -135,4 +135,14 @@ final class GpPlatform
             );
         }
     }
+
+    /** Public HTTPS base for merchant integration docs (no trailing slash). */
+    public static function publicApiBase(): string
+    {
+        $fromEnv = trim((string) (getenv('GRESSPAY_PUBLIC_API_BASE') ?: ''));
+        if ($fromEnv !== '') {
+            return rtrim($fromEnv, '/');
+        }
+        return 'https://gresspay.extxcheats.com/api/v1';
+    }
 }
