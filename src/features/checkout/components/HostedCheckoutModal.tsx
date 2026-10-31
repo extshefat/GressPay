@@ -397,7 +397,14 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
     const accountType = String(method.accountType ?? "personal").toLowerCase();
     const isAgent = accountType === "agent";
     const isPayment = accountType === "payment";
-    const action = isAgent ? "Cash Out" : isPayment ? "Payment" : "Send Money / Cash In";
+    const isBusiness = accountType === "merchant";
+    const action = isAgent
+      ? "Cash Out"
+      : isPayment
+        ? "Payment"
+        : isBusiness
+          ? "Business payment"
+          : "Send Money / Cash In";
 
     let ussd = "";
     let methodName = method.name || "Mobile Banking";
@@ -942,6 +949,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
                         ).toLowerCase();
                         if (t === "agent") return "Cash Out only";
                         if (t === "payment") return "Payment only";
+                        if (t === "merchant") return "API key + secret";
                         return "Send Money / Cash In";
                       })()}
                 </span>

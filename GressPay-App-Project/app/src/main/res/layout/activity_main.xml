@@ -199,30 +199,24 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="1. Server Connection"
+                    android:text="1. Device pairing"
                     android:textColor="@color/gp_zinc_950"
                     android:textSize="14sp"
                     android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Paste only your Device API key (gpdev_…). Brand and API server bind automatically after verify."
+                    android:textColor="@color/gp_zinc_500"
+                    android:textSize="12sp" />
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:hint="API Base URL (https://your-domain.com)">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/inputBaseUrl"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="textUri"
-                        android:textSize="13sp" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:hint="Website API key (gp_live_…) — use Device key in Companion">
+                    android:hint="Device API key (gpdev_…)">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/inputApiKey"
@@ -244,7 +238,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:layout_marginEnd="6dp"
-                        android:text="Pair &amp; Register"
+                        android:text="Save &amp; verify"
                         android:textColor="@color/gp_white"
                         app:backgroundTint="@color/gp_zinc_950"
                         app:cornerRadius="10dp" />
