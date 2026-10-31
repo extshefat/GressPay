@@ -30,6 +30,18 @@ final class MerchantController
         if ($a === 'settings' && $req->method === 'PUT') {
             self::putSettings($actor, $req);
         }
+        if ($a === 'notifications' && $req->method === 'GET') {
+            self::getNotifications($actor);
+        }
+        if ($a === 'notifications' && $req->method === 'PUT') {
+            self::putNotifications($actor, $req);
+        }
+        if ($a === 'support' && $req->method === 'GET') {
+            self::listSupportTickets($actor);
+        }
+        if ($a === 'support' && $req->method === 'POST') {
+            self::createSupportTicket($actor, $req);
+        }
         if ($a === 'alerts' && $b === 'test' && $req->method === 'POST') {
             self::testAlert($actor, $req);
         }
@@ -220,6 +232,7 @@ final class MerchantController
             'usdtContract' => GpConfig::usdtTrc20Contract(),
             'binancePayConfigured' => $configured,
             'activeCompanionDevices' => $deviceCount,
+            'notifyPrefs' => self::readNotifyPrefs($merchant),
             'rails' => [
                 'bkash' => $rail('bkash'),
                 'nagad' => $rail('nagad'),
@@ -303,6 +316,121 @@ final class MerchantController
         );
         self::audit($actor, 'settings.update', ['cryptoEnabled' => (bool) $cryptoFlag, 'branding' => true]);
         self::getSettings($actor);
+    }
+
+    /** @return array<string,bool> */
+    private static function defaultNotifyPrefs(): array
+    {
+        return [
+            'emailEnabled' => true,
+            'inAppEnabled' => true,
+            'paymentCompleted' => true,
+            'paymentFailed' => true,
+            'webhookDeliveryFailed' => true,
+        ];
+    }
+
+    /** @param array<string,mixed>|null $merchant */
+    private static function readNotifyPrefs(?array $merchant): array
+    {
+        $raw = is_array($merchant) ? (string) ($merchant['notify_prefs_json'] ?? '') : '';
+        $decoded = $raw !== '' ? json_decode($raw, true) : null;
+        if (!is_array($decoded)) {
+            return self::defaultNotifyPrefs();
+        }
+        return array_merge(self::defaultNotifyPrefs(), array_intersect_key($decoded, self::defaultNotifyPrefs()));
+    }
+
+    /** @param array<string,mixed> $actor */
+    private static function getNotifications(array $actor): never
+    {
+        $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$actor['merchant_id']]);
+        GpJson::send(['notifyPrefs' => self::readNotifyPrefs($merchant)]);
+    }
+
+    /** @param array<string,mixed> $actor */
+    private static function putNotifications(array $actor, GpRequest $req): never
+    {
+        GpRateLimiter::guard('merchant-notify:' . $actor['brand_id'], 30, 60);
+        $incoming = $req->input('notifyPrefs', $req->input('notify_prefs', []));
+        if (!is_array($incoming)) {
+            GpJson::error('VALIDATION', 'notifyPrefs object is required.', 400);
+        }
+        $merged = self::readNotifyPrefs(null);
+        foreach (array_keys(self::defaultNotifyPrefs()) as $key) {
+            if (array_key_exists($key, $incoming)) {
+                $merged[$key] = filter_var($incoming[$key], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? (bool) $incoming[$key];
+            }
+        }
+        GpDb::exec(
+            'UPDATE gp_merchants SET notify_prefs_json = ?, updated_at = ? WHERE merchant_id = ?',
+            [json_encode($merged, JSON_UNESCAPED_UNICODE), GpIds::now(), $actor['merchant_id']]
+        );
+        self::audit($actor, 'notifications.update', $merged);
+        GpJson::send(['notifyPrefs' => $merged]);
+    }
+
+    /** @param array<string,mixed> $actor */
+    private static function listSupportTickets(array $actor): never
+    {
+        $rows = GpDb::all(
+            'SELECT ticket_id, subject, status, contact_email, created_at, updated_at
+             FROM gp_support_tickets
+             WHERE merchant_id = ?
+             ORDER BY id DESC
+             LIMIT 50',
+            [$actor['merchant_id']]
+        );
+        $out = [];
+        foreach ($rows as $r) {
+            $out[] = [
+                'ticketId' => (string) ($r['ticket_id'] ?? ''),
+                'subject' => (string) ($r['subject'] ?? ''),
+                'status' => (string) ($r['status'] ?? 'open'),
+                'contactEmail' => (string) ($r['contact_email'] ?? ''),
+                'createdAt' => (string) ($r['created_at'] ?? ''),
+                'updatedAt' => (string) ($r['updated_at'] ?? ''),
+            ];
+        }
+        GpJson::send(['tickets' => $out]);
+    }
+
+    /** @param array<string,mixed> $actor */
+    private static function createSupportTicket(array $actor, GpRequest $req): never
+    {
+        GpRateLimiter::guard('merchant-support:' . $actor['merchant_id'], 10, 3600);
+        $subject = trim((string) $req->input('subject', ''));
+        $message = trim((string) $req->input('message', ''));
+        $email = trim((string) $req->input('contactEmail', $req->input('email', '')));
+        if ($subject === '' || $message === '') {
+            GpJson::error('VALIDATION', 'subject and message are required.', 400);
+        }
+        if (strlen($subject) > 200) {
+            GpJson::error('VALIDATION', 'subject is too long.', 400);
+        }
+        if (strlen($message) > 8000) {
+            GpJson::error('VALIDATION', 'message is too long.', 400);
+        }
+        $merchant = GpDb::one('SELECT email FROM gp_merchants WHERE merchant_id = ?', [$actor['merchant_id']]);
+        if ($email === '' && is_array($merchant)) {
+            $email = trim((string) ($merchant['email'] ?? ''));
+        }
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            GpJson::error('VALIDATION', 'A valid contactEmail is required.', 400);
+        }
+        $now = GpIds::now();
+        $ticketId = GpIds::make('tkt', 8);
+        GpDb::exec(
+            'INSERT INTO gp_support_tickets (ticket_id, merchant_id, brand_id, contact_email, subject, message, status, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [$ticketId, $actor['merchant_id'], $actor['brand_id'], $email, $subject, $message, 'open', $now, $now]
+        );
+        self::audit($actor, 'support.ticket', ['ticketId' => $ticketId, 'subject' => $subject]);
+        GpJson::send([
+            'ticketId' => $ticketId,
+            'status' => 'open',
+            'message' => 'Support ticket received. We will follow up by email when configured on the platform.',
+        ], 201);
     }
 
     private static function testAlert(array $actor, GpRequest $req): never

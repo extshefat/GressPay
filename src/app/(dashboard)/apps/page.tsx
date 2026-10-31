@@ -24,12 +24,11 @@ const TOOLS = [
     external: true,
   },
   {
-    title: "WordPress Plugin",
-    description: "WooCommerce and custom checkout integration — coming soon.",
-    href: "#",
-    cta: "Coming soon",
+    title: "WordPress / WooCommerce",
+    description: "Starter gateway plugin — redirect checkout to GressPay and verify on return.",
+    href: "/download/gresspay-woocommerce.zip",
+    cta: "Download plugin zip",
     icon: Puzzle,
-    disabled: true,
   },
   {
     title: "WHMCS Module",

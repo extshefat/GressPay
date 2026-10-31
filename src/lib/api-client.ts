@@ -604,10 +604,84 @@ class ApiClient {
     return res;
   }
 
-  async testWebhookPing(): Promise<{ ok: boolean; message: string }> {
-        return this.request<{ ok: boolean; message: string }>("/api/v1/webhooks/test-ping", {
+  async testWebhookPing(): Promise<{ ok: boolean; httpCode?: number; message?: string }> {
+    return this.request<{ ok: boolean; httpCode?: number; message?: string }>("/api/v1/webhooks/test-ping", {
       method: "POST",
       body: JSON.stringify({}),
+    });
+  }
+
+  async listWebhookDeliveries(): Promise<{
+    deliveries: {
+      id: number;
+      eventId: string;
+      sessionId?: string | null;
+      eventName: string;
+      url: string;
+      httpCode?: number | null;
+      status: string;
+      note?: string | null;
+      attempt: number;
+      createdAt: string;
+      updatedAt: string;
+    }[];
+  }> {
+    return this.request("/api/v1/webhooks/deliveries");
+  }
+
+  async retryWebhookDelivery(deliveryId: number): Promise<{ ok: boolean; httpCode?: number; message?: string }> {
+    return this.request(`/api/v1/webhooks/deliveries/${deliveryId}/retry`, {
+      method: "POST",
+      body: "{}",
+    });
+  }
+
+  async getNotificationPrefs(): Promise<{
+    notifyPrefs: {
+      emailEnabled: boolean;
+      inAppEnabled: boolean;
+      paymentCompleted: boolean;
+      paymentFailed: boolean;
+      webhookDeliveryFailed: boolean;
+    };
+  }> {
+    return this.request("/api/v1/merchant/notifications");
+  }
+
+  async updateNotificationPrefs(notifyPrefs: {
+    emailEnabled?: boolean;
+    inAppEnabled?: boolean;
+    paymentCompleted?: boolean;
+    paymentFailed?: boolean;
+    webhookDeliveryFailed?: boolean;
+  }): Promise<{ notifyPrefs: Record<string, boolean> }> {
+    return this.request("/api/v1/merchant/notifications", {
+      method: "PUT",
+      body: JSON.stringify({ notifyPrefs }),
+    });
+  }
+
+  async listSupportTickets(): Promise<{
+    tickets: {
+      ticketId: string;
+      subject: string;
+      status: string;
+      contactEmail: string;
+      createdAt: string;
+      updatedAt: string;
+    }[];
+  }> {
+    return this.request("/api/v1/merchant/support");
+  }
+
+  async createSupportTicket(payload: {
+    subject: string;
+    message: string;
+    contactEmail?: string;
+  }): Promise<{ ticketId: string; status: string; message: string }> {
+    return this.request("/api/v1/merchant/support", {
+      method: "POST",
+      body: JSON.stringify(payload),
     });
   }
 

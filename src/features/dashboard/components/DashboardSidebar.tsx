@@ -20,11 +20,12 @@ import {
   Webhook,
   Users,
   X,
+  Activity,
 } from "lucide-react";
 import { GpMark } from "@/components/brand/GpMark";
 import { User } from "@/lib/types/api";
 
-const NAV_ITEMS = [
+const CORE_NAV = [
   { href: "/dashboard/overview", label: "Overview", icon: LayoutDashboard },
   { href: "/dashboard/transactions", label: "Transactions", icon: ArrowLeftRight },
   { href: "/dashboard/payment-links", label: "Payment Links", icon: Link2 },
@@ -34,11 +35,15 @@ const NAV_ITEMS = [
   { href: "/dashboard/devices", label: "Devices", icon: Smartphone },
   { href: "/dashboard/apps", label: "Apps & Plugins", icon: Puzzle },
   { href: "/dashboard/api-keys", label: "API & Webhooks", icon: Key },
-  { href: "/dashboard/webhooks", label: "Webhook logs", icon: Webhook },
-  { href: "/dashboard/notifications", label: "Notifications", icon: Bell },
-  { href: "/dashboard/support", label: "Support", icon: LifeBuoy },
   { href: "/dashboard/team", label: "Team", icon: Users },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
+];
+
+const AUTOMATION_NAV = [
+  { href: "/dashboard/webhooks", label: "Webhooks", icon: Webhook },
+  { href: "/dashboard/payment-events", label: "Payment events", icon: Activity },
+  { href: "/dashboard/notifications", label: "Notifications", icon: Bell },
+  { href: "/dashboard/support", label: "Support", icon: LifeBuoy },
 ];
 
 export interface DashboardSidebarProps {
@@ -54,18 +59,34 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
 }) => {
   const pathname = usePathname();
 
+  const renderLink = (item: (typeof CORE_NAV)[0]) => {
+    const isActive = pathname.startsWith(item.href) || pathname === item.href.replace("/dashboard", "");
+    const Icon = item.icon;
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        onClick={onClose}
+        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+          isActive
+            ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 shadow-sm"
+            : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900"
+        }`}
+      >
+        <Icon className="w-4 h-4" />
+        <span>{item.label}</span>
+      </Link>
+    );
+  };
+
   const nav = (
     <>
       <div className="p-5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between gap-2">
         <Link href="/" className="flex items-center gap-2.5" onClick={onClose}>
           <GpMark />
           <div>
-            <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
-              GressPay
-            </div>
-            <div className="text-[10px] font-mono tracking-wider text-zinc-500 uppercase">
-              Merchant Console
-            </div>
+            <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">GressPay</div>
+            <div className="text-[10px] font-mono tracking-wider text-zinc-500 uppercase">Merchant Console</div>
           </div>
         </Link>
         {onClose && (
@@ -81,28 +102,15 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
       </div>
 
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-        {NAV_ITEMS.map((item) => {
-          const isActive = pathname.startsWith(item.href) || pathname === item.href.replace("/dashboard", "");
-          const Icon = item.icon;
+        {CORE_NAV.map(renderLink)}
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={onClose}
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                isActive
-                  ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 shadow-sm"
-                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900"
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
+        <div className="pt-3 mt-2 border-t border-zinc-200 dark:border-zinc-800">
+          <div className="px-3 py-1 text-[10px] font-mono uppercase tracking-wider text-zinc-500 font-semibold">
+            Automation
+          </div>
+          <div className="mt-1 space-y-1">{AUTOMATION_NAV.map(renderLink)}</div>
+        </div>
 
-        {/* Server-Enforced Admin Authorization Navigation */}
         {(user?.role === "admin" || user?.isAdmin || (user as { is_admin?: boolean })?.is_admin) && (
           <div className="pt-3 mt-3 border-t border-zinc-200 dark:border-zinc-800">
             <div className="px-3 py-1 text-[10px] font-mono uppercase tracking-wider text-zinc-500 font-semibold">
@@ -144,12 +152,10 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
 
   return (
     <>
-      {/* Desktop */}
       <aside className="hidden lg:flex w-64 bg-white dark:bg-zinc-950 border-r border-zinc-200 dark:border-zinc-800 flex-col shrink-0 min-h-screen transition-colors">
         {nav}
       </aside>
 
-      {/* Mobile overlay + drawer */}
       <div
         className={`fixed inset-0 z-50 lg:hidden transition-opacity ${
           mobileOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
