@@ -231,29 +231,43 @@ class ApiClient {
     devices: {
       deviceId: string;
       label: string;
+      brandId?: string;
+      brandName?: string;
       status: string;
       lastSeenAt?: string | null;
       online?: boolean;
       onlineWindowSec?: number;
       createdAt?: string;
+      updatedAt?: string;
+      deviceAppKey?: string;
+      deviceAppKeyMasked?: string;
     }[];
   }> {
         return this.request("/api/v1/companion/devices");
   }
 
-  async registerCompanionDevice(label: string = "Android Companion"): Promise<{
+  async registerCompanionDevice(
+    label: string = "Android Companion",
+    brandId?: string
+  ): Promise<{
     deviceId: string;
     brandId?: string;
+    brandName?: string;
     token: string;
+    deviceAppKey?: string;
     note: string;
   }> {
-    return this.request<{ deviceId: string; brandId?: string; token: string; note: string }>(
-      "/api/v1/companion/register",
-      {
-        method: "POST",
-        body: JSON.stringify({ label }),
-      }
-    );
+    return this.request<{
+      deviceId: string;
+      brandId?: string;
+      brandName?: string;
+      token: string;
+      deviceAppKey?: string;
+      note: string;
+    }>("/api/v1/companion/register", {
+      method: "POST",
+      body: JSON.stringify({ label, ...(brandId ? { brandId } : {}) }),
+    });
   }
 
   async listMerchantSmsLogs(): Promise<{
@@ -521,6 +535,26 @@ class ApiClient {
     });
   }
 
+  async createApiKey(mode: "live" | "test", name?: string): Promise<{
+    mode: string;
+    key: string;
+    prefix?: string;
+    created?: boolean;
+    note: string;
+  }> {
+    return this.request("/api/v1/merchant/api-keys/create", {
+      method: "POST",
+      body: JSON.stringify({ mode, name }),
+    });
+  }
+
+  async revokeApiKey(keyId: number): Promise<{ ok: boolean; note: string }> {
+    return this.request("/api/v1/merchant/api-keys/revoke", {
+      method: "POST",
+      body: JSON.stringify({ keyId }),
+    });
+  }
+
   async rotateWebhookSecret(): Promise<{ webhookSecret: string; note: string }> {
     return this.request<{ webhookSecret: string; note: string }>(
       "/api/v1/merchant/webhook-secret/rotate",
@@ -538,6 +572,8 @@ class ApiClient {
       active: boolean;
       deviceCount: number;
       gatewayCount: number;
+      websiteApiKey?: string;
+      websiteApiKeyMasked?: string;
     }>;
     activeBrandId: string;
   }> {

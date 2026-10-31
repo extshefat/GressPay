@@ -5,12 +5,14 @@ Open this folder in **Android Studio**. Package: `com.gresspay.companion`.
 
 ## What it does
 
-1. Register via `POST /api/v1/companion/register` (merchant `gp_live_` / `gp_test_` key).
-2. After **explicit opt-in** + `RECEIVE_SMS` (+ notifications on Android 13+), listen for payment SMS.
-3. Parse only amount + TxID + rail; reject OTP / promo noise.
-4. Upload via WorkManager with idempotency keys — never full message bodies. Sends `X-GressPay-Brand` (returned at register) with the device token.
-5. Optional **Scan Inbox (24h)** backfill requests `READ_SMS` at runtime when used.
-6. Server matches pending checkouts; revoked devices cannot upload.
+1. Create a device under **Dashboard → Devices** (choose brand, copy **Device API key** `gpdev_…`).
+2. Install this APK, complete Welcome → SMS → Setup, paste site root URL, Brand ID, and device key.
+3. Grant SMS permissions and disable battery optimization for the app.
+4. After **explicit opt-in** + `RECEIVE_SMS` (+ notifications on Android 13+), listen for payment SMS.
+5. Parse only amount + TxID + rail; reject OTP / promo noise.
+6. Upload via WorkManager with idempotency keys — never full message bodies. Sends `X-GressPay-Brand` with the device token.
+7. Optional **Scan Inbox (24h)** backfill requests `READ_SMS` at runtime when used.
+8. Server matches pending checkouts; revoked devices cannot upload.
 
 ## Permissions
 

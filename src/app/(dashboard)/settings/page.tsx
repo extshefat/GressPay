@@ -55,6 +55,14 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [savingBinance, setSavingBinance] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [advancedTestLedger, setAdvancedTestLedger] = useState(false);
+  const [ledgerMode, setLedgerMode] = useState<"live" | "test">("live");
+
+  useEffect(() => {
+    const adv = window.localStorage.getItem("gresspay_advanced_test_ledger") === "1";
+    setAdvancedTestLedger(adv);
+    setLedgerMode(api.getLedgerMode());
+  }, []);
 
   const loadSettings = async () => {
     setIsLoading(true);
@@ -406,6 +414,60 @@ export default function SettingsPage() {
               </Button>
             </div>
           </form>
+
+          <div className="mt-8 border-t border-zinc-200 pt-6 dark:border-zinc-800">
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Advanced (engineering)</h3>
+            <p className="mt-1 text-[11px] text-zinc-500">
+              Merchants should stay on live production. Enable test ledger only when integrating with{" "}
+              <code className="font-mono">gp_test_</code> keys.
+            </p>
+            <div className="mt-4 flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">Allow test ledger in dashboard</span>
+                <p className="text-[11px] text-zinc-500">Sends X-GressPay-Mode: test for JWT API calls when enabled.</p>
+              </div>
+              <Toggle
+                checked={advancedTestLedger}
+                onChange={(on) => {
+                  setAdvancedTestLedger(on);
+                  window.localStorage.setItem("gresspay_advanced_test_ledger", on ? "1" : "0");
+                  if (!on) {
+                    api.setLedgerMode("live");
+                    setLedgerMode("live");
+                  }
+                  window.dispatchEvent(new Event("gresspay-mode"));
+                }}
+              />
+            </div>
+            {advancedTestLedger && (
+              <div className="mt-3 flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={ledgerMode === "live" ? "primary" : "outline"}
+                  onClick={() => {
+                    api.setLedgerMode("live");
+                    setLedgerMode("live");
+                    window.dispatchEvent(new Event("gresspay-mode"));
+                  }}
+                >
+                  Live
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={ledgerMode === "test" ? "primary" : "outline"}
+                  onClick={() => {
+                    api.setLedgerMode("test");
+                    setLedgerMode("test");
+                    window.dispatchEvent(new Event("gresspay-mode"));
+                  }}
+                >
+                  Test
+                </Button>
+              </div>
+            )}
+          </div>
         </Card>
       )}
 

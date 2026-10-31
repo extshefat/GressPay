@@ -41,6 +41,14 @@ final class BrandsController
                 'SELECT COUNT(*) AS c FROM gp_gateways WHERE brand_id = ?',
                 [$row['brand_id']]
             )['c'] ?? 0);
+            $liveKey = GpDb::one(
+                "SELECT prefix, key_sealed FROM gp_api_keys WHERE brand_id = ? AND mode = 'live' AND status = 'active' ORDER BY id DESC LIMIT 1",
+                [$row['brand_id']]
+            );
+            $websitePlain = '';
+            if (is_array($liveKey) && !empty($liveKey['key_sealed'])) {
+                $websitePlain = GpCrypto::open((string) $liveKey['key_sealed']) ?? '';
+            }
             $out[] = [
                 'brandId' => $row['brand_id'],
                 'name' => $row['name'],
@@ -50,6 +58,12 @@ final class BrandsController
                 'active' => $row['brand_id'] === $actor['brand_id'],
                 'deviceCount' => $deviceCount,
                 'gatewayCount' => $gwCount,
+                'websiteApiKey' => $websitePlain,
+                'websiteApiKeyMasked' => $websitePlain !== ''
+                    ? substr($websitePlain, 0, 12) . '••••••••'
+                    : (is_array($liveKey) && ($liveKey['prefix'] ?? '') !== ''
+                        ? $liveKey['prefix'] . '••••••••'
+                        : '—'),
                 'createdAt' => $row['created_at'] ?? null,
             ];
         }

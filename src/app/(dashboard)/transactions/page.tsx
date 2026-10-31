@@ -229,8 +229,8 @@ export default function TransactionsPage() {
             <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
               Transactions
             </h1>
-            <Badge variant="cyan" size="sm" dot>
-              {api.getLedgerMode() === "live" ? "Live Ledger" : "Sandbox"}
+            <Badge variant="emerald" size="sm" dot>
+              Live production
             </Badge>
           </div>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">

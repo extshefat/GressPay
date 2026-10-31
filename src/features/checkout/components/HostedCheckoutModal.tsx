@@ -110,6 +110,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [redirectCountdown, setRedirectCountdown] = useState<number>(4);
   const [generatedQr, setGeneratedQr] = useState<string | null>(null);
+  const [locale, setLocale] = useState<"en" | "bn">("en");
 
   const [secondsLeft, setSecondsLeft] = useState<number>(() => {
     if (!session.expiresAt) return 15 * 60;
@@ -634,15 +635,40 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
               <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
             </div>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
-              {session.orderTitle || "Order Checkout"}
-              <span className="font-mono text-[10px] text-zinc-400 ml-2">
-                REF {session.sessionId.slice(-8).toUpperCase()}
-              </span>
+              {locale === "bn" ? "ইনভয়েস" : "Invoice ID"}:{" "}
+              <button
+                type="button"
+                className="font-mono text-[10px] text-zinc-700 dark:text-zinc-300 underline-offset-2 hover:underline"
+                onClick={() => copyToClipboard(session.sessionId, "invoice")}
+              >
+                {session.sessionId.slice(0, 8)}…{session.sessionId.slice(-6)}
+              </button>
+              {copiedKey === "invoice" ? (
+                <Check className="inline w-3 h-3 ml-1 text-emerald-500" />
+              ) : (
+                <Copy className="inline w-3 h-3 ml-1 text-zinc-400" />
+              )}
             </p>
           </div>
         </div>
 
-        <div className="text-right flex sm:flex-col items-center sm:items-end justify-between border-t sm:border-t-0 pt-3 sm:pt-0 border-zinc-200 dark:border-zinc-800">
+        <div className="text-right flex sm:flex-col items-center sm:items-end justify-between border-t sm:border-t-0 pt-3 sm:pt-0 border-zinc-200 dark:border-zinc-800 gap-2">
+          <div className="flex rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden text-[10px] font-bold">
+            <button
+              type="button"
+              onClick={() => setLocale("bn")}
+              className={`px-2 py-1 ${locale === "bn" ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950" : "text-zinc-500"}`}
+            >
+              বাংলা
+            </button>
+            <button
+              type="button"
+              onClick={() => setLocale("en")}
+              className={`px-2 py-1 ${locale === "en" ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950" : "text-zinc-500"}`}
+            >
+              Eng
+            </button>
+          </div>
           <div className="text-2xl font-bold font-mono text-zinc-900 dark:text-zinc-100">
             {formatCurrency(payableAmount, payableCurrency)}
           </div>

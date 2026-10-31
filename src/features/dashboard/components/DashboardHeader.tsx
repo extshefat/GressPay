@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/lib/theme";
 import { LogOut, Plus, Menu } from "lucide-react";
 import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 
 interface DashboardHeaderProps {
   user: User | null;
@@ -16,23 +17,25 @@ interface DashboardHeaderProps {
 
 export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user, onMenuClick }) => {
   const router = useRouter();
-  const [ledgerMode, setLedgerMode] = useState<"live" | "test">("live");
+  const [testLedgerAdvanced, setTestLedgerAdvanced] = useState(false);
 
   useEffect(() => {
-    setLedgerMode(api.getLedgerMode());
+    const sync = () => {
+      const advanced = window.localStorage.getItem("gresspay_advanced_test_ledger") === "1";
+      setTestLedgerAdvanced(advanced);
+      if (!advanced) {
+        api.setLedgerMode("live");
+      }
+    };
+    sync();
+    window.addEventListener("gresspay-mode", sync);
+    return () => window.removeEventListener("gresspay-mode", sync);
   }, []);
-
-  const switchMode = (mode: "live" | "test") => {
-    api.setLedgerMode(mode);
-    setLedgerMode(mode);
-  };
 
   const handleLogout = () => {
     api.clearToken();
     router.push("/login");
   };
-
-  const isLiveMode = ledgerMode === "live";
 
   return (
     <header className="h-16 bg-white/90 dark:bg-zinc-950/90 border-b border-zinc-200 dark:border-zinc-800 px-4 sm:px-6 flex items-center justify-between backdrop-blur-md transition-colors gap-3">
@@ -48,30 +51,9 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user, onMenuCl
           </button>
         )}
 
-        <div className="flex items-center bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-0.5 text-xs font-mono">
-          <button
-            type="button"
-            onClick={() => switchMode("live")}
-            className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
-              isLiveMode
-                ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold shadow-sm border border-zinc-200/80 dark:border-zinc-700/80"
-                : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
-            }`}
-          >
-            Live
-          </button>
-          <button
-            type="button"
-            onClick={() => switchMode("test")}
-            className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
-              !isLiveMode
-                ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold shadow-sm border border-zinc-200/80 dark:border-zinc-700/80"
-                : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
-            }`}
-          >
-            Test
-          </button>
-        </div>
+        <Badge variant="emerald" size="sm" dot>
+          {testLedgerAdvanced && api.getLedgerMode() === "test" ? "Test ledger (advanced)" : "Live production"}
+        </Badge>
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">

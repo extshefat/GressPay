@@ -45,12 +45,12 @@ export default function CheckoutPage() {
   }, [linkId]);
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 py-10 px-4 sm:px-6 flex flex-col items-center justify-center relative">
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 py-8 px-4 sm:px-6 flex flex-col items-center justify-center relative">
       <div className="absolute top-4 right-4">
         <ThemeToggle size="sm" />
       </div>
 
-      <div className="w-full max-w-2xl mb-6 flex items-center justify-between">
+      <div className="w-full max-w-md mb-6 flex items-center justify-between text-zinc-400">
         <Link
           href="/"
           className="text-xs font-mono text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 flex items-center gap-1.5 transition-colors"

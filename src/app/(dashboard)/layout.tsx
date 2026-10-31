@@ -40,6 +40,10 @@ export default function DashboardLayout({
 
     checkAuth();
 
+    const advanced = window.localStorage.getItem("gresspay_advanced_test_ledger") === "1";
+    if (!advanced) {
+      api.setLedgerMode("live");
+    }
     setLedgerMode(api.getLedgerMode());
     const onMode = () => setLedgerMode(api.getLedgerMode());
     window.addEventListener("gresspay-mode", onMode);
