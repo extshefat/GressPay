@@ -69,6 +69,7 @@ final class GpPresenters
             'authProvider' => $merchant['auth_provider'] ?? 'local',
             'avatarUrl' => $merchant['avatar_url'] ?? null,
             'createdAt' => $merchant['created_at'] ?? GpIds::now(),
+            'planUsage' => $mid !== '' ? GpPlanLimits::usageForMerchant($mid) : null,
         ];
     }
 

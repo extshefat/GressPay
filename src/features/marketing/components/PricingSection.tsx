@@ -19,22 +19,23 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ showTitle = true
   const plans = [
     {
       id: "starter",
-      name: "Starter",
-      badge: "Starter",
-      description: "Launch with Bangladesh MFS automation and unlimited payment links.",
+      name: "Starter (Free)",
+      badge: "Free",
+      description: "One website on your account with Bangladesh MFS automation.",
       price: {
         BDT: { monthly: 499, yearly: 399 },
         USD: { monthly: 5, yearly: 4 },
       },
       oneTime: false,
       highlight: false,
-      cta: "Start with Starter",
+      cta: "Start free",
       href: "/register?plan=starter",
       features: [
         "0% Transaction Fee",
+        "1 Website on Your Account",
+        "50 Completed Checkouts / Month (Asia/Dhaka)",
         "1 Android Companion Device",
         "All Bangladesh MFS: bKash, Nagad, Rocket, Upay",
-        "Unlimited Payment Links & Invoices",
         "Standard REST API & Webhooks",
       ],
       notIncluded: ["Full Crypto Suite", "Custom Checkout Branding", "Telegram & Discord Alerts"],

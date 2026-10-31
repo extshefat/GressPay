@@ -11,6 +11,10 @@ import { PricingSection } from "@/features/marketing/components/PricingSection";
 export default function FeesPage() {
   const faqs = [
     {
+      q: "What is included on the Free plan?",
+      a: "Each account on the Free plan (Starter) includes 1 website and up to 50 completed checkouts per calendar month, counted in the Asia/Dhaka timezone. Payment links and API checkout both count toward completed checkouts when they settle.",
+    },
+    {
       q: "Do you take any percentage commission from my transactions?",
       a: "No! Unlike traditional aggregators that charge 1.5% to 2.5% per payment, GressPay charges 0% transaction commission. Your customers transfer money directly into your personal or agent bKash, Nagad, Rocket, or Upay wallet.",
     },
