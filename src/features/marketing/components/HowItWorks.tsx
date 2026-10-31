@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Smartphone, KeyRound, ExternalLink, ShieldCheck } from "lucide-react";
 
@@ -9,26 +10,26 @@ export const HowItWorks: React.FC = () => {
     {
       num: "01",
       icon: <KeyRound className="w-5 h-5 text-zinc-900 dark:text-zinc-100" />,
-      title: "Configure Your Wallets",
-      desc: "Add bKash, Nagad, Rocket, Upay, Cellfin numbers and optional USDT / Binance / Bybit destinations. Funds always settle to wallets you own.",
+      title: "Add your receiving wallets",
+      desc: "Publish the bKash, Nagad, Rocket, Upay, or Cellfin numbers — and optional USDT or Binance destinations — that customers pay. GressPay never holds balances.",
     },
     {
       num: "02",
       icon: <Smartphone className="w-5 h-5 text-zinc-900 dark:text-zinc-100" />,
-      title: "Pair Android Companion",
-      desc: "Install the companion APK, scan the pairing QR, and grant SMS permission. Incoming MFS payment SMS verifies checkouts in about one second.",
+      title: "Install the Companion",
+      desc: "Download the APK, pair with a gpdev_ device key, and allow SMS on the payment SIM. MFS checkouts verify when the provider SMS arrives.",
     },
     {
       num: "03",
       icon: <ExternalLink className="w-5 h-5 text-zinc-900 dark:text-zinc-100" />,
-      title: "Share Checkout or API",
-      desc: "Create hosted payment links or call POST /api/v1/payment/create from WordPress, Laravel, PHP, or Next.js.",
+      title: "Share checkout or connect API",
+      desc: "Send hosted pay links or integrate from WordPress, Laravel, PHP, or Next.js using your brand API keys.",
     },
     {
       num: "04",
       icon: <ShieldCheck className="w-5 h-5 text-zinc-900 dark:text-zinc-100" />,
-      title: "Evidence Then Webhook",
-      desc: "SMS match, on-chain USDT, or Binance Pay query marks the session paid. One HMAC-signed webhook notifies your store.",
+      title: "Evidence, then webhook",
+      desc: "SMS match, on-chain USDT, or Binance Pay confirmation marks the session paid. Your store receives one HMAC-signed webhook.",
     },
   ];
 
@@ -43,7 +44,13 @@ export const HowItWorks: React.FC = () => {
             How to go live in minutes
           </h2>
           <p className="text-zinc-600 dark:text-zinc-400 text-sm sm:text-base leading-relaxed">
-            Non-custodial by design: customer pays you, companion or chain confirms, webhook fires.
+            You keep the wallets. We confirm payment with evidence your server can trust.
+          </p>
+          <p className="text-xs text-zinc-500">
+            <Link href="/download" className="text-teal-700 dark:text-teal-400 hover:underline font-medium">
+              Download the Companion APK
+            </Link>{" "}
+            when you are ready for SMS auto-match.
           </p>
         </div>
 

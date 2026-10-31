@@ -328,6 +328,13 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ showTitle = true
             );
           })}
         </div>
+
+        <p className="text-center text-sm text-zinc-500 dark:text-zinc-400 pt-2">
+          <Link href="/fees" className="inline-flex items-center gap-1.5 font-medium text-teal-700 dark:text-teal-400 hover:underline">
+            Full plan details &amp; billing FAQ
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </p>
       </div>
     </section>
   );

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Smartphone, Download, CheckCircle, Wifi, BatteryCharging, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { COMPANION_APK, companionStatusLine } from "@/lib/marketing/companion-download";
 
 export const CompanionShowcase: React.FC = () => {
   return (
@@ -18,10 +19,12 @@ export const CompanionShowcase: React.FC = () => {
               Android Companion Node
             </Badge>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-100 tracking-tight leading-tight">
-              Turn Any Android Phone into a High-Speed Settlement Node
+              Android SMS matching for the SIM that receives payments
             </h2>
             <p className="text-zinc-600 dark:text-zinc-400 text-sm sm:text-base leading-relaxed">
-              Customer transfers land directly in your bKash, Nagad, Rocket, Upay, or Cellfin wallet. The Companion APK matches payment SMS in about one second — non-custodial, 0% gateway fee, with WorkManager queuing when the network drops.
+              Customer transfers go to your bKash, Nagad, Rocket, Upay, or Cellfin wallet. The Companion reads provider
+              SMS, matches TrxID and amount to open checkouts in about a second, and queues offline when the network
+              drops.
             </p>
 
             <div className="space-y-4 pt-2">
@@ -63,11 +66,11 @@ export const CompanionShowcase: React.FC = () => {
             </div>
 
             <div className="flex flex-wrap items-center gap-3 pt-4">
-              <a href="/download/gresspay-companion.apk">
+              <Link href="/download">
                 <Button variant="primary" size="lg" leftIcon={<Download className="w-4 h-4" />}>
-                  Download Companion APK
+                  Get Companion APK
                 </Button>
-              </a>
+              </Link>
               <Link href="/developers">
                 <Button variant="outline" size="lg">
                   API & Pairing Docs
@@ -75,7 +78,7 @@ export const CompanionShowcase: React.FC = () => {
               </Link>
             </div>
             <div className="text-[11px] font-mono text-zinc-500">
-              v1.2.1 · Android 8.0–15 · /download/gresspay-companion.apk
+              {COMPANION_APK.versionLabel} · {COMPANION_APK.androidRange} · direct APK on download page
             </div>
           </div>
 
@@ -91,7 +94,7 @@ export const CompanionShowcase: React.FC = () => {
                     <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
                       GressPay Companion
                     </h4>
-                    <span className="text-[10px] text-zinc-500 font-mono">v1.1.0 • Node Active</span>
+                    <span className="text-[10px] text-zinc-500 font-mono">{companionStatusLine()}</span>
                   </div>
                 </div>
 
