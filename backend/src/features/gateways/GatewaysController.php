@@ -109,9 +109,6 @@ final class GatewaysController
         GpPlatform::assertGatewayCreationAllowed($brandId);
 
         $methodCode = GpCatalog::publicCode((string) $req->input('methodCode', $req->input('method_code', '')));
-        if ($methodCode === 'custom_provider') {
-            GpJson::error('METHOD_DISABLED', 'Custom providers are not available in the gateway library.', 400);
-        }
         $cat = GpCatalog::find($methodCode);
         if ($cat === null || empty($cat['releaseScope'])) {
             GpJson::error('METHOD_DISABLED', 'Method is not available in this release.', 400);

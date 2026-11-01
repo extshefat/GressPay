@@ -26,12 +26,26 @@ final class GpCatalog
             self::row('mcash', 'mcash-personal', 'mCash', 'BD', 'BDT', 'mfs', 'manual', true, true, 0.0, 10, 100000),
             self::row('ok_wallet', 'ok-wallet-personal', 'OK Wallet', 'BD', 'BDT', 'mfs', 'manual', true, true, 0.0, 10, 100000),
             self::row('tap', 'tap-personal', 'Tap', 'BD', 'BDT', 'mfs', 'manual', true, true, 0.0, 10, 100000),
-            self::row('aamar_pay', 'aamar-pay-personal', 'aamarPay', 'BD', 'BDT', 'mfs', 'manual', true, true, 0.0, 10, 100000),
+            self::row('ipay', 'ipay-personal', 'iPay', 'BD', 'BDT', 'mfs', 'manual', true, true, 0.0, 10, 100000),
+            self::row('aamar_pay', 'aamar-pay-personal', 'aamarPay', 'BD', 'BDT', 'bank', 'manual', true, true, 0.0, 10, 100000),
+            self::row('sslcommerz', 'sslcommerz-personal', 'SSLCOMMERZ', 'BD', 'BDT', 'bank', 'manual', true, true, 0.0, 10, 500000),
+
+            // Custom manual gateway
+            self::row('custom_provider', 'custom-provider', 'Custom Manual Gateway', 'GLOBAL', 'BDT', 'custom', 'manual', true, true, 0.0, 1, 1000000),
 
             // Crypto Rails
             self::row('usdt_trc20', 'usdt-trc20', 'USDT TRC-20 (TRON Blockchain)', 'GLOBAL', 'USDT', 'crypto', 'onchain', true, true, 0.0, 1, 100000),
             self::row('binance_pay', 'binance-personal', 'Binance Pay (Merchant API / QR)', 'GLOBAL', 'USDT', 'crypto', 'binance_pay_merchant', true, false, 0.0, 1, 100000),
             self::row('bybit_pay', 'bybit-pay', 'Bybit Pay (Internal Transfer / UID)', 'GLOBAL', 'USDT', 'crypto', 'manual', true, true, 0.0, 1, 100000),
+
+            // Asia Regional (India, Pakistan, Nepal)
+            self::row('upi_qr', 'upi-qr-personal', 'UPI QR', 'IN', 'INR', 'international', 'manual', true, true, 0.0, 10, 100000),
+            self::row('phonepe', 'phonepe-intent', 'PhonePe', 'IN', 'INR', 'international', 'manual', true, true, 0.0, 10, 100000),
+            self::row('paytm', 'paytm-personal', 'Paytm', 'IN', 'INR', 'international', 'manual', true, true, 0.0, 10, 100000),
+            self::row('easypaisa', 'easypaisa-personal', 'Easypaisa', 'PK', 'PKR', 'international', 'manual', true, true, 0.0, 10, 100000),
+            self::row('jazzcash', 'jazzcash-personal', 'JazzCash', 'PK', 'PKR', 'international', 'manual', true, true, 0.0, 10, 100000),
+            self::row('esewa', 'esewa-personal', 'eSewa', 'NP', 'NPR', 'international', 'manual', true, true, 0.0, 10, 100000),
+            self::row('khalti', 'khalti-personal', 'Khalti', 'NP', 'NPR', 'international', 'manual', true, true, 0.0, 10, 100000),
         ];
     }
 

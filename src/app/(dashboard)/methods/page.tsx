@@ -2,7 +2,12 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
-import { gatewayLogoPath, gatewayShortLabel } from "@/lib/gateway-library";
+import {
+  CURATED_GATEWAYS,
+  CuratedGatewayItem,
+  gatewayLogoPath,
+  gatewayShortLabel,
+} from "@/lib/gateway-library";
 import Link from "next/link";
 import { api } from "@/lib/api-client";
 import { MerchantGateway } from "@/lib/types/api";
@@ -23,6 +28,8 @@ import {
   Smartphone,
   Layers,
   HelpCircle,
+  Search,
+  Check,
 } from "lucide-react";
 
 interface MethodMeta {
@@ -132,6 +139,86 @@ const ALL_METHOD_OPTIONS: MethodMeta[] = [
     placeholder: "01XXXXXXXXX",
   },
   {
+    code: "sslcommerz",
+    label: "SSLCOMMERZ",
+    category: "mfs",
+    currency: "BDT",
+    accountLabel: "Store ID / Merchant Account",
+    placeholder: "e.g. sslcz_store_id",
+  },
+  {
+    code: "ipay",
+    label: "iPay Bangladesh",
+    category: "mfs",
+    currency: "BDT",
+    accountLabel: "iPay Wallet Number",
+    placeholder: "01XXXXXXXXX",
+  },
+  {
+    code: "custom_provider",
+    label: "Custom Manual Gateway",
+    category: "mfs",
+    currency: "BDT",
+    accountLabel: "Account Number / Bank AC",
+    placeholder: "01XXXXXXXXX or AC-123456",
+  },
+  {
+    code: "upi_qr",
+    label: "UPI QR (India)",
+    category: "crypto",
+    currency: "INR",
+    accountLabel: "UPI ID / VPA",
+    placeholder: "merchant@upi",
+  },
+  {
+    code: "phonepe",
+    label: "PhonePe (India)",
+    category: "crypto",
+    currency: "INR",
+    accountLabel: "PhonePe Number / VPA",
+    placeholder: "9XXXXXXXXX@ybl",
+  },
+  {
+    code: "paytm",
+    label: "Paytm (India)",
+    category: "crypto",
+    currency: "INR",
+    accountLabel: "Paytm Number / VPA",
+    placeholder: "9XXXXXXXXX@paytm",
+  },
+  {
+    code: "easypaisa",
+    label: "Easypaisa (Pakistan)",
+    category: "crypto",
+    currency: "PKR",
+    accountLabel: "Easypaisa Mobile Account",
+    placeholder: "03XXXXXXXXX",
+  },
+  {
+    code: "jazzcash",
+    label: "JazzCash (Pakistan)",
+    category: "crypto",
+    currency: "PKR",
+    accountLabel: "JazzCash Mobile Account",
+    placeholder: "03XXXXXXXXX",
+  },
+  {
+    code: "esewa",
+    label: "eSewa (Nepal)",
+    category: "crypto",
+    currency: "NPR",
+    accountLabel: "eSewa ID / Mobile Number",
+    placeholder: "98XXXXXXXX",
+  },
+  {
+    code: "khalti",
+    label: "Khalti (Nepal)",
+    category: "crypto",
+    currency: "NPR",
+    accountLabel: "Khalti ID / Mobile Number",
+    placeholder: "98XXXXXXXX",
+  },
+  {
     code: "usdt_trc20",
     label: "USDT TRC-20 (TRON Blockchain)",
     category: "crypto",
@@ -168,6 +255,7 @@ const MFS_CODES = new Set([
   "mcash",
   "ok_wallet",
   "tap",
+  "ipay",
   "aamar_pay",
 ]);
 
@@ -291,7 +379,70 @@ export default function GatewaysPage() {
     setShowLibrary(true);
   };
 
+  const pickCustomGateway = () => {
+    setFormMethod("custom_provider");
+    setFormName("Manual Payment / Bank");
+    setFormAccount("");
+    setFormAccountType("personal");
+    resetMerchantCreds();
+    setFormInstructions("Please transfer the exact amount to our bank account or wallet and enter the transaction reference / TrxID below.");
+    setFormRateMode("auto");
+    setFormCustomRate("");
+    setFormBinanceMode("uid");
+    setFormAccountName("");
+    setFormUsdtOptional("");
+    setFormMinAmount("10");
+    setFormMaxAmount("500000");
+    setFormCurrency("BDT");
+    setFormGatewayFee("0");
+    setFormGatewayFeeType("percentage");
+    setFormGatewayCategory("manual");
+    setFormExchangeRate("");
+    setFormBinanceApiKey("");
+    setFormBinanceApiSecret("");
+    setPreviewUrl(null);
+    setShowLibrary(false);
+    setShowForm(true);
+  };
+
+  const pickCuratedGateway = (gw: CuratedGatewayItem) => {
+    setFormMethod(gw.code);
+    setFormName(gw.name);
+    setFormAccount("");
+    setFormAccountType("personal");
+    resetMerchantCreds();
+    setFormInstructions(gw.instructionsPlaceholder || "");
+    setFormRateMode("auto");
+    setFormCustomRate("");
+    setFormBinanceMode(gw.code === "binance_pay" ? "merchant_api" : "uid");
+    setFormAccountName("");
+    setFormUsdtOptional("");
+    setFormMinAmount("10");
+    setFormMaxAmount("100000");
+    setFormCurrency(gw.currency || "BDT");
+    setFormGatewayFee("0");
+    setFormGatewayFeeType("percentage");
+    setFormGatewayCategory(
+      gw.category === "bank"
+        ? "bank"
+        : gw.category === "international"
+        ? "international"
+        : "mobile_banking"
+    );
+    setFormExchangeRate("");
+    setFormBinanceApiKey("");
+    setFormBinanceApiSecret("");
+    setPreviewUrl(null);
+    setShowLibrary(false);
+    setShowForm(true);
+  };
+
   const pickFromLibrary = (code: string) => {
+    const curated = CURATED_GATEWAYS.find((g) => g.code === code);
+    if (curated) {
+      pickCuratedGateway(curated);
+      return;
+    }
     const meta = availableOptions.find((m) => m.code === code);
     setFormMethod(code);
     setFormName(meta?.label || code);
@@ -381,6 +532,9 @@ export default function GatewaysPage() {
     }
     if (formMethod === "bybit_pay" && formAccount.trim().length < 4) {
       return "Enter a Bybit UID.";
+    }
+    if (formMethod === "custom_provider" && !formAccount.trim()) {
+      return "Please enter a receiving account number, IBAN, or reference number.";
     }
     return null;
   };
@@ -610,34 +764,37 @@ export default function GatewaysPage() {
       )}
 
       {showLibrary && (
-        <Card className="space-y-4 border border-zinc-800 bg-zinc-950 p-6 shadow-xl">
+        <Card className="space-y-5 border border-zinc-800 bg-zinc-950 p-6 shadow-2xl">
           <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
             <div>
               <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-sky-400">Gateway library</p>
               <h2 className="text-lg font-bold text-white">Choose a payment channel</h2>
-              <p className="text-xs text-zinc-400">Logo-forward catalog — then configure account type and limits.</p>
+              <p className="text-xs text-zinc-400">Select any official rail or add a custom bank/manual payment channel.</p>
             </div>
             <Button size="sm" variant="outline" onClick={() => setShowLibrary(false)} className="border-zinc-700 text-zinc-200">
               Cancel
             </Button>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
-            <Input
-              label="Search"
-              value={libraryQuery}
-              onChange={(e) => setLibraryQuery(e.target.value)}
-              placeholder="Search by gateway name…"
-              className="border-zinc-800 bg-zinc-900 text-white"
-            />
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
+              <input
+                type="text"
+                value={libraryQuery}
+                onChange={(e) => setLibraryQuery(e.target.value)}
+                placeholder="Search gateway by name, currency, or country (e.g. bKash, USDT, INR, PKR)…"
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-900 py-2 pl-9 pr-3 text-xs text-white placeholder-zinc-500 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+              />
+            </div>
             <div className="flex flex-wrap gap-1 self-end rounded-xl border border-zinc-800 bg-zinc-900 p-1">
               {(["all", "mfs", "crypto", "bank"] as const).map((id) => (
                 <button
                   key={id}
                   type="button"
                   onClick={() => setLibraryFilter(id)}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
+                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                     libraryFilter === id
-                      ? "bg-sky-600 text-white"
+                      ? "bg-sky-600 text-white shadow-sm"
                       : "text-zinc-400 hover:text-white"
                   }`}
                 >
@@ -646,45 +803,75 @@ export default function GatewaysPage() {
               ))}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {availableOptions
-              .filter((m) => {
-                if (libraryFilter === "bank") return false;
-                if (libraryFilter === "mfs" && m.category !== "mfs") return false;
-                if (libraryFilter === "crypto" && m.category !== "crypto") return false;
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            {/* Prominent Add Custom Manual Gateway Card */}
+            {(libraryFilter === "all" || libraryFilter === "bank") && !libraryQuery && (
+              <button
+                type="button"
+                onClick={pickCustomGateway}
+                className="group flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-sky-500/40 bg-sky-950/20 p-4 text-center transition hover:border-sky-400 hover:bg-sky-950/40 hover:shadow-lg hover:shadow-sky-500/5"
+              >
+                <div className="mb-2.5 flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500/10 text-sky-400 ring-1 ring-sky-500/30 group-hover:scale-105 transition-transform">
+                  <Plus className="h-6 w-6 text-sky-400" />
+                </div>
+                <div className="text-xs font-bold text-sky-200">Add custom manual gateway</div>
+                <div className="mt-1 font-mono text-[9px] text-sky-400/80">Bank, Offline, or Custom MFS</div>
+              </button>
+            )}
+
+            {/* Curated Library items */}
+            {CURATED_GATEWAYS
+              .filter((g) => {
+                const normFilter = libraryFilter === "mfs" ? "mobile" : libraryFilter === "crypto" ? "international" : libraryFilter;
+                if (normFilter !== "all" && g.category !== normFilter) return false;
                 const q = libraryQuery.trim().toLowerCase();
                 if (q) {
-                  const short = gatewayShortLabel(m.code, m.label).toLowerCase();
-                  if (!short.includes(q) && !m.label.toLowerCase().includes(q)) return false;
+                  const matchName = g.name.toLowerCase().includes(q);
+                  const matchCode = g.code.toLowerCase().includes(q);
+                  const matchCurr = g.currency.toLowerCase().includes(q);
+                  const matchCountry = g.country.toLowerCase().includes(q);
+                  if (!matchName && !matchCode && !matchCurr && !matchCountry) return false;
                 }
                 return true;
               })
-              .map((m) => (
+              .map((g) => (
                 <button
-                  key={m.code}
+                  key={g.code}
                   type="button"
-                  onClick={() => pickFromLibrary(m.code)}
-                  className="group flex flex-col items-center rounded-xl border border-zinc-800 bg-zinc-900/80 p-4 text-center transition hover:border-sky-500/60 hover:bg-zinc-900"
+                  onClick={() => pickCuratedGateway(g)}
+                  className="group relative flex flex-col items-center rounded-2xl border border-zinc-800 bg-zinc-900/80 p-3.5 text-center transition hover:border-sky-500/60 hover:bg-zinc-900 hover:shadow-lg hover:shadow-sky-500/5"
                 >
-                  <div className="relative mb-3 flex h-14 w-14 items-center justify-center rounded-xl bg-white p-2 ring-1 ring-zinc-700/80">
+                  <div className="relative mb-2.5 flex h-12 w-12 items-center justify-center rounded-xl bg-white p-2 shadow-sm ring-1 ring-zinc-700/80 group-hover:scale-105 transition-transform">
                     <Image
-                      src={gatewayLogoPath(m.code)}
-                      alt=""
-                      width={40}
-                      height={40}
-                      className="h-10 w-10 object-contain"
+                      src={g.logo || gatewayLogoPath(g.code)}
+                      alt={g.name}
+                      width={36}
+                      height={36}
+                      className="h-8 w-8 object-contain"
                     />
                   </div>
-                  <div className="text-sm font-semibold text-white">{gatewayShortLabel(m.code, m.label)}</div>
-                  <div className="mt-1 font-mono text-[10px] uppercase text-zinc-500">
-                    {m.category === "crypto" ? "International" : "Mobile"} · {m.currency}
+                  <div className="text-xs font-bold text-white line-clamp-1">{g.name}</div>
+                  <div className="mt-1 flex items-center gap-1 font-mono text-[10px] uppercase text-zinc-400">
+                    <span className="rounded bg-zinc-800 px-1 py-0.2 text-[9px] text-zinc-300">{g.country}</span>
+                    <span>·</span>
+                    <span>{g.currency}</span>
+                  </div>
+                  <div className="mt-2">
+                    <span className={`rounded-full px-2 py-0.5 text-[8px] font-semibold tracking-wide uppercase ${
+                      g.type === "automation" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30" :
+                      g.type === "onchain" ? "bg-purple-500/10 text-purple-400 border border-purple-500/30" :
+                      g.type === "provider" ? "bg-blue-500/10 text-blue-400 border border-blue-500/30" :
+                      "bg-zinc-800 text-zinc-300 border border-zinc-700"
+                    }`}>
+                      {g.type === "automation" ? "SMS Auto" :
+                       g.type === "onchain" ? "On-Chain" :
+                       g.type === "provider" ? "Direct API" : "Manual"}
+                    </span>
                   </div>
                 </button>
               ))}
           </div>
-          {libraryFilter === "bank" && (
-            <p className="text-center text-xs text-zinc-500">Bank rails are not in this release. Use Mobile or International channels.</p>
-          )}
         </Card>
       )}
 

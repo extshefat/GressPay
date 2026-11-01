@@ -132,8 +132,10 @@ export default function AdminPage() {
   const [planDefCode, setPlanDefCode] = useState("");
   const [planDefPriceBdt, setPlanDefPriceBdt] = useState(0);
   const [planDefCredits, setPlanDefCredits] = useState(500);
+  const [planDefBillingCycle, setPlanDefBillingCycle] = useState("monthly");
   const [planDefDescription, setPlanDefDescription] = useState("");
   const [planDefIsFree, setPlanDefIsFree] = useState(false);
+  const [planDefStatus, setPlanDefStatus] = useState<"active" | "archived" | "disabled">("active");
   const [isSubmittingPlanDef, setIsSubmittingPlanDef] = useState(false);
   const [billingBrandId, setBillingBrandId] = useState("");
   const [billingBrandName, setBillingBrandName] = useState<string | null>(null);
@@ -387,6 +389,70 @@ export default function AdminPage() {
       setErrorMessage(err instanceof Error ? err.message : "Failed to resolve transaction.");
     } finally {
       setIsSubmittingResolve(false);
+    }
+  };
+
+  // SaaS Plan Create/Edit Handlers
+  const handleOpenCreatePlan = () => {
+    setEditingPlanDef(null);
+    setPlanDefName("");
+    setPlanDefCode("");
+    setPlanDefPriceBdt(999);
+    setPlanDefCredits(1000);
+    setPlanDefBillingCycle("monthly");
+    setPlanDefDescription("Full automation, unlimited websites, priority companion SMS sync.");
+    setPlanDefIsFree(false);
+    setPlanDefStatus("active");
+    setPlanDefModalOpen(true);
+  };
+
+  const handleOpenEditPlan = (p: AdminPlan) => {
+    setEditingPlanDef(p);
+    setPlanDefName(p.name);
+    setPlanDefCode(p.code);
+    setPlanDefPriceBdt(p.priceBdt);
+    setPlanDefCredits(p.creditAllowance);
+    setPlanDefBillingCycle(p.billingCycle || "monthly");
+    setPlanDefDescription(p.description || "");
+    setPlanDefIsFree(Boolean(p.isFree));
+    setPlanDefStatus(p.status || "active");
+    setPlanDefModalOpen(true);
+  };
+
+  const handleSavePlanDef = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmittingPlanDef(true);
+    setErrorMessage(null);
+    try {
+      if (editingPlanDef) {
+        await api.updateAdminPlan(editingPlanDef.id, {
+          name: planDefName.trim(),
+          description: planDefDescription.trim(),
+          priceBdt: Number(planDefPriceBdt),
+          creditAllowance: Number(planDefCredits),
+          billingCycle: planDefBillingCycle,
+          isFree: planDefIsFree,
+          status: planDefStatus as any,
+        });
+        setSuccessMessage(`Plan "${planDefName}" updated successfully.`);
+      } else {
+        await api.createAdminPlan({
+          name: planDefName.trim(),
+          code: planDefCode.trim().toLowerCase(),
+          priceBdt: Number(planDefPriceBdt),
+          creditAllowance: Number(planDefCredits),
+          description: planDefDescription.trim(),
+          billingCycle: planDefBillingCycle,
+          isFree: planDefIsFree,
+        });
+        setSuccessMessage(`Plan "${planDefName}" created successfully.`);
+      }
+      setPlanDefModalOpen(false);
+      await loadData();
+    } catch (err: unknown) {
+      setErrorMessage(err instanceof Error ? err.message : "Failed to save plan.");
+    } finally {
+      setIsSubmittingPlanDef(false);
     }
   };
 
@@ -1162,31 +1228,63 @@ export default function AdminPage() {
                 SaaS Subscription Plans
               </h2>
               <p className="text-xs text-zinc-500">
-                Commercial tiers defining pricing, device limits, and feature availability for account holders.
+                Commercial tiers defining pricing, transaction limits, and feature availability for account holders.
               </p>
             </div>
+            <Button
+              size="sm"
+              variant="primary"
+              leftIcon={<Plus className="w-4 h-4" />}
+              onClick={handleOpenCreatePlan}
+            >
+              Create New Plan
+            </Button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {plans.map((p) => (
-              <Card key={p.id} className="p-5 flex flex-col justify-between border border-zinc-200 dark:border-zinc-800">
+              <Card key={p.id} className="p-5 flex flex-col justify-between border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-sm">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-base text-zinc-900 dark:text-zinc-100">
                       {p.name}
                     </span>
-                    <span className="font-mono text-xs text-zinc-500 uppercase bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded">
-                      {p.code}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded font-bold border ${
+                        p.status === "active"
+                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                          : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border-zinc-200 dark:border-zinc-700"
+                      }`}>
+                        {p.status || "active"}
+                      </span>
+                      <span className="font-mono text-xs text-zinc-500 uppercase bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded">
+                        {p.code}
+                      </span>
+                    </div>
                   </div>
                   <div className="text-2xl font-bold font-mono text-zinc-900 dark:text-zinc-100">
                     ৳{p.priceBdt}
                     <span className="text-xs text-zinc-500 font-normal"> / {p.billingCycle}</span>
                   </div>
                   <p className="text-xs text-zinc-500 min-h-[32px]">{p.description}</p>
-                  <div className="text-xs font-mono text-zinc-700 dark:text-zinc-300 pt-2 border-t border-zinc-100 dark:border-zinc-900">
-                    Credit Allowance: {p.creditAllowance} monthly txns
+                  <div className="space-y-1 text-xs font-mono text-zinc-700 dark:text-zinc-300 pt-2 border-t border-zinc-100 dark:border-zinc-900">
+                    <div className="flex justify-between">
+                      <span className="text-zinc-500">Monthly Trx Limit:</span>
+                      <span className="font-semibold">{p.creditAllowance} txns</span>
+                    </div>
+                    {p.isFree ? (
+                      <div className="text-[11px] text-amber-600 dark:text-amber-400 font-sans font-medium">Free Tier Account</div>
+                    ) : null}
                   </div>
+                </div>
+                <div className="pt-4 mt-3 border-t border-zinc-100 dark:border-zinc-900 flex justify-end">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleOpenEditPlan(p)}
+                  >
+                    Edit Plan
+                  </Button>
                 </div>
               </Card>
             ))}
@@ -1740,6 +1838,133 @@ export default function AdminPage() {
               </Button>
               <Button type="submit" variant="primary" disabled={isSubmittingResolve}>
                 {isSubmittingResolve ? "Approving..." : "Confirm & Mark Completed"}
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* MODAL 5: Create / Edit SaaS Plan Definition */}
+      {planDefModalOpen && (
+        <Modal
+          open={planDefModalOpen}
+          onClose={() => setPlanDefModalOpen(false)}
+          title={editingPlanDef ? `Edit SaaS Plan — ${editingPlanDef.name}` : "Create New SaaS Plan"}
+        >
+          <form onSubmit={handleSavePlanDef} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                  Plan Name
+                </label>
+                <Input
+                  value={planDefName}
+                  onChange={(e) => setPlanDefName(e.target.value)}
+                  placeholder="e.g. Starter, Growth, Enterprise"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                  Plan Code (Unique ID)
+                </label>
+                <Input
+                  value={planDefCode}
+                  onChange={(e) => setPlanDefCode(e.target.value)}
+                  placeholder="e.g. starter, pro, vip"
+                  disabled={Boolean(editingPlanDef)}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                  Price (BDT)
+                </label>
+                <Input
+                  type="number"
+                  value={planDefPriceBdt}
+                  onChange={(e) => setPlanDefPriceBdt(Number(e.target.value))}
+                  min={0}
+                  step="any"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                  Billing Cycle
+                </label>
+                <select
+                  value={planDefBillingCycle}
+                  onChange={(e) => setPlanDefBillingCycle(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs font-medium text-zinc-900 dark:text-zinc-100"
+                >
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                  <option value="lifetime">Lifetime</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                  Monthly Trx Allowance
+                </label>
+                <Input
+                  type="number"
+                  value={planDefCredits}
+                  onChange={(e) => setPlanDefCredits(Number(e.target.value))}
+                  min={1}
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                Description
+              </label>
+              <textarea
+                value={planDefDescription}
+                onChange={(e) => setPlanDefDescription(e.target.value)}
+                placeholder="Key marketing highlights, limits, and capabilities..."
+                className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs font-normal text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 min-h-[64px]"
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+              <label className="flex items-center gap-2 cursor-pointer text-xs text-zinc-700 dark:text-zinc-300">
+                <input
+                  type="checkbox"
+                  checked={planDefIsFree}
+                  onChange={(e) => setPlanDefIsFree(e.target.checked)}
+                  className="rounded border-zinc-300 text-zinc-900 focus:ring-0"
+                />
+                <span>Free Plan (No charge to merchant)</span>
+              </label>
+
+              {editingPlanDef && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-zinc-500">Status:</span>
+                  <select
+                    value={planDefStatus}
+                    onChange={(e) => setPlanDefStatus(e.target.value as any)}
+                    className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1 text-xs"
+                  >
+                    <option value="active">Active</option>
+                    <option value="disabled">Disabled</option>
+                    <option value="archived">Archived</option>
+                  </select>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-zinc-100 dark:border-zinc-900">
+              <Button type="button" variant="outline" onClick={() => setPlanDefModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary" disabled={isSubmittingPlanDef}>
+                {isSubmittingPlanDef ? "Saving..." : editingPlanDef ? "Update Plan" : "Create Plan"}
               </Button>
             </div>
           </form>

@@ -238,12 +238,21 @@ final class CompanionController
                             (string) $cat['currency']
                         )
                         : (string) $pending['amount'];
+                    $gwAccount = null;
+                    if (!empty($pending['gateway_id'])) {
+                        $gwRow = GpDb::one(
+                            'SELECT account FROM gp_gateways WHERE brand_id = ? AND gateway_id = ?',
+                            [$pending['brand_id'], $pending['gateway_id']]
+                        );
+                        $gwAccount = $gwRow ? (string) ($gwRow['account'] ?? '') : null;
+                    }
                     $sms = CheckoutController::matchingSms(
                         $pending['brand_id'],
                         $trxId,
                         $payable,
                         $methodCode,
-                        isset($pending['gateway_id']) ? (string) $pending['gateway_id'] : null
+                        isset($pending['gateway_id']) ? (string) $pending['gateway_id'] : null,
+                        $gwAccount
                     );
                     if ($sms) {
                         $methodRow = GpDb::one(
