@@ -14,7 +14,7 @@ docker compose up -d --build
 
 ## Production runtime
 
-The API Docker image listens on `$PORT` (default 8080) via the entrypoint (`php -S` for Coolify compatibility after #26/#hotfix). A separate `webhook-worker` service (`command: webhook-worker`) drains `gp_webhook_queue` so deliveries are not in-process.
+The API Docker image listens on `$PORT` (default 8080) via `php -S 0.0.0.0:8080` (GP_API_PORT). Optional webhook-worker: `php jobs/WebhookWorker.php`.
 
 ## One-off local PHP check
 

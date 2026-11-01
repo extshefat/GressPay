@@ -7,8 +7,8 @@ Deploy from **GitHub → Coolify on your VPS**. Do not run PHP, JDK, MySQL, or D
 | Coolify service | Source | Role |
 |-----------------|--------|------|
 | `gresspay-web` | [`GressPay- Web/Dockerfile`](GressPay-%20Web/Dockerfile) | Next.js (standalone), public HTTPS |
-| `gresspay-api` | [`backend/Dockerfile`](backend/Dockerfile) | PHP HTTP API on `$PORT` (Coolify-compatible built-in server; durable webhooks via worker) |
-| `gresspay-webhook-worker` | same `backend/Dockerfile`, command `webhook-worker` | Persistent webhook queue consumer |
+| `gresspay-api` | [`backend/Dockerfile`](backend/Dockerfile) | PHP HTTP API on **8080** (`GP_API_PORT`, not Coolify web `PORT`) |
+| `gresspay-webhook-worker` (optional) | same API image; custom command below | Persistent webhook queue consumer — **do not** put in the main compose if it can block web |
 | `gresspay-db` | Managed MySQL / MariaDB | Persistent volume required |
 
 Redis is **not** used (rate limits use MySQL/`gp_rate_limit`). Do not add Redis.
@@ -103,13 +103,19 @@ TLS terminates at Coolify. Force HTTPS for merchant credential forms.
 
 ### Webhook worker (required for reliable merchant callbacks)
 
-`GpWebhook::dispatch()` only **enqueues** to `gp_webhook_queue` (returns HTTP 202 semantics). Run a second Coolify service from the same API image with start command / Docker command:
+`GpWebhook::dispatch()` only **enqueues** to `gp_webhook_queue`. Run a **separate** Coolify service (same API Dockerfile) with custom start command:
 
 ```
-webhook-worker
+php /var/www/gresspay-api/jobs/WebhookWorker.php
 ```
 
-(entrypoint maps that to `php /var/www/gresspay-api/jobs/WebhookWorker.php`). Without this worker, deliveries stay `pending`.
+Do **not** add this to the main web+php compose unless you accept worker failures showing as app-unhealthy. Without the worker, deliveries stay `pending`.
+
+### Coolify 502 after deploy — common causes
+
+1. API listened on Coolify’s global `PORT` (often `3000` for Next) while `GRESSPAY_PHP_URL=http://php:8080` → proxy 502. Fix: API uses `GP_API_PORT=8080` only.
+2. nginx→php-fpm image (#26) failed health — reverted to `php -S` on 8080.
+3. Extra `webhook-worker` in compose made the whole stack unhealthy — removed from default compose.
 
 ## Health checks
 

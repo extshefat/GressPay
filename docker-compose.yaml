@@ -1,7 +1,11 @@
 # ==============================================================================
 # GressPay All-In-One Unified Docker Compose Stack for Coolify VPS
-# Runs Frontend (Next.js) + Backend (PHP API via nginx→php-fpm) + webhook worker
+# Runs Frontend (Next.js) + Backend (PHP API) connected to dedicated VPS PostgreSQL (gresspay-db)
 # Values come from Coolify. Direct ${VAR} references avoid baking defaults into the service env.
+#
+# NOTE: Do not inject Coolify's global PORT into `php` (it is often 3000 for web).
+# Webhook worker is optional — add as a separate Coolify service, not in this compose,
+# so a worker crash cannot take down the public site.
 # ==============================================================================
 
 services:
@@ -13,7 +17,7 @@ services:
       APP_URL: ${APP_URL}
       NEXT_PUBLIC_APP_URL: ${APP_URL}
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
-      GRESSPAY_PHP_URL: ${GRESSPAY_PHP_URL}
+      GRESSPAY_PHP_URL: ${GRESSPAY_PHP_URL:-http://php:8080}
     ports:
       - "3000"
     restart: unless-stopped
@@ -26,7 +30,8 @@ services:
       dockerfile: Dockerfile
     environment:
       APP_URL: ${APP_URL}
-      PORT: ${PORT:-8080}
+      # Fixed API listen port — never ${PORT} from Coolify web proxy
+      GP_API_PORT: "8080"
       DB_DRIVER: ${DB_DRIVER}
       DB_CONNECTION: ${DB_CONNECTION}
       DB_HOST: ${DB_HOST}
@@ -55,30 +60,3 @@ services:
       WEBHOOK_MAX_RETRIES: ${WEBHOOK_MAX_RETRIES:-5}
       WEBHOOK_TIMEOUT_SECONDS: ${WEBHOOK_TIMEOUT_SECONDS:-8}
     restart: unless-stopped
-
-  webhook-worker:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    command: ["webhook-worker"]
-    environment:
-      APP_URL: ${APP_URL}
-      DB_DRIVER: ${DB_DRIVER}
-      DB_CONNECTION: ${DB_CONNECTION}
-      DB_HOST: ${DB_HOST}
-      DB_PORT: ${DB_PORT}
-      DB_NAME: ${DB_NAME}
-      DB_DATABASE: ${DB_DATABASE}
-      DB_USER: ${DB_USER}
-      DB_USERNAME: ${DB_USERNAME}
-      DB_PASS: ${DB_PASS}
-      DB_PASSWORD: ${DB_PASSWORD}
-      DB_SSLMODE: ${DB_SSLMODE}
-      JWT_SECRET: ${JWT_SECRET}
-      APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY}
-      WEBHOOK_MAX_RETRIES: ${WEBHOOK_MAX_RETRIES:-5}
-      WEBHOOK_TIMEOUT_SECONDS: ${WEBHOOK_TIMEOUT_SECONDS:-8}
-      WEBHOOK_WORKER_POLL_SECONDS: ${WEBHOOK_WORKER_POLL_SECONDS:-5}
-    restart: unless-stopped
-    depends_on:
-      - php
