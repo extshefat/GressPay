@@ -31,7 +31,7 @@ From [`.github/workflows/verify.yml`](../.github/workflows/verify.yml):
 3. `./gradlew :app:assembleDebug`
 4. Artifact upload: `GressPay-App-Project/app/build/outputs/apk/debug/*.apk` (name: `gresspay-companion-debug`)
 
-**Important:** CI builds **debug** APKs (`applicationIdSuffix = .debug`). Publishable downloads must be **release** builds with a release keystore (`GRESSPAY_RELEASE_KEYSTORE`). `assembleRelease` now **fails** without those env vars (no debug-keystore fallback). See [`GressPay-App-Project/RELEASE.md`](../GressPay-App-Project/RELEASE.md) and the Android section of [`README.md`](../README.md).
+**Important:** CI builds **debug** APKs (`applicationIdSuffix = .debug`). Publishable downloads must be **release** builds with a release keystore (`GRESSPAY_RELEASE_KEYSTORE`). Release **ship tasks** fail without those env vars (no debug-keystore fallback); project configuration still allows `assembleDebug` without secrets. See [`GressPay-App-Project/RELEASE.md`](../GressPay-App-Project/RELEASE.md). The hosted binary’s certificate was historically debug-signed — rebuild with a release keystore before claiming production signing.
 
 ---
 

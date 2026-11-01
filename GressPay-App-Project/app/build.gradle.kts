@@ -32,18 +32,14 @@ android {
 
     buildTypes {
         release {
-            val ksPath = System.getenv("GRESSPAY_RELEASE_KEYSTORE")
-            val hasReleaseKeystore = !ksPath.isNullOrBlank()
-            if (!hasReleaseKeystore) {
-                // Never silently fall back to the debug keystore for production/release APKs.
-                throw GradleException(
-                    "Release builds require GRESSPAY_RELEASE_KEYSTORE (and store/key passwords). " +
-                        "Use assembleDebug for local/CI unsigned-dev builds. See GressPay-App-Project/RELEASE.md."
-                )
+            // Do NOT throw here — this block is evaluated during project configuration
+            // and would break assembleDebug / CI when no keystore is present.
+            val hasReleaseKeystore = System.getenv("GRESSPAY_RELEASE_KEYSTORE")?.isNotBlank() == true
+            isMinifyEnabled = hasReleaseKeystore
+            isShrinkResources = hasReleaseKeystore
+            if (hasReleaseKeystore) {
+                signingConfig = signingConfigs.getByName("release")
             }
-            isMinifyEnabled = true
-            isShrinkResources = true
-            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -66,6 +62,30 @@ android {
         viewBinding = true
         compose = true
         buildConfig = true
+    }
+}
+
+// Fail only release assemble/bundle/package tasks when keystore env is missing.
+// Debug and unit-test tasks must configure without release secrets.
+tasks.configureEach {
+    val n = name
+    val isReleaseShipTask =
+        n == "assembleRelease" ||
+            n == "bundleRelease" ||
+            n == "packageRelease" ||
+            n.startsWith("packageRelease") ||
+            n == "signReleaseBundle" ||
+            n == "makeApkFromBundleForRelease"
+    if (isReleaseShipTask) {
+        doFirst {
+            val ks = System.getenv("GRESSPAY_RELEASE_KEYSTORE")
+            if (ks.isNullOrBlank()) {
+                throw GradleException(
+                    "Release builds require GRESSPAY_RELEASE_KEYSTORE (and store/key passwords). " +
+                        "Use assembleDebug for local/CI builds. See GressPay-App-Project/RELEASE.md."
+                )
+            }
+        }
     }
 }
 

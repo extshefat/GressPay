@@ -72,7 +72,7 @@ OTP / promo SMS are rejected by the companion parser and never uploaded.
 ## Stack
 
 - **Frontend:** Next.js 15 · React 19 · Tailwind CSS · TypeScript  
-- **API:** PHP 8.2+ · MySQL/MariaDB (production) or SQLite (local tests)  
+- **API:** PHP 8.2+ · DB via `DB_DRIVER` (MySQL/MariaDB typical in Coolify; Postgres/SQLite supported when configured)  
 - **Companion:** Kotlin · WorkManager · EncryptedSharedPreferences · `dataSync` FGS  
 - **Deploy:** Coolify on self-hosted VPS · Docker Compose · Nginx reverse proxy  
 
@@ -180,7 +180,7 @@ Pair with a Device API key (`gpdev_…` from Dashboard → Devices) → opt-in �
 | `GRESSPAY_PHP_URL` | Next (server) | Upstream PHP for `/api/v1` proxy |
 | `JWT_SECRET` | PHP | Session / auth signing |
 | `APP_URL` / `PUBLIC_APP_URL` | PHP | Absolute pay URLs & callbacks |
-| `DB_*` | PHP | MySQL in production |
+| `DB_*` / `DB_DRIVER` | PHP | Coolify DB (mysql/pgsql/sqlite) |
 | `CORS_ORIGINS` | PHP | Allowed browser origins |
 
 **Your wallets, Binance / Bybit secrets, webhook secrets:** configure in the dashboard only. They are encrypted at rest — do not put them in `.env` or the README.
@@ -208,7 +208,7 @@ npm run build
 
 ## Deploy (Coolify)
 
-Self-hosted VPS via Coolify + persistent MySQL/MariaDB.
+Self-hosted VPS via Coolify + a persistent database (`DB_DRIVER`, usually MySQL/MariaDB).
 
 1. Point DNS at the VPS.  
 2. Follow [`COOLIFY_DEPLOYMENT.md`](COOLIFY_DEPLOYMENT.md) and [`DEPLOYMENT_CHECKLIST.md`](DEPLOYMENT_CHECKLIST.md).  

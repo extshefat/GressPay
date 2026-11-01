@@ -20,8 +20,11 @@ import com.gresspay.companion.sync.CompanionHeartbeat
 import com.gresspay.companion.ui.MainActivity
 
 /**
- * Foreground service while matching is opted-in.
- * Uses FOREGROUND_SERVICE_TYPE_DATA_SYNC for Android 14+ compliance.
+ * Optional foreground helper for heartbeat + notification while matching is opted-in.
+ *
+ * Primary SMS capture is the **manifest** [SmsBroadcastReceiver] (static). This service
+ * must not be the sole listener. On Android 15+, `dataSync` FGS may be time-limited;
+ * [onTimeout] stops cleanly without sticky restart loops.
  */
 class SmsMatchService : Service() {
     private var smsReceiver: SmsBroadcastReceiver? = null
@@ -65,15 +68,30 @@ class SmsMatchService : Service() {
                 startForeground(NOTIF_ID, notification)
             }
         } catch (_: Exception) {
-            // Android 12+ background start guard
+            // Android 12+ background start guard — SMS still arrives via manifest receiver.
+            stopSelf()
+            return START_NOT_STICKY
         }
 
+        // Dynamic receiver is a backup while FGS is alive; static manifest receiver remains primary.
         registerSmsReceiver()
         heartbeatHandler.removeCallbacks(heartbeatRunnable)
         isRunning = true
+        prefs.foregroundHelperStopped = false
         Thread { CompanionHeartbeat.sendIfConfigured(this) }.start()
         heartbeatHandler.postDelayed(heartbeatRunnable, HEARTBEAT_INTERVAL_MS)
-        return START_STICKY
+        return START_NOT_STICKY
+    }
+
+    /**
+     * Android 15+ dataSync FGS timeout. Stop cleanly; do not restart here.
+     * Manifest SMS receiver + WorkManager continue payment capture when matching is enabled.
+     */
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        val prefs = Prefs(this)
+        prefs.foregroundHelperStopped = true
+        teardown("fgs_timeout")
+        stopSelf()
     }
 
     private fun registerSmsReceiver() {
@@ -94,7 +112,7 @@ class SmsMatchService : Service() {
         }
     }
 
-    override fun onDestroy() {
+    private fun teardown(reason: String) {
         smsReceiver?.let {
             try {
                 unregisterReceiver(it)
@@ -104,6 +122,19 @@ class SmsMatchService : Service() {
         smsReceiver = null
         isRunning = false
         heartbeatHandler.removeCallbacks(heartbeatRunnable)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+            } else {
+                @Suppress("DEPRECATION")
+                stopForeground(true)
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    override fun onDestroy() {
+        teardown("destroy")
         super.onDestroy()
     }
 
@@ -118,7 +149,8 @@ class SmsMatchService : Service() {
         fun isServiceRunning(context: android.content.Context): Boolean {
             if (isRunning) return true
             return try {
-                val am = context.getSystemService(android.content.Context.ACTIVITY_SERVICE) as? android.app.ActivityManager ?: return isRunning
+                val am = context.getSystemService(android.content.Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
+                    ?: return isRunning
                 @Suppress("DEPRECATION")
                 for (service in am.getRunningServices(50)) {
                     if (SmsMatchService::class.java.name == service.service.className) {
@@ -136,7 +168,7 @@ class SmsMatchService : Service() {
         fun start(context: android.content.Context): Boolean {
             if (Build.VERSION.SDK_INT >= 33 &&
                 android.content.pm.PackageManager.PERMISSION_GRANTED !=
-                androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS)
+                ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS)
             ) {
                 return false
             }
@@ -149,7 +181,6 @@ class SmsMatchService : Service() {
                 }
                 true
             } catch (_: Exception) {
-                // Android 12+ ForegroundServiceStartNotAllowedException
                 false
             }
         }

@@ -1,7 +1,8 @@
 # ==============================================================================
 # GressPay All-In-One Unified Docker Compose Stack for Coolify VPS
-# Runs Frontend (Next.js) + Backend (PHP API) connected to dedicated VPS PostgreSQL (gresspay-db)
-# Values come from Coolify. Direct ${VAR} references avoid baking defaults into the service env.
+# Frontend (Next.js) + Backend (PHP API). Database driver is set by Coolify via DB_DRIVER
+# (typically mysql/mariadb; pgsql/sqlite also supported by the PHP backend when configured).
+# Duplicate of docker-compose.yaml for Coolify file-name convenience — keep both in sync.
 # ==============================================================================
 
 services:

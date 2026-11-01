@@ -9,10 +9,11 @@ Open this folder in **Android Studio**. Package: `com.gresspay.companion`.
 2. Install this APK, complete Welcome → SMS → Setup, and paste **only** the Device API key (`gpdev_…`) from Dashboard → Devices. Brand and API server bind automatically after verify — no Brand ID or site URL fields on Setup.
 3. Grant SMS permissions and disable battery optimization for the app.
 4. After **explicit opt-in** + `RECEIVE_SMS` (+ notifications on Android 13+), listen for payment SMS.
-5. Parse only amount + TxID + rail; reject OTP / promo noise.
+5. Parse only **incoming credit** receipts (amount + TxID + rail); reject outgoing/debit, OTP, and promo noise.
 6. Upload via WorkManager with idempotency keys — never full message bodies. Sends `X-GressPay-Brand` with the device token.
 7. Optional **Scan Inbox (24h)** backfill requests `READ_SMS` at runtime when used.
 8. Server matches pending checkouts; revoked devices cannot upload.
+9. Android 15 may stop the optional `dataSync` foreground helper; the **manifest SMS receiver** remains the primary capture path.
 
 ## Permissions
 
@@ -41,10 +42,12 @@ Public download (after assemble): `/download/gresspay-companion.apk` (version `1
 ## Tests / build
 
 ```bash
-./gradlew test --tests com.gresspay.companion.sms.PaymentSmsParserTest
-./gradlew assembleDebug
-cp app/build/outputs/apk/release/app-release.apk ../public/download/gresspay-companion.apk
+./gradlew :app:testDebugUnitTest --tests com.gresspay.companion.sms.PaymentSmsParserTest
+./gradlew :app:assembleDebug
+# Publishable APK requires release keystore — see RELEASE.md (never copy debug APK to public/download)
 ```
+
+Source version: **1.2.2** (`versionCode` 6). Hosted `/download/gresspay-companion.apk` signing is only “release” after a keystore build; do not claim otherwise without inspecting the binary.
 
 ## Related
 

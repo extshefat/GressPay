@@ -1,4 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  SESSION_CLIENT_HEADER,
+  SESSION_CLIENT_VALUE,
+  SESSION_COOKIE,
+} from "@/lib/session-cookie";
 
 const PHP_ORIGIN = process.env.GRESSPAY_PHP_URL || "http://php:8080";
 const HOP = new Set([
@@ -28,6 +33,29 @@ async function proxy(req: NextRequest, ctx: RouteContext): Promise<NextResponse>
       headers.set(key, value);
     }
   });
+
+  const hasAuth = Boolean(headers.get("authorization")?.trim());
+  const sessionJwt = req.cookies.get(SESSION_COOKIE)?.value?.trim() || "";
+  const usingCookieSession = !hasAuth && sessionJwt !== "" && sessionJwt.split(".").length === 3;
+
+  if (usingCookieSession) {
+    const method = req.method.toUpperCase();
+    if (method !== "GET" && method !== "HEAD" && method !== "OPTIONS") {
+      const client = req.headers.get(SESSION_CLIENT_HEADER) || "";
+      if (client !== SESSION_CLIENT_VALUE) {
+        return NextResponse.json(
+          {
+            error: {
+              code: "CSRF",
+              message: "Missing dashboard client header for cookie-authenticated request.",
+            },
+          },
+          { status: 403 }
+        );
+      }
+    }
+    headers.set("Authorization", `Bearer ${sessionJwt}`);
+  }
 
   const init: RequestInit = {
     method: req.method,

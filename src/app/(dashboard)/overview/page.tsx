@@ -35,6 +35,14 @@ export default function OverviewPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [rangeDays, setRangeDays] = useState<7 | 30>(7);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [ledgerMode, setLedgerMode] = useState<"live" | "test">("live");
+
+  useEffect(() => {
+    setLedgerMode(api.getLedgerMode());
+    const onMode = () => setLedgerMode(api.getLedgerMode());
+    window.addEventListener("gresspay-mode", onMode);
+    return () => window.removeEventListener("gresspay-mode", onMode);
+  }, []);
 
   const loadData = async (days: 7 | 30 = rangeDays) => {
     setIsLoading(true);
@@ -84,12 +92,13 @@ export default function OverviewPage() {
             <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
               Overview
             </h1>
-            <Badge variant="emerald" size="sm" dot>
-              Live
+            <Badge variant={ledgerMode === "test" ? "amber" : "emerald"} size="sm" dot>
+              {ledgerMode === "test" ? "Test" : "Live"}
             </Badge>
           </div>
           <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-            Verified volume, open checkouts, and companion health for the active brand.
+            Verified volume, open checkouts, and companion health for the active brand
+            {ledgerMode === "test" ? " (test ledger)" : ""}.
           </p>
         </div>
 
@@ -321,7 +330,7 @@ export default function OverviewPage() {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-              Recent Live Transactions
+              {ledgerMode === "test" ? "Recent Test Transactions" : "Recent Live Transactions"}
             </h3>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
               Instant status badges with one-click detail view.

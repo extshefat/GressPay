@@ -21,6 +21,9 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user, onMenuCl
   const [brands, setBrands] = useState<Array<{ brandId: string; name: string }>>([]);
   const [activeBrandId, setActiveBrandId] = useState<string>("");
   const [switching, setSwitching] = useState(false);
+  const [ledgerMode, setLedgerMode] = useState<"live" | "test">(() =>
+    typeof window !== "undefined" ? api.getLedgerMode() : "live"
+  );
 
   const fetchBrands = useCallback(async () => {
     try {
@@ -36,8 +39,14 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user, onMenuCl
   useEffect(() => {
     fetchBrands();
     const onBrandChanged = () => fetchBrands();
+    const onMode = () => setLedgerMode(api.getLedgerMode());
     window.addEventListener("gresspay-brand", onBrandChanged);
-    return () => window.removeEventListener("gresspay-brand", onBrandChanged);
+    window.addEventListener("gresspay-mode", onMode);
+    setLedgerMode(api.getLedgerMode());
+    return () => {
+      window.removeEventListener("gresspay-brand", onBrandChanged);
+      window.removeEventListener("gresspay-mode", onMode);
+    };
   }, [fetchBrands]);
 
   const handleSwitchBrand = async (brandId: string) => {
@@ -74,8 +83,8 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user, onMenuCl
           </button>
         )}
 
-        <Badge variant="emerald" size="sm" dot>
-          Live
+        <Badge variant={ledgerMode === "test" ? "amber" : "emerald"} size="sm" dot>
+          {ledgerMode === "test" ? "Test" : "Live"}
         </Badge>
 
         {brands.length > 0 ? (

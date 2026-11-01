@@ -68,6 +68,14 @@ function TransactionsContent() {
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [isResendingWebhook, setIsResendingWebhook] = useState(false);
+  const [ledgerMode, setLedgerMode] = useState<"live" | "test">("live");
+
+  useEffect(() => {
+    setLedgerMode(api.getLedgerMode());
+    const onMode = () => setLedgerMode(api.getLedgerMode());
+    window.addEventListener("gresspay-mode", onMode);
+    return () => window.removeEventListener("gresspay-mode", onMode);
+  }, []);
 
   const loadTransactions = async () => {
     setIsLoading(true);
@@ -243,12 +251,13 @@ function TransactionsContent() {
             <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
               Transactions
             </h1>
-            <Badge variant="emerald" size="sm" dot>
-              Live production
+            <Badge variant={ledgerMode === "test" ? "amber" : "emerald"} size="sm" dot>
+              {ledgerMode === "test" ? "Test ledger" : "Live ledger"}
             </Badge>
           </div>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-            Complete immutable ledger of all settled, pending, and refunded customer payments.
+            Settled, pending, and refunded payments for the active{" "}
+            {ledgerMode === "test" ? "test" : "live"} ledger — test rows are never live money.
           </p>
         </div>
 

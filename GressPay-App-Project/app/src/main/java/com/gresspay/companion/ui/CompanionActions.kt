@@ -62,6 +62,9 @@ class CompanionActions(private val context: Context, private val prefs: Prefs) {
             !prefs.matchingEnabled -> "PAUSED"
             !smsReceive || !batteryOk -> "ACTION REQUIRED"
             serviceActive -> "ACTIVE & MATCHING"
+            // FGS may stop on Android 15 dataSync timeout; static SMS receiver still captures.
+            prefs.matchingEnabled && prefs.consentAccepted ->
+                if (prefs.foregroundHelperStopped) "MATCHING (SMS RECEIVER)" else "MATCHING (RECEIVER)"
             else -> "STANDBY"
         }
 
@@ -193,6 +196,8 @@ class CompanionActions(private val context: Context, private val prefs: Prefs) {
     fun enableMatching(): Boolean {
         if (prefs.deviceToken.isBlank()) return false
         prefs.matchingEnabled = true
+        prefs.foregroundHelperStopped = false
+        // FGS is optional presence; SMS matching still works via the manifest receiver if start fails.
         return SmsMatchService.start(context)
     }
 

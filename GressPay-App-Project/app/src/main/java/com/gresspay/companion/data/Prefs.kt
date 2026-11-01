@@ -81,6 +81,14 @@ class Prefs(context: Context) {
         get() = sp.getLong(KEY_PING_MS, -1L)
         set(value) = sp.edit().putLong(KEY_PING_MS, value).apply()
 
+    /**
+     * True after Android 15+ dataSync FGS timeout (or similar stop). Matching can continue
+     * via the static SMS receiver; UI should not force a restart loop.
+     */
+    var foregroundHelperStopped: Boolean
+        get() = sp.getBoolean(KEY_FGS_STOPPED, false)
+        set(value) = sp.edit().putBoolean(KEY_FGS_STOPPED, value).apply()
+
     fun addRecentEvent(
         sender: String,
         amount: String,
@@ -174,6 +182,7 @@ class Prefs(context: Context) {
         private const val KEY_ONBOARDING = "onboarding_complete"
         private const val KEY_PING_MS = "last_ping_ms"
         private const val KEY_RECENT_EVENTS = "recent_sms_events"
+        private const val KEY_FGS_STOPPED = "foreground_helper_stopped"
 
         private fun createEncrypted(context: Context): SharedPreferences {
             return try {

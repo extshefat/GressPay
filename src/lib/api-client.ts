@@ -22,6 +22,11 @@ import {
   AdminPaymentWallets,
 } from "./types/api";
 import { METHOD_THEMES } from "./method-theme";
+import {
+  SESSION_CLIENT_HEADER,
+  SESSION_CLIENT_VALUE,
+  SESSION_FLAG,
+} from "./session-cookie";
 
 /** Live API only — mock/demo fallbacks are permanently removed. */
 export const IS_MOCK = false;
@@ -59,23 +64,27 @@ function hydrateMethod(
 }
 
 class ApiClient {
+  /** In-memory JWT only during the brief handoff into the HttpOnly cookie; not persisted. */
   private token: string | null = null;
   private ledgerMode: "live" | "test" = "live";
   private brandId: string | null = null;
-  /** When true, JWT persists in localStorage across browser restarts. */
   private rememberMe = false;
+  /** Client-side mirror that an HttpOnly session was established (not the JWT). */
+  private sessionActive = false;
 
   constructor() {
     if (typeof window !== "undefined") {
       this.rememberMe = localStorage.getItem("gresspay_remember") === "1";
-      this.token =
-        sessionStorage.getItem("gresspay_jwt") ||
-        localStorage.getItem("gresspay_jwt");
-      // Migrate: prefer remember flag; clear legacy dual storage noise later on set/clear.
+      this.sessionActive =
+        sessionStorage.getItem(SESSION_FLAG) === "1" ||
+        localStorage.getItem(SESSION_FLAG) === "1";
+      // One-time migration: drop any legacy JS-readable JWT storage.
+      localStorage.removeItem("gresspay_jwt");
+      sessionStorage.removeItem("gresspay_jwt");
+      this.clearLegacyJwtCookie();
       const mode = localStorage.getItem("gresspay_ledger_mode");
       if (mode === "live" || mode === "test") this.ledgerMode = mode;
       this.brandId = localStorage.getItem("gresspay_brand_id");
-      this.clearLegacyJwtCookie();
     }
   }
 
@@ -84,6 +93,23 @@ class ApiClient {
     document.cookie = "gresspay_jwt=; Path=/; SameSite=Lax; Max-Age=0";
     const secure = window.location.protocol === "https:" ? "; Secure" : "";
     document.cookie = `gresspay_jwt=; Path=/; SameSite=Lax; Max-Age=0${secure}`;
+  }
+
+  private setSessionFlag(active: boolean) {
+    this.sessionActive = active;
+    if (typeof window === "undefined") return;
+    if (active) {
+      if (this.rememberMe) {
+        localStorage.setItem(SESSION_FLAG, "1");
+        sessionStorage.removeItem(SESSION_FLAG);
+      } else {
+        sessionStorage.setItem(SESSION_FLAG, "1");
+        localStorage.removeItem(SESSION_FLAG);
+      }
+    } else {
+      localStorage.removeItem(SESSION_FLAG);
+      sessionStorage.removeItem(SESSION_FLAG);
+    }
   }
 
   setRememberMe(remember: boolean) {
@@ -98,22 +124,42 @@ class ApiClient {
     return this.rememberMe;
   }
 
+  /**
+   * Establish HttpOnly session cookie via Next; do not keep JWT in JS storage.
+   * Fire-and-forget safe: callers may await establishSession for certainty.
+   */
   setToken(token: string, options?: { rememberMe?: boolean }) {
     this.token = token;
     if (options?.rememberMe !== undefined) {
       this.setRememberMe(options.rememberMe);
     }
     if (typeof window !== "undefined") {
-      // Never store JWT in a JS-readable cookie.
+      localStorage.removeItem("gresspay_jwt");
+      sessionStorage.removeItem("gresspay_jwt");
       this.clearLegacyJwtCookie();
-      if (this.rememberMe) {
-        localStorage.setItem("gresspay_jwt", token);
-        sessionStorage.removeItem("gresspay_jwt");
-      } else {
-        sessionStorage.setItem("gresspay_jwt", token);
-        localStorage.removeItem("gresspay_jwt");
-      }
+      void this.establishSession(token, this.rememberMe);
     }
+  }
+
+  async establishSession(token: string, rememberMe = false): Promise<void> {
+    this.setRememberMe(rememberMe);
+    this.token = null;
+    localStorage.removeItem("gresspay_jwt");
+    sessionStorage.removeItem("gresspay_jwt");
+    this.clearLegacyJwtCookie();
+    const res = await fetch("/api/auth/session", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        "Content-Type": "application/json",
+        [SESSION_CLIENT_HEADER]: SESSION_CLIENT_VALUE,
+      },
+      body: JSON.stringify({ token, rememberMe }),
+    });
+    if (!res.ok) {
+      throw new Error("Could not establish secure session cookie.");
+    }
+    this.setSessionFlag(true);
   }
 
   setBrandId(brandId: string | null) {
@@ -130,26 +176,28 @@ class ApiClient {
   }
 
   getToken(): string | null {
-    if (!this.token && typeof window !== "undefined") {
-      this.token =
-        sessionStorage.getItem("gresspay_jwt") ||
-        localStorage.getItem("gresspay_jwt");
-    }
+    // JWT lives in HttpOnly cookie; do not expose via JS storage.
     return this.token;
   }
 
   hasToken(): boolean {
-    return Boolean(this.getToken());
+    return this.sessionActive || Boolean(this.token);
   }
 
   clearToken() {
     this.token = null;
+    this.rememberMe = false;
+    this.setSessionFlag(false);
     if (typeof window !== "undefined") {
       localStorage.removeItem("gresspay_jwt");
       sessionStorage.removeItem("gresspay_jwt");
       localStorage.removeItem("gresspay_remember");
-      this.rememberMe = false;
       this.clearLegacyJwtCookie();
+      void fetch("/api/auth/session", {
+        method: "DELETE",
+        credentials: "same-origin",
+        headers: { [SESSION_CLIENT_HEADER]: SESSION_CLIENT_VALUE },
+      }).catch(() => undefined);
     }
   }
 
@@ -169,9 +217,11 @@ class ApiClient {
     const headers = new Headers(options.headers || {});
     headers.set("Content-Type", "application/json");
     headers.set("X-GressPay-Mode", this.ledgerMode);
+    headers.set(SESSION_CLIENT_HEADER, SESSION_CLIENT_VALUE);
     if (this.brandId) {
       headers.set("X-GressPay-Brand", this.brandId);
     }
+    // Prefer HttpOnly cookie via same-origin proxy. Only send Authorization during brief handoff.
     const token = this.getToken();
     if (token) {
       headers.set("Authorization", `Bearer ${token}`);
@@ -186,6 +236,7 @@ class ApiClient {
       const res = await fetch(`${API_BASE_URL}${endpoint}`, {
         ...options,
         headers,
+        credentials: "same-origin",
         signal,
       });
 
@@ -193,6 +244,9 @@ class ApiClient {
         const errData = await res.json().catch(() => ({}));
         const message =
           errData?.error?.message || errData?.message || `API Error: ${res.status}`;
+        if (res.status === 401) {
+          this.setSessionFlag(false);
+        }
         throw new Error(message);
       }
 
@@ -221,7 +275,7 @@ class ApiClient {
       body: JSON.stringify({ email, password, rememberMe }),
     });
     if (res.token) {
-      this.setToken(res.token, { rememberMe });
+      await this.establishSession(res.token, rememberMe);
     }
     return res;
   }
@@ -271,7 +325,7 @@ class ApiClient {
       }
     );
     if (res.token) {
-      this.setToken(res.token, { rememberMe });
+      await this.establishSession(res.token, rememberMe);
     }
     return res;
   }
@@ -288,7 +342,7 @@ class ApiClient {
       method: "POST",
       body: JSON.stringify({ ...payload, rememberMe }),
     });
-    if (res.token) this.setToken(res.token, { rememberMe });
+    if (res.token) await this.establishSession(res.token, rememberMe);
     return res;
   }
 
@@ -778,7 +832,7 @@ class ApiClient {
       { method: "POST", body: JSON.stringify({ name }) }
     );
     if (res.token) {
-      this.setToken(res.token);
+      await this.establishSession(res.token, this.rememberMe);
       this.setBrandId(res.brand.brandId);
     }
     return res;
@@ -790,7 +844,7 @@ class ApiClient {
       { method: "POST", body: "{}" }
     );
     if (res.token) {
-      this.setToken(res.token);
+      await this.establishSession(res.token, this.rememberMe);
       this.setBrandId(res.brandId);
     }
     return res;
