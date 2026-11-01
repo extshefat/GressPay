@@ -8,6 +8,7 @@ final class DashboardController
         $actor = GpAuth::requireActor($req);
         $action = $req->part(1);
         if ($req->method === 'GET' && $action === 'metrics') {
+            GpTeam::requireCan($actor, 'dashboard', 'view');
             self::metrics($actor, $req);
         }
         GpJson::error('NOT_FOUND', 'Unknown dashboard route.', 404);

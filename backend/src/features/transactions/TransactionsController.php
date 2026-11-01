@@ -13,6 +13,7 @@ final class TransactionsController
 
         if ($req->method === 'GET' && $id === null) {
             GpAuth::requireScope($actor, 'read_transactions');
+            GpTeam::requireCan($actor, 'transactions', 'view');
             if (GpAuth::activeBrandId($actor) === '') {
                 GpJson::send(['transactions' => [], 'total' => 0, 'noBrand' => true]);
             }
@@ -48,6 +49,7 @@ final class TransactionsController
 
         if ($req->method === 'GET' && $id !== null && $action === null) {
             GpAuth::requireScope($actor, 'read_transactions');
+            GpTeam::requireCan($actor, 'transactions', 'view');
             $row = GpDb::one(
                 'SELECT * FROM gp_transactions WHERE session_id = ? AND brand_id = ?',
                 [$id, $actor['brand_id']]
@@ -60,6 +62,7 @@ final class TransactionsController
 
         if ($req->method === 'POST' && $id !== null && ($action === 'cancel' || $action === 'reject')) {
             GpAuth::requireScope($actor, 'verify_payment');
+            GpTeam::requireCan($actor, 'transactions', 'edit');
             $row = GpDb::one(
                 'SELECT * FROM gp_transactions WHERE session_id = ? AND brand_id = ?',
                 [$id, $actor['brand_id']]
@@ -82,6 +85,7 @@ final class TransactionsController
         // Merchant manual reconciliation — never available on public checkout.
         if ($req->method === 'POST' && $id !== null && $action === 'confirm') {
             GpAuth::requireScope($actor, 'verify_payment');
+            GpTeam::requireCan($actor, 'transactions', 'edit');
             GpRateLimiter::guard('confirm:' . $actor['brand_id'], 30, 60);
             $reason = trim((string) $req->input('reason', $req->input('note', '')));
             if (strlen($reason) < 8) {
@@ -174,6 +178,7 @@ final class TransactionsController
 
         if ($req->method === 'POST' && $id !== null && $action === 'resend-webhook') {
             GpAuth::requireScope($actor, 'verify_payment');
+            GpTeam::requireCan($actor, 'webhooks', 'edit');
             GpRateLimiter::guard('webhook-resend:' . $actor['brand_id'], 20, 60);
             $row = GpDb::one(
                 'SELECT * FROM gp_transactions WHERE session_id = ? AND brand_id = ?',

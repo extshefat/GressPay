@@ -546,6 +546,76 @@ final class GpDb
               )";
         self::execDdl($planOrders);
 
+        $teamMembers = self::$driver === 'mysql'
+            ? "CREATE TABLE IF NOT EXISTS gp_team_members (
+                id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                member_id VARCHAR(32) NOT NULL UNIQUE,
+                owner_merchant_id VARCHAR(24) NOT NULL,
+                email VARCHAR(190) NOT NULL,
+                user_merchant_id VARCHAR(24) NULL,
+                role VARCHAR(16) NOT NULL DEFAULT 'manager',
+                status VARCHAR(16) NOT NULL DEFAULT 'invited',
+                permissions_json TEXT NULL,
+                created_at VARCHAR(32) NOT NULL,
+                updated_at VARCHAR(32) NOT NULL,
+                KEY idx_gp_team_owner (owner_merchant_id),
+                KEY idx_gp_team_email (email),
+                KEY idx_gp_team_user (user_merchant_id)
+              ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+            : "CREATE TABLE IF NOT EXISTS gp_team_members (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                member_id VARCHAR(32) NOT NULL UNIQUE,
+                owner_merchant_id VARCHAR(24) NOT NULL,
+                email VARCHAR(190) NOT NULL,
+                user_merchant_id VARCHAR(24),
+                role VARCHAR(16) NOT NULL DEFAULT 'manager',
+                status VARCHAR(16) NOT NULL DEFAULT 'invited',
+                permissions_json TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+              )";
+        self::execDdl($teamMembers);
+
+        $teamBrands = self::$driver === 'mysql'
+            ? "CREATE TABLE IF NOT EXISTS gp_team_member_brands (
+                id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                member_id VARCHAR(32) NOT NULL,
+                brand_id VARCHAR(24) NOT NULL,
+                created_at VARCHAR(32) NOT NULL,
+                UNIQUE KEY uq_gp_team_member_brand (member_id, brand_id),
+                KEY idx_gp_team_brand (brand_id)
+              ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+            : "CREATE TABLE IF NOT EXISTS gp_team_member_brands (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                member_id VARCHAR(32) NOT NULL,
+                brand_id VARCHAR(24) NOT NULL,
+                created_at TEXT NOT NULL,
+                UNIQUE(member_id, brand_id)
+              )";
+        self::execDdl($teamBrands);
+
+        $teamInvites = self::$driver === 'mysql'
+            ? "CREATE TABLE IF NOT EXISTS gp_team_invites (
+                id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                invite_id VARCHAR(32) NOT NULL UNIQUE,
+                member_id VARCHAR(32) NOT NULL,
+                token_hash VARCHAR(64) NOT NULL,
+                expires_at VARCHAR(32) NOT NULL,
+                accepted_at VARCHAR(32) NULL,
+                created_at VARCHAR(32) NOT NULL,
+                KEY idx_gp_team_invite_member (member_id)
+              ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+            : "CREATE TABLE IF NOT EXISTS gp_team_invites (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                invite_id VARCHAR(32) NOT NULL UNIQUE,
+                member_id VARCHAR(32) NOT NULL,
+                token_hash VARCHAR(64) NOT NULL,
+                expires_at TEXT NOT NULL,
+                accepted_at TEXT,
+                created_at TEXT NOT NULL
+              )";
+        self::execDdl($teamInvites);
+
         foreach ([
             'ALTER TABLE gp_transactions ADD COLUMN gateway_id VARCHAR(32)',
             'ALTER TABLE gp_transactions ADD COLUMN chain_tx_hash VARCHAR(80)',

@@ -14,21 +14,23 @@ final class CompanionController
         if ($req->method === 'GET' && $action === 'devices') {
             $actor = GpAuth::requireActor($req);
             GpAuth::requireScope($actor, 'manage_devices');
+            GpTeam::requireCan($actor, 'devices', 'view');
             self::listDevices($actor);
         }
 
         if ($req->method === 'POST' && $action === 'register') {
             $actor = GpAuth::requireActor($req);
             GpAuth::requireScope($actor, 'manage_devices');
+            GpTeam::requireCan($actor, 'devices', 'create');
             $brandId = trim((string) $req->input('brandId', $actor['brand_id']));
             if ($brandId === '') {
                 $brandId = GpAuth::requireBrandContext($actor, 'Create a brand under Dashboard → Brands before registering a device.');
             }
             $brand = GpDb::one(
-                'SELECT brand_id, name FROM gp_brands WHERE brand_id = ? AND merchant_id = ?',
+                'SELECT * FROM gp_brands WHERE brand_id = ? AND merchant_id = ?',
                 [$brandId, $actor['merchant_id']]
             );
-            if ($brand === null) {
+            if ($brand === null || !GpTeam::actorCanAccessBrand($actor, $brand)) {
                 GpJson::error('NOT_FOUND', 'Brand not found for your account.', 404);
             }
             GpPlatform::assertDeviceRegistrationAllowed($brandId);
@@ -63,6 +65,7 @@ final class CompanionController
         if ($req->method === 'POST' && $action === 'devices' && $devicePart !== null && $req->part(3) === 'revoke') {
             $actor = GpAuth::requireActor($req);
             GpAuth::requireScope($actor, 'manage_devices');
+            GpTeam::requireCan($actor, 'devices', 'delete');
             $n = GpDb::exec(
                 'UPDATE gp_devices d
                  INNER JOIN gp_brands b ON b.brand_id = d.brand_id
@@ -79,6 +82,7 @@ final class CompanionController
         if ($req->method === 'POST' && $action === 'devices' && $devicePart !== null && $req->part(3) === 'rotate') {
             $actor = GpAuth::requireActor($req);
             GpAuth::requireScope($actor, 'manage_devices');
+            GpTeam::requireCan($actor, 'devices', 'edit');
             $dev = GpDb::one(
                 'SELECT d.* FROM gp_devices d
                  INNER JOIN gp_brands b ON b.brand_id = d.brand_id
@@ -104,12 +108,14 @@ final class CompanionController
         if ($req->method === 'PUT' && $action === 'devices' && $devicePart !== null && $req->part(3) === 'bind') {
             $actor = GpAuth::requireActor($req);
             GpAuth::requireScope($actor, 'manage_devices');
+            GpTeam::requireCan($actor, 'devices', 'edit');
             self::bindDeviceGateway($actor, $devicePart, $req);
         }
 
         if ($req->method === 'GET' && $action === 'sms-logs') {
             $actor = GpAuth::requireActor($req);
             GpAuth::requireScope($actor, 'manage_devices');
+            GpTeam::requireCan($actor, 'devices', 'view');
             self::listSmsLogs($actor);
         }
 

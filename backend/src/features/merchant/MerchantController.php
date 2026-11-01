@@ -90,6 +90,9 @@ final class MerchantController
 
     private static function revokeKey(array $actor, GpRequest $req): never
     {
+        if (!empty($actor['team_member_id'])) {
+            GpJson::error('FORBIDDEN', 'Only the workspace owner can revoke API keys.', 403);
+        }
         $keyId = (int) $req->input('keyId', $req->input('id', 0));
         if ($keyId <= 0) {
             GpJson::error('MISSING_FIELD', 'keyId is required.', 400);
@@ -128,6 +131,9 @@ final class MerchantController
     /** Issue a new webhook HMAC secret (plaintext once). */
     private static function rotateWebhookSecret(array $actor): never
     {
+        if (!empty($actor['team_member_id'])) {
+            GpJson::error('FORBIDDEN', 'Only the workspace owner can rotate webhook secrets.', 403);
+        }
         $secret = 'gpwh_' . bin2hex(random_bytes(24));
         GpDb::exec(
             'UPDATE gp_brands SET webhook_secret = ?, updated_at = ? WHERE brand_id = ?',

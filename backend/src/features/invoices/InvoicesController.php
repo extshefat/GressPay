@@ -11,6 +11,7 @@ final class InvoicesController
         $id = $req->part(1);
 
         if ($req->method === 'GET' && $id === null) {
+            GpTeam::requireCan($actor, 'invoices', 'view');
             if (GpAuth::activeBrandId($actor) === '') {
                 GpJson::send(['invoices' => [], 'noBrand' => true]);
             }
@@ -31,6 +32,7 @@ final class InvoicesController
             GpJson::send(['invoice' => GpPresenters::invoice($row, $brand, $merchant)]);
         }
         if ($req->method === 'POST' && $id === null) {
+            GpTeam::requireCan($actor, 'invoices', 'create');
             GpAuth::requireBrandContext($actor);
             $amount = GpMoney::sanitize((string) $req->input('amount', '0'));
             if ((float) $amount <= 0) {

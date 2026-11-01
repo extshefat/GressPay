@@ -11,6 +11,7 @@ final class PaymentLinksController
         $id = $req->part(1);
 
         if ($req->method === 'GET' && $id === null) {
+            GpTeam::requireCan($actor, 'payment_links', 'view');
             if (GpAuth::activeBrandId($actor) === '') {
                 GpJson::send(['links' => [], 'noBrand' => true]);
             }
@@ -33,6 +34,7 @@ final class PaymentLinksController
         }
         if ($req->method === 'POST' && $id === null) {
             GpAuth::requireScope($actor, 'manage_links');
+            GpTeam::requireCan($actor, 'payment_links', 'create');
             GpAuth::requireBrandContext($actor);
             $title = trim((string) $req->input('title', 'Payment'));
             $amount = GpMoney::sanitize((string) $req->input('amount', '0'));

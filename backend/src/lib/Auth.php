@@ -26,11 +26,10 @@ final class GpAuth
                 $merchant['role'] = 'admin';
                 $merchant['plan_id'] = 'lifetime';
             }
-            $brand = self::resolveBrandForMerchant($merchant['merchant_id'], $payload, $req);
             $mode = self::jwtLedgerMode($req);
-            return [
+            $actor = [
                 'merchant_id' => $merchant['merchant_id'],
-                'brand_id' => $brand !== null ? (string) $brand['brand_id'] : '',
+                'brand_id' => '',
                 'email' => $merchant['email'],
                 'role' => $isAdmin ? 'admin' : ($merchant['role'] ?? 'merchant'),
                 'is_admin' => $isAdmin,
@@ -39,6 +38,9 @@ final class GpAuth
                 'auth' => 'jwt',
                 'scopes' => self::allScopes(),
             ];
+            $brand = self::resolveBrandForMerchant($merchant['merchant_id'], $payload, $req, $actor);
+            $actor['brand_id'] = $brand !== null ? (string) $brand['brand_id'] : '';
+            return $actor;
         }
 
         $rawKey = $bearer;
@@ -234,27 +236,97 @@ final class GpAuth
 
     /**
      * Prefer X-GressPay-Brand header, then JWT brand claim, else first brand for the merchant.
+     * Team staff may select brands owned by the workspace owner when allow-listed.
      *
      * @param array<string,mixed> $payload
+     * @param array<string,mixed>|null $actorMut mutated with team_* fields when staff
      * @return array<string,mixed>|null
      */
-    private static function resolveBrandForMerchant(string $merchantId, array $payload, GpRequest $req): ?array
-    {
+    private static function resolveBrandForMerchant(
+        string $merchantId,
+        array $payload,
+        GpRequest $req,
+        ?array &$actorMut = null
+    ): ?array {
         $headerBrand = trim((string) ($_SERVER['HTTP_X_GRESSPAY_BRAND'] ?? ''));
         $claimBrand = trim((string) ($payload['brand'] ?? ''));
         $wanted = $headerBrand !== '' ? $headerBrand : $claimBrand;
+
+        // Own brands first.
         if ($wanted !== '') {
-            $brand = GpDb::one(
+            $own = GpDb::one(
                 'SELECT * FROM gp_brands WHERE brand_id = ? AND merchant_id = ?',
                 [$wanted, $merchantId]
             );
-            if ($brand !== null) {
-                return $brand;
+            if ($own !== null) {
+                return $own;
+            }
+        } else {
+            $ownFirst = GpDb::one(
+                'SELECT * FROM gp_brands WHERE merchant_id = ? ORDER BY id ASC',
+                [$merchantId]
+            );
+            if ($ownFirst !== null && $wanted === '') {
+                // Still check team if header empty — prefer own brand.
+                return $ownFirst;
             }
         }
+
+        // Team staff access to owner brands.
+        $email = '';
+        if (is_array($actorMut)) {
+            $email = strtolower(trim((string) ($actorMut['email'] ?? '')));
+        }
+        $membership = GpDb::one(
+            "SELECT * FROM gp_team_members
+             WHERE status = 'active'
+               AND (user_merchant_id = ? OR LOWER(email) = ?)
+             ORDER BY id DESC",
+            [$merchantId, $email]
+        );
+        if (!is_array($membership)) {
+            if ($wanted !== '') {
+                return null;
+            }
+            return GpDb::one(
+                'SELECT * FROM gp_brands WHERE merchant_id = ? ORDER BY id ASC',
+                [$merchantId]
+            );
+        }
+
+        $memberId = (string) $membership['member_id'];
+        $allowed = GpTeam::brandIdsForMember($memberId);
+        $ownerId = (string) $membership['owner_merchant_id'];
+        $perms = json_decode((string) ($membership['permissions_json'] ?? '{}'), true);
+        if (is_array($actorMut)) {
+            $actorMut['team_member_id'] = $memberId;
+            $actorMut['workspace_merchant_id'] = $ownerId;
+            $actorMut['team_role'] = (string) ($membership['role'] ?? 'manager');
+            $actorMut['allowed_brand_ids'] = $allowed;
+            $actorMut['permissions'] = GpTeam::normalizePermissions(
+                is_array($perms) ? $perms : null,
+                (string) ($membership['role'] ?? 'manager')
+            );
+            // Effective merchant for brand-owned resources is the workspace owner.
+            $actorMut['merchant_id'] = $ownerId;
+            $actorMut['staff_user_merchant_id'] = $merchantId;
+        }
+
+        if ($wanted !== '') {
+            if (!in_array($wanted, $allowed, true)) {
+                return null;
+            }
+            return GpDb::one(
+                'SELECT * FROM gp_brands WHERE brand_id = ? AND merchant_id = ?',
+                [$wanted, $ownerId]
+            );
+        }
+        if ($allowed === []) {
+            return null;
+        }
         return GpDb::one(
-            'SELECT * FROM gp_brands WHERE merchant_id = ? ORDER BY id ASC',
-            [$merchantId]
+            'SELECT * FROM gp_brands WHERE brand_id = ? AND merchant_id = ?',
+            [$allowed[0], $ownerId]
         );
     }
 }

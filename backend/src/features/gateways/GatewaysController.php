@@ -24,12 +24,15 @@ final class GatewaysController
         $sub = $req->part(3);
 
         if ($req->method === 'GET' && $id === null) {
+            GpTeam::requireCan($actor, 'gateways', 'view');
             self::list($actor);
         }
         if ($req->method === 'POST' && $id === null) {
+            GpTeam::requireCan($actor, 'gateways', 'create');
             self::create($actor, $req);
         }
         if ($req->method === 'PUT' && $id === 'reorder') {
+            GpTeam::requireCan($actor, 'gateways', 'edit');
             self::reorder($actor, $req);
         }
         if ($id === null) {
@@ -39,18 +42,23 @@ final class GatewaysController
         $gw = self::owned($actor['brand_id'], $id);
 
         if ($req->method === 'GET' && $action === null) {
+            GpTeam::requireCan($actor, 'gateways', 'view');
             GpJson::send(['gateway' => self::present($gw)]);
         }
         if ($req->method === 'PUT' && $action === null) {
+            GpTeam::requireCan($actor, 'gateways', 'edit');
             self::update($actor, $gw, $req);
         }
         if ($req->method === 'DELETE' && $action === null) {
+            GpTeam::requireCan($actor, 'gateways', 'delete');
             self::delete($actor, $gw);
         }
         if ($req->method === 'POST' && $action === 'enable') {
+            GpTeam::requireCan($actor, 'gateways', 'edit');
             self::setStatus($actor, $gw, 'active');
         }
         if ($req->method === 'POST' && $action === 'disable') {
+            GpTeam::requireCan($actor, 'gateways', 'edit');
             self::setStatus($actor, $gw, 'inactive');
         }
         if ($action === 'qr' && ($sub === 'direct' || $sub === 'upload') && $req->method === 'POST') {
@@ -178,7 +186,7 @@ final class GatewaysController
                 $actor['brand_id'],
                 $methodCode,
                 $displayName,
-                self::accountType($req),
+                self::accountType($req, 'personal', $methodCode),
                 $account !== '' ? $account : null,
                 strtoupper((string) $req->input('currency', $cat['currency'] ?? 'BDT')),
                 strtoupper((string) $req->input('country', $cat['country'] ?? 'BD')),
@@ -267,7 +275,7 @@ final class GatewaysController
              WHERE brand_id = ? AND gateway_id = ?',
             [
                 $displayName,
-                self::accountType($req, (string) ($gw['account_type'] ?? 'personal')),
+                self::accountType($req, (string) ($gw['account_type'] ?? 'personal'), $methodCode),
                 $account !== '' ? $account : null,
                 strtoupper((string) $req->input('currency', $gw['currency'] ?? 'BDT')),
                 strtoupper((string) $req->input('country', $gw['country'] ?? 'BD')),
@@ -648,10 +656,40 @@ final class GatewaysController
         return $out;
     }
 
-    private static function accountType(GpRequest $req, string $fallback = 'personal'): string
+    private static function accountType(GpRequest $req, string $fallback = 'personal', string $methodCode = ''): string
     {
         $raw = strtolower(trim((string) $req->input('accountType', $req->input('account_type', $fallback))));
-        return in_array($raw, ['personal', 'agent', 'merchant', 'payment'], true) ? $raw : 'personal';
+        if (!in_array($raw, ['personal', 'agent', 'merchant', 'payment'], true)) {
+            $raw = 'personal';
+        }
+        $allowed = self::allowedAccountTypes($methodCode !== '' ? $methodCode : 'bkash');
+        if ($methodCode !== '' && !in_array($raw, $allowed, true)) {
+            GpJson::error(
+                'INVALID_ACCOUNT_TYPE',
+                'Account type “' . $raw . '” is not allowed for ' . $methodCode . '. Allowed: ' . implode(', ', $allowed) . '.',
+                400
+            );
+        }
+        return $raw;
+    }
+
+    /** @return list<string> */
+    public static function allowedAccountTypes(string $methodCode): array
+    {
+        $code = strtolower($methodCode);
+        if ($code === 'bkash') {
+            return ['personal', 'agent', 'payment', 'merchant'];
+        }
+        if (in_array($code, ['nagad', 'rocket', 'upay'], true)) {
+            return ['personal', 'agent', 'payment'];
+        }
+        if ($code === 'cellfin') {
+            return ['personal', 'agent'];
+        }
+        if (in_array($code, ['bangla_qr', 'bangla_qr_v2'], true)) {
+            return ['personal', 'merchant'];
+        }
+        return ['personal', 'agent', 'payment', 'merchant'];
     }
 
     /** @param array<string,mixed> $gw */
@@ -690,8 +728,21 @@ final class GatewaysController
             if ($status !== 'active') {
                 return 'configured_disabled';
             }
-            // Merchant API rails verify via provider credentials — companion optional.
-            if ($accountType === 'merchant') {
+            // Illegal merchant on non-bkash rails → incomplete until edited.
+            if ($accountType === 'merchant' && $method !== 'bkash') {
+                return 'setup_incomplete';
+            }
+            $hasDevice = false;
+            try {
+                $hasDevice = (int) (GpDb::one(
+                    "SELECT COUNT(*) as c FROM gp_devices WHERE brand_id = ? AND status = 'active'",
+                    [(string) ($gw['brand_id'] ?? '')]
+                )['c'] ?? 0) > 0;
+            } catch (Throwable $e) {
+                // non-fatal
+            }
+            // bKash merchant: API keys required + Companion SMS for live settle this release.
+            if ($method === 'bkash' && $accountType === 'merchant') {
                 $profile = GpDb::one(
                     'SELECT options FROM gp_methods WHERE brand_id = ? AND code = ?',
                     [(string) ($gw['brand_id'] ?? ''), $method]
@@ -701,18 +752,14 @@ final class GatewaysController
                     : [];
                 $hasApi = trim((string) ($opts['api_key_sealed'] ?? '')) !== ''
                     && trim((string) ($opts['api_secret_sealed'] ?? '')) !== '';
-                return $hasApi ? 'live_ready' : 'setup_incomplete';
-            }
-            try {
-                $hasDevice = (int) (GpDb::one(
-                    "SELECT COUNT(*) as c FROM gp_devices WHERE brand_id = ? AND status = 'active'",
-                    [(string) ($gw['brand_id'] ?? '')]
-                )['c'] ?? 0) > 0;
-                if (!$hasDevice) {
-                    return 'needs_companion';
+                if (!$hasApi) {
+                    return 'setup_incomplete';
                 }
-            } catch (Throwable $e) {
-                // non-fatal fallback
+                return $hasDevice ? 'live_ready' : 'needs_companion';
+            }
+            // personal / agent / payment (and all Nagad/Rocket/Upay types): Companion required.
+            if (!$hasDevice) {
+                return 'needs_companion';
             }
             return 'live_ready';
         }
@@ -785,10 +832,16 @@ final class GatewaysController
                 return ['Receiving account / wallet number is required.'];
             }
             $accountType = strtolower((string) ($gw['account_type'] ?? 'personal'));
-            if ($accountType === 'merchant') {
-                return ['Business (API) mode needs API key and API secret.'];
+            if ($accountType === 'merchant' && $method !== 'bkash') {
+                return ['This rail has no Merchant API — switch to Personal, Agent, or Payment and save.'];
+            }
+            if ($method === 'bkash' && $accountType === 'merchant') {
+                return ['bKash Merchant needs API Key + Secret (live settle still uses Companion SMS).'];
             }
             return ['Finish gateway credentials before going live.'];
+        }
+        if ($state === 'needs_companion' && $method === 'bkash' && strtolower((string) ($gw['account_type'] ?? '')) === 'merchant') {
+            return ['API keys saved — pair a Companion device so SMS can confirm live bKash Merchant payments.'];
         }
         if ($state === 'needs_attention') {
             return ['Review credentials or QR — this gateway needs attention before checkout.'];
@@ -900,19 +953,26 @@ final class GatewaysController
             $prev = is_array($decoded) ? $decoded : [];
         }
         if (in_array($methodCode, $mfs, true)) {
-            $accountType = strtolower(trim((string) $req->input('accountType', $req->input('account_type', $prev['account_type'] ?? 'personal'))));
-            if (in_array($accountType, ['personal', 'agent', 'merchant', 'payment'], true)) {
-                $prev['account_type'] = $accountType;
-            }
+            $accountType = self::accountType($req, (string) ($prev['account_type'] ?? 'personal'), $methodCode);
+            $prev['account_type'] = $accountType;
             if ($account !== '') {
                 $prev['account'] = $account;
                 $prev['depositAddressOrNumber'] = $account;
                 $prev['mobile_number'] = $account;
             }
+            // Seal API secrets only for bKash merchant — reject stray keys on other rails.
+            $allowSecrets = $methodCode === 'bkash' && $accountType === 'merchant';
             foreach (['username', 'password', 'api_key', 'api_secret', 'app_key', 'app_secret'] as $secretKey) {
                 $secret = $req->input($secretKey, null);
                 if (!is_string($secret) || trim($secret) === '') {
                     continue;
+                }
+                if (!$allowSecrets) {
+                    GpJson::error(
+                        'API_NOT_ALLOWED',
+                        'API credentials are only accepted for bKash Merchant accounts.',
+                        400
+                    );
                 }
                 if (in_array($secretKey, ['username'], true)) {
                     $prev['username'] = trim($secret);

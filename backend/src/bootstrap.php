@@ -27,6 +27,7 @@ spl_autoload_register(static function (string $class): void {
         'GpPlatform' => GRESSPAY_SRC . '/lib/Platform.php',
         'GpPlatformBilling' => GRESSPAY_SRC . '/lib/PlatformBilling.php',
         'GpPlanLimits' => GRESSPAY_SRC . '/lib/PlanLimits.php',
+        'GpTeam' => GRESSPAY_SRC . '/lib/Team.php',
         'BinancePayClient' => GRESSPAY_SRC . '/providers/BinancePayClient.php',
         'GoogleOAuthClient' => GRESSPAY_SRC . '/providers/GoogleOAuthClient.php',
         'TronUsdtVerifier' => GRESSPAY_SRC . '/providers/TronUsdtVerifier.php',
@@ -50,6 +51,7 @@ spl_autoload_register(static function (string $class): void {
         'BinancePayController' => GRESSPAY_SRC . '/features/binance/BinancePayController.php',
         'AdminController' => GRESSPAY_SRC . '/features/admin/AdminController.php',
         'BillingController' => GRESSPAY_SRC . '/features/billing/BillingController.php',
+        'TeamController' => GRESSPAY_SRC . '/features/team/TeamController.php',
     ];
     if (isset($map[$class])) {
         require_once $map[$class];

@@ -270,32 +270,35 @@ interface AccountTypeOption {
 }
 
 function getMethodAccountTypes(methodCode: string): AccountTypeOption[] {
-  if (methodCode === "nagad") {
-    return [
-      { id: "personal", label: "Personal", hint: "Send Money / Cash In · Auto SMS verify" },
-      { id: "agent", label: "Uddokta / Agent", hint: "Cash Out · Auto SMS verify" },
-      { id: "merchant", label: "Business (API)", hint: "Official Nagad PGW API" },
-    ];
-  }
+  // bKash: 4 types — only merchant stores API key+secret; live settle still Companion SMS this release.
   if (methodCode === "bkash") {
     return [
-      { id: "personal", label: "Personal", hint: "Send Money · Auto SMS verify" },
-      { id: "agent", label: "Agent", hint: "Cash Out · Auto SMS verify" },
-      { id: "payment", label: "Merchant Payment", hint: "Make Payment · Auto SMS verify" },
-      { id: "merchant", label: "Business (API)", hint: "Tokenized bKash PGW API" },
+      { id: "personal", label: "Personal", hint: "Send Money · Companion SMS verify" },
+      { id: "agent", label: "Agent", hint: "Cash Out · Companion SMS verify" },
+      { id: "payment", label: "Payment", hint: "Make Payment · Companion SMS verify" },
+      {
+        id: "merchant",
+        label: "Merchant (API)",
+        hint: "API Key + Secret stored · Companion SMS confirms live payments",
+      },
     ];
   }
-  if (methodCode === "rocket" || methodCode === "upay") {
+  // Nagad / Rocket / Upay: personal | agent | payment only — all Companion SMS (no merchant API).
+  if (methodCode === "nagad" || methodCode === "rocket" || methodCode === "upay") {
     return [
-      { id: "personal", label: "Personal", hint: "Send Money · Auto SMS verify" },
-      { id: "agent", label: "Agent", hint: "Cash Out · Auto SMS verify" },
-      { id: "merchant", label: "Business / API", hint: "Merchant account" },
+      { id: "personal", label: "Personal", hint: "Send Money / Cash In · Companion SMS verify" },
+      {
+        id: "agent",
+        label: methodCode === "nagad" ? "Uddokta / Agent" : "Agent",
+        hint: "Cash Out · Companion SMS verify",
+      },
+      { id: "payment", label: "Payment", hint: "Payment · Companion SMS verify" },
     ];
   }
   if (methodCode === "cellfin") {
     return [
-      { id: "personal", label: "CellFin Account", hint: "Direct IBBL / CellFin App transfer" },
-      { id: "agent", label: "Agent / Sub-branch", hint: "Agent account" },
+      { id: "personal", label: "CellFin Account", hint: "Direct IBBL / CellFin App · Companion SMS" },
+      { id: "agent", label: "Agent / Sub-branch", hint: "Agent account · Companion SMS" },
     ];
   }
   if (methodCode === "bangla_qr" || methodCode === "bangla_qr_v2") {
@@ -307,7 +310,7 @@ function getMethodAccountTypes(methodCode: string): AccountTypeOption[] {
   return [
     { id: "personal", label: "Personal", hint: "Direct peer-to-peer transfer" },
     { id: "agent", label: "Agent", hint: "Agent / Cash Out" },
-    { id: "merchant", label: "Business / Merchant", hint: "Corporate / Merchant account" },
+    { id: "payment", label: "Payment", hint: "Payment transfer" },
   ];
 }
 
@@ -357,6 +360,7 @@ export default function GatewaysPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const [currentBrandName, setCurrentBrandName] = useState<string>("");
+  const [brandVerifyMode, setBrandVerifyMode] = useState<string>("trx_id");
   const [formQrDataUrl, setFormQrDataUrl] = useState<string | null>(null);
   const [formQrFile, setFormQrFile] = useState<File | null>(null);
 
@@ -414,10 +418,12 @@ export default function GatewaysPage() {
       setMaxBytes(gwData.maxUploadBytes || 5242880);
 
       const activeB = (brandData.brands || []).find(
-        (b: { brandId: string; name: string }) => b.brandId === brandData.activeBrandId
+        (b: { brandId: string; name: string; verificationMode?: string }) =>
+          b.brandId === brandData.activeBrandId
       );
       if (activeB) {
         setCurrentBrandName(activeB.name);
+        setBrandVerifyMode(activeB.verificationMode || "trx_id");
       }
 
       if (platformData.methods && platformData.methods.length > 0) {
@@ -570,10 +576,12 @@ export default function GatewaysPage() {
       } else if (!/^01\d{9}$/.test(digits)) {
         return "Bangladesh MFS wallet must be an 11-digit number starting with 01.";
       }
-      if (formAccountType === "merchant") {
+      if (formMethod === "bkash" && formAccountType === "merchant") {
         if (!formApiKey.trim() || !formApiSecret.trim()) {
-          return "Business (API) account type requires API key and API secret (or password).";
+          return "bKash Merchant requires API Key and API Secret (live settle still uses Companion SMS).";
         }
+      } else if (formAccountType === "merchant" && formMethod !== "bkash" && formMethod !== "bangla_qr" && formMethod !== "bangla_qr_v2") {
+        return "This rail does not support Merchant API — use Personal, Agent, or Payment.";
       }
     }
     if (formMethod === "usdt_trc20") {
@@ -642,7 +650,7 @@ export default function GatewaysPage() {
         gatewayFeeType: formGatewayFeeType,
         gatewayCategory: formGatewayCategory,
       };
-      if (MFS_CODES.has(formMethod) && formAccountType === "merchant") {
+      if (formMethod === "bkash" && formAccountType === "merchant") {
         if (formUsername.trim()) payload.username = formUsername.trim();
         if (formPassword.trim()) payload.password = formPassword.trim();
         if (formApiKey.trim()) payload.api_key = formApiKey.trim();
@@ -840,7 +848,15 @@ export default function GatewaysPage() {
             </span>
           </div>
           <p className="text-xs text-zinc-500 mt-1">
-            Showing wallets for the selected brand. Enable, reorder, and edit credentials per channel.
+            Showing wallets for{" "}
+            <span className="font-semibold text-zinc-700 dark:text-zinc-300">
+              {currentBrandName || "the selected brand"}
+            </span>
+            . Checkout verify mode:{" "}
+            <span className="font-mono font-semibold">
+              {brandVerifyMode === "sms_auto" ? "SMS auto" : "TrxID + SMS"}
+            </span>
+            . bKash Merchant stores API keys; all personal/agent/payment rails settle via Companion SMS.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -1154,43 +1170,45 @@ export default function GatewaysPage() {
                   })}
                 </div>
 
-                {formAccountType === "merchant" && (
+                {formMethod === "bkash" && formAccountType === "merchant" && (
                   <div className="grid grid-cols-1 gap-3 rounded-xl border border-zinc-200 p-3 dark:border-zinc-800 sm:grid-cols-2">
                     <Input
-                      label={`${formMethod} username (optional)`}
+                      label="bKash username (optional)"
                       value={formUsername}
                       onChange={(e) => setFormUsername(e.target.value)}
                       autoComplete="off"
                     />
                     <Input
-                      label={`${formMethod} password`}
+                      label="bKash password (optional)"
                       type="password"
                       value={formPassword}
                       onChange={(e) => setFormPassword(e.target.value)}
                       autoComplete="new-password"
                     />
                     <Input
-                      label="API key"
+                      label="API key *"
                       value={formApiKey}
                       onChange={(e) => setFormApiKey(e.target.value)}
                       className="font-mono text-xs"
                       autoComplete="off"
+                      required
                     />
                     <Input
-                      label="API secret"
+                      label="API secret *"
                       type="password"
                       value={formApiSecret}
                       onChange={(e) => setFormApiSecret(e.target.value)}
                       className="font-mono text-xs"
                       autoComplete="new-password"
+                      required
                     />
                     <p className="col-span-full text-[11px] text-zinc-500">
-                      Secrets are encrypted at rest and never shown again after save. Personal / Agent / Payment
-                      numbers verify via Companion SMS on a paired device for this brand.
+                      API credentials are encrypted at rest. Live checkout still confirms via Companion SMS this
+                      release (official bKash PGW adapter comes later). Pair a device under Devices for this brand.
                     </p>
                   </div>
                 )}
-                {formAccountType !== "merchant" && (
+                {(formAccountType !== "merchant" || formMethod !== "bkash") && (
                   <p className="text-[11px] text-zinc-500">
                     This number is verified by Companion SMS match. Pair an Android device under{" "}
                     <Link href="/dashboard/devices" className="font-semibold underline">

@@ -53,28 +53,49 @@ final class BrandsController
     }
 
     /** @param array<string,mixed> $actor */
+    private static function isWorkspaceOwner(array $actor): bool
+    {
+        return empty($actor['team_member_id']);
+    }
+
+    /** JWT subject stays the signed-in user (staff), not the workspace owner. */
+    private static function jwtSubject(array $actor): string
+    {
+        $staff = trim((string) ($actor['staff_user_merchant_id'] ?? ''));
+        return $staff !== '' ? $staff : (string) $actor['merchant_id'];
+    }
+
+    /** @param array<string,mixed> $actor */
     private static function list(array $actor): never
     {
+        GpTeam::requireCan($actor, 'brands', 'view');
         $rows = GpDb::all(
             'SELECT * FROM gp_brands WHERE merchant_id = ? ORDER BY id ASC',
             [$actor['merchant_id']]
         );
+        $allowed = $actor['allowed_brand_ids'] ?? null;
+        $isStaff = !self::isWorkspaceOwner($actor);
         $out = [];
         foreach ($rows as $row) {
+            $brandId = (string) $row['brand_id'];
+            if ($isStaff && is_array($allowed) && !in_array($brandId, $allowed, true)) {
+                continue;
+            }
             $deviceCount = (int) (GpDb::one(
                 "SELECT COUNT(*) AS c FROM gp_devices WHERE brand_id = ? AND status = 'active'",
-                [$row['brand_id']]
+                [$brandId]
             )['c'] ?? 0);
             $gwCount = (int) (GpDb::one(
                 'SELECT COUNT(*) AS c FROM gp_gateways WHERE brand_id = ?',
-                [$row['brand_id']]
+                [$brandId]
             )['c'] ?? 0);
             $liveKey = GpDb::one(
                 "SELECT prefix, key_sealed FROM gp_api_keys WHERE brand_id = ? AND mode = 'live' AND status = 'active' ORDER BY id DESC LIMIT 1",
-                [$row['brand_id']]
+                [$brandId]
             );
             $websitePlain = '';
-            if (is_array($liveKey) && !empty($liveKey['key_sealed'])) {
+            // Website API keys remain owner-only; staff never receive plaintext.
+            if (!$isStaff && is_array($liveKey) && !empty($liveKey['key_sealed'])) {
                 $websitePlain = GpCrypto::open((string) $liveKey['key_sealed']) ?? '';
             }
             $logoKey = trim((string) ($row['logo_object_key'] ?? ''));
@@ -87,21 +108,20 @@ final class BrandsController
                     $previewLogo = null;
                 }
             }
+            $hasKey = $websitePlain !== '' || (is_array($liveKey) && ($liveKey['prefix'] ?? '') !== '');
             $out[] = array_merge(self::presentBrandSettings($row), [
-                'brandId' => $row['brand_id'],
+                'brandId' => $brandId,
                 'name' => $row['name'],
                 'currencyCode' => $row['currency_code'] ?? 'BDT',
                 'timezone' => $row['timezone'] ?? 'Asia/Dhaka',
                 'webhookUrl' => $row['webhook_url'] ?? null,
-                'active' => $row['brand_id'] === $actor['brand_id'],
+                'active' => $brandId === $actor['brand_id'],
                 'deviceCount' => $deviceCount,
                 'gatewayCount' => $gwCount,
                 'logoConfigured' => $logoKey !== '' || $logoUrl !== '',
                 'logoUrl' => $previewLogo,
                 'websiteApiKey' => $websitePlain,
-                'websiteApiKeyMasked' => ($websitePlain !== '' || (is_array($liveKey) && ($liveKey['prefix'] ?? '') !== ''))
-                    ? '**********'
-                    : '—',
+                'websiteApiKeyMasked' => $hasKey ? '**********' : '—',
                 'websiteApiKeyCopyable' => $websitePlain !== '',
                 'createdAt' => $row['created_at'] ?? null,
             ]);
@@ -109,12 +129,18 @@ final class BrandsController
         GpJson::send([
             'brands' => $out,
             'activeBrandId' => $actor['brand_id'],
+            'isWorkspaceOwner' => !$isStaff,
+            'teamRole' => $actor['team_role'] ?? null,
         ]);
     }
 
     /** @param array<string,mixed> $actor */
     private static function create(array $actor, GpRequest $req): never
     {
+        if (!self::isWorkspaceOwner($actor)) {
+            GpJson::error('FORBIDDEN', 'Only the workspace owner can create brands.', 403);
+        }
+        GpTeam::requireCan($actor, 'brands', 'create');
         GpPlanLimits::assertBrandCreateAllowed((string) $actor['merchant_id']);
 
         $name = trim((string) $req->input('name', $req->input('brand_name', '')));
@@ -148,9 +174,10 @@ final class BrandsController
         GpAuth::issueKey($brandId, 'live', 'Website API key');
         GpAuth::issueKey($brandId, 'test', 'Default test');
 
-        $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$actor['merchant_id']]);
+        $subject = self::jwtSubject($actor);
+        $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$subject]);
         $token = GpJwt::encode([
-            'sub' => $actor['merchant_id'],
+            'sub' => $subject,
             'brand' => $brandId,
             'email' => $merchant['email'] ?? $actor['email'],
             'role' => $actor['role'] ?? 'merchant',
@@ -171,6 +198,9 @@ final class BrandsController
     /** @param array<string,mixed> $actor */
     private static function rotateWebsiteKey(array $actor, string $brandId): never
     {
+        if (!self::isWorkspaceOwner($actor)) {
+            GpJson::error('FORBIDDEN', 'Only the workspace owner can rotate website API keys.', 403);
+        }
         $brand = GpDb::one(
             'SELECT * FROM gp_brands WHERE brand_id = ? AND merchant_id = ?',
             [$brandId, $actor['merchant_id']]
@@ -197,12 +227,13 @@ final class BrandsController
             'SELECT * FROM gp_brands WHERE brand_id = ? AND merchant_id = ?',
             [$brandId, $actor['merchant_id']]
         );
-        if ($brand === null) {
+        if ($brand === null || !GpTeam::actorCanAccessBrand($actor, $brand)) {
             GpJson::error('NOT_FOUND', 'Brand not found for your account.', 404);
         }
-        $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$actor['merchant_id']]);
+        $subject = self::jwtSubject($actor);
+        $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$subject]);
         $token = GpJwt::encode([
-            'sub' => $actor['merchant_id'],
+            'sub' => $subject,
             'brand' => $brand['brand_id'],
             'email' => $merchant['email'] ?? $actor['email'],
             'role' => $actor['role'] ?? 'merchant',
@@ -219,6 +250,10 @@ final class BrandsController
     /** @param array<string,mixed> $actor */
     private static function update(array $actor, string $brandId, GpRequest $req): never
     {
+        if (!self::isWorkspaceOwner($actor)) {
+            GpJson::error('FORBIDDEN', 'Only the workspace owner can edit brand settings.', 403);
+        }
+        GpTeam::requireCan($actor, 'brands', 'edit');
         $brand = GpDb::one(
             'SELECT * FROM gp_brands WHERE brand_id = ? AND merchant_id = ?',
             [$brandId, $actor['merchant_id']]

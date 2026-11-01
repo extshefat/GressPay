@@ -1131,7 +1131,97 @@ class ApiClient {
     const qs = q.toString();
     return this.request<{ smsLogs: AdminSmsLog[]; total: number }>(
       `/api/v1/admin/sms${qs ? "?" + qs : ""}`
-    );  }
+    );
+  }
+
+  async getTeamMe(): Promise<{
+    isWorkspaceOwner: boolean;
+    teamMemberId: string | null;
+    teamRole: string | null;
+    workspaceMerchantId?: string | null;
+    allowedBrandIds: string[] | null;
+    permissions: Record<string, Record<string, boolean>> | null;
+  }> {
+    return this.request("/api/v1/team/me");
+  }
+
+  async listTeam(): Promise<{
+    members: Array<{
+      memberId: string;
+      email: string;
+      role: string;
+      status: string;
+      userMerchantId?: string | null;
+      brandIds: string[];
+      permissions: Record<string, Record<string, boolean>>;
+      createdAt?: string | null;
+      updatedAt?: string | null;
+    }>;
+    stats: { total: number; active: number; invited: number; limit: number };
+    modules: string[];
+  }> {
+    return this.request("/api/v1/team");
+  }
+
+  async inviteTeamMember(payload: {
+    email: string;
+    brandIds: string[];
+    role?: "manager" | "support";
+    permissions?: Record<string, Record<string, boolean>>;
+  }): Promise<{
+    ok: boolean;
+    memberId: string;
+    inviteId: string;
+    email: string;
+    role: string;
+    brandIds: string[];
+    acceptUrl: string;
+    expiresAt: string;
+    note: string;
+  }> {
+    return this.request("/api/v1/team/invites", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async acceptTeamInvite(token: string): Promise<{
+    ok: boolean;
+    memberId: string;
+    role: string;
+    brandIds: string[];
+    note?: string;
+  }> {
+    return this.request("/api/v1/team/accept", {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    });
+  }
+
+  async updateTeamMember(
+    memberId: string,
+    payload: {
+      role?: "manager" | "support";
+      brandIds?: string[];
+      permissions?: Record<string, Record<string, boolean>>;
+    }
+  ): Promise<{ ok: boolean; memberId: string; role: string; brandIds: string[] }> {
+    return this.request(`/api/v1/team/members/${memberId}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async revokeTeamMember(memberId: string): Promise<{ ok: boolean }> {
+    return this.request(`/api/v1/team/members/${memberId}`, { method: "DELETE" });
+  }
+
+  async revokeTeamInvite(inviteId: string): Promise<{ ok: boolean }> {
+    return this.request(`/api/v1/team/invites/${inviteId}/revoke`, {
+      method: "POST",
+      body: "{}",
+    });
+  }
 }
 
 export const api = new ApiClient();

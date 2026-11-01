@@ -45,6 +45,7 @@ final class GpRouter
             'companion' => CompanionController::handle($req),
             'admin' => AdminController::handle($req),
             'billing' => BillingController::handle($req),
+            'team' => TeamController::handle($req),
             'binance-pay' => self::binancePay($req),
             default => GpJson::error('NOT_FOUND', 'Unknown route.', 404),
         };
