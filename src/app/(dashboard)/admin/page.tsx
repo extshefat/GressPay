@@ -20,6 +20,7 @@ import { StatCard } from "@/components/ui/stat-card";
 import { Alert } from "@/components/ui/alert";
 import { Modal } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
+import { DashboardPageHeader } from "@/features/dashboard/components/DashboardPageHeader";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import {
   ShieldCheck,
@@ -482,7 +483,7 @@ export default function AdminPage() {
           Your account is not recognized as a Super Admin in the server configuration (<code className="font-mono text-xs bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-700">ADMIN_EMAIL</code>).
         </p>
         <div className="pt-2">
-          <Button variant="outline" onClick={() => (window.location.href = "/overview")}>
+          <Button variant="outline" onClick={() => (window.location.href = "/dashboard/overview")}>
             Return to dashboard
           </Button>
         </div>
@@ -491,34 +492,32 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Super Admin Control Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-zinc-200 dark:border-zinc-800">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-              Super Admin Console
-            </h1>
-            <span className="text-[10px] font-mono font-bold tracking-widest uppercase px-2 py-0.5 rounded bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 border border-zinc-900 dark:border-white">
-              ROOT ENFORCED
-            </span>
-          </div>
-          <p className="text-xs text-zinc-500 mt-1">
+    <div className="dashboard-page">
+      <DashboardPageHeader
+        eyebrow="Platform administration"
+        title="Control center"
+        icon={<ShieldCheck className="h-5 w-5" />}
+        badge={
+          <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-300">
+            Root access
+          </span>
+        }
+        description={
+          <>
             Platform governance, global payment gateways, account role assignment, and live companion telemetry.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
+          </>
+        }
+        actions={
           <Button
             size="sm"
             variant="outline"
             leftIcon={<RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`} />}
             onClick={loadData}
           >
-            Refresh Data
+            Refresh data
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Notifications */}
       {errorMessage && (
@@ -533,7 +532,7 @@ export default function AdminPage() {
       )}
 
       {/* Stage-2 Tab Bar — 4 control surfaces */}
-      <div className="flex gap-1.5 overflow-x-auto pb-1 border-b border-zinc-200 dark:border-zinc-800 scrollbar-none">
+      <div className="dashboard-tabs no-scrollbar">
         {[
           { key: "gateways", label: "Global Gateway Control", icon: Sliders },
           { key: "merchants", label: "Accounts & subscriptions", icon: Users },
@@ -546,10 +545,10 @@ export default function AdminPage() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key as typeof activeTab)}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
+              className={`dashboard-tab ${
                 isActive
-                  ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 shadow-sm"
-                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                  ? "dashboard-tab-active"
+                  : ""
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
@@ -662,7 +661,7 @@ export default function AdminPage() {
             </div>
           </div>
 
-          <Card className="space-y-3 p-4 border-emerald-200 dark:border-emerald-900">
+          <Card className="space-y-4 border-emerald-200/70 p-5 dark:border-emerald-900/50">
             <div>
               <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Account plan billing brand</h3>
               <p className="text-xs text-zinc-500 mt-1">
@@ -677,7 +676,7 @@ export default function AdminPage() {
                 <select
                   value={billingBrandId}
                   onChange={(e) => setBillingBrandId(e.target.value)}
-                  className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs font-mono text-zinc-900 dark:text-zinc-100"
+                  className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3.5 text-sm text-zinc-900 shadow-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/10 dark:border-[#2a3a47] dark:bg-[#0b1620] dark:text-zinc-100 dark:focus:border-teal-400"
                 >
                   <option value="">Select brand (brd_…)</option>
                   {billingBrandOptions.map((b) => (
@@ -727,16 +726,16 @@ export default function AdminPage() {
             )}
           </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {gateways.map((gw) => {
               const isEnabled = gw.is_enabled === 1;
               return (
                 <Card
                   key={gw.gateway_code}
-                  className={`p-5 transition-all border ${
+                  className={`p-5 transition-all hover:-translate-y-0.5 hover:shadow-lg ${
                     isEnabled
-                      ? "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950"
-                      : "border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30 opacity-75"
+                      ? "hover:border-teal-700/20 dark:hover:border-teal-300/20"
+                      : "bg-zinc-50/60 opacity-70 dark:bg-[#0b1620]/50"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-4">
@@ -765,7 +764,7 @@ export default function AdminPage() {
                       type="button"
                       onClick={() => handleToggleGateway(gw)}
                       className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        isEnabled ? "bg-zinc-900 dark:bg-white" : "bg-zinc-200 dark:bg-zinc-800"
+                        isEnabled ? "bg-teal-600 dark:bg-teal-400" : "bg-zinc-200 dark:bg-zinc-700"
                       }`}
                       aria-label={`Toggle ${gw.display_name}`}
                     >
@@ -1352,7 +1351,7 @@ export default function AdminPage() {
                 <select
                   value={billingBrandId}
                   onChange={(e) => setBillingBrandId(e.target.value)}
-                  className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs font-mono text-zinc-900 dark:text-zinc-100"
+                  className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3.5 text-sm text-zinc-900 shadow-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/10 dark:border-[#2a3a47] dark:bg-[#0b1620] dark:text-zinc-100 dark:focus:border-teal-400"
                 >
                   <option value="">Select brand (brd_…)</option>
                   {billingBrandOptions.map((b) => (

@@ -22,7 +22,7 @@ jobs:
           node-version: "20"
           cache: npm
           cache-dependency-path: package-lock.json
-      - run: npm ci || npm install
+      - run: npm ci
       - run: npx tsc --noEmit
       - run: npm run build
         env:
@@ -46,7 +46,9 @@ jobs:
           apk add --no-cache $PHPIZE_DEPS icu-dev curl-dev
           docker-php-ext-install bcmath
       - name: Run tests
-        run: php backend/tests/run.php
+        run: |
+          find backend -name '*.php' -print0 | xargs -0 -n1 php -l
+          php backend/tests/run.php
 
   android:
     name: Android unit tests + APK
@@ -79,7 +81,7 @@ jobs:
           yes | "$SM" --licenses >/dev/null || true
           "$SM" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
       - name: Unit tests
-        run: chmod +x gradlew && ./gradlew :app:testDebugUnitTest --tests com.gresspay.companion.sms.PaymentSmsParserTest --stacktrace
+        run: chmod +x gradlew && ./gradlew :app:testDebugUnitTest --stacktrace
       - name: Assemble debug
         run: ./gradlew :app:assembleDebug --stacktrace
       - name: Upload companion APK

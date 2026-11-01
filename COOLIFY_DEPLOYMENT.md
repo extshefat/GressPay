@@ -52,6 +52,7 @@ DB_PASS=<strong-secret>
 JWT_SECRET=<≥32 random characters>
 APP_ENCRYPTION_KEY=<≥32 random characters>
 GRESSPAY_CRYPTO_ALLOWED=0
+GRESSPAY_SMS_AUTO_ALLOWED=0
 BINANCE_PAY_API_BASE=https://bpay.binanceapi.com
 TRON_API_BASE=https://api.trongrid.io
 TRON_API_KEY=<optional platform TronGrid key>
@@ -127,10 +128,14 @@ TLS terminates at Coolify. Force HTTPS for merchant credential forms.
 
 ## Database & migrations
 
-1. Create MySQL with a **persistent volume**.  
-2. First API boot runs `GpDb::migrate()` + `GpDb::ensureExtras()` (schema + `binance_pay_json`, nonces, audit, indexes).  
+1. Inspect the deployed database driver and preserve it. The block above is a MySQL example; for an existing PostgreSQL installation use `DB_DRIVER=pgsql`, its existing host and `DB_PORT=5432`. Never switch engines as part of an app deploy.  
+2. Take a verified database backup and rehearse restore and schema changes on staging before the first upgraded API boot. First boot runs `GpDb::migrate()` + `GpDb::ensureExtras()` and seals legacy webhook secrets. Check existing SMS TxID duplicates before adding the new unique indexes.  
 3. Do **not** use SQLite in production (ephemeral disk).  
 4. Optional volume for `storage/` logs only — never primary data.
+
+Run `php jobs/WebhookWorker.php` as a separate continuously running service using the same API environment. A failed first webhook attempt is queued; confirm retry history and worker health before enabling merchant fulfillment.
+
+The updated Android companion sends the original SMS receipt timestamp. Publish a release-signed APK built with the existing signing identity before enabling live SMS verification on this API version. Leave `GRESSPAY_SMS_AUTO_ALLOWED=0`; TxID remains required for the first release.
 
 ## Crypto stays disabled until ready
 

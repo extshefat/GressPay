@@ -17,7 +17,7 @@ data class ParsedPaymentSms(
  */
 object PaymentSmsParser {
 
-    private val BKASH_SENDERS = setOf("16247", "bkash", "bkas")
+    private val BKASH_SENDERS = setOf("16247", "bkash")
     private val NAGAD_SENDERS = setOf("16167", "16262", "nagad")
     private val ROCKET_SENDERS = setOf("16216", "rocket", "dbbl")
     private val UPAY_SENDERS = setOf("16268", "upay", "ucb")
@@ -72,7 +72,9 @@ object PaymentSmsParser {
         if (isNoise(body)) return null
         if (isDebitOrOutgoing(body)) return null
         if (!isCreditReceipt(body)) return null
-        val senderKey = resolveSender(fromAddress, body) ?: return null
+        // The message body is untrusted. A sender must match an approved SMS
+        // address exactly; a body that merely says "bKash" is not evidence.
+        val senderKey = resolveSender(fromAddress) ?: return null
         val amount = extractAmount(body) ?: return null
         val trx = extractTrx(body) ?: return null
         return ParsedPaymentSms(
@@ -102,25 +104,16 @@ object PaymentSmsParser {
             extractAmount(body) != null
     }
 
-    private fun resolveSender(from: String, body: String): String? {
+    private fun resolveSender(from: String): String? {
         val fromNorm = from.trim().lowercase(Locale.US)
-        val digits = from.filter { it.isDigit() }
-        val upperBody = body.uppercase(Locale.US)
-
-        if (digits in setOf("16247") || BKASH_SENDERS.any { fromNorm.contains(it) }) return "bkash"
-        if (digits in setOf("16167", "16262") || NAGAD_SENDERS.any { fromNorm.contains(it) }) return "nagad"
-        if (digits in setOf("16216") || ROCKET_SENDERS.any { fromNorm.contains(it) }) return "rocket"
-        if (digits in setOf("16268") || UPAY_SENDERS.any { fromNorm.contains(it) }) return "upay"
-        if (digits in setOf("16259") || CELLFIN_SENDERS.any { fromNorm.contains(it) }) return "cellfin"
-
-        val matches = mutableListOf<String>()
-        if ("BKASH" in upperBody) matches.add("bkash")
-        if ("NAGAD" in upperBody) matches.add("nagad")
-        if ("ROCKET" in upperBody || "DBBL" in upperBody) matches.add("rocket")
-        if ("UPAY" in upperBody) matches.add("upay")
-        if ("CELLFIN" in upperBody || "IBBL" in upperBody) matches.add("cellfin")
-
-        return if (matches.size == 1) matches[0] else null
+        return when (fromNorm) {
+            in BKASH_SENDERS -> "bkash"
+            in NAGAD_SENDERS -> "nagad"
+            in ROCKET_SENDERS -> "rocket"
+            in UPAY_SENDERS -> "upay"
+            in CELLFIN_SENDERS -> "cellfin"
+            else -> null
+        }
     }
 
     private fun extractAmount(body: String): String? {

@@ -143,6 +143,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
 
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const redirectTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const checkingExpiryRef = useRef(false);
 
   const payableAmount = selectedMethod?.payableAmount ?? session.amount;
   const payableCurrency =
@@ -189,15 +190,38 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
     const interval = setInterval(() => {
       setSecondsLeft((prev) => {
         if (prev <= 1) {
-          clearInterval(interval);
-          setCheckoutStatus("EXPIRED");
+          if (demoMode) {
+            setCheckoutStatus("EXPIRED");
+            return 0;
+          }
+          if (!checkingExpiryRef.current) {
+            checkingExpiryRef.current = true;
+            void api.getCheckoutStatus(session.sessionId).then((res) => {
+              if (res.status === "COMPLETED") {
+                setCheckoutStatus("COMPLETED");
+                handleSuccessfulRedirect(res.redirectUrl || res.returnUrl || session.returnUrl);
+              } else if (res.status === "EXPIRED") {
+                setCheckoutStatus("EXPIRED");
+              } else {
+                setSecondsLeft(5);
+              }
+            }).catch(() => setSecondsLeft(5)).finally(() => {
+              checkingExpiryRef.current = false;
+            });
+          }
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [checkoutStatus]);
+  }, [checkoutStatus, demoMode, session.sessionId, session.returnUrl]);
+
+  useEffect(() => {
+    if (checkoutStatus !== "EXPIRED" || !session.returnUrl) return;
+    const timer = setTimeout(() => { window.location.href = session.returnUrl!; }, 4000);
+    return () => clearTimeout(timer);
+  }, [checkoutStatus, session.returnUrl]);
 
   // Clean up polling & redirect intervals on unmount
   useEffect(() => {
@@ -521,9 +545,12 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
             variant="outline"
             size="md"
             className="w-full"
-            onClick={() => window.location.reload()}
+            onClick={() => {
+              if (session.returnUrl) window.location.href = session.returnUrl;
+              else window.location.reload();
+            }}
           >
-            Restart Checkout
+            {session.returnUrl ? "Return to seller" : "Reload status"}
           </Button>
         </div>
       </div>

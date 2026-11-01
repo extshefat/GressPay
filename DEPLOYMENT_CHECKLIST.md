@@ -23,6 +23,7 @@ Complete in order. **Do not deploy from this checklist automatically** — use C
 - [ ] `APP_ENCRYPTION_KEY` ≥32
 - [ ] `DB_PASS` strong
 - [ ] `GRESSPAY_CRYPTO_ALLOWED=0` initially
+- [ ] `GRESSPAY_SMS_AUTO_ALLOWED=0` until amount-only matching passes ambiguous-session tests
 - [ ] Optional `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` (if enabling Google OAuth)
 - [ ] Optional `TRON_API_KEY` (platform TronGrid only)
 - [ ] Optional R2 vars on **API only** (`R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ENDPOINT`, …)
@@ -44,6 +45,8 @@ Complete in order. **Do not deploy from this checklist automatically** — use C
 - [ ] Settings: Binance Pay Merchant credentials → encrypted; form cleared
 - [ ] Confirm checkout shows correct gateway destination + QR; scanning QR ≠ paid
 - [ ] Companion device registered; revoke tested
+- [ ] Companion release APK sends original SMS timestamp; old APKs cannot verify live payments
+- [ ] Webhook worker runs continuously; failed delivery retries and history checked
 - [ ] Test payment link shows **this** merchant’s destination
 
 ## F. Enable crypto (optional)

@@ -123,6 +123,13 @@ final class TransactionsController
                     400
                 );
             }
+            if (in_array($methodCode, ['bkash', 'nagad'], true) && strtolower((string) $row['ledger_mode']) === 'live') {
+                GpJson::error(
+                    'SMS_EVIDENCE_REQUIRED',
+                    'Live bKash and Nagad payments require matching companion SMS evidence. Manual review does not verify payment.',
+                    409
+                );
+            }
 
             $cat = GpCatalog::find($methodCode);
             if ($cat === null) {
@@ -203,7 +210,8 @@ final class TransactionsController
             GpJson::send([
                 'ok' => $code >= 200 && $code < 300,
                 'httpCode' => $code,
-                'message' => $code >= 200 && $code < 300 ? 'Webhook resent successfully.' : 'Webhook delivery failed.',
+                'message' => $code === 202 ? 'Webhook queued for retry.'
+                    : ($code >= 200 && $code < 300 ? 'Webhook resent successfully.' : 'Webhook delivery failed.'),
             ]);
         }
 

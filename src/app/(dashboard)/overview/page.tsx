@@ -12,6 +12,7 @@ import { ChartContainer, SimpleVolumeChart } from "@/components/ui/chart-contain
 import { EmptyState } from "@/components/ui/empty-state";
 import { Alert } from "@/components/ui/alert";
 import { Modal } from "@/components/ui/modal";
+import { DashboardPageHeader } from "@/features/dashboard/components/DashboardPageHeader";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import {
   RefreshCw,
@@ -85,24 +86,24 @@ export default function OverviewPage() {
   const methodPct = sub ? Math.min(100, Math.round((sub.methodsUsed / Math.max(sub.methodLimit, 1)) * 100)) : 0;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-              Overview
-            </h1>
-            <Badge variant={ledgerMode === "test" ? "amber" : "emerald"} size="sm" dot>
+    <div className="dashboard-page">
+      <DashboardPageHeader
+        eyebrow="Merchant workspace"
+        title="Overview"
+        icon={<Activity className="h-5 w-5" />}
+        badge={
+          <Badge variant={ledgerMode === "test" ? "amber" : "emerald"} size="sm" dot>
               {ledgerMode === "test" ? "Test" : "Live"}
-            </Badge>
-          </div>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+          </Badge>
+        }
+        description={
+          <>
             Verified volume, open checkouts, and companion health for the active brand
             {ledgerMode === "test" ? " (test ledger)" : ""}.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2.5">
+          </>
+        }
+        actions={
+          <>
           <Button
             variant="outline"
             size="sm"
@@ -117,8 +118,9 @@ export default function OverviewPage() {
               Create Link
             </Button>
           </Link>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {errorMessage && (
         <Alert variant="danger" title="System Notice">

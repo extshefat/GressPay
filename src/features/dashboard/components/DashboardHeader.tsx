@@ -70,7 +70,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user, onMenuCl
   const activeBrand = brands.find((b) => b.brandId === activeBrandId) || brands[0];
 
   return (
-    <header className="h-14 sm:h-16 bg-white/95 dark:bg-zinc-950/95 border-b border-zinc-200 dark:border-zinc-800 px-4 sm:px-6 flex items-center justify-between backdrop-blur-md transition-colors gap-3">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-zinc-200/80 bg-white/85 px-4 backdrop-blur-xl transition-colors dark:border-[#21313f] dark:bg-[#071018]/88 sm:px-6">
       <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
         {onMenuClick && (
           <button
@@ -93,7 +93,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user, onMenuCl
             trigger={
               <button
                 type="button"
-                className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700/40"
+                className="flex min-h-9 items-center gap-2 rounded-xl border border-zinc-200 bg-white px-2.5 text-xs font-semibold text-zinc-800 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700/30 dark:border-[#2a3a47] dark:bg-[#0f1b26] dark:text-zinc-200 dark:hover:bg-[#172532] sm:px-3"
               >
                 <Building2 className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                 <span className="truncate max-w-[110px] sm:max-w-[150px]">
@@ -145,7 +145,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user, onMenuCl
         </Link>
 
         <div className="flex items-center gap-2.5 pl-2 sm:pl-3 border-l border-zinc-200 dark:border-zinc-800">
-          <div className="w-8 h-8 rounded-lg bg-teal-700/10 text-teal-800 dark:bg-teal-400/15 dark:text-teal-200 border border-teal-700/20 dark:border-teal-400/20 flex items-center justify-center text-xs font-bold">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-teal-700/15 bg-teal-700/10 text-xs font-bold text-teal-800 dark:border-teal-300/15 dark:bg-teal-300/10 dark:text-teal-300">
             {user?.name ? user.name.slice(0, 2).toUpperCase() : "GP"}
           </div>
           <div className="hidden md:block text-left min-w-0">

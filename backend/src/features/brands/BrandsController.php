@@ -159,7 +159,7 @@ final class BrandsController
                 $name,
                 strtoupper((string) $req->input('currency_code', 'BDT')),
                 (string) $req->input('timezone', 'Asia/Dhaka'),
-                $webhookSecret,
+                GpCrypto::seal($webhookSecret),
                 $now,
                 $now,
             ]

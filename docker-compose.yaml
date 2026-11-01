@@ -26,7 +26,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    environment:
+    environment: &php_environment
       PORT: "8080"
       PHP_CLI_SERVER_WORKERS: "8"
       APP_URL: ${APP_URL}
@@ -56,3 +56,13 @@ services:
       R2_ENDPOINT: ${R2_ENDPOINT}
       R2_PUBLIC_BASE_URL: ${R2_PUBLIC_BASE_URL}
     restart: unless-stopped
+
+  webhook-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: ["php", "jobs/WebhookWorker.php"]
+    environment: *php_environment
+    restart: unless-stopped
+    depends_on:
+      - php

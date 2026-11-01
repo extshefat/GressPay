@@ -67,10 +67,8 @@ final class CompanionController
             GpAuth::requireScope($actor, 'manage_devices');
             GpTeam::requireCan($actor, 'devices', 'delete');
             $n = GpDb::exec(
-                'UPDATE gp_devices d
-                 INNER JOIN gp_brands b ON b.brand_id = d.brand_id
-                 SET d.status = ?, d.updated_at = ?
-                 WHERE d.device_id = ? AND b.merchant_id = ?',
+                'UPDATE gp_devices SET status = ?, updated_at = ?
+                 WHERE device_id = ? AND brand_id IN (SELECT brand_id FROM gp_brands WHERE merchant_id = ?)',
                 ['revoked', GpIds::now(), $devicePart, $actor['merchant_id']]
             );
             if ($n === 0) {
@@ -154,15 +152,6 @@ final class CompanionController
             }
 
             $idem = trim((string) $req->input('idempotency_key', $req->input('idempotencyKey', '')));
-            if ($idem !== '') {
-                $prior = GpDb::one(
-                    'SELECT id FROM gp_sms_data WHERE brand_id = ? AND idempotency_key = ?',
-                    [$device['brand_id'], $idem]
-                );
-                if ($prior) {
-                    GpJson::send(['ok' => true, 'matched' => false, 'idempotent' => true]);
-                }
-            }
 
             $plugin = GpCatalog::loadPlugin($sender);
             $trxId = trim((string) $req->input('trx_id', $req->input('trxId', '')));
@@ -170,8 +159,43 @@ final class CompanionController
                 $trxId = $plugin->normalizeTrx($trxId);
             }
             $amount = GpMoney::sanitize((string) $req->input('amount', '0'));
+            $receivedAtMs = filter_var($req->input('received_at_ms', null), FILTER_VALIDATE_INT);
+            if ($receivedAtMs === false || $receivedAtMs === null || $receivedAtMs <= 0
+                || $receivedAtMs > (time() + 300) * 1000) {
+                GpJson::error('INVALID_SMS_TIME', 'A valid original SMS timestamp is required.', 400);
+            }
+            $receivedAt = gmdate('Y-m-d\TH:i:s\Z', intdiv($receivedAtMs, 1000));
             if ($trxId === '' || (float) $amount <= 0) {
                 GpJson::error('VALIDATION', 'trx_id and amount are required.');
+            }
+
+            $boundGatewayId = trim((string) ($device['bound_gateway_id'] ?? ''));
+            if ($boundGatewayId !== '') {
+                $boundGateway = GpDb::one(
+                    'SELECT method_code FROM gp_gateways WHERE brand_id = ? AND gateway_id = ? AND status = ?',
+                    [$device['brand_id'], $boundGatewayId, 'active']
+                );
+                if ($boundGateway === null || GpCatalog::publicCode((string) $boundGateway['method_code']) !== $sender) {
+                    GpJson::error('DEVICE_RAIL_MISMATCH', 'Device is bound to a different or inactive gateway.', 409);
+                }
+            }
+
+            // A retry may be delivered after checkout has claimed this SMS.
+            // Return success for the same evidence, but reject key reuse with changed data.
+            $smsNumber = self::resolveSmsWalletNumber($device, (string) $req->input('number', ''), $sender);
+            if ($idem !== '') {
+                $prior = GpDb::one(
+                    'SELECT * FROM gp_sms_data WHERE brand_id = ? AND idempotency_key = ?',
+                    [$device['brand_id'], $idem]
+                );
+                if ($prior !== null) {
+                    if (!self::sameSmsEvidence($prior, $sender, $amount, $trxId, $smsNumber, $receivedAt)) {
+                        GpJson::error('CONFLICTING_SMS', 'Idempotency key already belongs to different SMS evidence.', 409);
+                    }
+                    if ((string) $prior['status'] === 'used') {
+                        GpJson::send(['ok' => true, 'matched' => true, 'idempotent' => true]);
+                    }
+                }
             }
 
             // Anti-Fraud: Strict uniqueness check against completed orders and used SMS
@@ -192,36 +216,29 @@ final class CompanionController
             }
 
             $existingApproved = GpDb::one(
-                'SELECT id FROM gp_sms_data WHERE brand_id = ? AND trx_id = ? AND status = ?',
-                [$device['brand_id'], $trxId, 'approved']
+                'SELECT * FROM gp_sms_data WHERE brand_id = ? AND UPPER(trx_id) = ? AND status = ?',
+                [$device['brand_id'], strtoupper($trxId), 'approved']
             );
             $now = GpIds::now();
             // Prefer device-bound wallet digits for matching (APK still sends SMS shortcode as number).
-            $smsNumber = self::resolveSmsWalletNumber($device, (string) $req->input('number', ''), $sender);
             // Audit: store amount/trx/sender/device — never full SMS body.
             if ($existingApproved) {
-                GpDb::exec(
-                    'UPDATE gp_sms_data SET sender_key = ?, amount = ?, number = ?, device_id = ?, idempotency_key = COALESCE(?, idempotency_key), updated_at = ? WHERE id = ?',
-                    [
-                        $sender,
-                        $amount,
-                        $smsNumber,
-                        $device['device_id'],
-                        $idem !== '' ? $idem : null,
-                        $now,
-                        $existingApproved['id'],
-                    ]
-                );
+                if (!self::sameSmsEvidence($existingApproved, $sender, $amount, $trxId, $smsNumber, $receivedAt)) {
+                    GpJson::error('CONFLICTING_SMS', 'This transaction ID already has different SMS evidence.', 409);
+                }
+                // A retry may arrive after the buyer opens checkout. Reconcile it below,
+                // but never rewrite the original evidence or its receiving wallet.
             } else {
                 try {
                     GpDb::exec(
-                        'INSERT INTO gp_sms_data (brand_id, sender_key, amount, trx_id, number, status, device_id, idempotency_key, created_at, updated_at)
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                        'INSERT INTO gp_sms_data (brand_id, sender_key, amount, trx_id, received_at, number, status, device_id, idempotency_key, created_at, updated_at)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                         [
                             $device['brand_id'],
                             $sender,
                             $amount,
                             $trxId,
+                            $receivedAt,
                             $smsNumber,
                             'approved',
                             $device['device_id'],
@@ -245,7 +262,8 @@ final class CompanionController
                     'SELECT verification_mode FROM gp_brands WHERE brand_id = ?',
                     [$device['brand_id']]
                 );
-                if (is_array($brandMode) && strtolower((string) ($brandMode['verification_mode'] ?? '')) === 'sms_auto') {
+                if (GpConfig::get('GRESSPAY_SMS_AUTO_ALLOWED', '0') === '1'
+                    && is_array($brandMode) && strtolower((string) ($brandMode['verification_mode'] ?? '')) === 'sms_auto') {
                     $pendingCandidates = GpDb::all(
                         "SELECT * FROM gp_transactions
                          WHERE brand_id = ? AND status IN (?, ?)
@@ -333,6 +351,17 @@ final class CompanionController
         }
 
         GpJson::error('NOT_FOUND', 'Unknown companion route.', 404);
+    }
+
+    /** @param array<string,mixed> $stored */
+    private static function sameSmsEvidence(array $stored, string $sender, string $amount, string $trxId, string $number, string $receivedAt): bool
+    {
+        return strtoupper((string) ($stored['trx_id'] ?? '')) === strtoupper($trxId)
+            && GpCatalog::publicCode((string) ($stored['sender_key'] ?? '')) === $sender
+            && GpMoney::sanitize((string) ($stored['amount'] ?? '0')) === $amount
+            && (string) ($stored['received_at'] ?? '') === $receivedAt
+            && (preg_replace('/\D+/', '', (string) ($stored['number'] ?? '')) ?: '')
+                === (preg_replace('/\D+/', '', $number) ?: '');
     }
 
     /**

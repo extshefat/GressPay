@@ -404,7 +404,8 @@ final class GpPresenters
             'supportEmail' => trim((string) ($brand['support_email'] ?? '')) ?: null,
             'supportTelegram' => trim((string) ($brand['support_telegram'] ?? '')) ?: null,
             'checkoutTheme' => (string) ($brand['checkout_theme'] ?? 'default') ?: 'default',
-            'verificationMode' => (string) ($brand['verification_mode'] ?? 'trx_id') ?: 'trx_id',
+            'verificationMode' => GpConfig::get('GRESSPAY_SMS_AUTO_ALLOWED', '0') === '1'
+                ? ((string) ($brand['verification_mode'] ?? 'trx_id') ?: 'trx_id') : 'trx_id',
             'amountPolicy' => (string) ($brand['amount_policy'] ?? 'exact') ?: 'exact',
             'amountFormat' => (string) ($brand['amount_format'] ?? 'as_is') ?: 'as_is',
             'brandFee' => isset($brand['brand_fee']) ? self::num($brand['brand_fee']) : 0,

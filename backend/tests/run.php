@@ -530,8 +530,8 @@ GpDb::exec(
 // Step 1: Carrier SMS arrives first from Android Companion APK
 $trxA = 'TRX_SCENARIO_A_' . bin2hex(random_bytes(3));
 GpDb::exec(
-    'INSERT INTO gp_sms_data (brand_id, sender_key, amount, trx_id, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
-    [$brandP5, 'bkash', '500.00', $trxA, 'approved', $nowP5, $nowP5]
+    'INSERT INTO gp_sms_data (brand_id, sender_key, amount, trx_id, received_at, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)',
+    [$brandP5, 'bkash', '500.00', $trxA, $nowP5, 'approved', $nowP5, $nowP5]
 );
 
 // Step 2: Customer creates checkout session
@@ -589,8 +589,8 @@ assert_true($noSmsYet === null, 'Scenario B: matchingSms returns null before car
 
 // A few seconds later, Companion APK posts the SMS:
 GpDb::exec(
-    'INSERT INTO gp_sms_data (brand_id, sender_key, amount, trx_id, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
-    [$brandP5, 'nagad', '750.00', $trxB, 'approved', $nowP5, $nowP5]
+    'INSERT INTO gp_sms_data (brand_id, sender_key, amount, trx_id, received_at, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)',
+    [$brandP5, 'nagad', '750.00', $trxB, $nowP5, 'approved', $nowP5, $nowP5]
 );
 
 // CompanionController finds the pending verifying session:
@@ -608,6 +608,20 @@ $paidB = CheckoutController::markPaid($pendingB, $trxB, 'nagad', $methodRowP5_B,
 assert_true(strtolower((string)$paidB['status']) === 'completed', 'Scenario B: Pending session automatically transitions to completed');
 $usedSmsB = GpDb::one('SELECT status FROM gp_sms_data WHERE trx_id = ?', [$trxB]);
 assert_true(($usedSmsB['status'] ?? '') === 'used', 'Scenario B: Synced SMS status locked to used');
+
+// A previously received SMS is retained, but cannot settle a new checkout.
+$oldTrx = 'OLD_' . bin2hex(random_bytes(5));
+$oldTime = gmdate('Y-m-d\TH:i:s\Z', time() - 3600);
+GpDb::exec(
+    'INSERT INTO gp_sms_data (brand_id, sender_key, amount, trx_id, received_at, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)',
+    [$brandP5, 'bkash', '500', $oldTrx, $oldTime, 'approved', $nowP5, $nowP5]
+);
+$oldSms = GpDb::one('SELECT * FROM gp_sms_data WHERE brand_id = ? AND trx_id = ?', [$brandP5, $oldTrx]);
+$newRow = ['session_id' => GpIds::make('chs', 6), 'brand_id' => $brandP5, 'ledger_mode' => 'live',
+    'status' => 'pending', 'created_at' => $nowP5, 'expires_at' => gmdate('Y-m-d\TH:i:s\Z', time() + 1800),
+    'amount' => '500', 'currency' => 'BDT', 'metadata' => '{}'];
+assert_true(CheckoutController::markPaid($newRow, $oldTrx, 'bkash', $methodRowP5_A, '500', 'BDT', $oldSms)['status'] === 'pending',
+    'SMS received before checkout cannot complete a new session');
 
 assert_true(GpConfig::normalizeDbDriver('pgsql') === 'pgsql', 'pgsql is not rewritten to mysql');
 assert_true(GpConfig::normalizeDbDriver('postgres') === 'pgsql', 'postgres alias stays PostgreSQL');
@@ -775,14 +789,17 @@ $wrongLiveBrand = 'gp_live_' . bin2hex(random_bytes(8));
 $viaResolve = CompanionController::resolveActiveDevice($wrongLiveBrand, $plainTok);
 assert_true(is_array($viaResolve) && ($viaResolve['device_id'] ?? '') === $smsDevId, 'gp_live brand hint ignored; token binds to owning brand');
 
-// —— Webhook retry attempts logged ——
+// —— Failed webhook delivery is durably queued for worker retry ——
 putenv('WEBHOOK_MAX_RETRIES=2');
 $_ENV['WEBHOOK_MAX_RETRIES'] = '2';
 $whBrand = ['brand_id' => $limBrand, 'webhook_secret' => 'gpwh_testsecret'];
 $beforeWh = (int) (GpDb::one('SELECT COUNT(*) AS c FROM gp_webhook_deliveries')['c'] ?? 0);
+$beforeQueue = (int) (GpDb::one('SELECT COUNT(*) AS c FROM gp_webhook_queue')['c'] ?? 0);
 GpWebhook::dispatch($whBrand, 'https://example.com/gresspay-webhook-test', ['eventId' => 'evt_retry_test', 'sessionId' => 'chs_none'], 'payment.completed');
 $afterWh = (int) (GpDb::one('SELECT COUNT(*) AS c FROM gp_webhook_deliveries')['c'] ?? 0);
-assert_true($afterWh - $beforeWh >= 2, 'failed webhook dispatch logs multiple attempts when WEBHOOK_MAX_RETRIES=2');
+assert_true($afterWh - $beforeWh >= 1, 'webhook dispatch logs immediate delivery attempt');
+$afterQueue = (int) (GpDb::one('SELECT COUNT(*) AS c FROM gp_webhook_queue')['c'] ?? 0);
+assert_true($afterQueue - $beforeQueue >= 1, 'failed webhook dispatch queues retry');
 putenv('WEBHOOK_MAX_RETRIES=5');
 $_ENV['WEBHOOK_MAX_RETRIES'] = '5';
 

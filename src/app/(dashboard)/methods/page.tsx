@@ -15,6 +15,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DashboardPageHeader } from "@/features/dashboard/components/DashboardPageHeader";
 import {
   AlertCircle,
   ArrowDown,
@@ -31,6 +32,7 @@ import {
   Copy,
   ChevronRight,
   ExternalLink,
+  Sliders,
 } from "lucide-react";
 
 interface MethodMeta {
@@ -445,6 +447,23 @@ export default function GatewaysPage() {
     load();
   }, [load]);
 
+  useEffect(() => {
+    if (!showForm) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setShowForm(false);
+        setEditing(null);
+      }
+    };
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [showForm]);
+
   const activeMeta = availableOptions.find((m) => m.code === formMethod) || availableOptions[0];
 
   const resetMerchantCreds = () => {
@@ -835,31 +854,31 @@ export default function GatewaysPage() {
   });
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-200 dark:border-zinc-800">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-              View Gateways
-            </h1>
-            <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-zinc-900 text-white dark:bg-white dark:text-zinc-900">
-              DIRECT SETTLEMENT
-            </span>
-          </div>
-          <p className="text-xs text-zinc-500 mt-1">
+    <div className="dashboard-page">
+      <DashboardPageHeader
+        eyebrow="Payment infrastructure"
+        title="Payment gateways"
+        icon={<Sliders className="h-5 w-5" />}
+        badge={
+          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/30 dark:text-emerald-300">
+            Direct settlement
+          </span>
+        }
+        description={
+          <>
             Showing wallets for{" "}
-            <span className="font-semibold text-zinc-700 dark:text-zinc-300">
+            <span className="font-semibold text-zinc-800 dark:text-zinc-200">
               {currentBrandName || "the selected brand"}
             </span>
-            . Checkout verify mode:{" "}
-            <span className="font-mono font-semibold">
+            . Verification mode is{" "}
+            <span className="font-semibold text-zinc-800 dark:text-zinc-200">
               {brandVerifyMode === "sms_auto" ? "SMS auto" : "TrxID + SMS"}
             </span>
-            . bKash Merchant stores API keys; all personal/agent/payment rails settle via Companion SMS.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+            . Configure receiving accounts, checkout limits, fees and companion readiness from one place.
+          </>
+        }
+        actions={
+          <>
           <Button
             size="sm"
             variant="outline"
@@ -869,13 +888,14 @@ export default function GatewaysPage() {
             Refresh
           </Button>
           <Button size="sm" variant="primary" onClick={openCreate} leftIcon={<Plus className="w-3.5 h-3.5" />}>
-            Add Gateways
+            Add gateway
           </Button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* Category Tabs with Item Counts */}
-      <div className="flex flex-wrap gap-1 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 p-1">
+      <div className="dashboard-tabs no-scrollbar flex-nowrap">
         {(
           [
             { id: "all", label: "All Gateways", count: gateways.length },
@@ -888,10 +908,10 @@ export default function GatewaysPage() {
             key={tab.id}
             type="button"
             onClick={() => setCategoryFilter(tab.id)}
-            className={`flex-1 min-w-[130px] px-3 py-2 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 ${
+            className={`dashboard-tab min-w-[145px] flex-1 justify-center ${
               categoryFilter === tab.id
-                ? "bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 shadow-xs"
-                : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                ? "dashboard-tab-active"
+                : ""
             }`}
           >
             <span>{tab.label}</span>
@@ -909,14 +929,16 @@ export default function GatewaysPage() {
       </div>
 
       {/* Non-Custodial Architecture Strip */}
-      <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 flex items-start gap-3 text-xs text-zinc-700 dark:text-zinc-300 shadow-2xs">
-        <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+      <div className="dashboard-panel flex items-start gap-3 p-4 text-xs text-zinc-700 dark:text-zinc-300">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+          <ShieldCheck className="h-4 w-4" />
+        </span>
         <div className="space-y-1">
           <div className="font-semibold text-zinc-900 dark:text-zinc-100">
-            Non-Custodial Direct Settlement Architecture
+            Funds settle directly to your account
           </div>
           <p className="text-zinc-500 dark:text-zinc-400">
-            Funds bypass platform escrow and deposit directly into your personal or business wallet (bKash, Nagad, Rocket, Upay, Cellfin, or TRON USDT). The Android Companion APK matches incoming SMS messages instantly to settle orders in 1 second.
+            GressPay verifies the payment while funds go to your configured wallet. MFS rails use Companion SMS evidence; provider and on-chain rails use their own verification flow.
           </p>
         </div>
       </div>
@@ -930,7 +952,7 @@ export default function GatewaysPage() {
 
       {/* Gateway Library Catalog */}
       {showLibrary && (
-        <Card className="space-y-5 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6 shadow-xl rounded-2xl">
+        <Card className="space-y-5 overflow-hidden p-5 sm:p-6">
           <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
             <div>
               <div className="flex items-center gap-2">
@@ -955,7 +977,7 @@ export default function GatewaysPage() {
                 value={libraryQuery}
                 onChange={(e) => setLibraryQuery(e.target.value)}
                 placeholder="Search gateway by name, currency, or country (e.g. bKash, Nagad, Binance, USDT)…"
-                className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 py-2 pl-9 pr-3 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:border-zinc-900 dark:focus:border-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition"
+                className="h-11 w-full rounded-xl border border-zinc-200 bg-white py-2 pl-10 pr-3 text-sm text-zinc-900 shadow-sm outline-none transition placeholder:text-zinc-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-600/10 dark:border-[#2a3a47] dark:bg-[#0b1620] dark:text-zinc-100 dark:focus:border-teal-400"
               />
             </div>
             <div className="flex flex-wrap gap-1 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 p-1">
@@ -1012,7 +1034,7 @@ export default function GatewaysPage() {
                   key={g.code}
                   type="button"
                   onClick={() => pickCuratedGateway(g)}
-                  className="group relative flex flex-col items-center rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 p-3.5 text-center transition hover:border-zinc-900 dark:hover:border-zinc-100 hover:bg-white dark:hover:bg-zinc-900 hover:shadow-md"
+                  className="group relative flex min-h-[156px] flex-col items-center rounded-2xl border border-zinc-200 bg-white p-3.5 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-teal-700/30 hover:shadow-lg dark:border-[#2a3a47] dark:bg-[#0b1620] dark:hover:border-teal-300/30"
                 >
                   <div className="relative mb-2.5 flex h-12 w-12 items-center justify-center rounded-xl bg-white dark:bg-zinc-800 p-2 shadow-xs border border-zinc-200/80 dark:border-zinc-700/80 group-hover:scale-105 transition-transform">
                     <Image
@@ -1049,24 +1071,35 @@ export default function GatewaysPage() {
 
       {/* Destination Form Modal / Configuration Drawer */}
       {showForm && (
-        <Card className="p-6 space-y-5 border-zinc-200 dark:border-zinc-800 shadow-md bg-white dark:bg-zinc-950 rounded-2xl">
-          <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-900">
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <button
+            type="button"
+            aria-label="Close gateway configuration"
+            className="absolute inset-0 bg-[#071018]/70 backdrop-blur-sm"
+            onClick={() => {
+              setShowForm(false);
+              setEditing(null);
+            }}
+          />
+          <aside className="relative flex h-full w-full max-w-3xl flex-col overflow-hidden border-l border-zinc-200 bg-white shadow-2xl dark:border-[#2a3a47] dark:bg-[#0f1b26]">
+          <div className="flex items-center justify-between border-b border-zinc-200 px-5 py-5 dark:border-[#21313f] sm:px-7">
             <div>
-              <h2 className="font-bold text-base text-zinc-900 dark:text-zinc-100">
+              <div className="dashboard-kicker">Gateway configuration</div>
+              <h2 className="mt-1 text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
                 {formMethod === "binance_pay"
                   ? `Binance Setup${currentBrandName ? ` for ${currentBrandName}` : ""}`
                   : `${gatewayShortLabel(formMethod)} Setup${currentBrandName ? ` for ${currentBrandName}` : ""}`}
               </h2>
-              <p className="text-xs text-zinc-500 mt-0.5">
+              <p className="mt-1 text-xs text-zinc-500">
                 {editing ? `Editing destination ID: ${editing.gatewayId}` : "Configure credentials, limits, and optional receiving QR code."}
               </p>
             </div>
-            <span className="text-xs font-mono text-zinc-400">
-              {editing ? editing.gatewayId : "New Configuration"}
-            </span>
+            <Button type="button" size="sm" variant="ghost" onClick={() => { setShowForm(false); setEditing(null); }}>
+              Close
+            </Button>
           </div>
 
-          <form onSubmit={saveForm} className="space-y-4">
+          <form onSubmit={saveForm} className="flex-1 space-y-5 overflow-y-auto px-5 py-6 sm:px-7">
             {/* Select Brand Indicator */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
@@ -1080,8 +1113,8 @@ export default function GatewaysPage() {
             </div>
 
             {/* Sleek Selected Rail Card */}
-            <div className="flex items-center justify-between p-3.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60">
-              <div className="flex items-center gap-3">
+            <div className="flex flex-col items-start justify-between gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-3.5 dark:border-[#2a3a47] dark:bg-[#0b1620]/70 sm:flex-row sm:items-center">
+              <div className="flex min-w-0 items-center gap-3">
                 <div className="w-12 h-12 rounded-xl bg-white dark:bg-zinc-800 p-2 shadow-xs border border-zinc-200 dark:border-zinc-700 flex items-center justify-center shrink-0">
                   <Image
                     src={gatewayLogoPath(formMethod)}
@@ -1092,7 +1125,7 @@ export default function GatewaysPage() {
                   />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
                       {gatewayShortLabel(formMethod)}
                     </h3>
@@ -1121,7 +1154,7 @@ export default function GatewaysPage() {
                     setShowForm(false);
                     setShowLibrary(true);
                   }}
-                  className="text-xs"
+                  className="w-full text-xs sm:w-auto"
                 >
                   Change Channel
                 </Button>
@@ -1325,7 +1358,7 @@ export default function GatewaysPage() {
                 <label className="block text-xs font-medium space-y-1.5 text-zinc-700 dark:text-zinc-300">
                   <span>Exchange Rate Mode</span>
                   <select
-                    className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs font-medium"
+                    className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3.5 text-sm font-medium shadow-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/10 dark:border-[#2a3a47] dark:bg-[#0b1620] dark:focus:border-teal-400"
                     value={formRateMode}
                     onChange={(e) => setFormRateMode(e.target.value as "auto" | "custom")}
                   >
@@ -1450,7 +1483,7 @@ export default function GatewaysPage() {
                 <label className="block space-y-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300">
                   <span>Gateway Fee Type</span>
                   <select
-                    className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs dark:border-zinc-700 dark:bg-zinc-900"
+                    className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3.5 text-sm shadow-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/10 dark:border-[#2a3a47] dark:bg-[#0b1620] dark:focus:border-teal-400"
                     value={formGatewayFeeType}
                     onChange={(e) => setFormGatewayFeeType(e.target.value as "percentage" | "fixed")}
                   >
@@ -1461,7 +1494,7 @@ export default function GatewaysPage() {
                 <label className="block space-y-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300">
                   <span>Gateway Category</span>
                   <select
-                    className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs dark:border-zinc-700 dark:bg-zinc-900"
+                    className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3.5 text-sm shadow-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/10 dark:border-[#2a3a47] dark:bg-[#0b1620] dark:focus:border-teal-400"
                     value={formGatewayCategory}
                     onChange={(e) => setFormGatewayCategory(e.target.value)}
                   >
@@ -1490,13 +1523,14 @@ export default function GatewaysPage() {
               </div>
             )}
 
-            <div className="flex items-center gap-2.5 pt-3 border-t border-zinc-100 dark:border-zinc-900">
-              <Button type="submit" variant="primary" isLoading={busyId === "form"} leftIcon={<Save className="w-4 h-4" />}>
+            <div className="sticky bottom-0 -mx-5 -mb-6 flex flex-col-reverse gap-2.5 border-t border-zinc-200 bg-white/95 px-5 py-4 backdrop-blur dark:border-[#21313f] dark:bg-[#0f1b26]/95 sm:-mx-7 sm:flex-row sm:items-center sm:px-7">
+              <Button type="submit" variant="primary" className="w-full sm:w-auto" isLoading={busyId === "form"} leftIcon={<Save className="w-4 h-4" />}>
                 Save Gateway Credentials
               </Button>
               <Button
                 type="button"
                 variant="secondary"
+                className="w-full sm:w-auto"
                 onClick={() => {
                   setShowForm(false);
                   setEditing(null);
@@ -1510,7 +1544,8 @@ export default function GatewaysPage() {
               </Button>
             </div>
           </form>
-        </Card>
+          </aside>
+        </div>
       )}
 
       {/* Unified Configured Gateways Section (ZiNiPay / UddoktaPay Standard) */}
@@ -1537,7 +1572,7 @@ export default function GatewaysPage() {
           </Button>
         </Card>
       ) : (
-        <div className="space-y-3" role="list">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2" role="list">
           {filteredGateways.map((g, filteredIndex) => {
             const rb = readinessBadge(g.methodCode, g.readiness);
             const isCopied = copiedId === g.gatewayId;
@@ -1549,14 +1584,14 @@ export default function GatewaysPage() {
             return (
               <Card
                 key={g.gatewayId}
-                className={`p-4 rounded-2xl border transition-all ${
+                className={`p-5 transition-all ${
                   g.enabled
-                    ? "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-2xs hover:border-zinc-300 dark:hover:border-zinc-700"
-                    : "border-zinc-200/60 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-zinc-900/30 opacity-75"
+                    ? "hover:-translate-y-0.5 hover:border-teal-700/20 hover:shadow-lg dark:hover:border-teal-300/20"
+                    : "bg-zinc-50/70 opacity-70 dark:bg-[#0b1620]/60"
                 }`}
                 role="listitem"
               >
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div className="flex h-full flex-col justify-between gap-5">
                   {/* Left: Reorder + Icon + Info */}
                   <div className="flex items-start sm:items-center gap-3.5 min-w-0 flex-1">
                     {/* Reorder Arrows (respect active category filter) */}
@@ -1680,7 +1715,7 @@ export default function GatewaysPage() {
                   </div>
 
                   {/* Right: Toggle Switch & Action Buttons */}
-                  <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-zinc-100 dark:border-zinc-800">
+                  <div className="flex items-center justify-between gap-3 border-t border-zinc-100 pt-4 dark:border-[#21313f]">
                     {/* Instant Direct Toggle Switch */}
                     <div className="flex items-center gap-2">
                       <button

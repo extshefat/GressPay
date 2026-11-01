@@ -190,9 +190,6 @@ final class CheckoutController
         if (strtolower((string) ($brandRow['brand_status'] ?? 'active')) === 'inactive') {
             GpJson::error('BRAND_INACTIVE', 'This brand is inactive and cannot accept new checkouts.', 403);
         }
-        if ($mode === 'live') {
-            GpPlanLimits::assertCheckoutCreateAllowed($brandId);
-        }
         $fixed = in_array($source, ['payment-link', 'invoice'], true) && $link !== null;
 
         if ($fixed) {
@@ -230,6 +227,9 @@ final class CheckoutController
         $returnUrl = trim((string) $req->input('return_url', $req->input('returnUrl', $req->input('success_url', $req->input('redirect_url', '')))));
         $cancelUrl = trim((string) $req->input('cancel_url', ''));
         $orderId = trim((string) $req->input('order_id', $req->input('orderId', '')));
+        if (strlen($orderId) > 80 || ($orderId !== '' && !preg_match('/^[A-Za-z0-9._:-]+$/', $orderId))) {
+            GpJson::error('INVALID_ORDER_ID', 'order_id must be at most 80 letters, numbers, dots, underscores, colons or dashes.', 400);
+        }
         if ($fixed && $link !== null) {
             $linkRedirect = trim((string) ($link['success_redirect_url'] ?? ''));
             if ($linkRedirect !== '') {
@@ -242,7 +242,7 @@ final class CheckoutController
         if ($returnUrl !== '' && !filter_var($returnUrl, FILTER_VALIDATE_URL)) {
             GpJson::error('INVALID_URL', 'return_url must be a valid URL.');
         }
-        if ($fixed && $link !== null && $returnUrl !== '') {
+        if ($returnUrl !== '' && $mode === 'live') {
             $rd = GpWebhook::validateDestination($returnUrl);
             if (!$rd['ok']) {
                 GpJson::error('INVALID_URL', 'Configured success redirect URL is not allowed.', 400);
@@ -272,6 +272,21 @@ final class CheckoutController
         if ($orderId !== '') {
             $meta['orderId'] = $orderId;
         }
+        if ($source === 'api' && $orderId !== '') {
+            $existing = GpDb::one(
+                'SELECT * FROM gp_transactions WHERE brand_id = ? AND ledger_mode = ? AND source = ? AND merchant_order_id = ?',
+                [$brandId, $mode, 'api', $orderId]
+            );
+            if ($existing !== null) {
+                if (GpMoney::sanitize((string) $existing['amount']) !== $amount || (string) $existing['currency'] !== $currency) {
+                    GpJson::error('ORDER_CONFLICT', 'This order_id already belongs to a different amount or currency.', 409);
+                }
+                return $existing;
+            }
+        }
+        if ($mode === 'live') {
+            GpPlanLimits::assertCheckoutCreateAllowed($brandId);
+        }
         $orderTitle = trim((string) $req->input('order_title', $req->input('orderTitle', $link['title'] ?? 'Payment')));
         $orderDescription = trim((string) $req->input('order_description', $req->input('orderDescription', $link['description'] ?? '')));
         if ($orderTitle !== '') {
@@ -298,10 +313,11 @@ final class CheckoutController
             $meta['shuffledGatewayIds'] = self::pickShuffledGatewayIds($brandId);
         }
 
-        GpDb::exec(
+        try {
+            GpDb::exec(
             'INSERT INTO gp_transactions
-             (session_id, brand_id, source, source_id, customer_json, amount, currency, ledger_mode, webhook_url, metadata, status, expires_at, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+             (session_id, brand_id, source, source_id, customer_json, amount, currency, ledger_mode, merchant_order_id, webhook_url, metadata, status, expires_at, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 $sessionId,
                 $brandId,
@@ -311,6 +327,7 @@ final class CheckoutController
                 $amount,
                 $currency,
                 $mode,
+                $source === 'api' && $orderId !== '' ? $orderId : null,
                 $webhook !== '' ? $webhook : null,
                 json_encode($meta, JSON_UNESCAPED_SLASHES),
                 'initiated',
@@ -318,7 +335,21 @@ final class CheckoutController
                 $now,
                 $now,
             ]
-        );
+            );
+        } catch (PDOException $e) {
+            if ($source !== 'api' || $orderId === '') {
+                throw $e;
+            }
+            $existing = GpDb::one(
+                'SELECT * FROM gp_transactions WHERE brand_id = ? AND ledger_mode = ? AND source = ? AND merchant_order_id = ?',
+                [$brandId, $mode, 'api', $orderId]
+            );
+            if ($existing === null || GpMoney::sanitize((string) $existing['amount']) !== $amount
+                || (string) $existing['currency'] !== $currency) {
+                GpJson::error('ORDER_CONFLICT', 'This order_id conflicts with an existing payment.', 409);
+            }
+            return $existing;
+        }
 
         return GpDb::one('SELECT * FROM gp_transactions WHERE session_id = ?', [$sessionId]);
     }
@@ -402,7 +433,8 @@ final class CheckoutController
         if ($amount !== null && $currency !== null) {
             $ctx = ['amount' => $amount, 'currency' => $currency, 'brandId' => $brandId];
         }
-        $verifyMode = strtolower((string) ($brand['verification_mode'] ?? 'trx_id'));
+        $verifyMode = GpConfig::get('GRESSPAY_SMS_AUTO_ALLOWED', '0') === '1'
+            ? strtolower((string) ($brand['verification_mode'] ?? 'trx_id')) : 'trx_id';
         $amountFormat = strtolower((string) ($brand['amount_format'] ?? 'as_is'));
         $brandFee = (float) ($brand['brand_fee'] ?? 0);
         $brandFeeType = strtolower((string) ($brand['brand_fee_type'] ?? 'fixed'));
@@ -576,6 +608,9 @@ final class CheckoutController
      */
     private static function trySmsAutoSettle(array $row): array
     {
+        if (GpConfig::get('GRESSPAY_SMS_AUTO_ALLOWED', '0') !== '1') {
+            return $row;
+        }
         $status = strtolower((string) ($row['status'] ?? ''));
         if (!in_array($status, ['initiated', 'pending'], true)) {
             return $row;
@@ -784,7 +819,8 @@ final class CheckoutController
 
         $brandForMode = GpDb::one('SELECT * FROM gp_brands WHERE brand_id = ?', [$row['brand_id']]);
         $verifyMode = strtolower((string) ($brandForMode['verification_mode'] ?? 'trx_id'));
-        $smsAuto = $verifyMode === 'sms_auto'
+        $smsAuto = GpConfig::get('GRESSPAY_SMS_AUTO_ALLOWED', '0') === '1'
+            && $verifyMode === 'sms_auto'
             && in_array($methodCode, GpCatalog::bdMobileWalletCodes(), true);
 
         $plugin = GpCatalog::loadPlugin($methodCode);
@@ -1206,6 +1242,17 @@ final class CheckoutController
         string $evidence = 'matched',
         array $evidenceExtra = []
     ): array {
+        if ($sms !== null && strtolower((string) ($row['ledger_mode'] ?? 'live')) === 'live') {
+            $received = strtotime((string) ($sms['received_at'] ?? ''));
+            $opened = strtotime((string) ($row['created_at'] ?? ''));
+            $expires = strtotime((string) ($row['expires_at'] ?? ''));
+            // Keep late evidence for review, but never settle a different or expired session.
+            if ($received === false || $opened === false || $received < $opened - 120
+                || $received > time() + 300 || time() - $received > self::SMS_MAX_AGE_SEC
+                || ($expires !== false && $received > $expires)) {
+                return $row;
+            }
+        }
         $now = GpIds::now();
         $fees = GpFeeEngine::compute($methodRow, $payable, $localCurrency);
         $meta = self::decodeMeta($row);
@@ -1248,7 +1295,7 @@ final class CheckoutController
                 'UPDATE gp_transactions SET trx_id = ?, method_code = ?, fee = ?, discount = ?, local_net = ?, local_currency = ?,
                  status = ?, metadata = ?, evidence_type = ?, evidence_ref = ?, verified_amount = ?, verified_currency = ?,
                  verified_at = ?, chain_tx_hash = COALESCE(?, chain_tx_hash), updated_at = ?
-                 WHERE session_id = ? AND status IN (?, ?)',
+                  WHERE session_id = ? AND status IN (?, ?) AND (expires_at IS NULL OR expires_at >= ?)',
                 [
                     $trxId,
                     $methodCode,
@@ -1268,6 +1315,7 @@ final class CheckoutController
                     $row['session_id'],
                     'initiated',
                     'pending',
+                    $now,
                 ]
             );
 
@@ -1331,7 +1379,7 @@ final class CheckoutController
             $whUrl = $brand['webhook_url'] ?? null;
         }
         $payload = GpPresenters::webhookPayload($paid, $brand, $link);
-        $payload['eventId'] = 'evt_' . hash('sha256', $paid['session_id'] . '|payment.completed|' . ($paid['verified_at'] ?? $now));
+        $payload['eventId'] = 'evt_' . hash('sha256', $paid['session_id'] . '|payment.completed');
         GpWebhook::dispatch($brand, $whUrl, $payload, 'payment.completed');
         return $paid;
     }

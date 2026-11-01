@@ -178,6 +178,7 @@ final class GpDb
             'ALTER TABLE gp_transactions ADD COLUMN verified_currency VARCHAR(8)',
             'ALTER TABLE gp_transactions ADD COLUMN verified_at VARCHAR(32)',
             'ALTER TABLE gp_transactions ADD COLUMN merchant_trade_no VARCHAR(64)',
+            'ALTER TABLE gp_transactions ADD COLUMN merchant_order_id VARCHAR(80)',
             'ALTER TABLE gp_transactions ADD COLUMN chain_tx_hash VARCHAR(80)',
             'ALTER TABLE gp_sms_data ADD COLUMN device_id VARCHAR(28)',
             'ALTER TABLE gp_sms_data ADD COLUMN idempotency_key VARCHAR(80)',
@@ -220,6 +221,7 @@ final class GpDb
             'ALTER TABLE gp_api_keys ADD COLUMN key_sealed TEXT',
             'ALTER TABLE gp_devices ADD COLUMN token_sealed TEXT',
             'ALTER TABLE gp_devices ADD COLUMN bound_gateway_id VARCHAR(32)',
+            'ALTER TABLE gp_sms_data ADD COLUMN received_at VARCHAR(32)',
             'ALTER TABLE gp_gateways ADD COLUMN gateway_fee DECIMAL(20,8)',
             'ALTER TABLE gp_gateways ADD COLUMN gateway_fee_type VARCHAR(16) NOT NULL DEFAULT \'percentage\'',
             'ALTER TABLE gp_gateways ADD COLUMN exchange_rate DECIMAL(20,8)',
@@ -879,18 +881,36 @@ final class GpDb
 
         self::backfillGatewaysFromMethods();
 
+        // Preserve existing webhook keys while sealing legacy plaintext rows.
+        // The compare-and-swap prevents a concurrent rotation from being overwritten.
+        $legacyWebhookSecrets = self::all(
+            "SELECT brand_id, webhook_secret FROM gp_brands WHERE webhook_secret IS NOT NULL AND webhook_secret <> '' AND webhook_secret <> '--' AND webhook_secret NOT LIKE 'v1:%'"
+        );
+        foreach ($legacyWebhookSecrets as $row) {
+            $plain = (string) $row['webhook_secret'];
+            self::exec(
+                'UPDATE gp_brands SET webhook_secret = ?, updated_at = ? WHERE brand_id = ? AND webhook_secret = ?',
+                [GpCrypto::seal($plain), GpIds::now(), $row['brand_id'], $plain]
+            );
+        }
+
         // Partial uniqueness for completed TxIDs (SQLite: unique index where status=completed)
         $uniq = self::$driver === 'mysql'
             ? [
                 // MySQL 8+ functional unique is limited; enforce via app + unique on merchant_trade_no / chain hash when set
                 'CREATE UNIQUE INDEX uq_gp_txn_trade ON gp_transactions (brand_id, merchant_trade_no)',
+                'CREATE UNIQUE INDEX uq_gp_txn_merchant_order ON gp_transactions (brand_id, ledger_mode, merchant_order_id)',
                 'CREATE UNIQUE INDEX uq_gp_txn_chain ON gp_transactions (brand_id, chain_tx_hash)',
+                'CREATE UNIQUE INDEX uq_gp_sms_evidence ON gp_sms_data (brand_id, sender_key, trx_id)',
+                'CREATE UNIQUE INDEX uq_gp_sms_idempotency ON gp_sms_data (brand_id, idempotency_key)',
             ]
             : [
                 'CREATE UNIQUE INDEX IF NOT EXISTS uq_gp_txn_completed_trx ON gp_transactions (brand_id, ledger_mode, trx_id) WHERE status = \'completed\' AND trx_id IS NOT NULL AND trx_id != \'\'',
                 'CREATE UNIQUE INDEX IF NOT EXISTS uq_gp_txn_trade ON gp_transactions (brand_id, merchant_trade_no) WHERE merchant_trade_no IS NOT NULL AND merchant_trade_no != \'\'',
+                'CREATE UNIQUE INDEX IF NOT EXISTS uq_gp_txn_merchant_order ON gp_transactions (brand_id, ledger_mode, merchant_order_id) WHERE merchant_order_id IS NOT NULL AND merchant_order_id != \'\'',
                 'CREATE UNIQUE INDEX IF NOT EXISTS uq_gp_txn_chain ON gp_transactions (brand_id, chain_tx_hash) WHERE chain_tx_hash IS NOT NULL AND chain_tx_hash != \'\'',
-                'CREATE UNIQUE INDEX IF NOT EXISTS uq_gp_sms_brand_trx_approved ON gp_sms_data (brand_id, trx_id) WHERE status IN (\'approved\', \'used\')',
+                'CREATE UNIQUE INDEX IF NOT EXISTS uq_gp_sms_evidence ON gp_sms_data (brand_id, sender_key, UPPER(TRIM(trx_id)))',
+                'CREATE UNIQUE INDEX IF NOT EXISTS uq_gp_sms_idempotency ON gp_sms_data (brand_id, idempotency_key) WHERE idempotency_key IS NOT NULL',
             ];
         foreach ($uniq as $sql) {
             try {

@@ -44,7 +44,7 @@ export function StatCard({
 
   return (
     <Card
-      className={`p-5 transition-all hover:border-zinc-300 dark:hover:border-zinc-700 ${onClick ? "cursor-pointer" : ""} ${className}`}
+      className={`p-5 transition-all hover:-translate-y-0.5 hover:border-teal-700/20 hover:shadow-lg dark:hover:border-teal-300/20 ${onClick ? "cursor-pointer" : ""} ${className}`}
       onClick={onClick}
     >
       <div className="flex items-start justify-between gap-2">
@@ -52,12 +52,12 @@ export function StatCard({
           <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
             {title}
           </span>
-          <div className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 font-mono">
+          <div className="text-2xl font-bold tracking-[-0.035em] text-zinc-900 dark:text-zinc-100">
             {value}
           </div>
         </div>
         {icon && (
-          <div className="p-2 rounded-xl bg-teal-700/10 text-teal-800 dark:bg-teal-400/15 dark:text-teal-200">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-teal-700/10 bg-teal-700/10 text-teal-800 dark:border-teal-300/10 dark:bg-teal-300/10 dark:text-teal-300">
             {icon}
           </div>
         )}

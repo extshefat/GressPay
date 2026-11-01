@@ -61,7 +61,7 @@ final class MerchantController
             'merchantId' => $actor['merchant_id'],
             'brandId' => $actor['brand_id'],
             'webhookSecret' => isset($brand['webhook_secret']) && (string) $brand['webhook_secret'] !== ''
-                ? substr((string) $brand['webhook_secret'], 0, 8) . '••••'
+                ? substr(GpWebhook::secret($brand), 0, 8) . '••••'
                 : '',
             'hasWebhookSecret' => isset($brand['webhook_secret']) && (string) $brand['webhook_secret'] !== '',
             'webhookUrl' => $brand['webhook_url'] ?? null,
@@ -137,7 +137,7 @@ final class MerchantController
         $secret = 'gpwh_' . bin2hex(random_bytes(24));
         GpDb::exec(
             'UPDATE gp_brands SET webhook_secret = ?, updated_at = ? WHERE brand_id = ?',
-            [$secret, GpIds::now(), $actor['brand_id']]
+            [GpCrypto::seal($secret), GpIds::now(), $actor['brand_id']]
         );
         GpJson::send([
             'webhookSecret' => $secret,

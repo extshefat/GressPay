@@ -32,7 +32,7 @@ const CORE_NAV = [
   { href: "/dashboard/payment-links", label: "Payment Links", icon: Link2 },
   { href: "/dashboard/invoices", label: "Invoices", icon: FileText },
   { href: "/dashboard/my-payments", label: "My Payments", icon: CreditCard },
-  { href: "/dashboard/methods", label: "View Gateways", icon: Sliders },
+  { href: "/dashboard/methods", label: "Payment Gateways", icon: Sliders },
   { href: "/dashboard/brands", label: "Brands", icon: Building2 },
   { href: "/dashboard/devices", label: "Devices", icon: Smartphone },
   { href: "/dashboard/apps", label: "Apps & Plugins", icon: Puzzle },
@@ -69,13 +69,13 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
         key={item.href}
         href={item.href}
         onClick={onClose}
-        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700/40 ${
+        className={`group flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300/40 ${
           isActive
-            ? "bg-teal-700 text-white dark:bg-teal-400 dark:text-teal-950 shadow-sm"
-            : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900"
+            ? "bg-teal-400 text-[#06241f] shadow-[0_5px_18px_rgba(45,212,191,0.16)]"
+            : "text-slate-400 hover:bg-white/[0.06] hover:text-white"
         }`}
       >
-        <Icon className="w-4 h-4" />
+        <Icon className={`h-4 w-4 ${isActive ? "text-[#06241f]" : "text-slate-500 transition-colors group-hover:text-slate-200"}`} />
         <span>{item.label}</span>
       </Link>
     );
@@ -83,19 +83,21 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
 
   const nav = (
     <>
-      <div className="p-5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-2 border-b border-white/[0.08] px-5 py-5">
         <Link href="/" className="flex items-center gap-2.5" onClick={onClose}>
-          <GpMark />
+          <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/[0.07] ring-1 ring-white/[0.08]">
+            <GpMark inverse />
+          </span>
           <div>
-            <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">GressPay</div>
-            <div className="text-[10px] font-mono tracking-wider text-zinc-500 uppercase">Dashboard</div>
+            <div className="text-[15px] font-bold tracking-tight text-white">GressPay</div>
+            <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-teal-300/80">Merchant OS</div>
           </div>
         </Link>
         {onClose && (
           <button
             type="button"
             onClick={onClose}
-            className="lg:hidden p-1.5 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-white/10 hover:text-white lg:hidden"
             aria-label="Close menu"
           >
             <X className="w-5 h-5" />
@@ -103,35 +105,35 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
         )}
       </div>
 
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
         {CORE_NAV.map(renderLink)}
 
-        <div className="pt-3 mt-2 border-t border-zinc-200 dark:border-zinc-800">
-          <div className="px-3 py-1 text-[10px] font-mono uppercase tracking-wider text-zinc-500 font-semibold">
+        <div className="mt-3 border-t border-white/[0.08] pt-4">
+          <div className="px-3 py-1 text-[9px] font-bold uppercase tracking-[0.18em] text-slate-500">
             Automation
           </div>
           <div className="mt-1 space-y-1">{AUTOMATION_NAV.map(renderLink)}</div>
         </div>
 
         {(user?.role === "admin" || user?.isAdmin || (user as { is_admin?: boolean })?.is_admin) && (
-          <div className="pt-3 mt-3 border-t border-zinc-200 dark:border-zinc-800">
-            <div className="px-3 py-1 text-[10px] font-mono uppercase tracking-wider text-zinc-500 font-semibold">
+          <div className="mt-3 border-t border-white/[0.08] pt-4">
+            <div className="px-3 py-1 text-[9px] font-bold uppercase tracking-[0.18em] text-slate-500">
               Platform Admin
             </div>
             <Link
               href="/dashboard/admin"
               onClick={onClose}
-              className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
+              className={`flex min-h-10 items-center justify-between rounded-xl px-3 py-2 text-[13px] font-semibold transition-all ${
                 pathname.startsWith("/admin") || pathname.startsWith("/dashboard/admin")
-                  ? "bg-teal-700 text-white dark:bg-teal-400 dark:text-teal-950 shadow-sm"
-                  : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                  ? "bg-teal-400 text-[#06241f] shadow-[0_5px_18px_rgba(45,212,191,0.16)]"
+                  : "text-slate-300 hover:bg-white/[0.06] hover:text-white"
               }`}
             >
               <div className="flex items-center gap-3">
                 <ShieldCheck className="w-4 h-4" />
                 <span>Super Admin</span>
               </div>
-              <span className="text-[9px] bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 px-1.5 py-0.5 rounded font-mono font-bold tracking-wider">
+              <span className="rounded-md bg-white/10 px-1.5 py-0.5 text-[8px] font-bold tracking-wider">
                 ADMIN
               </span>
             </Link>
@@ -139,14 +141,14 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
         )}
       </nav>
 
-      <div className="p-3 border-t border-zinc-200 dark:border-zinc-800">
+      <div className="border-t border-white/[0.08] p-3">
         <Link
           href="/developers"
           onClick={onClose}
-          className="block p-3 rounded-lg bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-xs transition-colors hover:border-zinc-400 dark:hover:border-zinc-700"
+          className="block rounded-xl border border-white/[0.08] bg-white/[0.04] p-3 text-xs transition hover:border-teal-300/25 hover:bg-white/[0.07]"
         >
-          <div className="font-semibold text-zinc-900 dark:text-zinc-100">API Documentation</div>
-          <div className="text-[11px] text-zinc-500 mt-0.5">REST endpoints & IPN signatures</div>
+          <div className="font-semibold text-white">Developer documentation</div>
+          <div className="mt-0.5 text-[11px] text-slate-400">REST APIs, SDKs and webhooks</div>
         </Link>
       </div>
     </>
@@ -154,7 +156,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
 
   return (
     <>
-      <aside className="hidden lg:flex w-64 bg-white dark:bg-zinc-950 border-r border-zinc-200 dark:border-zinc-800 flex-col shrink-0 min-h-screen transition-colors">
+      <aside className="hidden min-h-screen w-[17rem] shrink-0 flex-col border-r border-white/[0.06] bg-[#0b1723] lg:flex">
         {nav}
       </aside>
 
@@ -171,7 +173,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
           aria-label="Close sidebar overlay"
         />
         <aside
-          className={`absolute inset-y-0 left-0 w-72 max-w-[85vw] bg-white dark:bg-zinc-950 border-r border-zinc-200 dark:border-zinc-800 flex flex-col shadow-xl transition-transform duration-200 ease-out ${
+          className={`absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col border-r border-white/[0.06] bg-[#0b1723] shadow-2xl transition-transform duration-200 ease-out ${
             mobileOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >

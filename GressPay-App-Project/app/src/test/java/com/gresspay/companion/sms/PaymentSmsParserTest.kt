@@ -19,13 +19,16 @@ class PaymentSmsParserTest {
     }
 
     @Test
-    fun parsesBkashBodyLabelWithoutShortcode() {
+    fun rejectsBkashBodyLabelWithoutTrustedSender() {
         val body = "BKASH: You received Tk 75.25. TrxID XYZABCDE12"
         val p = PaymentSmsParser.parse("UnknownSender", body)
-        assertNotNull(p)
-        assertEquals("bkash", p!!.senderKey)
-        assertEquals("75.25", p.amount)
-        assertEquals("XYZABCDE12", p.trxId)
+        assertNull(p)
+    }
+
+    @Test
+    fun rejectsSenderContainingTrustedName() {
+        val body = "You have received Tk 75.25. TrxID XYZABCDE12"
+        assertNull(PaymentSmsParser.parse("fakebkash", body))
     }
 
     @Test

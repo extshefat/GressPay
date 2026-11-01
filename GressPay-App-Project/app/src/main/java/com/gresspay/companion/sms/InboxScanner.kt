@@ -48,6 +48,7 @@ object InboxScanner {
         )?.use { cursor ->
             val idxAddr = cursor.getColumnIndex(Telephony.Sms.ADDRESS)
             val idxBody = cursor.getColumnIndex(Telephony.Sms.BODY)
+            val idxDate = cursor.getColumnIndex(Telephony.Sms.DATE)
             while (cursor.moveToNext()) {
                 scanned++
                 val from = if (idxAddr >= 0) cursor.getString(idxAddr).orEmpty() else ""
@@ -57,7 +58,7 @@ object InboxScanner {
                     skipped++
                     continue
                 }
-                enqueueParsed(context, parsed)
+                enqueueParsed(context, parsed, if (idxDate >= 0) cursor.getLong(idxDate) else 0L)
                 enqueued++
             }
         }
@@ -65,13 +66,14 @@ object InboxScanner {
         return InboxScanResult(scanned, enqueued, skipped)
     }
 
-    fun enqueueParsed(context: Context, parsed: ParsedPaymentSms) {
+    fun enqueueParsed(context: Context, parsed: ParsedPaymentSms, receivedAtMs: Long = 0L) {
         val idem = SmsUploadWorker.sha256("${parsed.senderKey}|${parsed.amount}|${parsed.trxId}")
         val data = workDataOf(
             SmsUploadWorker.KEY_SENDER to parsed.senderKey,
             SmsUploadWorker.KEY_AMOUNT to parsed.amount,
             SmsUploadWorker.KEY_TRX to parsed.trxId,
             SmsUploadWorker.KEY_NUMBER to parsed.fromNumber,
+            SmsUploadWorker.KEY_RECEIVED_AT to receivedAtMs,
             SmsUploadWorker.KEY_IDEM to idem
         )
         val req = OneTimeWorkRequestBuilder<SmsUploadWorker>()
