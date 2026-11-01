@@ -269,7 +269,7 @@ interface AccountTypeOption {
   hint: string;
 }
 
-export function getMethodAccountTypes(methodCode: string): AccountTypeOption[] {
+function getMethodAccountTypes(methodCode: string): AccountTypeOption[] {
   if (methodCode === "nagad") {
     return [
       { id: "personal", label: "Personal", hint: "Send Money / Cash In · Auto SMS verify" },
