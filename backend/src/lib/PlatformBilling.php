@@ -23,15 +23,23 @@ final class GpPlatformBilling
         }
     }
 
-    public static function setBillingBrandId(string $brandId): void
+    public static function setBillingBrandId(string $brandId, bool $requireLiveGateway = true): void
     {
         $brandId = trim($brandId);
         if ($brandId === '') {
             GpJson::error('INVALID_BRAND', 'billing brand id is required.', 400);
         }
-        $brand = GpDb::one('SELECT brand_id FROM gp_brands WHERE brand_id = ?', [$brandId]);
+        $brand = GpDb::one('SELECT brand_id, name FROM gp_brands WHERE brand_id = ?', [$brandId]);
         if ($brand === null) {
             GpJson::error('NOT_FOUND', 'Brand not found.', 404);
+        }
+        $liveCount = self::countUsableGateways($brandId);
+        if ($requireLiveGateway && $liveCount < 1) {
+            GpJson::error(
+                'NO_LIVE_GATEWAYS',
+                'Billing brand must have at least one active gateway with a receiving account (configure under that brand\'s View Gateways).',
+                400
+            );
         }
         $now = GpIds::now();
         $existing = GpDb::one(
@@ -49,6 +57,52 @@ final class GpPlatformBilling
                 [self::SETTING_BILLING_BRAND, $brandId, $now]
             );
         }
+    }
+
+    /** Active gateways that can receive plan payments (account filled, or crypto/API rails). */
+    public static function countUsableGateways(string $brandId): int
+    {
+        $rows = GpDb::all(
+            "SELECT gateway_id, method_code, account, status FROM gp_gateways WHERE brand_id = ? AND LOWER(status) = 'active'",
+            [$brandId]
+        );
+        $n = 0;
+        foreach ($rows as $r) {
+            $code = strtolower((string) ($r['method_code'] ?? ''));
+            $account = trim((string) ($r['account'] ?? ''));
+            if (in_array($code, ['binance_pay', 'usdt_trc20', 'bybit_pay'], true)) {
+                $n++;
+                continue;
+            }
+            if ($account !== '') {
+                $n++;
+            }
+        }
+        return $n;
+    }
+
+    /**
+     * @return list<array{brandId:string,name:string,merchantId:string,liveGatewayCount:int}>
+     */
+    public static function brandOptions(): array
+    {
+        $rows = GpDb::all(
+            'SELECT brand_id, name, merchant_id FROM gp_brands ORDER BY name ASC LIMIT 500'
+        );
+        $out = [];
+        foreach ($rows as $r) {
+            $bid = (string) ($r['brand_id'] ?? '');
+            if ($bid === '') {
+                continue;
+            }
+            $out[] = [
+                'brandId' => $bid,
+                'name' => (string) ($r['name'] ?? 'Brand'),
+                'merchantId' => (string) ($r['merchant_id'] ?? ''),
+                'liveGatewayCount' => self::countUsableGateways($bid),
+            ];
+        }
+        return $out;
     }
 
     /** @return array<string,mixed>|null */
@@ -83,12 +137,64 @@ final class GpPlatformBilling
         );
         $merchantId = trim((string) ($order['merchant_id'] ?? ''));
         $planId = trim((string) ($order['plan_id'] ?? ''));
-        if ($merchantId !== '' && $planId !== '') {
-            GpDb::exec(
-                'UPDATE gp_merchants SET plan_id = ?, updated_at = ? WHERE merchant_id = ?',
-                [$planId, $now, $merchantId]
-            );
+        if ($merchantId === '' || $planId === '') {
+            return;
         }
+
+        $plan = GpDb::one('SELECT * FROM gp_plans WHERE plan_id = ?', [$planId]);
+        if ($plan === null) {
+            $plan = GpDb::one(
+                'SELECT * FROM gp_plans WHERE LOWER(code) = ? OR LOWER(plan_id) = ? LIMIT 1',
+                [strtolower($planId), strtolower($planId)]
+            );
+            if ($plan !== null) {
+                $planId = (string) $plan['plan_id'];
+            }
+        }
+
+        $credits = (int) ($plan['credit_allowance'] ?? 0);
+        $cycle = strtolower(trim((string) ($plan['billing_cycle'] ?? 'monthly')));
+        $isLifetime = $cycle === 'lifetime' || $cycle === 'life_time' || !empty($plan['is_free']);
+        $expiresAt = null;
+        if (!$isLifetime) {
+            $days = match ($cycle) {
+                'yearly', 'annual', 'year' => 365,
+                'weekly', 'week' => 7,
+                default => 30,
+            };
+            $expiresAt = gmdate('Y-m-d\TH:i:s\Z', time() + ($days * 86400));
+        }
+
+        GpDb::exec(
+            'UPDATE gp_merchants SET plan_id = ?, plan_expires_at = ?, updated_at = ? WHERE merchant_id = ?',
+            [$planId, $expiresAt, $now, $merchantId]
+        );
+
+        GpDb::exec(
+            'UPDATE gp_subscriptions SET status = ?, updated_at = ? WHERE merchant_id = ? AND status = ?',
+            ['archived', $now, $merchantId, 'active']
+        );
+
+        $subId = 'sub_' . bin2hex(random_bytes(8));
+        GpDb::exec(
+            'INSERT INTO gp_subscriptions (subscription_id, merchant_id, plan_id, status, credits_remaining, credits_used, starts_at, expires_at, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?)',
+            [$subId, $merchantId, $planId, 'active', $credits, $now, $expiresAt, $now, $now]
+        );
+
+        $planName = (string) ($plan['name'] ?? $order['plan_name'] ?? $planId);
+        GpDb::exec(
+            'INSERT INTO gp_credit_transactions (merchant_id, delta, balance_after, reason, created_by, created_at)
+             VALUES (?, ?, ?, ?, ?, ?)',
+            [
+                $merchantId,
+                $credits,
+                $credits,
+                'Plan purchase: ' . $planName . ' (order ' . $orderId . ')',
+                'system:account-plan',
+                $now,
+            ]
+        );
     }
 
     public static function onCheckoutCanceled(string $sessionId): void

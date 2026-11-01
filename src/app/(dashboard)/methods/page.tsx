@@ -380,6 +380,8 @@ export default function GatewaysPage() {
   const [formExchangeRate, setFormExchangeRate] = useState("");
   const [formBinanceApiKey, setFormBinanceApiKey] = useState("");
   const [formBinanceApiSecret, setFormBinanceApiSecret] = useState("");
+  const [formBinanceCertSn, setFormBinanceCertSn] = useState("");
+  const [binanceLiveConfigured, setBinanceLiveConfigured] = useState(false);
 
   const copyToClipboard = (text: string, id: string) => {
     if (!text) return;
@@ -458,6 +460,8 @@ export default function GatewaysPage() {
     setFormExchangeRate("");
     setFormBinanceApiKey("");
     setFormBinanceApiSecret("");
+    setFormBinanceCertSn("");
+    setBinanceLiveConfigured(false);
     setPreviewUrl(null);
     setShowLibrary(false);
     setShowForm(true);
@@ -491,6 +495,8 @@ export default function GatewaysPage() {
     setFormExchangeRate("");
     setFormBinanceApiKey("");
     setFormBinanceApiSecret("");
+    setFormBinanceCertSn("");
+    setBinanceLiveConfigured(false);
     setPreviewUrl(null);
     setShowLibrary(false);
     setShowForm(true);
@@ -500,7 +506,8 @@ export default function GatewaysPage() {
     setEditing(g);
     setFormMethod(g.methodCode);
     setFormName(g.displayName);
-    setFormAccount(g.account || "");
+    const binanceUid = g.binance_uid || g.account || "";
+    setFormAccount(binanceUid);
     const allowed = getMethodAccountTypes(g.methodCode).map((t) => t.id);
     const safeType = allowed.includes(g.accountType as "personal" | "agent" | "merchant" | "payment")
       ? (g.accountType as "personal" | "agent" | "merchant" | "payment")
@@ -510,8 +517,15 @@ export default function GatewaysPage() {
     setFormInstructions((g.instructions as string) || "");
     setFormRateMode("auto");
     setFormCustomRate("");
-    setFormBinanceMode(g.methodCode === "binance_pay" ? "merchant_api" : "uid");
-    setFormAccountName("");
+    const savedMode = (g.mode || "").toLowerCase();
+    setFormBinanceMode(
+      g.methodCode === "binance_pay"
+        ? savedMode === "personal" || savedMode === "uid"
+          ? "uid"
+          : "merchant_api"
+        : "uid"
+    );
+    setFormAccountName(g.account_name || "");
     setFormUsdtOptional("");
     setFormMinAmount(g.minAmount || "10");
     setFormMaxAmount(g.maxAmount || "100000");
@@ -522,6 +536,8 @@ export default function GatewaysPage() {
     setFormExchangeRate(g.exchangeRate || "");
     setFormBinanceApiKey("");
     setFormBinanceApiSecret("");
+    setFormBinanceCertSn("");
+    setBinanceLiveConfigured(Boolean(g.binanceLiveConfigured || g.certificateSnSet));
     setPreviewUrl(null);
     setShowForm(true);
     if (g.qrStatus === "ready") {
@@ -558,6 +574,22 @@ export default function GatewaysPage() {
     }
     if (formMethod === "binance_pay" && formBinanceMode === "uid" && formAccount.trim().length < 4) {
       return "Enter a Binance Pay UID.";
+    }
+    if (formMethod === "binance_pay" && formBinanceMode === "merchant_api") {
+      const anyKey =
+        formBinanceApiKey.trim() !== "" ||
+        formBinanceApiSecret.trim() !== "" ||
+        formBinanceCertSn.trim() !== "";
+      const allKeys =
+        formBinanceApiKey.trim() !== "" &&
+        formBinanceApiSecret.trim() !== "" &&
+        formBinanceCertSn.trim() !== "";
+      if (!binanceLiveConfigured && !allKeys) {
+        return "Binance Pay Official API requires API Key, Secret, and Certificate Serial Number.";
+      }
+      if (anyKey && !allKeys) {
+        return "Provide API Key, Secret, and Certificate SN together (or leave all blank if already saved).";
+      }
     }
     if (formMethod === "bybit_pay" && formAccount.trim().length < 4) {
       return "Enter a Bybit UID.";
@@ -604,11 +636,15 @@ export default function GatewaysPage() {
         payload.mode = formBinanceMode === "merchant_api" ? "merchant" : "personal";
         payload.account_name = formAccountName;
         payload.binance_uid = formAccount;
+        payload.account = formAccount;
         if (formMinAmount) payload.minAmount = formMinAmount;
         if (formMaxAmount) payload.maxAmount = formMaxAmount;
         if (formExchangeRate.trim()) payload.exchangeRate = Number(formExchangeRate);
-        if (formBinanceApiKey.trim()) payload.api_key = formBinanceApiKey.trim();
-        if (formBinanceApiSecret.trim()) payload.api_secret = formBinanceApiSecret.trim();
+        if (formBinanceApiKey.trim()) {
+          payload.api_key = formBinanceApiKey.trim();
+          payload.api_secret = formBinanceApiSecret.trim();
+          payload.certificate_sn = formBinanceCertSn.trim();
+        }
       }
       if (formMethod === "bybit_pay") {
         payload.bybit_uid = formAccount;
@@ -617,15 +653,33 @@ export default function GatewaysPage() {
       }
 
       if (editing) {
-        await api.updateGateway(editing.gatewayId, payload);
+        const res = await api.updateGateway(editing.gatewayId, payload);
+        setEditing(res.gateway);
+        setBinanceLiveConfigured(Boolean(res.gateway.binanceLiveConfigured || res.gateway.certificateSnSet));
+        setFormBinanceApiKey("");
+        setFormBinanceApiSecret("");
+        setFormBinanceCertSn("");
+        await load();
+        // Stay open so merchant can upload QR after save.
+        if (!res.gateway.supportsQr) {
+          setShowForm(false);
+        }
       } else {
-        await api.createGateway({
+        const res = await api.createGateway({
           methodCode: formMethod,
+          enabled: true,
           ...payload,
         });
+        setEditing(res.gateway);
+        setBinanceLiveConfigured(Boolean(res.gateway.binanceLiveConfigured || res.gateway.certificateSnSet));
+        setFormBinanceApiKey("");
+        setFormBinanceApiSecret("");
+        setFormBinanceCertSn("");
+        await load();
+        if (!res.gateway.supportsQr) {
+          setShowForm(false);
+        }
       }
-      setShowForm(false);
-      await load();
     } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : "Save failed.");
     } finally {
@@ -687,10 +741,11 @@ export default function GatewaysPage() {
       setErrorMessage(`File exceeds ${maxBytes} bytes.`);
       return;
     }
+    const gatewayId = editing.gatewayId;
     setUploadProgress("Requesting upload…");
-    setBusyId(editing.gatewayId);
+    setBusyId(gatewayId);
     try {
-      const intent = await api.qrUploadIntent(editing.gatewayId, file.type, file.size);
+      const intent = await api.qrUploadIntent(gatewayId, file.type, file.size);
       setUploadProgress("Uploading to storage…");
       const put = await fetch(intent.uploadUrl, {
         method: "PUT",
@@ -699,13 +754,20 @@ export default function GatewaysPage() {
       });
       if (!put.ok) throw new Error(`Upload HTTP ${put.status}`);
       setUploadProgress("Finalizing QR…");
-      await api.qrUploadComplete(editing.gatewayId, intent.objectKey);
+      const done = await api.qrUploadComplete(gatewayId, intent.objectKey);
+      setEditing(done.gateway);
       setUploadProgress(null);
       await load();
-      if (editing) await openEdit(editing);
+      try {
+        const p = await api.previewGatewayQr(gatewayId);
+        setPreviewUrl(p.url);
+      } catch {
+        /* ignore */
+      }
     } catch (err: unknown) {
       setUploadProgress(null);
       setErrorMessage(err instanceof Error ? err.message : "Upload failed.");
+      await load();
     } finally {
       setBusyId(null);
     }
@@ -1215,19 +1277,33 @@ export default function GatewaysPage() {
                 {formBinanceMode === "merchant_api" && (
                   <>
                     <Input
-                      label="API key"
+                      label={binanceLiveConfigured ? "API key (leave blank to keep saved)" : "API key"}
                       value={formBinanceApiKey}
                       onChange={(e) => setFormBinanceApiKey(e.target.value)}
                       className="font-mono text-xs"
                       autoComplete="off"
+                      required={!binanceLiveConfigured}
                     />
                     <Input
-                      label="API secret"
+                      label={binanceLiveConfigured ? "API secret (leave blank to keep saved)" : "API secret"}
                       type="password"
                       value={formBinanceApiSecret}
                       onChange={(e) => setFormBinanceApiSecret(e.target.value)}
                       className="font-mono text-xs"
                       autoComplete="new-password"
+                      required={!binanceLiveConfigured}
+                    />
+                    <Input
+                      label={
+                        binanceLiveConfigured
+                          ? "Certificate SN (leave blank to keep saved)"
+                          : "Certificate serial number"
+                      }
+                      value={formBinanceCertSn}
+                      onChange={(e) => setFormBinanceCertSn(e.target.value)}
+                      className="font-mono text-xs"
+                      autoComplete="off"
+                      required={!binanceLiveConfigured}
                     />
                   </>
                 )}
@@ -1236,11 +1312,9 @@ export default function GatewaysPage() {
 
             {formMethod === "binance_pay" && formBinanceMode === "merchant_api" && (
               <p className="text-[11px] text-zinc-500 rounded-xl border border-zinc-200 dark:border-zinc-800 p-3">
-                You can also store Binance Pay credentials under{" "}
-                <Link href="/dashboard/settings#binance-pay" className="underline font-semibold text-zinc-900 dark:text-zinc-100">
-                  Settings → Binance Pay
-                </Link>
-                . Keys entered here are sealed per brand and never shown again.
+                {binanceLiveConfigured
+                  ? "Live Binance Pay credentials are already saved for this brand. Enter new API Key, Secret, and Certificate SN together only if you need to rotate them."
+                  : "API Key, Secret, and Certificate Serial Number are required for Official API mode. Credentials are sealed on this brand and used for live checkout."}
               </p>
             )}
 
@@ -1263,7 +1337,10 @@ export default function GatewaysPage() {
             {editing && editing.supportsQr && (
               <div className="space-y-3 border-t border-zinc-100 dark:border-zinc-900 pt-3">
                 <p className="text-xs font-medium flex items-center gap-2 text-zinc-800 dark:text-zinc-200">
-                  <ImageIcon className="w-4 h-4" /> Static Receiving QR Code (optional)
+                  <ImageIcon className="w-4 h-4" /> QR Code (optional)
+                </p>
+                <p className="text-[11px] text-zinc-500">
+                  Upload a static receiving QR shown on checkout for this gateway. Save the gateway first, then choose an image.
                 </p>
                 {previewUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -1280,6 +1357,11 @@ export default function GatewaysPage() {
                   onChange={(e) => onFile(e.target.files?.[0] || null)}
                   className="text-xs block w-full text-zinc-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-zinc-900 file:text-white dark:file:bg-white dark:file:text-zinc-950"
                 />
+                {!r2Configured && (
+                  <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                    QR upload unavailable — platform object storage is not configured.
+                  </p>
+                )}
                 {uploadProgress && <p className="text-xs font-mono text-zinc-500">{uploadProgress}</p>}
                 {editing.qrStatus === "ready" && (
                   <Button
@@ -1287,7 +1369,8 @@ export default function GatewaysPage() {
                     size="sm"
                     variant="secondary"
                     onClick={async () => {
-                      await api.deleteGatewayQr(editing.gatewayId);
+                      const res = await api.deleteGatewayQr(editing.gatewayId);
+                      setEditing(res.gateway);
                       setPreviewUrl(null);
                       await load();
                     }}
@@ -1300,10 +1383,19 @@ export default function GatewaysPage() {
 
             <div className="flex items-center gap-2.5 pt-3 border-t border-zinc-100 dark:border-zinc-900">
               <Button type="submit" variant="primary" isLoading={busyId === "form"} leftIcon={<Save className="w-4 h-4" />}>
-                Save Destination
+                Save Gateway Credentials
               </Button>
-              <Button type="button" variant="secondary" onClick={() => setShowForm(false)}>
-                Cancel
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setShowForm(false);
+                  setEditing(null);
+                  setPreviewUrl(null);
+                  setUploadProgress(null);
+                }}
+              >
+                {editing?.supportsQr ? "Done" : "Cancel"}
               </Button>
             </div>
           </form>
@@ -1507,25 +1599,33 @@ export default function GatewaysPage() {
         </div>
       )}
 
-      {/* Binance Pay Integration Guide */}
+      {/* Binance Pay live credential status (same store as Add/Edit form) */}
       <Card id="binance-pay" className="p-5 space-y-2 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 rounded-2xl">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
             <div className="w-6 h-6 rounded-md bg-[#181A20] p-1 flex items-center justify-center shrink-0">
               <Image src="/methods/binance_icon.svg" alt="Binance" width={16} height={16} className="w-4 h-4 object-contain" />
             </div>
-            <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Binance Pay Merchant API Integration</h2>
+            <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate">
+              Binance Pay live credentials
+            </h2>
           </div>
-          <Link
-            href="/dashboard/settings#binance-pay"
-            className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 hover:underline flex items-center gap-1"
+          <Badge
+            variant={
+              gateways.some((g) => g.methodCode === "binance_pay" && g.binanceLiveConfigured)
+                ? "emerald"
+                : "amber"
+            }
+            size="sm"
+            dot
           >
-            <span>API Settings</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </Link>
+            {gateways.some((g) => g.methodCode === "binance_pay" && g.binanceLiveConfigured)
+              ? "Saved for this brand"
+              : "Not configured"}
+          </Badge>
         </div>
         <p className="text-xs text-zinc-500 leading-relaxed">
-          Automated order creation via Binance Pay requires API Key, Secret, and Certificate Serial Number. You can also configure them globally in Brand Settings.
+          Add a Binance Pay gateway and enter API Key, Secret, and Certificate SN on that form. Credentials are sealed once per brand and power live checkout.
         </p>
       </Card>
     </div>

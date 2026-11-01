@@ -97,13 +97,13 @@ export default function MyPaymentsPage() {
       )}
       {paidBanner && (
         <Alert variant="success" title="Thank you">
-          Payment received — your plan update may take a few seconds to appear on Overview.
+          Payment received — your plan, credits, and expiry are activated automatically. Refresh Overview if the new plan is not visible yet.
         </Alert>
       )}
 
       {!billingReady && (
-        <Alert variant="warning" title="Billing setup pending">
-          Platform billing brand is not configured yet. Super Admin must set a billing brand under Admin → Global Gateway Control.
+        <Alert variant="warning" title="Billing not configured">
+          Platform billing brand is missing or has no live gateways. Super Admin must pick a billing brand under Admin → Global Gateway Control and ensure that brand has active View Gateways wallets.
         </Alert>
       )}
 

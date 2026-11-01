@@ -12,7 +12,6 @@ import {
   PlatformGateway,
   AdminTransaction,
   AdminSmsLog,
-  AdminPaymentWallets,
 } from "@/lib/types/api";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -59,17 +58,6 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<
     "gateways" | "merchants" | "pricing" | "health"
   >("gateways");
-  const [adminWallets, setAdminWallets] = useState<AdminPaymentWallets>({
-    bkash: "",
-    nagad: "",
-    rocket: "",
-    upay: "",
-    usdt_trc20: "",
-    binance_uid: "",
-    bybit_uid: "",
-  });
-  const [savingWallets, setSavingWallets] = useState(false);
-
   const [isLoading, setIsLoading] = useState(true);
   const [isForbidden, setIsForbidden] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -136,16 +124,23 @@ export default function AdminPage() {
   const [planDefDescription, setPlanDefDescription] = useState("");
   const [planDefIsFree, setPlanDefIsFree] = useState(false);
   const [planDefStatus, setPlanDefStatus] = useState<"active" | "archived" | "disabled">("active");
+  const [planDefDeviceLimit, setPlanDefDeviceLimit] = useState(1);
+  const [planDefMethodLimit, setPlanDefMethodLimit] = useState(2);
+  const [planDefFeatures, setPlanDefFeatures] = useState("");
   const [isSubmittingPlanDef, setIsSubmittingPlanDef] = useState(false);
   const [billingBrandId, setBillingBrandId] = useState("");
   const [billingBrandName, setBillingBrandName] = useState<string | null>(null);
+  const [billingLiveGatewayCount, setBillingLiveGatewayCount] = useState(0);
+  const [billingBrandOptions, setBillingBrandOptions] = useState<
+    { brandId: string; name: string; merchantId: string; liveGatewayCount: number }[]
+  >([]);
   const [savingBillingBrand, setSavingBillingBrand] = useState(false);
 
   const loadData = async () => {
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const [s, m, g, t, sms, p, sub, a, wallets, billingBrand] = await Promise.all([
+      const [s, m, g, t, sms, p, sub, a, billingBrand] = await Promise.all([
         api.getAdminStats(),
         api.getAdminMerchants(),
         api.getAdminPlatformGateways().catch(() => ({ gateways: [] })),
@@ -154,18 +149,12 @@ export default function AdminPage() {
         api.getAdminPlans(),
         api.getAdminSubscriptions(),
         api.getAdminAuditLogs(),
-        api.getAdminPaymentSettings().catch(() => ({
-          wallets: {
-            bkash: "",
-            nagad: "",
-            rocket: "",
-            upay: "",
-            usdt_trc20: "",
-            binance_uid: "",
-            bybit_uid: "",
-          },
+        api.getAdminBillingBrand().catch(() => ({
+          billingBrandId: null,
+          billingBrandName: null,
+          liveGatewayCount: 0,
+          brands: [],
         })),
-        api.getAdminBillingBrand().catch(() => ({ billingBrandId: null, billingBrandName: null })),
       ]);
       setStats(s);
       setMerchants(m.merchants || []);
@@ -175,9 +164,10 @@ export default function AdminPage() {
       setPlans(p.plans || []);
       setSubscriptions(sub.subscriptions || []);
       setAuditLogs(a.auditLogs || []);
-      setAdminWallets(wallets.wallets);
       setBillingBrandId(billingBrand.billingBrandId || "");
       setBillingBrandName(billingBrand.billingBrandName ?? null);
+      setBillingLiveGatewayCount(billingBrand.liveGatewayCount ?? 0);
+      setBillingBrandOptions(billingBrand.brands || []);
       setIsForbidden(false);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Access denied or failed to load admin console.";
@@ -403,6 +393,9 @@ export default function AdminPage() {
     setPlanDefDescription("Full automation, unlimited websites, priority companion SMS sync.");
     setPlanDefIsFree(false);
     setPlanDefStatus("active");
+    setPlanDefDeviceLimit(1);
+    setPlanDefMethodLimit(2);
+    setPlanDefFeatures("");
     setPlanDefModalOpen(true);
   };
 
@@ -416,6 +409,9 @@ export default function AdminPage() {
     setPlanDefDescription(p.description || "");
     setPlanDefIsFree(Boolean(p.isFree));
     setPlanDefStatus(p.status || "active");
+    setPlanDefDeviceLimit(p.deviceLimit ?? 1);
+    setPlanDefMethodLimit(p.methodLimit ?? 2);
+    setPlanDefFeatures(Array.isArray(p.features) ? p.features.join("\n") : "");
     setPlanDefModalOpen(true);
   };
 
@@ -423,6 +419,10 @@ export default function AdminPage() {
     e.preventDefault();
     setIsSubmittingPlanDef(true);
     setErrorMessage(null);
+    const features = planDefFeatures
+      .split("\n")
+      .map((f) => f.trim())
+      .filter(Boolean);
     try {
       if (editingPlanDef) {
         await api.updateAdminPlan(editingPlanDef.id, {
@@ -433,6 +433,9 @@ export default function AdminPage() {
           billingCycle: planDefBillingCycle,
           isFree: planDefIsFree,
           status: planDefStatus as any,
+          deviceLimit: Number(planDefDeviceLimit),
+          methodLimit: Number(planDefMethodLimit),
+          features,
         });
         setSuccessMessage(`Plan "${planDefName}" updated successfully.`);
       } else {
@@ -444,6 +447,9 @@ export default function AdminPage() {
           description: planDefDescription.trim(),
           billingCycle: planDefBillingCycle,
           isFree: planDefIsFree,
+          deviceLimit: Number(planDefDeviceLimit),
+          methodLimit: Number(planDefMethodLimit),
+          features,
         });
         setSuccessMessage(`Plan "${planDefName}" created successfully.`);
       }
@@ -524,7 +530,7 @@ export default function AdminPage() {
         {[
           { key: "gateways", label: "Global Gateway Control", icon: Sliders },
           { key: "merchants", label: "Accounts & subscriptions", icon: Users },
-          { key: "pricing", label: "Pricing & Admin Wallets", icon: CreditCard },
+          { key: "pricing", label: "Pricing & Plans", icon: CreditCard },
           { key: "health", label: "Transactions & Health", icon: Activity },
         ].map((tab) => {
           const Icon = tab.icon;
@@ -653,26 +659,40 @@ export default function AdminPage() {
             <div>
               <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Account plan billing brand</h3>
               <p className="text-xs text-zinc-500 mt-1">
-                My Payments checkout uses gateways configured on this brand (platform owner wallets — not each account&apos;s own View Gateways).
+                My Payments checkout uses gateways on this brand (platform-owner wallets). Pick a brand that already has live receiving gateways under View Gateways.
               </p>
             </div>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <Input
-                label="Billing brand ID"
-                value={billingBrandId}
-                onChange={(e) => setBillingBrandId(e.target.value)}
-                placeholder="e.g. br_..."
-                className="font-mono text-xs flex-1"
-              />
+            <div className="flex flex-col sm:flex-row gap-2 items-end">
+              <div className="flex-1 w-full space-y-1.5">
+                <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                  Billing brand
+                </label>
+                <select
+                  value={billingBrandId}
+                  onChange={(e) => setBillingBrandId(e.target.value)}
+                  className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs font-mono text-zinc-900 dark:text-zinc-100"
+                >
+                  <option value="">Select brand (brd_…)</option>
+                  {billingBrandOptions.map((b) => (
+                    <option key={b.brandId} value={b.brandId}>
+                      {b.name} — {b.brandId} ({b.liveGatewayCount} live gateway
+                      {b.liveGatewayCount === 1 ? "" : "s"})
+                    </option>
+                  ))}
+                </select>
+              </div>
               <Button
                 size="sm"
                 variant="primary"
                 className="self-end"
                 isLoading={savingBillingBrand}
+                disabled={!billingBrandId.trim()}
                 onClick={async () => {
                   setSavingBillingBrand(true);
+                  setErrorMessage(null);
                   try {
                     await api.setAdminBillingBrand(billingBrandId.trim());
+                    setSuccessMessage("Billing brand saved. Plan upgrades will use this brand's gateways.");
                     await loadData();
                   } catch (err: unknown) {
                     setErrorMessage(err instanceof Error ? err.message : "Failed to save billing brand.");
@@ -687,6 +707,15 @@ export default function AdminPage() {
             {billingBrandName && (
               <p className="text-[11px] text-zinc-500">
                 Current: <span className="font-semibold">{billingBrandName}</span>
+                {" · "}
+                <span className="font-mono">{billingBrandId}</span>
+                {" · "}
+                {billingLiveGatewayCount} usable gateway{billingLiveGatewayCount === 1 ? "" : "s"}
+              </p>
+            )}
+            {billingBrandId && billingLiveGatewayCount < 1 && (
+              <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                This brand has no active receiving gateways yet. Add wallets under that brand&apos;s View Gateways before merchants can pay.
               </p>
             )}
           </Card>
@@ -1290,59 +1319,30 @@ export default function AdminPage() {
             ))}
           </div>
 
-          <Card className="p-5 space-y-4 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
+          <Card className="p-5 space-y-3 border border-amber-200 dark:border-amber-900/50 bg-amber-50/40 dark:bg-amber-950/20">
             <div>
               <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                Super Admin Receiving Wallets
+                Plan payment collection
               </h3>
-              <p className="text-xs text-zinc-500 mt-0.5">
-                Account holders pay these wallets when upgrading plans. MFS numbers and crypto destinations for platform revenue.
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
+                Merchants pay SaaS plans through the <span className="font-semibold">Account plan billing brand</span>{" "}
+                (Global Gateway Control tab). Configure receiving wallets on that brand under View Gateways — legacy
+                &quot;Admin Receiving Wallets&quot; fields are unused and no longer shown.
               </p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {(
-                [
-                  ["bkash", "bKash Wallet"],
-                  ["nagad", "Nagad Wallet"],
-                  ["rocket", "Rocket Wallet"],
-                  ["upay", "Upay Wallet"],
-                  ["usdt_trc20", "USDT TRC20 Address"],
-                  ["binance_uid", "Binance UID"],
-                  ["bybit_uid", "Bybit UID"],
-                ] as const
-              ).map(([key, label]) => (
-                <Input
-                  key={key}
-                  label={label}
-                  value={adminWallets[key]}
-                  onChange={(e) =>
-                    setAdminWallets((prev) => ({ ...prev, [key]: e.target.value }))
-                  }
-                  className="font-mono text-xs"
-                />
-              ))}
-            </div>
-            <div className="flex justify-end">
-              <Button
-                size="sm"
-                variant="primary"
-                isLoading={savingWallets}
-                onClick={async () => {
-                  setSavingWallets(true);
-                  try {
-                    const res = await api.updateAdminPaymentSettings(adminWallets);
-                    setAdminWallets(res.wallets);
-                    setSuccessMessage("Admin payment wallets updated.");
-                  } catch (err: unknown) {
-                    setErrorMessage(err instanceof Error ? err.message : "Failed to save wallets.");
-                  } finally {
-                    setSavingWallets(false);
-                  }
-                }}
-              >
-                Save Admin Payment Settings
-              </Button>
-            </div>
+            {billingBrandName ? (
+              <p className="text-[11px] text-zinc-600 dark:text-zinc-400">
+                Active billing brand: <span className="font-semibold">{billingBrandName}</span>
+                {" · "}
+                <span className="font-mono">{billingBrandId}</span>
+                {" · "}
+                {billingLiveGatewayCount} usable gateway{billingLiveGatewayCount === 1 ? "" : "s"}
+              </p>
+            ) : (
+              <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                No billing brand set yet. Open Global Gateway Control and select a brand with live gateways.
+              </p>
+            )}
           </Card>
         </div>
       )}
@@ -1920,6 +1920,33 @@ export default function AdminPage() {
               </div>
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                  Device limit
+                </label>
+                <Input
+                  type="number"
+                  value={planDefDeviceLimit}
+                  onChange={(e) => setPlanDefDeviceLimit(Number(e.target.value))}
+                  min={0}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                  Method / gateway limit
+                </label>
+                <Input
+                  type="number"
+                  value={planDefMethodLimit}
+                  onChange={(e) => setPlanDefMethodLimit(Number(e.target.value))}
+                  min={0}
+                  required
+                />
+              </div>
+            </div>
+
             <div>
               <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
                 Description
@@ -1929,6 +1956,18 @@ export default function AdminPage() {
                 onChange={(e) => setPlanDefDescription(e.target.value)}
                 placeholder="Key marketing highlights, limits, and capabilities..."
                 className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs font-normal text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 min-h-[64px]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                Features (one per line)
+              </label>
+              <textarea
+                value={planDefFeatures}
+                onChange={(e) => setPlanDefFeatures(e.target.value)}
+                placeholder={"Unlimited brands\nPriority SMS matching\nCustom domain"}
+                className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs font-normal text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 min-h-[72px]"
               />
             </div>
 

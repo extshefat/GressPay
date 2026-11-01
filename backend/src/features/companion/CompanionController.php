@@ -101,6 +101,12 @@ final class CompanionController
             ]);
         }
 
+        if ($req->method === 'PUT' && $action === 'devices' && $devicePart !== null && $req->part(3) === 'bind') {
+            $actor = GpAuth::requireActor($req);
+            GpAuth::requireScope($actor, 'manage_devices');
+            self::bindDeviceGateway($actor, $devicePart, $req);
+        }
+
         if ($req->method === 'GET' && $action === 'sms-logs') {
             $actor = GpAuth::requireActor($req);
             GpAuth::requireScope($actor, 'manage_devices');
@@ -184,6 +190,8 @@ final class CompanionController
                 [$device['brand_id'], $trxId, 'approved']
             );
             $now = GpIds::now();
+            // Prefer device-bound wallet digits for matching (APK still sends SMS shortcode as number).
+            $smsNumber = self::resolveSmsWalletNumber($device, (string) $req->input('number', ''));
             // Audit: store amount/trx/sender/device — never full SMS body.
             if ($existingApproved) {
                 GpDb::exec(
@@ -191,7 +199,7 @@ final class CompanionController
                     [
                         $sender,
                         $amount,
-                        (string) $req->input('number', ''),
+                        $smsNumber,
                         $device['device_id'],
                         $idem !== '' ? $idem : null,
                         $now,
@@ -208,7 +216,7 @@ final class CompanionController
                             $sender,
                             $amount,
                             $trxId,
-                            (string) $req->input('number', ''),
+                            $smsNumber,
                             'approved',
                             $device['device_id'],
                             $idem !== '' ? $idem : null,
@@ -402,11 +410,74 @@ final class CompanionController
         return null;
     }
 
+    /**
+     * When a companion device is bound to a gateway, store that wallet account as SMS number
+     * so multi-wallet matching works (APK otherwise uploads shortcodes like 16247).
+     *
+     * @param array<string,mixed> $device
+     */
+    private static function resolveSmsWalletNumber(array $device, string $incomingNumber): string
+    {
+        $boundId = trim((string) ($device['bound_gateway_id'] ?? ''));
+        if ($boundId !== '') {
+            $gw = GpDb::one(
+                'SELECT account FROM gp_gateways WHERE brand_id = ? AND gateway_id = ?',
+                [(string) $device['brand_id'], $boundId]
+            );
+            $account = trim((string) ($gw['account'] ?? ''));
+            if ($account !== '') {
+                return $account;
+            }
+        }
+        return $incomingNumber;
+    }
+
+    /** @param array<string,mixed> $actor */
+    private static function bindDeviceGateway(array $actor, string $deviceId, GpRequest $req): never
+    {
+        $dev = GpDb::one(
+            'SELECT d.* FROM gp_devices d
+             INNER JOIN gp_brands b ON b.brand_id = d.brand_id
+             WHERE d.device_id = ? AND b.merchant_id = ?',
+            [$deviceId, $actor['merchant_id']]
+        );
+        if ($dev === null) {
+            GpJson::error('NOT_FOUND', 'Device not found.', 404);
+        }
+        $gatewayId = trim((string) $req->input('gatewayId', $req->input('boundGatewayId', '')));
+        if ($gatewayId === '' || strtolower($gatewayId) === 'null' || strtolower($gatewayId) === 'none') {
+            GpDb::exec(
+                'UPDATE gp_devices SET bound_gateway_id = NULL, updated_at = ? WHERE device_id = ?',
+                [GpIds::now(), $deviceId]
+            );
+            GpJson::send(['ok' => true, 'deviceId' => $deviceId, 'boundGatewayId' => null]);
+        }
+        $gw = GpDb::one(
+            'SELECT gateway_id, account, method_code, display_name FROM gp_gateways WHERE brand_id = ? AND gateway_id = ?',
+            [(string) $dev['brand_id'], $gatewayId]
+        );
+        if ($gw === null) {
+            GpJson::error('NOT_FOUND', 'Gateway not found for this device brand.', 404);
+        }
+        GpDb::exec(
+            'UPDATE gp_devices SET bound_gateway_id = ?, updated_at = ? WHERE device_id = ?',
+            [$gatewayId, GpIds::now(), $deviceId]
+        );
+        GpJson::send([
+            'ok' => true,
+            'deviceId' => $deviceId,
+            'boundGatewayId' => $gatewayId,
+            'boundGatewayAccount' => (string) ($gw['account'] ?? ''),
+            'boundGatewayMethod' => (string) ($gw['method_code'] ?? ''),
+            'boundGatewayName' => (string) ($gw['display_name'] ?? ''),
+        ]);
+    }
+
     private static function listDevices(array $actor): never
     {
         $rows = GpDb::all(
             'SELECT d.device_id, d.label, d.status, d.last_seen_at, d.created_at, d.updated_at, d.token_sealed, d.brand_id,
-                    b.name AS brand_name
+                    d.bound_gateway_id, b.name AS brand_name
              FROM gp_devices d
              INNER JOIN gp_brands b ON b.brand_id = d.brand_id
              WHERE b.merchant_id = ? AND d.status = ?
@@ -426,11 +497,30 @@ final class CompanionController
             if (!empty($r['token_sealed'])) {
                 $plain = GpCrypto::open((string) $r['token_sealed']) ?? '';
             }
+            $boundGwId = trim((string) ($r['bound_gateway_id'] ?? ''));
+            $boundAccount = null;
+            $boundMethod = null;
+            $boundName = null;
+            if ($boundGwId !== '') {
+                $gw = GpDb::one(
+                    'SELECT account, method_code, display_name FROM gp_gateways WHERE brand_id = ? AND gateway_id = ?',
+                    [(string) $r['brand_id'], $boundGwId]
+                );
+                if ($gw) {
+                    $boundAccount = (string) ($gw['account'] ?? '');
+                    $boundMethod = (string) ($gw['method_code'] ?? '');
+                    $boundName = (string) ($gw['display_name'] ?? '');
+                }
+            }
             $out[] = [
                 'deviceId' => $r['device_id'],
                 'label' => $r['label'] ?? '',
                 'brandId' => $r['brand_id'],
                 'brandName' => (string) ($r['brand_name'] ?? ''),
+                'boundGatewayId' => $boundGwId !== '' ? $boundGwId : null,
+                'boundGatewayAccount' => $boundAccount,
+                'boundGatewayMethod' => $boundMethod,
+                'boundGatewayName' => $boundName,
                 'status' => $r['status'],
                 'lastSeenAt' => $lastSeen,
                 'online' => $online,

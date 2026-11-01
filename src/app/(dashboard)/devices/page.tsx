@@ -29,6 +29,10 @@ type DeviceRow = {
   label: string;
   brandId?: string;
   brandName?: string;
+  boundGatewayId?: string | null;
+  boundGatewayAccount?: string | null;
+  boundGatewayMethod?: string | null;
+  boundGatewayName?: string | null;
   status: string;
   lastSeenAt?: string | null;
   online?: boolean;
@@ -37,6 +41,14 @@ type DeviceRow = {
   deviceAppKey?: string;
   deviceAppKeyMasked?: string;
   deviceAppKeyCopyable?: boolean;
+};
+
+type GatewayOption = {
+  gatewayId: string;
+  brandId?: string;
+  methodCode: string;
+  displayName: string;
+  account?: string | null;
 };
 
 type BrandOption = { brandId: string; name: string };
@@ -60,8 +72,11 @@ export default function CompanionDevicesPage() {
 
   const [devices, setDevices] = useState<DeviceRow[]>([]);
   const [brands, setBrands] = useState<BrandOption[]>([]);
+  const [activeBrandId, setActiveBrandId] = useState("");
+  const [gateways, setGateways] = useState<GatewayOption[]>([]);
   const [smsLogs, setSmsLogs] = useState<SmsRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [bindingDeviceId, setBindingDeviceId] = useState<string | null>(null);
   const [isLoadingSms, setIsLoadingSms] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -95,12 +110,29 @@ export default function CompanionDevicesPage() {
     }
   }, []);
 
+  const loadGateways = useCallback(async () => {
+    try {
+      const data = await api.listGateways();
+      setGateways(
+        (data.gateways || []).map((g) => ({
+          gatewayId: g.gatewayId,
+          methodCode: g.methodCode,
+          displayName: g.displayName,
+          account: g.account,
+        }))
+      );
+    } catch {
+      setGateways([]);
+    }
+  }, []);
+
   const loadBrands = useCallback(async () => {
     try {
       const data = await api.listBrands();
       const list = (data.brands || []).map((b) => ({ brandId: b.brandId, name: b.name }));
       setBrands(list);
       const fallback = data.activeBrandId || list[0]?.brandId || "";
+      setActiveBrandId(data.activeBrandId || fallback);
       setSelectedBrandId((prev) => prev || fallback);
     } catch {
       /* ignore */
@@ -122,8 +154,9 @@ export default function CompanionDevicesPage() {
   useEffect(() => {
     loadDevices();
     loadBrands();
+    loadGateways();
     loadSmsLogs();
-  }, [loadDevices, loadBrands]);
+  }, [loadDevices, loadBrands, loadGateways, loadSmsLogs]);
 
   const copyDeviceKey = async (device: DeviceRow) => {
     const full = device.deviceAppKey?.trim();
@@ -333,6 +366,7 @@ export default function CompanionDevicesPage() {
                   <th className="px-4 py-3">Device Name</th>
                   <th className="px-4 py-3">Device API Key (For App)</th>
                   <th className="px-4 py-3">Brand Name</th>
+                  <th className="px-4 py-3">Bound Wallet (SMS match)</th>
                   <th className="px-4 py-3">Last Updated</th>
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
@@ -388,6 +422,55 @@ export default function CompanionDevicesPage() {
                           </span>
                         ) : (
                           "—"
+                        )}
+                      </td>
+                      <td className="px-4 py-3.5 min-w-[200px]">
+                        {device.brandId && activeBrandId && device.brandId !== activeBrandId ? (
+                          <p className="text-[10px] text-zinc-500">
+                            Switch to this brand to bind a wallet
+                            {device.boundGatewayAccount ? ` (current: ${device.boundGatewayAccount})` : ""}.
+                          </p>
+                        ) : (
+                          <>
+                            <select
+                              className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1.5 text-[11px] font-mono"
+                              value={device.boundGatewayId || ""}
+                              disabled={bindingDeviceId === device.deviceId}
+                              onChange={async (e) => {
+                                const next = e.target.value || null;
+                                setBindingDeviceId(device.deviceId);
+                                try {
+                                  await api.bindCompanionDeviceGateway(device.deviceId, next);
+                                  success(
+                                    next
+                                      ? "Device bound to wallet for SMS matching."
+                                      : "Wallet binding cleared.",
+                                    "Saved"
+                                  );
+                                  await loadDevices();
+                                } catch (err: unknown) {
+                                  toastError(
+                                    err instanceof Error ? err.message : "Could not bind wallet.",
+                                    "Bind failed"
+                                  );
+                                } finally {
+                                  setBindingDeviceId(null);
+                                }
+                              }}
+                            >
+                              <option value="">No wallet bind</option>
+                              {gateways.map((g) => (
+                                <option key={g.gatewayId} value={g.gatewayId}>
+                                  {g.displayName} · {g.account || g.methodCode}
+                                </option>
+                              ))}
+                            </select>
+                            {device.boundGatewayAccount && (
+                              <p className="mt-1 text-[10px] text-zinc-500">
+                                Matches SMS to {device.boundGatewayAccount}
+                              </p>
+                            )}
+                          </>
                         )}
                       </td>
                       <td className="px-4 py-3.5 font-mono text-[11px] text-zinc-500">

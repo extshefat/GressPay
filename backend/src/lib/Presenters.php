@@ -465,12 +465,24 @@ final class GpPresenters
     /** @param array<string,mixed> $brand */
     private static function merchantLogoForBrand(array $brand): ?string
     {
-        $merchantId = (string) ($brand['merchant_id'] ?? '');
-        if ($merchantId === '') {
-            return null;
-        }
         try {
-            $m = GpDb::one('SELECT brand_logo_url, brand_name FROM gp_merchants WHERE merchant_id = ?', [$merchantId]);
+            $objectKey = trim((string) ($brand['logo_object_key'] ?? ''));
+            if ($objectKey !== '' && R2Client::isConfigured()) {
+                try {
+                    return R2Client::presignGet($objectKey, min(3600, max(900, GpConfig::r2PresignTtl())));
+                } catch (Throwable $e) {
+                    // fall through
+                }
+            }
+            $brandUrl = trim((string) ($brand['logo_url'] ?? ''));
+            if ($brandUrl !== '' && str_starts_with(strtolower($brandUrl), 'https://')) {
+                return $brandUrl;
+            }
+            $merchantId = (string) ($brand['merchant_id'] ?? '');
+            if ($merchantId === '') {
+                return null;
+            }
+            $m = GpDb::one('SELECT brand_logo_url FROM gp_merchants WHERE merchant_id = ?', [$merchantId]);
             $logo = trim((string) ($m['brand_logo_url'] ?? ''));
             return $logo !== '' ? $logo : null;
         } catch (Throwable $e) {

@@ -886,6 +886,26 @@ final class CheckoutController
             [$brandId, $methodCode, 'active']
         );
         $smsNumber = preg_replace('/\D+/', '', (string) ($sms['number'] ?? '')) ?: '';
+        // If SMS came from a device bound to a wallet, prefer that account for matching.
+        $smsDeviceId = trim((string) ($sms['device_id'] ?? ''));
+        if ($smsDeviceId !== '' && ($smsNumber === '' || strlen($smsNumber) <= 5)) {
+            $dev = GpDb::one(
+                'SELECT bound_gateway_id FROM gp_devices WHERE device_id = ? AND brand_id = ? AND status = ?',
+                [$smsDeviceId, $brandId, 'active']
+            );
+            $boundGw = trim((string) ($dev['bound_gateway_id'] ?? ''));
+            if ($boundGw !== '') {
+                foreach ($activeSameRail as $g) {
+                    if ((string) $g['gateway_id'] === $boundGw) {
+                        $digits = preg_replace('/\D+/', '', (string) ($g['account'] ?? '')) ?: '';
+                        if ($digits !== '') {
+                            $smsNumber = $digits;
+                        }
+                        break;
+                    }
+                }
+            }
+        }
         if (count($activeSameRail) > 1) {
             // Multi-account: require SMS number match to expected gateway account (no amount-only guess).
             $targetAccount = $expectedAccount;

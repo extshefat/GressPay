@@ -120,8 +120,12 @@ export interface MerchantGateway {
   exchangeRate?: string | null;
   gatewayCategory?: string | null;
   binance_uid?: string;
+  mode?: string;
+  account_name?: string;
   apiKeySet?: boolean;
   apiSecretSet?: boolean;
+  certificateSnSet?: boolean;
+  binanceLiveConfigured?: boolean;
   displayOrder: number;
   enabled: boolean;
   status: string;
@@ -371,8 +375,12 @@ export interface DashboardMetrics {
 
 export interface MerchantSettings {
   businessName: string;
+  brandId?: string;
   brandName?: string;
   brandLogoUrl?: string;
+  logoConfigured?: boolean;
+  logoUploaded?: boolean;
+  r2Configured?: boolean;
   supportContact?: string;
   receiptFooter?: string;
   telegramBotTokenSet?: boolean;

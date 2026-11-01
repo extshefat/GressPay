@@ -24,6 +24,28 @@ final class BrandsController
         if ($req->method === 'PUT' && $id !== null && $action === null) {
             self::update($actor, $id, $req);
         }
+        $sub = $req->part(3);
+        if ($id !== null && $action === 'logo') {
+            $brand = GpDb::one(
+                'SELECT * FROM gp_brands WHERE brand_id = ? AND merchant_id = ?',
+                [$id, $actor['merchant_id']]
+            );
+            if ($brand === null) {
+                GpJson::error('NOT_FOUND', 'Brand not found.', 404);
+            }
+            if ($sub === 'upload-intent' && $req->method === 'POST') {
+                self::logoUploadIntent($actor, $brand, $req);
+            }
+            if ($sub === 'complete' && $req->method === 'POST') {
+                self::logoUploadComplete($actor, $brand, $req);
+            }
+            if (($sub === null || $sub === '') && $req->method === 'DELETE') {
+                self::logoDelete($actor, $brand);
+            }
+            if ($sub === 'preview' && $req->method === 'GET') {
+                self::logoPreview($brand);
+            }
+        }
         GpJson::error('NOT_FOUND', 'Unknown brands route.', 404);
     }
 
@@ -52,6 +74,8 @@ final class BrandsController
             if (is_array($liveKey) && !empty($liveKey['key_sealed'])) {
                 $websitePlain = GpCrypto::open((string) $liveKey['key_sealed']) ?? '';
             }
+            $logoKey = trim((string) ($row['logo_object_key'] ?? ''));
+            $logoUrl = trim((string) ($row['logo_url'] ?? ''));
             $out[] = [
                 'brandId' => $row['brand_id'],
                 'name' => $row['name'],
@@ -61,6 +85,8 @@ final class BrandsController
                 'active' => $row['brand_id'] === $actor['brand_id'],
                 'deviceCount' => $deviceCount,
                 'gatewayCount' => $gwCount,
+                'logoConfigured' => $logoKey !== '' || $logoUrl !== '',
+                'logoUrl' => $logoUrl !== '' ? $logoUrl : null,
                 'websiteApiKey' => $websitePlain,
                 'websiteApiKeyMasked' => ($websitePlain !== '' || (is_array($liveKey) && ($liveKey['prefix'] ?? '') !== ''))
                     ? '**********'
@@ -201,12 +227,142 @@ final class BrandsController
             'UPDATE gp_brands SET name = ?, webhook_url = ?, updated_at = ? WHERE brand_id = ?',
             [$name, $webhookUrl !== '' ? $webhookUrl : null, GpIds::now(), $brandId]
         );
+        $logoUrl = trim((string) $req->input('logoUrl', $req->input('logo_url', $brand['logo_url'] ?? '')));
+        if ($logoUrl !== '' && !preg_match('#^https://#i', $logoUrl)) {
+            GpJson::error('INVALID_URL', 'logoUrl must be an HTTPS URL.', 400);
+        }
+        if ($req->input('logoUrl', $req->input('logo_url', null)) !== null) {
+            GpDb::exec(
+                'UPDATE gp_brands SET logo_url = ?, updated_at = ? WHERE brand_id = ?',
+                [$logoUrl !== '' ? $logoUrl : null, GpIds::now(), $brandId]
+            );
+        }
         GpJson::send([
             'brand' => [
                 'brandId' => $brandId,
                 'name' => $name,
                 'webhookUrl' => $webhookUrl !== '' ? $webhookUrl : null,
+                'logoUrl' => $logoUrl !== '' ? $logoUrl : null,
             ],
         ]);
+    }
+
+    /** @param array<string,mixed> $actor @param array<string,mixed> $brand */
+    private static function logoUploadIntent(array $actor, array $brand, GpRequest $req): never
+    {
+        GpRateLimiter::guard('brand-logo:' . $actor['merchant_id'], 20, 60);
+        if (!R2Client::isConfigured()) {
+            GpJson::error('R2_UNAVAILABLE', 'Logo upload unavailable — platform R2 is not configured.', 503);
+        }
+        $contentType = strtolower(trim((string) $req->input('contentType', $req->input('mimeType', ''))));
+        if (!in_array($contentType, ['image/png', 'image/jpeg', 'image/webp'], true)) {
+            GpJson::error('INVALID_MIME', 'Allowed types: image/png, image/jpeg, image/webp.', 400);
+        }
+        $declaredSize = (int) $req->input('byteSize', $req->input('size', 0));
+        $max = min(GpConfig::r2MaxUploadBytes(), 2 * 1024 * 1024);
+        if ($declaredSize <= 0 || $declaredSize > $max) {
+            GpJson::error('FILE_TOO_LARGE', 'Logo must be between 1 and ' . $max . ' bytes.', 400);
+        }
+        $ext = R2Client::extensionForMime($contentType);
+        $objectKey = sprintf(
+            'brands/%s/logo/%s.%s',
+            $brand['brand_id'],
+            bin2hex(random_bytes(12)),
+            $ext
+        );
+        try {
+            $presign = R2Client::presignPut($objectKey, $contentType);
+        } catch (Throwable $e) {
+            GpJson::error('R2_ERROR', 'Could not create upload URL.', 503);
+        }
+        GpJson::send([
+            'uploadUrl' => $presign['url'],
+            'requiredHeaders' => $presign['headers'],
+            'objectKey' => $objectKey,
+            'expiresIn' => $presign['expiresIn'],
+            'maxBytes' => $max,
+            'contentType' => $contentType,
+        ]);
+    }
+
+    /** @param array<string,mixed> $actor @param array<string,mixed> $brand */
+    private static function logoUploadComplete(array $actor, array $brand, GpRequest $req): never
+    {
+        if (!R2Client::isConfigured()) {
+            GpJson::error('R2_UNAVAILABLE', 'Logo upload unavailable — platform R2 is not configured.', 503);
+        }
+        $objectKey = trim((string) $req->input('objectKey', ''));
+        $prefix = 'brands/' . $brand['brand_id'] . '/logo/';
+        if ($objectKey === '' || !str_starts_with($objectKey, $prefix) || str_contains($objectKey, '..')) {
+            GpJson::error('INVALID_KEY', 'objectKey is not valid for this brand.', 400);
+        }
+        $head = R2Client::headObject($objectKey);
+        if (empty($head['ok'])) {
+            GpJson::error('OBJECT_MISSING', 'Uploaded object not found in storage. Retry upload.', 400);
+        }
+        $oldKey = trim((string) ($brand['logo_object_key'] ?? ''));
+        $mime = strtolower((string) ($head['contentType'] ?? 'image/png'));
+        GpDb::exec(
+            'UPDATE gp_brands SET logo_object_key = ?, logo_mime = ?, updated_at = ? WHERE brand_id = ?',
+            [$objectKey, $mime, GpIds::now(), $brand['brand_id']]
+        );
+        if ($oldKey !== '' && $oldKey !== $objectKey) {
+            R2Client::deleteObject($oldKey);
+        }
+        $preview = null;
+        try {
+            $preview = R2Client::presignGet($objectKey, min(3600, GpConfig::r2PresignTtl()));
+        } catch (Throwable $e) {
+            $preview = null;
+        }
+        // Keep merchant fallback URL in sync when a preview URL is available.
+        if (is_string($preview) && $preview !== '') {
+            GpDb::exec(
+                'UPDATE gp_merchants SET brand_logo_url = ?, updated_at = ? WHERE merchant_id = ?',
+                [$preview, GpIds::now(), $actor['merchant_id']]
+            );
+        }
+        GpJson::send([
+            'ok' => true,
+            'brandId' => $brand['brand_id'],
+            'logoConfigured' => true,
+            'previewUrl' => $preview,
+        ]);
+    }
+
+    /** @param array<string,mixed> $actor @param array<string,mixed> $brand */
+    private static function logoDelete(array $actor, array $brand): never
+    {
+        $key = trim((string) ($brand['logo_object_key'] ?? ''));
+        GpDb::exec(
+            'UPDATE gp_brands SET logo_object_key = NULL, logo_mime = NULL, updated_at = ? WHERE brand_id = ?',
+            [GpIds::now(), $brand['brand_id']]
+        );
+        if ($key !== '' && R2Client::isConfigured()) {
+            R2Client::deleteObject($key);
+        }
+        GpJson::send(['ok' => true, 'brandId' => $brand['brand_id'], 'logoConfigured' => false]);
+    }
+
+    /** @param array<string,mixed> $brand */
+    private static function logoPreview(array $brand): never
+    {
+        $key = trim((string) ($brand['logo_object_key'] ?? ''));
+        if ($key === '') {
+            $url = trim((string) ($brand['logo_url'] ?? ''));
+            if ($url === '') {
+                GpJson::error('NOT_FOUND', 'No logo uploaded for this brand.', 404);
+            }
+            GpJson::send(['url' => $url, 'expiresIn' => 0]);
+        }
+        if (!R2Client::isConfigured()) {
+            GpJson::error('R2_UNAVAILABLE', 'Logo preview unavailable.', 503);
+        }
+        try {
+            $ttl = min(3600, max(300, GpConfig::r2PresignTtl()));
+            GpJson::send(['url' => R2Client::presignGet($key, $ttl), 'expiresIn' => $ttl]);
+        } catch (Throwable $e) {
+            GpJson::error('R2_ERROR', 'Could not create preview URL.', 503);
+        }
     }
 }

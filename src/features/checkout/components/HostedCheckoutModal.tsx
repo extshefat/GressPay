@@ -1122,9 +1122,15 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
                 : selectedMethod.code === "binance_pay"
                 ? "Open Binance Pay Checkout"
                 : activeTab === "crypto"
-                ? "Verify Crypto Payment"
-                : "Verify Payment"}
+                ? `Pay ${formatCurrency(payableAmount, payableCurrency)}`
+                : `Pay ${formatCurrency(payableAmount, payableCurrency)}`}
             </Button>
+            {(selectedMethod.category === "mfs" ||
+              ["bkash", "nagad", "rocket", "upay", "cellfin"].includes(selectedMethod.code)) && (
+              <p className="text-[11px] text-center text-zinc-500">
+                After sending money, paste the TrxID above — we match it against companion SMS for this brand.
+              </p>
+            )}
           </form>
         </div>
       </div>

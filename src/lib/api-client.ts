@@ -233,6 +233,10 @@ class ApiClient {
       label: string;
       brandId?: string;
       brandName?: string;
+      boundGatewayId?: string | null;
+      boundGatewayAccount?: string | null;
+      boundGatewayMethod?: string | null;
+      boundGatewayName?: string | null;
       status: string;
       lastSeenAt?: string | null;
       online?: boolean;
@@ -244,6 +248,23 @@ class ApiClient {
     }[];
   }> {
         return this.request("/api/v1/companion/devices");
+  }
+
+  async bindCompanionDeviceGateway(
+    deviceId: string,
+    gatewayId: string | null
+  ): Promise<{
+    ok: boolean;
+    deviceId: string;
+    boundGatewayId?: string | null;
+    boundGatewayAccount?: string;
+    boundGatewayMethod?: string;
+    boundGatewayName?: string;
+  }> {
+    return this.request(`/api/v1/companion/devices/${deviceId}/bind`, {
+      method: "PUT",
+      body: JSON.stringify({ gatewayId }),
+    });
   }
 
   async registerCompanionDevice(
@@ -450,11 +471,21 @@ class ApiClient {
     });
   }
 
-  async getAdminBillingBrand(): Promise<{ billingBrandId: string | null; billingBrandName?: string | null }> {
+  async getAdminBillingBrand(): Promise<{
+    billingBrandId: string | null;
+    billingBrandName?: string | null;
+    liveGatewayCount?: number;
+    brands?: { brandId: string; name: string; merchantId: string; liveGatewayCount: number }[];
+    note?: string;
+  }> {
     return this.request("/api/v1/admin/billing-brand");
   }
 
-  async setAdminBillingBrand(billingBrandId: string): Promise<{ ok: boolean; billingBrandId: string }> {
+  async setAdminBillingBrand(billingBrandId: string): Promise<{
+    ok: boolean;
+    billingBrandId: string;
+    liveGatewayCount?: number;
+  }> {
     return this.request("/api/v1/admin/billing-brand", {
       method: "PUT",
       body: JSON.stringify({ billingBrandId }),
@@ -656,6 +687,41 @@ class ApiClient {
     });
   }
 
+  async brandLogoUploadIntent(
+    brandId: string,
+    contentType: string,
+    byteSize: number
+  ): Promise<{
+    uploadUrl: string;
+    requiredHeaders: Record<string, string>;
+    objectKey: string;
+    expiresIn: number;
+    maxBytes: number;
+  }> {
+    return this.request(`/api/v1/brands/${brandId}/logo/upload-intent`, {
+      method: "POST",
+      body: JSON.stringify({ contentType, byteSize }),
+    });
+  }
+
+  async brandLogoUploadComplete(
+    brandId: string,
+    objectKey: string
+  ): Promise<{ ok: boolean; brandId: string; logoConfigured: boolean; previewUrl?: string | null }> {
+    return this.request(`/api/v1/brands/${brandId}/logo/complete`, {
+      method: "POST",
+      body: JSON.stringify({ objectKey }),
+    });
+  }
+
+  async deleteBrandLogo(brandId: string): Promise<{ ok: boolean; brandId: string; logoConfigured: boolean }> {
+    return this.request(`/api/v1/brands/${brandId}/logo`, { method: "DELETE" });
+  }
+
+  async previewBrandLogo(brandId: string): Promise<{ url: string; expiresIn: number }> {
+    return this.request(`/api/v1/brands/${brandId}/logo/preview`);
+  }
+
   async testWebhookPing(): Promise<{ ok: boolean; httpCode?: number; message?: string }> {
     return this.request<{ ok: boolean; httpCode?: number; message?: string }>("/api/v1/webhooks/test-ping", {
       method: "POST",
@@ -851,6 +917,8 @@ class ApiClient {
     billingCycle?: string;
     isFree?: boolean;
     features?: string[];
+    deviceLimit?: number;
+    methodLimit?: number;
   }): Promise<{ ok: boolean; planId: string }> {
     return this.request<{ ok: boolean; planId: string }>("/api/v1/admin/plans", {
       method: "POST",

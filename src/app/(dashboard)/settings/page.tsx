@@ -56,6 +56,10 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [savingBinance, setSavingBinance] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [activeBrandId, setActiveBrandId] = useState("");
+  const [logoUploaded, setLogoUploaded] = useState(false);
+  const [r2Configured, setR2Configured] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
 
   const loadSettings = async () => {
     setIsLoading(true);
@@ -66,6 +70,9 @@ export default function SettingsPage() {
       setBusinessName(data.businessName || "");
       setBrandName(data.brandName || data.businessName || "");
       setBrandLogoUrl(data.brandLogoUrl || "");
+      setActiveBrandId(data.brandId || "");
+      setLogoUploaded(Boolean(data.logoUploaded));
+      setR2Configured(Boolean(data.r2Configured));
       setSupportContact(data.supportContact || "");
       setReceiptFooter(data.receiptFooter || "");
       setWebhookUrl(data.webhookUrl || "");
@@ -270,8 +277,81 @@ export default function SettingsPage() {
               leftIcon={<Building2 className="w-4 h-4" />}
               required
             />
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Brand logo upload</p>
+              <p className="text-[11px] text-zinc-500">
+                Upload a logo for the active brand. It appears on the public payment page with the brand name.
+              </p>
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                disabled={!activeBrandId || !r2Configured || logoUploading}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = "";
+                  if (!file || !activeBrandId) return;
+                  if (!r2Configured) {
+                    toastError("Logo upload unavailable — platform storage is not configured.", "Upload");
+                    return;
+                  }
+                  if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+                    toastError("Only PNG, JPEG, or WebP images are allowed.", "Upload");
+                    return;
+                  }
+                  if (file.size > 2 * 1024 * 1024) {
+                    toastError("Logo must be 2MB or smaller.", "Upload");
+                    return;
+                  }
+                  setLogoUploading(true);
+                  try {
+                    const intent = await api.brandLogoUploadIntent(activeBrandId, file.type, file.size);
+                    const put = await fetch(intent.uploadUrl, {
+                      method: "PUT",
+                      headers: { "Content-Type": file.type },
+                      body: file,
+                    });
+                    if (!put.ok) throw new Error(`Upload HTTP ${put.status}`);
+                    const done = await api.brandLogoUploadComplete(activeBrandId, intent.objectKey);
+                    if (done.previewUrl) setBrandLogoUrl(done.previewUrl);
+                    setLogoUploaded(true);
+                    success("Brand logo uploaded.", "Saved");
+                    await loadSettings();
+                  } catch (err: unknown) {
+                    toastError(err instanceof Error ? err.message : "Logo upload failed.", "Upload Failed");
+                  } finally {
+                    setLogoUploading(false);
+                  }
+                }}
+                className="text-xs block w-full text-zinc-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-zinc-900 file:text-white dark:file:bg-white dark:file:text-zinc-950"
+              />
+              {!r2Configured && (
+                <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                  File upload needs platform R2 storage. You can still paste an HTTPS logo URL below.
+                </p>
+              )}
+              {logoUploaded && activeBrandId && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  leftIcon={<Trash2 className="w-3.5 h-3.5" />}
+                  onClick={async () => {
+                    try {
+                      await api.deleteBrandLogo(activeBrandId);
+                      setLogoUploaded(false);
+                      success("Uploaded logo removed.", "Saved");
+                      await loadSettings();
+                    } catch (err: unknown) {
+                      toastError(err instanceof Error ? err.message : "Could not remove logo.", "Error");
+                    }
+                  }}
+                >
+                  Remove uploaded logo
+                </Button>
+              )}
+            </div>
             <Input
-              label="Brand Logo URL (HTTPS)"
+              label="Brand Logo URL (HTTPS fallback)"
               value={brandLogoUrl}
               onChange={(e) => setBrandLogoUrl(e.target.value)}
               leftIcon={<ImageIcon className="w-4 h-4" />}

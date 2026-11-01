@@ -665,6 +665,8 @@ final class AdminController
                 'priceBdt' => (float) $r['price_bdt'],
                 'billingCycle' => $r['billing_cycle'],
                 'creditAllowance' => (int) $r['credit_allowance'],
+                'deviceLimit' => (int) ($r['device_limit'] ?? 1),
+                'methodLimit' => (int) ($r['method_limit'] ?? 2),
                 'features' => is_array($features) ? $features : [],
                 'isFree' => (bool) $r['is_free'],
                 'status' => $r['status'],
@@ -685,6 +687,8 @@ final class AdminController
         $cycle = (string) $req->input('billingCycle', 'monthly');
         $isFree = (bool) $req->input('isFree', $price == 0);
         $features = $req->input('features', []);
+        $deviceLimit = max(0, (int) $req->input('deviceLimit', $req->input('device_limit', 1)));
+        $methodLimit = max(0, (int) $req->input('methodLimit', $req->input('method_limit', 2)));
 
         if ($name === '' || $code === '') {
             GpJson::error('VALIDATION', 'Name and code are required.');
@@ -698,8 +702,8 @@ final class AdminController
         $planId = 'plan_' . bin2hex(random_bytes(6));
         $now = GpIds::now();
         GpDb::exec('
-            INSERT INTO gp_plans (plan_id, name, code, description, price_bdt, billing_cycle, credit_allowance, features_json, is_free, status, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO gp_plans (plan_id, name, code, description, price_bdt, billing_cycle, credit_allowance, device_limit, method_limit, features_json, is_free, status, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ', [
             $planId,
             $name,
@@ -708,6 +712,8 @@ final class AdminController
             $price,
             $cycle,
             $credits,
+            $deviceLimit,
+            $methodLimit,
             json_encode(is_array($features) ? $features : [], JSON_UNESCAPED_SLASHES),
             $isFree ? 1 : 0,
             'active',
@@ -745,6 +751,12 @@ final class AdminController
         $isFree = $req->input('isFree', null) !== null ? ($req->input('isFree') ? 1 : 0) : (int) $plan['is_free'];
         $features = $req->input('features', null);
         $featuresJson = $features !== null ? json_encode($features, JSON_UNESCAPED_SLASHES) : $plan['features_json'];
+        $cycle = trim((string) $req->input('billingCycle', $req->input('billing_cycle', $plan['billing_cycle'] ?? 'monthly')));
+        if ($cycle === '') {
+            $cycle = (string) ($plan['billing_cycle'] ?? 'monthly');
+        }
+        $deviceLimit = max(0, (int) $req->input('deviceLimit', $req->input('device_limit', $plan['device_limit'] ?? 1)));
+        $methodLimit = max(0, (int) $req->input('methodLimit', $req->input('method_limit', $plan['method_limit'] ?? 2)));
 
         if (!in_array($status, ['active', 'archived', 'disabled'], true)) {
             GpJson::error('VALIDATION', 'Invalid status. Must be active, archived, or disabled.');
@@ -753,18 +765,28 @@ final class AdminController
         $now = GpIds::now();
         GpDb::exec('
             UPDATE gp_plans
-            SET name = ?, description = ?, price_bdt = ?, credit_allowance = ?, features_json = ?, is_free = ?, status = ?, updated_at = ?
+            SET name = ?, description = ?, price_bdt = ?, credit_allowance = ?, billing_cycle = ?, device_limit = ?, method_limit = ?, features_json = ?, is_free = ?, status = ?, updated_at = ?
             WHERE plan_id = ?
-        ', [$name, $desc, $price, $credits, $featuresJson, $isFree, $status, $now, $planId]);
+        ', [$name, $desc, $price, $credits, $cycle, $deviceLimit, $methodLimit, $featuresJson, $isFree, $status, $now, $planId]);
 
         self::logAudit($actor['email'], 'plan', $planId, 'update_plan', [
             'name' => $name,
             'status' => $status,
             'price_bdt' => $price,
             'credits' => $credits,
+            'billing_cycle' => $cycle,
+            'device_limit' => $deviceLimit,
+            'method_limit' => $methodLimit,
         ]);
 
-        GpJson::send(['ok' => true, 'planId' => $planId, 'status' => $status]);
+        GpJson::send([
+            'ok' => true,
+            'planId' => $planId,
+            'status' => $status,
+            'billingCycle' => $cycle,
+            'deviceLimit' => $deviceLimit,
+            'methodLimit' => $methodLimit,
+        ]);
     }
 
     private static function listSubscriptions(): never
@@ -1024,10 +1046,13 @@ final class AdminController
     {
         $brandId = GpPlatformBilling::billingBrandId();
         $brand = $brandId ? GpDb::one('SELECT brand_id, name FROM gp_brands WHERE brand_id = ?', [$brandId]) : null;
+        $liveCount = $brandId ? GpPlatformBilling::countUsableGateways($brandId) : 0;
         GpJson::send([
             'billingBrandId' => $brandId,
             'billingBrandName' => $brand['name'] ?? null,
-            'note' => 'Configure gateways on this brand for account plan checkout (My Payments).',
+            'liveGatewayCount' => $liveCount,
+            'brands' => GpPlatformBilling::brandOptions(),
+            'note' => 'My Payments checkout uses gateways on this brand. Configure them under that brand\'s View Gateways.',
         ]);
     }
 
@@ -1035,11 +1060,17 @@ final class AdminController
     private static function putBillingBrand(array $actor, GpRequest $req): never
     {
         $brandId = trim((string) $req->input('billingBrandId', $req->input('brandId', '')));
-        GpPlatformBilling::setBillingBrandId($brandId);
+        GpPlatformBilling::setBillingBrandId($brandId, true);
+        $liveCount = GpPlatformBilling::countUsableGateways($brandId);
         self::logAudit((string) ($actor['email'] ?? ''), 'platform_settings', GpPlatformBilling::SETTING_BILLING_BRAND, 'set_billing_brand', [
             'brandId' => $brandId,
+            'liveGatewayCount' => $liveCount,
         ]);
-        GpJson::send(['ok' => true, 'billingBrandId' => $brandId]);
+        GpJson::send([
+            'ok' => true,
+            'billingBrandId' => $brandId,
+            'liveGatewayCount' => $liveCount,
+        ]);
     }
 
     /** @param array{email?:string} $actor */

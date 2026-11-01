@@ -82,6 +82,15 @@ final class GatewaysController
             ]);
         }
         self::ensureBackfill();
+        // Clear abandoned QR intents (pending with no stored object).
+        try {
+            GpDb::exec(
+                "UPDATE gp_gateways SET qr_status = 'none', updated_at = ? WHERE brand_id = ? AND qr_status = 'pending' AND (qr_object_key IS NULL OR qr_object_key = '')",
+                [GpIds::now(), $actor['brand_id']]
+            );
+        } catch (Throwable $e) {
+            // non-fatal
+        }
         $rows = GpDb::all(
             'SELECT * FROM gp_gateways WHERE brand_id = ? ORDER BY display_order ASC, id ASC',
             [$actor['brand_id']]
@@ -123,17 +132,18 @@ final class GatewaysController
         }
 
         $account = trim((string) $req->input('account', $req->input('receivingNumber', '')));
-        if ($methodCode !== 'binance_pay') {
-            $account = self::validateAccount($methodCode, $account);
+        $binanceUid = trim((string) $req->input('binance_uid', ''));
+        if ($methodCode === 'binance_pay') {
+            // Persist UID (personal) or pay-id note (merchant API) on the gateway row for list/display.
+            $account = $binanceUid !== '' ? $binanceUid : $account;
         } else {
-            $account = '';
+            $account = self::validateAccount($methodCode, $account);
         }
         if ($methodCode === 'bybit_pay' && $account !== '') {
             self::assertUidFree($actor['brand_id'], $account, null);
         }
-        $binanceUid = trim((string) $req->input('binance_uid', ''));
-        if ($methodCode === 'binance_pay' && $binanceUid !== '') {
-            self::assertUidFree($actor['brand_id'], $binanceUid, null);
+        if ($methodCode === 'binance_pay' && $account !== '') {
+            self::assertUidFree($actor['brand_id'], $account, null);
         }
 
         $now = GpIds::now();
@@ -200,11 +210,19 @@ final class GatewaysController
             GpJson::error('INVALID_NAME', 'displayName is required (max 120 chars).', 400);
         }
         $accountIn = $req->input('account', $req->input('receivingNumber', '__omit__'));
+        $binanceUid = trim((string) $req->input('binance_uid', ''));
         if ($accountIn === '__omit__') {
             $account = (string) ($gw['account'] ?? '');
+            if ($methodCode === 'binance_pay' && $binanceUid !== '') {
+                $account = $binanceUid;
+            }
         } else {
             $account = trim((string) $accountIn);
-            if ($methodCode !== 'binance_pay' && $account !== '') {
+            if ($methodCode === 'binance_pay') {
+                if ($binanceUid !== '') {
+                    $account = $binanceUid;
+                }
+            } elseif ($account !== '') {
                 $account = self::validateAccount($methodCode, $account);
             }
         }
@@ -219,9 +237,8 @@ final class GatewaysController
         if ($methodCode === 'bybit_pay' && $account !== '') {
             self::assertUidFree($actor['brand_id'], $account, (string) $gw['gateway_id']);
         }
-        $binanceUid = trim((string) $req->input('binance_uid', ''));
-        if ($methodCode === 'binance_pay' && $binanceUid !== '') {
-            self::assertUidFree($actor['brand_id'], $binanceUid, (string) $gw['gateway_id']);
+        if ($methodCode === 'binance_pay' && $account !== '') {
+            self::assertUidFree($actor['brand_id'], $account, (string) $gw['gateway_id']);
         }
 
         $status = (string) $gw['status'];
@@ -529,10 +546,15 @@ final class GatewaysController
         }
         if ($methodCode === 'binance_pay') {
             $out['mode'] = (string) ($opts['mode'] ?? 'merchant');
-            $out['binance_uid'] = (string) ($opts['binance_uid'] ?? '');
+            $out['binance_uid'] = (string) ($opts['binance_uid'] ?? ($account !== '' ? $account : ''));
             $out['account_name'] = (string) ($opts['account_name'] ?? '');
-            $out['apiKeySet'] = trim((string) ($opts['api_key_sealed'] ?? '')) !== '';
-            $out['apiSecretSet'] = trim((string) ($opts['api_secret_sealed'] ?? '')) !== '';
+            $brand = GpDb::one('SELECT binance_pay_json, crypto_enabled FROM gp_brands WHERE brand_id = ?', [(string) ($gw['brand_id'] ?? '')]);
+            $brandCreds = BinancePayClient::credentialsForBrand(is_array($brand) ? $brand : []);
+            $liveConfigured = $brandCreds !== null;
+            $out['apiKeySet'] = $liveConfigured;
+            $out['apiSecretSet'] = $liveConfigured;
+            $out['certificateSnSet'] = $liveConfigured;
+            $out['binanceLiveConfigured'] = $liveConfigured;
         }
         if (in_array($methodCode, GpCatalog::bdMobileWalletCodes(), true)) {
             $out['usernameSet'] = trim((string) ($opts['username'] ?? '')) !== '';
@@ -803,20 +825,36 @@ final class GatewaysController
                 GpJson::error('INVALID_MODE', 'Binance mode must be merchant or personal.', 400);
             }
             $prev['mode'] = $mode;
-            $uid = trim((string) $req->input('binance_uid', $prev['binance_uid'] ?? ''));
+            $uid = trim((string) $req->input('binance_uid', $account !== '' ? $account : ($prev['binance_uid'] ?? '')));
             if ($uid !== '') {
                 $prev['binance_uid'] = $uid;
             }
             if ($req->input('account_name', null) !== null) {
                 $prev['account_name'] = trim((string) $req->input('account_name'));
             }
-            foreach (['api_key', 'api_secret'] as $secretKey) {
-                $secret = $req->input($secretKey, null);
-                if (!is_string($secret) || trim($secret) === '') {
-                    continue;
+            // Canonical live credentials live on gp_brands.binance_pay_json (same as Settings).
+            $apiKey = trim((string) $req->input('api_key', $req->input('apiKey', '')));
+            $apiSecret = trim((string) $req->input('api_secret', $req->input('apiSecret', $req->input('secret', ''))));
+            $certSn = trim((string) $req->input('certificate_sn', $req->input('certificateSn', '')));
+            if ($apiKey !== '' || $apiSecret !== '' || $certSn !== '') {
+                if ($apiKey === '' || $apiSecret === '' || $certSn === '') {
+                    GpJson::error(
+                        'MISSING_FIELD',
+                        'Binance Pay merchant API requires api_key, api_secret, and certificate_sn together.',
+                        400
+                    );
                 }
-                $prev[$secretKey . '_sealed'] = GpCrypto::seal(trim($secret));
-                unset($prev[$secretKey]);
+                $sealed = GpCrypto::seal(json_encode([
+                    'apiKey' => $apiKey,
+                    'secret' => $apiSecret,
+                    'certificateSn' => $certSn,
+                ], JSON_UNESCAPED_SLASHES));
+                GpDb::exec(
+                    'UPDATE gp_brands SET binance_pay_json = ?, updated_at = ? WHERE brand_id = ?',
+                    [$sealed, GpIds::now(), $brandId]
+                );
+                // Drop orphan sealed keys so live path is unambiguous.
+                unset($prev['api_key_sealed'], $prev['api_secret_sealed'], $prev['api_key'], $prev['api_secret']);
             }
         }
         if ($methodCode === 'usdt_trc20' && $account !== '') {

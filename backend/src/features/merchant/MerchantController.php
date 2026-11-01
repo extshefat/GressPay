@@ -165,10 +165,26 @@ final class MerchantController
 
         $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$actor['merchant_id']]);
 
+        $logoKey = trim((string) ($brand['logo_object_key'] ?? ''));
+        $logoUrl = trim((string) ($brand['logo_url'] ?? ''));
+        $merchantLogo = trim((string) ($merchant['brand_logo_url'] ?? ''));
+        $resolvedLogo = $logoUrl !== '' ? $logoUrl : $merchantLogo;
+        if ($logoKey !== '' && R2Client::isConfigured()) {
+            try {
+                $resolvedLogo = R2Client::presignGet($logoKey, min(3600, GpConfig::r2PresignTtl()));
+            } catch (Throwable $e) {
+                // keep URL fallback
+            }
+        }
+
         GpJson::send([
             'businessName' => $brand['name'] ?? '',
+            'brandId' => $brand['brand_id'] ?? ($actor['brand_id'] ?? ''),
             'brandName' => $merchant['brand_name'] ?? ($brand['name'] ?? ''),
-            'brandLogoUrl' => $merchant['brand_logo_url'] ?? '',
+            'brandLogoUrl' => $resolvedLogo,
+            'logoConfigured' => $logoKey !== '' || $logoUrl !== '' || $merchantLogo !== '',
+            'logoUploaded' => $logoKey !== '',
+            'r2Configured' => R2Client::isConfigured(),
             'supportContact' => $merchant['support_contact'] ?? '',
             'receiptFooter' => $merchant['receipt_footer'] ?? '',
             'telegramBotTokenSet' => trim((string) ($merchant['telegram_bot_token'] ?? '')) !== '',
@@ -247,9 +263,17 @@ final class MerchantController
             GpJson::error('INVALID_URL', 'Discord webhook URL must be HTTPS.', 400);
         }
 
+        $resolvedBrandName = $name !== '' ? $name : ($brandName !== '' ? $brandName : 'Store');
         GpDb::exec(
-            'UPDATE gp_brands SET name = ?, webhook_url = ?, crypto_enabled = ?, updated_at = ? WHERE brand_id = ?',
-            [$name !== '' ? $name : ($brandName ?: 'Store'), $webhook !== '' ? $webhook : null, $cryptoFlag, GpIds::now(), $actor['brand_id']]
+            'UPDATE gp_brands SET name = ?, webhook_url = ?, crypto_enabled = ?, logo_url = COALESCE(?, logo_url), updated_at = ? WHERE brand_id = ?',
+            [
+                $resolvedBrandName,
+                $webhook !== '' ? $webhook : null,
+                $cryptoFlag,
+                $brandLogo !== '' ? $brandLogo : null,
+                GpIds::now(),
+                $actor['brand_id'],
+            ]
         );
         GpDb::exec(
             'UPDATE gp_merchants SET brand_name = ?, brand_logo_url = ?, support_contact = ?, receipt_footer = ?, telegram_bot_token = ?, telegram_chat_id = ?, discord_webhook_url = ?, updated_at = ? WHERE merchant_id = ?',
