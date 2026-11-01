@@ -26,10 +26,11 @@ import {
   ImageIcon,
   ShieldCheck,
   Smartphone,
-  Layers,
-  HelpCircle,
   Search,
   Check,
+  Copy,
+  ChevronRight,
+  ExternalLink,
 } from "lucide-react";
 
 interface MethodMeta {
@@ -124,7 +125,7 @@ const ALL_METHOD_OPTIONS: MethodMeta[] = [
   },
   {
     code: "tap",
-    label: "Tap",
+    label: "Tap (Trust Axiata)",
     category: "mfs",
     currency: "BDT",
     accountLabel: "Tap wallet number",
@@ -231,7 +232,7 @@ const ALL_METHOD_OPTIONS: MethodMeta[] = [
     label: "Binance Pay (API / QR)",
     category: "crypto",
     currency: "USDT",
-    accountLabel: "Binance Pay ID (optional notes)",
+    accountLabel: "Binance Pay ID / UID",
     placeholder: "e.g. 19283746",
   },
   {
@@ -243,6 +244,7 @@ const ALL_METHOD_OPTIONS: MethodMeta[] = [
     placeholder: "e.g. 78291044",
   },
 ];
+
 const MFS_CODES = new Set([
   "bkash",
   "nagad",
@@ -260,6 +262,54 @@ const MFS_CODES = new Set([
 ]);
 
 const CRYPTO_CODES = new Set(["usdt_trc20", "binance_pay", "bybit_pay"]);
+
+interface AccountTypeOption {
+  id: "personal" | "agent" | "payment" | "merchant";
+  label: string;
+  hint: string;
+}
+
+export function getMethodAccountTypes(methodCode: string): AccountTypeOption[] {
+  if (methodCode === "nagad") {
+    return [
+      { id: "personal", label: "Personal", hint: "Send Money / Cash In · Auto SMS verify" },
+      { id: "agent", label: "Uddokta / Agent", hint: "Cash Out · Auto SMS verify" },
+      { id: "merchant", label: "Business (API)", hint: "Official Nagad PGW API" },
+    ];
+  }
+  if (methodCode === "bkash") {
+    return [
+      { id: "personal", label: "Personal", hint: "Send Money · Auto SMS verify" },
+      { id: "agent", label: "Agent", hint: "Cash Out · Auto SMS verify" },
+      { id: "payment", label: "Merchant Payment", hint: "Make Payment · Auto SMS verify" },
+      { id: "merchant", label: "Business (API)", hint: "Tokenized bKash PGW API" },
+    ];
+  }
+  if (methodCode === "rocket" || methodCode === "upay") {
+    return [
+      { id: "personal", label: "Personal", hint: "Send Money · Auto SMS verify" },
+      { id: "agent", label: "Agent", hint: "Cash Out · Auto SMS verify" },
+      { id: "merchant", label: "Business / API", hint: "Merchant account" },
+    ];
+  }
+  if (methodCode === "cellfin") {
+    return [
+      { id: "personal", label: "CellFin Account", hint: "Direct IBBL / CellFin App transfer" },
+      { id: "agent", label: "Agent / Sub-branch", hint: "Agent account" },
+    ];
+  }
+  if (methodCode === "bangla_qr" || methodCode === "bangla_qr_v2") {
+    return [
+      { id: "personal", label: "Personal / Retailer", hint: "Standard Bangla QR payment" },
+      { id: "merchant", label: "Merchant Static QR", hint: "Merchant QR settlement" },
+    ];
+  }
+  return [
+    { id: "personal", label: "Personal", hint: "Direct peer-to-peer transfer" },
+    { id: "agent", label: "Agent", hint: "Agent / Cash Out" },
+    { id: "merchant", label: "Business / Merchant", hint: "Corporate / Merchant account" },
+  ];
+}
 
 function readinessBadge(method: string, r: string): { label: string; variant: "emerald" | "amber" | "slate" | "rose" } {
   if (r === "disabled_by_admin") {
@@ -297,6 +347,7 @@ export default function GatewaysPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const [showLibrary, setShowLibrary] = useState(false);
   const [libraryFilter, setLibraryFilter] = useState<"all" | "mfs" | "crypto" | "bank">("all");
@@ -317,7 +368,7 @@ export default function GatewaysPage() {
   const [formBinanceMode, setFormBinanceMode] = useState<"uid" | "merchant_api">("uid");
   const [formAccountName, setFormAccountName] = useState("");
   const [formUsdtOptional, setFormUsdtOptional] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<"all" | "mfs" | "crypto">("all");
+  const [categoryFilter, setCategoryFilter] = useState<"all" | "mfs" | "crypto" | "bank">("all");
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [formMinAmount, setFormMinAmount] = useState("10");
@@ -329,6 +380,13 @@ export default function GatewaysPage() {
   const [formExchangeRate, setFormExchangeRate] = useState("");
   const [formBinanceApiKey, setFormBinanceApiKey] = useState("");
   const [formBinanceApiSecret, setFormBinanceApiSecret] = useState("");
+
+  const copyToClipboard = (text: string, id: string) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -396,7 +454,7 @@ export default function GatewaysPage() {
     setFormCurrency("BDT");
     setFormGatewayFee("0");
     setFormGatewayFeeType("percentage");
-    setFormGatewayCategory("manual");
+    setFormGatewayCategory("bank");
     setFormExchangeRate("");
     setFormBinanceApiKey("");
     setFormBinanceApiSecret("");
@@ -409,7 +467,8 @@ export default function GatewaysPage() {
     setFormMethod(gw.code);
     setFormName(gw.name);
     setFormAccount("");
-    setFormAccountType("personal");
+    const allowed = getMethodAccountTypes(gw.code).map((t) => t.id);
+    setFormAccountType(allowed[0]);
     resetMerchantCreds();
     setFormInstructions(gw.instructionsPlaceholder || "");
     setFormRateMode("auto");
@@ -437,46 +496,16 @@ export default function GatewaysPage() {
     setShowForm(true);
   };
 
-  const pickFromLibrary = (code: string) => {
-    const curated = CURATED_GATEWAYS.find((g) => g.code === code);
-    if (curated) {
-      pickCuratedGateway(curated);
-      return;
-    }
-    const meta = availableOptions.find((m) => m.code === code);
-    setFormMethod(code);
-    setFormName(meta?.label || code);
-    setFormAccount("");
-    setFormAccountType("personal");
-    resetMerchantCreds();
-    setFormInstructions("");
-    setFormRateMode("auto");
-    setFormCustomRate("");
-    setFormBinanceMode("uid");
-    setFormAccountName("");
-    setFormUsdtOptional("");
-    setFormMinAmount("10");
-    setFormMaxAmount("100000");
-    setFormCurrency(meta?.currency || "BDT");
-    setFormGatewayFee("0");
-    setFormGatewayFeeType("percentage");
-    setFormGatewayCategory("mobile_banking");
-    setFormExchangeRate("");
-    setFormBinanceApiKey("");
-    setFormBinanceApiSecret("");
-    setPreviewUrl(null);
-    setShowLibrary(false);
-    setShowForm(true);
-  };
-
   const openEdit = async (g: MerchantGateway) => {
     setEditing(g);
     setFormMethod(g.methodCode);
     setFormName(g.displayName);
     setFormAccount(g.account || "");
-    setFormAccountType(
-      (g.accountType as "personal" | "agent" | "merchant" | "payment") || "personal"
-    );
+    const allowed = getMethodAccountTypes(g.methodCode).map((t) => t.id);
+    const safeType = allowed.includes(g.accountType as "personal" | "agent" | "merchant" | "payment")
+      ? (g.accountType as "personal" | "agent" | "merchant" | "payment")
+      : allowed[0];
+    setFormAccountType(safeType);
     resetMerchantCreds();
     setFormInstructions((g.instructions as string) || "");
     setFormRateMode("auto");
@@ -685,6 +714,7 @@ export default function GatewaysPage() {
   const filteredGateways = gateways.filter((g) => {
     if (categoryFilter === "mfs") return MFS_CODES.has(g.methodCode);
     if (categoryFilter === "crypto") return CRYPTO_CODES.has(g.methodCode);
+    if (categoryFilter === "bank") return !MFS_CODES.has(g.methodCode) && !CRYPTO_CODES.has(g.methodCode);
     return true;
   });
 
@@ -720,25 +750,36 @@ export default function GatewaysPage() {
         </div>
       </div>
 
+      {/* Category Tabs with Item Counts */}
       <div className="flex flex-wrap gap-1 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 p-1">
         {(
           [
-            { id: "all", label: "All Gateways" },
-            { id: "mfs", label: "Bangladesh MFS" },
-            { id: "crypto", label: "Global Crypto" },
+            { id: "all", label: "All Gateways", count: gateways.length },
+            { id: "mfs", label: "Bangladesh MFS", count: gateways.filter((g) => MFS_CODES.has(g.methodCode)).length },
+            { id: "crypto", label: "Global Crypto", count: gateways.filter((g) => CRYPTO_CODES.has(g.methodCode)).length },
+            { id: "bank", label: "Bank & Manual", count: gateways.filter((g) => !MFS_CODES.has(g.methodCode) && !CRYPTO_CODES.has(g.methodCode)).length },
           ] as const
         ).map((tab) => (
           <button
             key={tab.id}
             type="button"
             onClick={() => setCategoryFilter(tab.id)}
-            className={`flex-1 min-w-[120px] px-3 py-2 text-xs font-semibold rounded-lg transition-colors ${
+            className={`flex-1 min-w-[130px] px-3 py-2 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 ${
               categoryFilter === tab.id
-                ? "bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 shadow-sm"
+                ? "bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 shadow-xs"
                 : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
             }`}
           >
-            {tab.label}
+            <span>{tab.label}</span>
+            <span
+              className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${
+                categoryFilter === tab.id
+                  ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-bold"
+                  : "bg-zinc-200/60 dark:bg-zinc-800/60 text-zinc-500"
+              }`}
+            >
+              {tab.count}
+            </span>
           </button>
         ))}
       </div>
@@ -763,18 +804,25 @@ export default function GatewaysPage() {
         </Card>
       )}
 
+      {/* Gateway Library Catalog */}
       {showLibrary && (
-        <Card className="space-y-5 border border-zinc-800 bg-zinc-950 p-6 shadow-2xl">
-          <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+        <Card className="space-y-5 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6 shadow-xl rounded-2xl">
+          <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
             <div>
-              <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-sky-400">Gateway library</p>
-              <h2 className="text-lg font-bold text-white">Choose a payment channel</h2>
-              <p className="text-xs text-zinc-400">Select any official rail or add a custom bank/manual payment channel.</p>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-sky-50 dark:bg-sky-950/50 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-800">
+                  Gateway Catalog
+                </span>
+                <span className="text-xs text-zinc-400">· Click any rail to configure</span>
+              </div>
+              <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 mt-1">Choose a payment channel</h2>
+              <p className="text-xs text-zinc-500">Select any official payment rail or add a custom bank/manual payment channel.</p>
             </div>
-            <Button size="sm" variant="outline" onClick={() => setShowLibrary(false)} className="border-zinc-700 text-zinc-200">
-              Cancel
+            <Button size="sm" variant="outline" onClick={() => setShowLibrary(false)}>
+              Close
             </Button>
           </div>
+
           <div className="flex flex-col gap-3 sm:flex-row">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
@@ -782,11 +830,11 @@ export default function GatewaysPage() {
                 type="text"
                 value={libraryQuery}
                 onChange={(e) => setLibraryQuery(e.target.value)}
-                placeholder="Search gateway by name, currency, or country (e.g. bKash, USDT, INR, PKR)…"
-                className="w-full rounded-xl border border-zinc-800 bg-zinc-900 py-2 pl-9 pr-3 text-xs text-white placeholder-zinc-500 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                placeholder="Search gateway by name, currency, or country (e.g. bKash, Nagad, Binance, USDT)…"
+                className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 py-2 pl-9 pr-3 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:border-zinc-900 dark:focus:border-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition"
               />
             </div>
-            <div className="flex flex-wrap gap-1 self-end rounded-xl border border-zinc-800 bg-zinc-900 p-1">
+            <div className="flex flex-wrap gap-1 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 p-1">
               {(["all", "mfs", "crypto", "bank"] as const).map((id) => (
                 <button
                   key={id}
@@ -794,29 +842,29 @@ export default function GatewaysPage() {
                   onClick={() => setLibraryFilter(id)}
                   className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                     libraryFilter === id
-                      ? "bg-sky-600 text-white shadow-sm"
-                      : "text-zinc-400 hover:text-white"
+                      ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-xs"
+                      : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
                   }`}
                 >
-                  {id === "all" ? "All" : id === "mfs" ? "Mobile" : id === "crypto" ? "International" : "Bank"}
+                  {id === "all" ? "All" : id === "mfs" ? "Mobile Banking" : id === "crypto" ? "Crypto & Global" : "Bank / Manual"}
                 </button>
               ))}
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-            {/* Prominent Add Custom Manual Gateway Card */}
+            {/* Custom Manual Gateway Card */}
             {(libraryFilter === "all" || libraryFilter === "bank") && !libraryQuery && (
               <button
                 type="button"
                 onClick={pickCustomGateway}
-                className="group flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-sky-500/40 bg-sky-950/20 p-4 text-center transition hover:border-sky-400 hover:bg-sky-950/40 hover:shadow-lg hover:shadow-sky-500/5"
+                className="group flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-sky-400/60 dark:border-sky-500/40 bg-sky-50/50 dark:bg-sky-950/20 p-4 text-center transition hover:border-sky-600 dark:hover:border-sky-400 hover:bg-sky-100/50 dark:hover:bg-sky-950/40 hover:shadow-md"
               >
-                <div className="mb-2.5 flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500/10 text-sky-400 ring-1 ring-sky-500/30 group-hover:scale-105 transition-transform">
-                  <Plus className="h-6 w-6 text-sky-400" />
+                <div className="mb-2.5 flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/30 group-hover:scale-105 transition-transform">
+                  <Plus className="h-6 w-6 text-sky-600 dark:text-sky-400" />
                 </div>
-                <div className="text-xs font-bold text-sky-200">Add custom manual gateway</div>
-                <div className="mt-1 font-mono text-[9px] text-sky-400/80">Bank, Offline, or Custom MFS</div>
+                <div className="text-xs font-bold text-sky-900 dark:text-sky-200">Custom Manual Gateway</div>
+                <div className="mt-1 font-mono text-[9px] text-sky-600 dark:text-sky-400">Bank, Offline, or MFS</div>
               </button>
             )}
 
@@ -840,9 +888,9 @@ export default function GatewaysPage() {
                   key={g.code}
                   type="button"
                   onClick={() => pickCuratedGateway(g)}
-                  className="group relative flex flex-col items-center rounded-2xl border border-zinc-800 bg-zinc-900/80 p-3.5 text-center transition hover:border-sky-500/60 hover:bg-zinc-900 hover:shadow-lg hover:shadow-sky-500/5"
+                  className="group relative flex flex-col items-center rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 p-3.5 text-center transition hover:border-zinc-900 dark:hover:border-zinc-100 hover:bg-white dark:hover:bg-zinc-900 hover:shadow-md"
                 >
-                  <div className="relative mb-2.5 flex h-12 w-12 items-center justify-center rounded-xl bg-white p-2 shadow-sm ring-1 ring-zinc-700/80 group-hover:scale-105 transition-transform">
+                  <div className="relative mb-2.5 flex h-12 w-12 items-center justify-center rounded-xl bg-white dark:bg-zinc-800 p-2 shadow-xs border border-zinc-200/80 dark:border-zinc-700/80 group-hover:scale-105 transition-transform">
                     <Image
                       src={g.logo || gatewayLogoPath(g.code)}
                       alt={g.name}
@@ -851,18 +899,18 @@ export default function GatewaysPage() {
                       className="h-8 w-8 object-contain"
                     />
                   </div>
-                  <div className="text-xs font-bold text-white line-clamp-1">{g.name}</div>
-                  <div className="mt-1 flex items-center gap-1 font-mono text-[10px] uppercase text-zinc-400">
-                    <span className="rounded bg-zinc-800 px-1 py-0.2 text-[9px] text-zinc-300">{g.country}</span>
+                  <div className="text-xs font-bold text-zinc-900 dark:text-zinc-100 line-clamp-1">{g.name}</div>
+                  <div className="mt-1 flex items-center gap-1 font-mono text-[10px] uppercase text-zinc-500 dark:text-zinc-400">
+                    <span className="rounded bg-zinc-100 dark:bg-zinc-800 px-1 py-0.2 text-[9px] text-zinc-600 dark:text-zinc-300">{g.country}</span>
                     <span>·</span>
                     <span>{g.currency}</span>
                   </div>
                   <div className="mt-2">
                     <span className={`rounded-full px-2 py-0.5 text-[8px] font-semibold tracking-wide uppercase ${
-                      g.type === "automation" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30" :
-                      g.type === "onchain" ? "bg-purple-500/10 text-purple-400 border border-purple-500/30" :
-                      g.type === "provider" ? "bg-blue-500/10 text-blue-400 border border-blue-500/30" :
-                      "bg-zinc-800 text-zinc-300 border border-zinc-700"
+                      g.type === "automation" ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30" :
+                      g.type === "onchain" ? "bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-500/30" :
+                      g.type === "provider" ? "bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/30" :
+                      "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700"
                     }`}>
                       {g.type === "automation" ? "SMS Auto" :
                        g.type === "onchain" ? "On-Chain" :
@@ -875,42 +923,67 @@ export default function GatewaysPage() {
         </Card>
       )}
 
-      {/* Destination Form Modal/Drawer */}
+      {/* Destination Form Modal / Configuration Drawer */}
       {showForm && (
-        <Card className="p-6 space-y-4 border-zinc-900 dark:border-zinc-700 shadow-sm bg-white dark:bg-zinc-950">
-          <div className="flex items-center justify-between pb-2 border-b border-zinc-100 dark:border-zinc-900">
+        <Card className="p-6 space-y-5 border-zinc-200 dark:border-zinc-800 shadow-md bg-white dark:bg-zinc-950 rounded-2xl">
+          <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-900">
             <h2 className="font-bold text-base text-zinc-900 dark:text-zinc-100">
-              {editing ? `Edit Rail — ${editing.displayName}` : "Configure New Payment Destination"}
+              {editing ? `Edit Channel — ${editing.displayName}` : "Configure Payment Destination"}
             </h2>
             <span className="text-xs font-mono text-zinc-400">
-              {editing ? editing.gatewayId : "New Configuration"}
+              {editing ? editing.gatewayId : "New Destination"}
             </span>
           </div>
 
           <form onSubmit={saveForm} className="space-y-4">
-            {!editing && (
-              <label className="block text-xs font-medium space-y-1.5 text-zinc-700 dark:text-zinc-300">
-                <span>Select Supported Payment Rail (Admin Enabled)</span>
-                <select
-                  className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100"
-                  value={formMethod}
-                  onChange={(e) => {
-                    const nextCode = e.target.value;
-                    setFormMethod(nextCode);
-                    const meta = availableOptions.find((m) => m.code === nextCode);
-                    if (meta) {
-                      setFormName(meta.label);
-                    }
+            {/* Sleek Selected Rail Card (No Redundant Dropdown) */}
+            <div className="flex items-center justify-between p-3.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-white dark:bg-zinc-800 p-2 shadow-xs border border-zinc-200 dark:border-zinc-700 flex items-center justify-center shrink-0">
+                  <Image
+                    src={gatewayLogoPath(formMethod)}
+                    alt={formName || formMethod}
+                    width={36}
+                    height={36}
+                    className="w-8 h-8 object-contain"
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
+                      {gatewayShortLabel(formMethod)}
+                    </h3>
+                    <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
+                      {formCurrency || "BDT"}
+                    </span>
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+                      {MFS_CODES.has(formMethod)
+                        ? "MFS Companion Automation"
+                        : CRYPTO_CODES.has(formMethod)
+                        ? "Crypto / On-Chain"
+                        : "Direct Settlement"}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-500 mt-0.5">
+                    Channel Code: <span className="font-mono text-zinc-700 dark:text-zinc-300">{formMethod}</span>
+                  </p>
+                </div>
+              </div>
+              {!editing && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setShowForm(false);
+                    setShowLibrary(true);
                   }}
+                  className="text-xs"
                 >
-                  {availableOptions.map((m) => (
-                    <option key={m.code} value={m.code}>
-                      {m.label} ({m.currency})
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
+                  Change Channel
+                </Button>
+              )}
+            </div>
 
             <Input
               label="Display Name (shown to customers on checkout)"
@@ -966,39 +1039,45 @@ export default function GatewaysPage() {
                   <option value="mobile_banking">Mobile Banking</option>
                   <option value="bangla_qr">Bangla QR</option>
                   <option value="international">International / Crypto</option>
+                  <option value="bank">Bank / Manual</option>
                 </select>
               </label>
             </div>
 
+            {/* Account Type selection filtered dynamically per rail (Nagad never shows Payment) */}
             {MFS_CODES.has(formMethod) && (
-              <div className="space-y-3">
-                <div className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Account Type</div>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  {(
-                    [
-                      { id: "personal", label: "Personal", hint: "SMS verify · Send Money / Cash In" },
-                      { id: "agent", label: "Agent", hint: "SMS verify · Cash Out only" },
-                      { id: "payment", label: "Payment", hint: "SMS verify · Payment only" },
-                      { id: "merchant", label: "Business (API)", hint: "API key + secret" },
-                    ] as const
-                  ).map((t) => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => setFormAccountType(t.id)}
-                      className={`rounded-xl border px-3 py-2.5 text-left transition ${
-                        formAccountType === t.id
-                          ? "border-zinc-950 bg-zinc-950 text-white dark:border-white dark:bg-white dark:text-zinc-950"
-                          : "border-zinc-200 bg-white text-zinc-800 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
-                      }`}
-                    >
-                      <div className="text-xs font-bold">{t.label}</div>
-                      <div className={`mt-0.5 text-[10px] ${formAccountType === t.id ? "opacity-80" : "text-zinc-500"}`}>
-                        {t.hint}
-                      </div>
-                    </button>
-                  ))}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                    Account Type / Transfer Method
+                  </span>
+                  <span className="text-[11px] text-zinc-500">
+                    Select how customers send funds to this number
+                  </span>
                 </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                  {getMethodAccountTypes(formMethod).map((t) => {
+                    const isSelected = formAccountType === t.id;
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setFormAccountType(t.id)}
+                        className={`p-3 rounded-xl border text-left transition-all ${
+                          isSelected
+                            ? "border-zinc-950 dark:border-white bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-sm"
+                            : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 hover:border-zinc-300 dark:hover:border-zinc-700"
+                        }`}
+                      >
+                        <div className="font-bold text-xs">{t.label}</div>
+                        <div className={`mt-0.5 text-[10px] leading-tight ${isSelected ? "opacity-80" : "text-zinc-500"}`}>
+                          {t.hint}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
                 {formAccountType === "merchant" && (
                   <div className="grid grid-cols-1 gap-3 rounded-xl border border-zinc-200 p-3 dark:border-zinc-800 sm:grid-cols-2">
                     <Input
@@ -1056,7 +1135,7 @@ export default function GatewaysPage() {
                   onChange={(e) => setFormBinanceMode(e.target.value as "uid" | "merchant_api")}
                 >
                   <option value="uid">Personal Binance UID</option>
-                  <option value="merchant_api">Binance Pay API</option>
+                  <option value="merchant_api">Binance Pay Official API</option>
                 </select>
               </label>
             )}
@@ -1231,14 +1310,14 @@ export default function GatewaysPage() {
         </Card>
       )}
 
-      {/* Gateway Groups */}
+      {/* Unified Configured Gateways Section (ZiNiPay / UddoktaPay Standard) */}
       {isLoading ? (
         <div className="py-20 text-center space-y-3">
           <div className="w-8 h-8 border-2 border-zinc-900 dark:border-white border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-xs font-mono text-zinc-500">Loading payment gateways…</p>
         </div>
       ) : filteredGateways.length === 0 ? (
-        <Card className="p-12 text-center space-y-4 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
+        <Card className="p-12 text-center space-y-4 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 rounded-2xl">
           <div className="p-3 rounded-2xl bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 w-fit mx-auto">
             <Smartphone className="w-8 h-8" />
           </div>
@@ -1255,224 +1334,199 @@ export default function GatewaysPage() {
           </Button>
         </Card>
       ) : (
-        <div className="space-y-8">
-          <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
-            <table className="min-w-full text-left text-xs">
-              <thead className="border-b border-zinc-200 bg-zinc-50 font-mono text-[10px] uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
-                <tr>
-                  <th className="px-3 py-2">Gateway</th>
-                  <th className="px-3 py-2">Type</th>
-                  <th className="px-3 py-2">Account</th>
-                  <th className="px-3 py-2">Method</th>
-                  <th className="px-3 py-2">Credentials</th>
-                  <th className="px-3 py-2">Limits</th>
-                  <th className="px-3 py-2">Status</th>
-                  <th className="px-3 py-2">Order</th>
-                  <th className="px-3 py-2">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredGateways.map((g) => {
-                  const index = gateways.findIndex((row) => row.gatewayId === g.gatewayId);
-                  const credParts = [
-                    g.account ? `Account: ${g.account}` : null,
-                    g.qrStatus === "ready" ? "QR: uploaded" : null,
-                  ].filter(Boolean);
-                  return (
-                    <tr key={g.gatewayId} className="border-b border-zinc-100 dark:border-zinc-900">
-                      <td className="px-3 py-2 font-semibold text-zinc-900 dark:text-zinc-100">{g.displayName}</td>
-                      <td className="px-3 py-2 font-mono text-[10px]">
-                        {MFS_CODES.has(g.methodCode) ? "mobile_banking" : CRYPTO_CODES.has(g.methodCode) ? "international" : "other"}
-                      </td>
-                      <td className="px-3 py-2">
-                        <span className="rounded-full bg-blue-600/10 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:text-blue-400">
-                          {g.accountType || "personal"}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 text-zinc-500">manual</td>
-                      <td className="px-3 py-2 max-w-[200px] truncate text-zinc-600 dark:text-zinc-400">
-                        {credParts.join(" | ") || "—"}
-                      </td>
-                      <td className="px-3 py-2 font-mono text-[10px] text-zinc-500">
-                        Min: {g.minAmount ?? "—"} | Max: {g.maxAmount ?? "—"}
-                        <br />
-                        Fee: {g.gatewayFee ?? "0"} ({g.gatewayFeeType === "fixed" ? "fixed" : "%"})
-                      </td>
-                      <td className="px-3 py-2">
-                        <button
-                          type="button"
-                          role="switch"
-                          aria-checked={g.enabled}
-                          onClick={() => toggle(g)}
-                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
-                            g.enabled ? "bg-emerald-500" : "bg-zinc-300 dark:bg-zinc-700"
-                          }`}
-                        >
-                          <span
-                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                              g.enabled ? "translate-x-6" : "translate-x-1"
-                            }`}
-                          />
-                          <span className="sr-only">{g.enabled ? "ON" : "OFF"}</span>
-                        </button>
-                        <span className="ml-2 text-[10px] font-bold text-zinc-600 dark:text-zinc-400">
-                          {g.enabled ? "ON" : "OFF"}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="flex gap-1">
-                          <Button size="sm" variant="secondary" aria-label="Up" onClick={() => move(index, -1)} disabled={index === 0}>
-                            <ArrowUp className="w-3 h-3" />
-                          </Button>
-                          <Button size="sm" variant="secondary" aria-label="Down" onClick={() => move(index, 1)} disabled={index === gateways.length - 1}>
-                            <ArrowDown className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="flex gap-1">
-                          <Button size="sm" variant="secondary" onClick={() => openEdit(g)}>
-                            Edit
-                          </Button>
-                          <Button size="sm" variant="secondary" onClick={() => remove(g)}>
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          {[
-            {
-              title: "Mobile Banking (bKash, Nagad, Rocket, Upay, Cellfin)",
-              hint: "Direct wallet settlement via paired Android Companion APK. Zero platform escrow.",
-              items: filteredGateways.filter((g) => MFS_CODES.has(g.methodCode)),
-              icon: <Smartphone className="w-4 h-4" />,
-            },
-            {
-              title: "Cryptocurrency (USDT TRC-20, Binance Pay, Bybit Pay)",
-              hint: "Non-custodial TRON blockchain on-chain verification, Binance Pay API, and Bybit Pay UID transfers.",
-              items: filteredGateways.filter((g) => CRYPTO_CODES.has(g.methodCode)),
-              icon: <Layers className="w-4 h-4" />,
-            },
-            {
-              title: "Other Destinations",
-              hint: "Legacy or custom configured destinations.",
-              items: filteredGateways.filter((g) => !MFS_CODES.has(g.methodCode) && !CRYPTO_CODES.has(g.methodCode)),
-              icon: <HelpCircle className="w-4 h-4" />,
-            },
-          ]
-            .filter((group) => group.items.length > 0)
-            .map((group) => (
-              <section key={group.title} className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">
-                    {group.icon}
-                  </div>
-                  <div>
-                    <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{group.title}</h2>
-                    <p className="text-[11px] text-zinc-500">{group.hint}</p>
-                  </div>
-                </div>
+        <div className="space-y-3" role="list">
+          {filteredGateways.map((g) => {
+            const index = gateways.findIndex((row) => row.gatewayId === g.gatewayId);
+            const rb = readinessBadge(g.methodCode, g.readiness);
+            const isCopied = copiedId === g.gatewayId;
 
-                <div className="space-y-2.5" role="list">
-                  {group.items.map((g) => {
-                    const index = gateways.findIndex((row) => row.gatewayId === g.gatewayId);
-                    const rb = readinessBadge(g.methodCode, g.readiness);
-
-                    return (
-                      <Card
-                        key={g.gatewayId}
-                        className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-xs hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
-                        role="listitem"
+            return (
+              <Card
+                key={g.gatewayId}
+                className={`p-4 rounded-2xl border transition-all ${
+                  g.enabled
+                    ? "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-2xs hover:border-zinc-300 dark:hover:border-zinc-700"
+                    : "border-zinc-200/60 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-zinc-900/30 opacity-75"
+                }`}
+                role="listitem"
+              >
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  {/* Left: Reorder + Icon + Info */}
+                  <div className="flex items-start sm:items-center gap-3.5 min-w-0 flex-1">
+                    {/* Reorder Arrows */}
+                    <div className="flex sm:flex-col gap-1 shrink-0 pt-1 sm:pt-0">
+                      <button
+                        type="button"
+                        aria-label="Move up"
+                        onClick={() => move(index, -1)}
+                        disabled={index === 0}
+                        className="p-1 rounded-md text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:pointer-events-none transition"
                       >
-                        <div className="flex-1 min-w-0 space-y-1.5">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100 truncate">
-                              {g.displayName}
-                            </span>
-                            <span className="text-[10px] font-mono px-2 py-0.5 rounded uppercase font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
-                              {g.methodCode}
-                            </span>
-                            {g.accountType && (
-                              <span className="text-[10px] font-mono px-2 py-0.5 rounded uppercase font-semibold bg-zinc-50 dark:bg-zinc-900 text-zinc-500 border border-zinc-200 dark:border-zinc-800">
-                                {g.accountType}
-                              </span>
-                            )}
-                            <Badge variant={g.enabled ? "emerald" : "slate"} size="sm" dot>
-                              {g.enabled ? "Enabled" : "Disabled"}
-                            </Badge>
-                            <Badge variant={rb.variant} size="sm">
-                              {rb.label}
-                            </Badge>
-                          </div>
+                        <ArrowUp className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Move down"
+                        onClick={() => move(index, 1)}
+                        disabled={index === gateways.length - 1}
+                        className="p-1 rounded-md text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:pointer-events-none transition"
+                      >
+                        <ArrowDown className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
 
-                          <p className="text-xs font-mono text-zinc-600 dark:text-zinc-400 truncate">
-                            Receiving: <span className="font-bold text-zinc-900 dark:text-zinc-100">{g.account || "Not configured"}</span>
-                            {g.instructions ? ` · ${g.instructions}` : ""}
-                          </p>
-                        </div>
+                    {/* Logo container */}
+                    <div className="relative w-12 h-12 rounded-xl bg-white dark:bg-zinc-800 p-2 shadow-2xs border border-zinc-200 dark:border-zinc-700/80 flex items-center justify-center shrink-0">
+                      <Image
+                        src={gatewayLogoPath(g.methodCode)}
+                        alt={g.displayName}
+                        width={36}
+                        height={36}
+                        className="w-8 h-8 object-contain"
+                      />
+                    </div>
 
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            aria-label="Move up"
-                            onClick={() => move(index, -1)}
-                            disabled={index === 0}
-                          >
-                            <ArrowUp className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            aria-label="Move down"
-                            onClick={() => move(index, 1)}
-                            disabled={index === gateways.length - 1}
-                          >
-                            <ArrowDown className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button size="sm" variant="secondary" onClick={() => openEdit(g)}>
-                            Edit
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            isLoading={busyId === g.gatewayId}
-                            onClick={() => toggle(g)}
-                          >
-                            {g.enabled ? "Disable" : "Enable"}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => remove(g)}
-                            leftIcon={<Trash2 className="w-3.5 h-3.5" />}
-                          >
-                            Delete
-                          </Button>
+                    {/* Metadata & Details */}
+                    <div className="min-w-0 flex-1 space-y-1">
+                      {/* Name & Badges */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
+                          {g.displayName}
+                        </span>
+                        <span className="text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200/80 dark:border-zinc-700">
+                          {gatewayShortLabel(g.methodCode)}
+                        </span>
+                        {g.accountType && (
+                          <span className="text-[10px] font-mono uppercase font-semibold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800">
+                            {g.accountType}
+                          </span>
+                        )}
+                        <Badge variant={rb.variant} size="sm" dot>
+                          {rb.label}
+                        </Badge>
+                      </div>
+
+                      {/* Account Number & Copy */}
+                      <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                        <div className="flex items-center gap-1.5 font-mono text-xs text-zinc-600 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 rounded-md">
+                          <span className="text-zinc-400 font-sans text-[11px]">Receiving:</span>
+                          <span className="font-bold text-zinc-900 dark:text-zinc-100">
+                            {g.account || "Not configured"}
+                          </span>
+                          {g.account && (
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(g.account || "", g.gatewayId)}
+                              title="Copy receiving address/number"
+                              className="ml-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition"
+                            >
+                              {isCopied ? (
+                                <Check className="w-3.5 h-3.5 text-emerald-500" />
+                              ) : (
+                                <Copy className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                          )}
                         </div>
-                      </Card>
-                    );
-                  })}
+                        {isCopied && (
+                          <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                            Copied!
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Limits, Fee & Currency */}
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-zinc-500 font-mono pt-0.5">
+                        <span>
+                          Min: <strong className="text-zinc-700 dark:text-zinc-300">{g.minAmount ? `${g.currency || "৳"} ${g.minAmount}` : "—"}</strong>
+                        </span>
+                        <span>·</span>
+                        <span>
+                          Max: <strong className="text-zinc-700 dark:text-zinc-300">{g.maxAmount ? `${g.currency || "৳"} ${g.maxAmount}` : "—"}</strong>
+                        </span>
+                        <span>·</span>
+                        <span>
+                          Fee: <strong className="text-zinc-700 dark:text-zinc-300">{g.gatewayFee ?? "0"} {g.gatewayFeeType === "fixed" ? (g.currency || "BDT") : "%"}</strong>
+                        </span>
+                        {g.instructions && (
+                          <>
+                            <span>·</span>
+                            <span className="truncate max-w-[260px] text-zinc-400 italic font-sans" title={g.instructions}>
+                              &ldquo;{g.instructions}&rdquo;
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right: Toggle Switch & Action Buttons */}
+                  <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-zinc-100 dark:border-zinc-800">
+                    {/* Instant Direct Toggle Switch */}
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={g.enabled}
+                        disabled={busyId === g.gatewayId}
+                        onClick={() => toggle(g)}
+                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                          g.enabled ? "bg-emerald-500" : "bg-zinc-200 dark:bg-zinc-700"
+                        } ${busyId === g.gatewayId ? "opacity-50 cursor-wait" : ""}`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                            g.enabled ? "translate-x-5" : "translate-x-0"
+                          }`}
+                        />
+                      </button>
+                      <span className={`text-xs font-bold font-mono w-8 ${g.enabled ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-400"}`}>
+                        {g.enabled ? "ON" : "OFF"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <Button size="sm" variant="secondary" onClick={() => openEdit(g)}>
+                        Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => remove(g)}
+                        aria-label="Delete gateway"
+                        className="text-rose-600 hover:text-rose-700 dark:text-rose-400"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-              </section>
-            ))}
+              </Card>
+            );
+          })}
         </div>
       )}
 
       {/* Binance Pay Integration Guide */}
-      <Card id="binance-pay" className="p-5 space-y-2 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
-        <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Binance Pay API integration</h2>
+      <Card id="binance-pay" className="p-5 space-y-2 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 rounded-2xl">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-[#181A20] p-1 flex items-center justify-center shrink-0">
+              <Image src="/methods/binance_icon.svg" alt="Binance" width={16} height={16} className="w-4 h-4 object-contain" />
+            </div>
+            <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Binance Pay Merchant API Integration</h2>
+          </div>
+          <Link
+            href="/dashboard/settings#binance-pay"
+            className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 hover:underline flex items-center gap-1"
+          >
+            <span>API Settings</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
         <p className="text-xs text-zinc-500 leading-relaxed">
-          Binance Pay requires encrypted API credentials. Configure your API Key, Secret, and Certificate Serial Number in Account settings to enable automated order creation.
+          Automated order creation via Binance Pay requires API Key, Secret, and Certificate Serial Number. You can also configure them globally in Brand Settings.
         </p>
-        <Link href="/dashboard/settings#binance-pay" className="inline-block text-xs font-semibold text-zinc-900 dark:text-zinc-100 underline pt-1">
-          Configure Binance Pay API Credentials →
-        </Link>
       </Card>
     </div>
   );
