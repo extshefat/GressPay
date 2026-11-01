@@ -155,6 +155,8 @@ GpDb::exec(
 );
 $wrongAmt = CheckoutController::matchingSms($brandId, 'TRXAMT1', '500', 'bkash');
 assert_true($wrongAmt === null, 'SMS amount mismatch rejected');
+assert_true(CheckoutController::matchingSms($brandId, 'TRXAMT1', '10', 'bkash') === null,
+    'A larger unrelated SMS amount cannot settle a smaller checkout');
 
 // —— Correct SMS matches ——
 GpDb::exec(

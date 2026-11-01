@@ -1118,9 +1118,7 @@ final class CheckoutController
         }
         $brand = GpDb::one('SELECT payment_tolerance FROM gp_brands WHERE brand_id = ?', [$brandId]);
         $tol = GpMoney::sanitize((string) ($brand['payment_tolerance'] ?? '0'));
-        $smsAmt = (float) $sms['amount'];
-        $expectedAmt = (float) $payable;
-        if (!($smsAmt >= ($expectedAmt - 0.01) || GpMoney::withinTolerance((string) $sms['amount'], $payable, $tol))) {
+        if (!GpMoney::withinTolerance((string) $sms['amount'], $payable, $tol)) {
             return null;
         }
 
