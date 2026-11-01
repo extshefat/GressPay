@@ -30,7 +30,18 @@ export interface HostedCheckoutModalProps {
   demoMode?: boolean;
 }
 
-type TabCategory = "mfs" | "crypto";
+type TabCategory = "mfs" | "crypto" | "other";
+
+const MFS_CODES = new Set([
+  "bkash",
+  "nagad",
+  "rocket",
+  "upay",
+  "cellfin",
+  "bangla_qr",
+  "bangla_qr_v2",
+]);
+const CRYPTO_CODES = new Set(["binance_pay", "bybit_pay", "usdt_trc20"]);
 
 const DEMO_SAMPLE_TRX: Record<string, string> = {
   bkash: "DEMOBKASH01",
@@ -49,13 +60,11 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
 }) => {
   const methods = useMemo(() => session.availableMethods || [], [session.availableMethods]);
 
-  // Group active merchant methods into clean tabs: Mobile Banking & Crypto
+  // Brand gateways only (session already scoped) — show every rail in a tab, no silent drops.
   const mfsMethods = useMemo(
     () =>
       methods.filter(
-        (m) =>
-          m.category === "mfs" ||
-          ["bkash", "nagad", "rocket", "upay", "cellfin"].includes(m.code.toLowerCase())
+        (m) => m.category === "mfs" || MFS_CODES.has(m.code.toLowerCase())
       ),
     [methods]
   );
@@ -63,35 +72,44 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
   const cryptoMethods = useMemo(
     () =>
       methods.filter(
-        (m) =>
-          m.category === "crypto" ||
-          ["binance_pay", "bybit_pay", "usdt_trc20"].includes(m.code.toLowerCase())
+        (m) => m.category === "crypto" || CRYPTO_CODES.has(m.code.toLowerCase())
       ),
     [methods]
   );
 
-  const initialTab: TabCategory = mfsMethods.length > 0 ? "mfs" : "crypto";
+  const otherMethods = useMemo(() => {
+    const claimed = new Set(
+      [...mfsMethods, ...cryptoMethods].map((m) => m.gatewayId || m.code)
+    );
+    return methods.filter((m) => !claimed.has(m.gatewayId || m.code));
+  }, [methods, mfsMethods, cryptoMethods]);
+
+  const initialTab: TabCategory =
+    mfsMethods.length > 0 ? "mfs" : cryptoMethods.length > 0 ? "crypto" : "other";
   const [activeTab, setActiveTab] = useState<TabCategory>(initialTab);
 
-  const currentTabMethods = activeTab === "mfs" ? mfsMethods : cryptoMethods;
+  const currentTabMethods =
+    activeTab === "mfs" ? mfsMethods : activeTab === "crypto" ? cryptoMethods : otherMethods;
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | undefined>(() => {
     return (
-      (initialTab === "mfs" ? mfsMethods[0] : cryptoMethods[0]) || methods[0]
+      (initialTab === "mfs"
+        ? mfsMethods[0]
+        : initialTab === "crypto"
+          ? cryptoMethods[0]
+          : otherMethods[0]) || methods[0]
     );
   });
 
   // When activeTab changes, auto-select first method in that tab if not matching
   useEffect(() => {
-    if (activeTab === "mfs" && mfsMethods.length > 0) {
-      if (!selectedMethod || !mfsMethods.some((m) => m.code === selectedMethod.code)) {
-        setSelectedMethod(mfsMethods[0]);
-      }
-    } else if (activeTab === "crypto" && cryptoMethods.length > 0) {
-      if (!selectedMethod || !cryptoMethods.some((m) => m.code === selectedMethod.code)) {
-        setSelectedMethod(cryptoMethods[0]);
-      }
+    const pool =
+      activeTab === "mfs" ? mfsMethods : activeTab === "crypto" ? cryptoMethods : otherMethods;
+    if (pool.length === 0) return;
+    const key = (m: PaymentMethod) => m.gatewayId || m.code;
+    if (!selectedMethod || !pool.some((m) => key(m) === key(selectedMethod))) {
+      setSelectedMethod(pool[0]);
     }
-  }, [activeTab, mfsMethods, cryptoMethods, selectedMethod]);
+  }, [activeTab, mfsMethods, cryptoMethods, otherMethods, selectedMethod]);
 
   const [txidInput, setTxidInput] = useState<string>("");
   const [senderNumber, setSenderNumber] = useState<string>("");
@@ -665,7 +683,8 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
           No Payment Rails Available
         </h2>
         <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-          The seller has not enabled any active payment methods for this checkout.
+          No live-ready gateways for this brand yet. The merchant must finish setup under View Gateways
+          (wallet number / Binance API keys / Companion device) and keep the rails enabled.
         </p>
       </div>
     );
@@ -802,33 +821,50 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
           </Alert>
         )}
 
-        {/* Category Tabs: Mobile Banking vs Crypto */}
-        {(mfsMethods.length > 0 && cryptoMethods.length > 0) && (
-          <div className="flex items-center rounded-xl bg-zinc-100 dark:bg-zinc-900 p-1 border border-zinc-200 dark:border-zinc-800">
-            <button
-              type="button"
-              onClick={() => setActiveTab("mfs")}
-              className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                activeTab === "mfs"
-                  ? "bg-white text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100 shadow-xs"
-                  : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
-              }`}
-            >
-              <Smartphone className="w-3.5 h-3.5" />
-              <span>Mobile Banking ({mfsMethods.length})</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("crypto")}
-              className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                activeTab === "crypto"
-                  ? "bg-white text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100 shadow-xs"
-                  : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
-              }`}
-            >
-              <Layers className="w-3.5 h-3.5" />
-              <span>Crypto Payment ({cryptoMethods.length})</span>
-            </button>
+        {/* Category tabs — only show when more than one group has brand gateways */}
+        {([mfsMethods, cryptoMethods, otherMethods].filter((g) => g.length > 0).length > 1) && (
+          <div className="flex flex-wrap items-center gap-1 rounded-xl bg-zinc-100 dark:bg-zinc-900 p-1 border border-zinc-200 dark:border-zinc-800">
+            {mfsMethods.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("mfs")}
+                className={`flex-1 min-w-[120px] py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  activeTab === "mfs"
+                    ? "bg-white text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100 shadow-xs"
+                    : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+                }`}
+              >
+                <Smartphone className="w-3.5 h-3.5" />
+                <span>Mobile Banking ({mfsMethods.length})</span>
+              </button>
+            )}
+            {cryptoMethods.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("crypto")}
+                className={`flex-1 min-w-[120px] py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  activeTab === "crypto"
+                    ? "bg-white text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100 shadow-xs"
+                    : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>Crypto ({cryptoMethods.length})</span>
+              </button>
+            )}
+            {otherMethods.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("other")}
+                className={`flex-1 min-w-[120px] py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  activeTab === "other"
+                    ? "bg-white text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100 shadow-xs"
+                    : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+                }`}
+              >
+                <span>Other ({otherMethods.length})</span>
+              </button>
+            )}
           </div>
         )}
 
@@ -839,9 +875,13 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
           </label>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {currentTabMethods.map((method) => {
-              const isSelected =
-                (method.gatewayId && selectedMethod.gatewayId === method.gatewayId) ||
-                (!method.gatewayId && selectedMethod.code === method.code && !selectedMethod.gatewayId);
+              const isSelected = Boolean(
+                selectedMethod &&
+                  ((method.gatewayId && selectedMethod.gatewayId === method.gatewayId) ||
+                    (!method.gatewayId &&
+                      selectedMethod.code === method.code &&
+                      !selectedMethod.gatewayId))
+              );
 
               const methodIconUrl = gatewayLogoPath(method.code);
 

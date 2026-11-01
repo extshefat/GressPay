@@ -591,6 +591,7 @@ final class GatewaysController
             'qrBytes' => isset($gw['qr_bytes']) ? (int) $gw['qr_bytes'] : null,
             'supportsQr' => in_array($methodCode, self::qrCapableMethods(), true),
             'readiness' => $readiness,
+            'readinessReasons' => self::readinessReasons($gw, $readiness),
             'r2Configured' => R2Client::isConfigured(),
             'createdAt' => $gw['created_at'] ?? null,
             'updatedAt' => $gw['updated_at'] ?? null,
@@ -736,6 +737,63 @@ final class GatewaysController
             return 'needs_attention';
         }
         return 'live_ready';
+    }
+
+    /**
+     * Human-readable reasons for a readiness state (dashboard + checkout empty-state).
+     *
+     * @param array<string,mixed> $gw
+     * @return list<string>
+     */
+    public static function readinessReasons(array $gw, ?string $readiness = null): array
+    {
+        $state = $readiness ?? self::readiness($gw);
+        $method = (string) ($gw['method_code'] ?? '');
+        $account = trim((string) ($gw['account'] ?? ''));
+
+        if ($state === 'live_ready' || $state === 'ready_test') {
+            return [];
+        }
+        if ($state === 'disabled_by_admin') {
+            return ['This rail is disabled by Super Admin (platform-wide).'];
+        }
+        if ($state === 'disabled' || $state === 'configured_disabled') {
+            return ['Gateway is turned off. Enable it to accept payments.'];
+        }
+        if ($state === 'qr_pending') {
+            return ['QR upload is still pending — finish or remove the pending file.'];
+        }
+        if ($state === 'needs_companion') {
+            return ['Pair an active Companion device for this brand (Devices page) so SMS can match payments.'];
+        }
+        if ($method === 'binance_pay') {
+            $brand = GpDb::one('SELECT * FROM gp_brands WHERE brand_id = ?', [(string) ($gw['brand_id'] ?? '')]);
+            $reasons = [];
+            if (!is_array($brand) || !BinancePayClient::brandHasSealedCredentials($brand)) {
+                $reasons[] = 'Add Binance API Key, Secret Key, and Certificate SN, then save.';
+            }
+            if (is_array($brand) && empty($brand['crypto_enabled'])) {
+                $reasons[] = 'Crypto rails are off for this brand (auto-enabled when API credentials are saved).';
+            }
+            if (!GpConfig::cryptoAllowed()) {
+                $reasons[] = 'Operator must set GRESSPAY_CRYPTO_ALLOWED on the API.';
+            }
+            return $reasons !== [] ? $reasons : ['Binance Pay setup is incomplete.'];
+        }
+        if ($state === 'setup_incomplete') {
+            if ($account === '') {
+                return ['Receiving account / wallet number is required.'];
+            }
+            $accountType = strtolower((string) ($gw['account_type'] ?? 'personal'));
+            if ($accountType === 'merchant') {
+                return ['Business (API) mode needs API key and API secret.'];
+            }
+            return ['Finish gateway credentials before going live.'];
+        }
+        if ($state === 'needs_attention') {
+            return ['Review credentials or QR — this gateway needs attention before checkout.'];
+        }
+        return ['Gateway is not ready for checkout yet.'];
     }
 
     public static function validateAccount(string $methodCode, string $dest): string
@@ -908,7 +966,7 @@ final class GatewaysController
             $apiKey = trim((string) $req->input('api_key', $req->input('apiKey', '')));
             $apiSecret = trim((string) $req->input('api_secret', $req->input('apiSecret', $req->input('secret', ''))));
             $certSn = trim((string) $req->input('certificate_sn', $req->input('certificateSn', '')));
-            if ($apiKey !== '' || $apiSecret !== '') {
+            if ($apiKey !== '' || $apiSecret !== '' || $certSn !== '') {
                 if ($apiKey === '' || $apiSecret === '') {
                     GpJson::error(
                         'MISSING_FIELD',
@@ -917,15 +975,20 @@ final class GatewaysController
                     );
                 }
                 if ($certSn === '') {
-                    $certSn = 'binance_live_sn';
+                    GpJson::error(
+                        'MISSING_FIELD',
+                        'Binance Pay requires certificate_sn (Certificate SN from Binance Merchant dashboard).',
+                        400
+                    );
                 }
                 $sealed = GpCrypto::seal(json_encode([
                     'apiKey' => $apiKey,
                     'secret' => $apiSecret,
                     'certificateSn' => $certSn,
                 ], JSON_UNESCAPED_SLASHES));
+                // Seal credentials and auto-enable brand crypto rails so checkout can surface Binance.
                 GpDb::exec(
-                    'UPDATE gp_brands SET binance_pay_json = ?, updated_at = ? WHERE brand_id = ?',
+                    'UPDATE gp_brands SET binance_pay_json = ?, crypto_enabled = 1, updated_at = ? WHERE brand_id = ?',
                     [$sealed, GpIds::now(), $brandId]
                 );
                 // Drop orphan sealed keys so live path is unambiguous.
@@ -939,6 +1002,16 @@ final class GatewaysController
             if ($wallet !== '') {
                 $prev['wallet_address'] = $wallet;
             }
+            GpDb::exec(
+                'UPDATE gp_brands SET crypto_enabled = 1, updated_at = ? WHERE brand_id = ?',
+                [GpIds::now(), $brandId]
+            );
+        }
+        if ($methodCode === 'bybit_pay') {
+            GpDb::exec(
+                'UPDATE gp_brands SET crypto_enabled = 1, updated_at = ? WHERE brand_id = ?',
+                [GpIds::now(), $brandId]
+            );
         }
         if ($req->input('custom_rate_bdt', null) !== null && $req->input('custom_rate_bdt') !== '') {
             $rate = (float) $req->input('custom_rate_bdt');

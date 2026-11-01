@@ -376,7 +376,6 @@ export default function GatewaysPage() {
   const [formInstructions, setFormInstructions] = useState("");
   const [formRateMode, setFormRateMode] = useState<"auto" | "custom">("auto");
   const [formCustomRate, setFormCustomRate] = useState("");
-  const [formBinanceMode, setFormBinanceMode] = useState<"uid" | "merchant_api">("uid");
   const [formAccountName, setFormAccountName] = useState("");
   const [formUsdtOptional, setFormUsdtOptional] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<"all" | "mfs" | "crypto" | "bank">("all");
@@ -465,7 +464,6 @@ export default function GatewaysPage() {
     setFormInstructions("Please transfer the exact amount to our bank account or wallet and enter the transaction reference / TrxID below.");
     setFormRateMode("auto");
     setFormCustomRate("");
-    setFormBinanceMode("uid");
     setFormAccountName("");
     setFormUsdtOptional("");
     setFormMinAmount("10");
@@ -496,7 +494,6 @@ export default function GatewaysPage() {
     setFormInstructions(gw.instructionsPlaceholder || "");
     setFormRateMode("auto");
     setFormCustomRate("");
-    setFormBinanceMode(gw.code === "binance_pay" ? "merchant_api" : "uid");
     setFormAccountName("");
     setFormUsdtOptional("");
     setFormMinAmount("10");
@@ -538,14 +535,6 @@ export default function GatewaysPage() {
     setFormInstructions((g.instructions as string) || "");
     setFormRateMode("auto");
     setFormCustomRate("");
-    const savedMode = (g.mode || "").toLowerCase();
-    setFormBinanceMode(
-      g.methodCode === "binance_pay"
-        ? savedMode === "personal" || savedMode === "uid"
-          ? "uid"
-          : "merchant_api"
-        : "uid"
-    );
     setFormAccountName(g.account_name || "");
     setFormUsdtOptional("");
     setFormMinAmount(g.minAmount || "10");
@@ -599,9 +588,27 @@ export default function GatewaysPage() {
       if (formAccount.trim().length < 4) {
         return "Enter a valid Binance Pay UID / Account ID (e.g. 19283746).";
       }
-      const hasAnyApiKey = formBinanceApiKey.trim() !== "" || formBinanceApiSecret.trim() !== "";
-      if (hasAnyApiKey && (!formBinanceApiKey.trim() || !formBinanceApiSecret.trim())) {
-        return "Please enter both Binance API Key and Secret Key.";
+      const needsFreshCreds = !binanceLiveConfigured || !editing;
+      if (needsFreshCreds) {
+        if (!formBinanceApiKey.trim() || !formBinanceApiSecret.trim()) {
+          return "Binance Pay requires API Key and Secret Key from your Binance Merchant account.";
+        }
+        if (!formBinanceCertSn.trim()) {
+          return "Enter your Binance Certificate SN (from Merchant API settings).";
+        }
+      } else {
+        const touchingKeys =
+          formBinanceApiKey.trim() !== "" ||
+          formBinanceApiSecret.trim() !== "" ||
+          formBinanceCertSn.trim() !== "";
+        if (touchingKeys) {
+          if (!formBinanceApiKey.trim() || !formBinanceApiSecret.trim()) {
+            return "When rotating Binance keys, enter both API Key and Secret Key.";
+          }
+          if (!formBinanceCertSn.trim()) {
+            return "When rotating Binance keys, Certificate SN is required.";
+          }
+        }
       }
     }
     if (formMethod === "bybit_pay" && formAccount.trim().length < 4) {
@@ -647,7 +654,7 @@ export default function GatewaysPage() {
       }
       if (formMethod === "binance_pay") {
         const hasApiKeys = formBinanceApiKey.trim() !== "";
-        payload.mode = hasApiKeys ? "merchant" : "personal";
+        payload.mode = "merchant";
         payload.account_name = formAccountName;
         payload.binance_uid = formAccount;
         payload.account = formAccount;
@@ -657,7 +664,7 @@ export default function GatewaysPage() {
         if (hasApiKeys) {
           payload.api_key = formBinanceApiKey.trim();
           payload.api_secret = formBinanceApiSecret.trim();
-          payload.certificate_sn = formBinanceCertSn.trim() || "binance_live_sn";
+          payload.certificate_sn = formBinanceCertSn.trim();
         }
       }
       if (formMethod === "bybit_pay") {
@@ -679,12 +686,23 @@ export default function GatewaysPage() {
         savedGw = res.gateway;
       }
 
-      // If a QR image was selected/changed, upload it directly immediately!
+      // Upload QR immediately after save — surface failures so merchants don't think it stuck.
       if (formQrDataUrl) {
         try {
           await api.uploadDirectQr(savedGw.gatewayId, formQrDataUrl);
         } catch (qrErr) {
-          console.warn("Direct QR upload failed:", qrErr);
+          setErrorMessage(
+            qrErr instanceof Error
+              ? `Gateway saved, but QR upload failed: ${qrErr.message}`
+              : "Gateway saved, but QR upload failed. Edit the gateway and try uploading again."
+          );
+          setShowForm(false);
+          setEditing(null);
+          setFormQrDataUrl(null);
+          setFormQrFile(null);
+          setPreviewUrl(null);
+          await load();
+          return;
         }
       }
 
@@ -730,11 +748,22 @@ export default function GatewaysPage() {
     }
   };
 
-  const move = async (index: number, dir: -1 | 1) => {
-    const next = [...gateways];
-    const j = index + dir;
-    if (j < 0 || j >= next.length) return;
-    [next[index], next[j]] = [next[j], next[index]];
+  const moveFiltered = async (filteredIndex: number, dir: -1 | 1) => {
+    const j = filteredIndex + dir;
+    if (j < 0 || j >= filteredGateways.length) return;
+    const orderedVisible = [...filteredGateways];
+    [orderedVisible[filteredIndex], orderedVisible[j]] = [orderedVisible[j], orderedVisible[filteredIndex]];
+    // Keep non-visible gateways in place; rebuild full order from filtered reorder.
+    const visibleIds = new Set(orderedVisible.map((g) => g.gatewayId));
+    const next: MerchantGateway[] = [];
+    let vi = 0;
+    for (const g of gateways) {
+      if (visibleIds.has(g.gatewayId)) {
+        next.push(orderedVisible[vi++]);
+      } else {
+        next.push(g);
+      }
+    }
     setGateways(next);
     try {
       await api.reorderGateways(next.map((g) => g.gatewayId));
@@ -1173,15 +1202,26 @@ export default function GatewaysPage() {
               </div>
             )}
 
-            {/* Binance Pay Dedicated Credentials Box (Matching ZiNiPay Layout) */}
+            {/* Binance Pay — merchant API credentials (required for live checkout) */}
             {formMethod === "binance_pay" && (
               <div className="space-y-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 bg-zinc-50/60 dark:bg-zinc-900/40">
-                <div className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
-                  Credentials (Binance Pay)
+                <div className="space-y-1">
+                  <div className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
+                    Credentials (Binance Merchant API)
+                  </div>
+                  <p className="text-[11px] text-zinc-500 leading-relaxed">
+                    Live Binance Pay needs your Merchant API Key, Secret Key, and Certificate SN. Saving credentials
+                    also enables crypto rails for this brand so the gateway appears on checkout.
+                  </p>
+                  {binanceLiveConfigured && (
+                    <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">
+                      Live API credentials are saved. Leave key fields blank to keep them, or enter all three to rotate.
+                    </p>
+                  )}
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Input
-                    label="Binance_uid *"
+                    label="Binance UID *"
                     value={formAccount}
                     onChange={(e) => setFormAccount(e.target.value)}
                     placeholder="Enter binance_uid..."
@@ -1196,21 +1236,32 @@ export default function GatewaysPage() {
                     className="font-mono text-xs"
                   />
                   <Input
-                    label="Api_key (Optional)"
+                    label={binanceLiveConfigured ? "Api_key (leave blank to keep)" : "Api_key *"}
                     value={formBinanceApiKey}
                     onChange={(e) => setFormBinanceApiKey(e.target.value)}
                     placeholder={binanceLiveConfigured ? "Saved (leave blank to keep)" : "Enter api_key..."}
                     className="font-mono text-xs"
                     autoComplete="off"
+                    required={!binanceLiveConfigured}
                   />
                   <Input
-                    label="Secret_key (Optional)"
+                    label={binanceLiveConfigured ? "Secret_key (leave blank to keep)" : "Secret_key *"}
                     type="password"
                     value={formBinanceApiSecret}
                     onChange={(e) => setFormBinanceApiSecret(e.target.value)}
                     placeholder={binanceLiveConfigured ? "Saved (leave blank to keep)" : "Enter secret_key..."}
                     className="font-mono text-xs"
                     autoComplete="new-password"
+                    required={!binanceLiveConfigured}
+                  />
+                  <Input
+                    label={binanceLiveConfigured ? "Certificate SN (leave blank to keep)" : "Certificate SN *"}
+                    value={formBinanceCertSn}
+                    onChange={(e) => setFormBinanceCertSn(e.target.value)}
+                    placeholder={binanceLiveConfigured ? "Saved (leave blank to keep)" : "Enter certificate_sn..."}
+                    className="font-mono text-xs sm:col-span-2"
+                    autoComplete="off"
+                    required={!binanceLiveConfigured}
                   />
                 </div>
               </div>
@@ -1469,10 +1520,13 @@ export default function GatewaysPage() {
         </Card>
       ) : (
         <div className="space-y-3" role="list">
-          {filteredGateways.map((g) => {
-            const index = gateways.findIndex((row) => row.gatewayId === g.gatewayId);
+          {filteredGateways.map((g, filteredIndex) => {
             const rb = readinessBadge(g.methodCode, g.readiness);
             const isCopied = copiedId === g.gatewayId;
+            const reasonHint =
+              Array.isArray(g.readinessReasons) && g.readinessReasons.length > 0
+                ? g.readinessReasons.join(" ")
+                : null;
 
             return (
               <Card
@@ -1487,13 +1541,13 @@ export default function GatewaysPage() {
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   {/* Left: Reorder + Icon + Info */}
                   <div className="flex items-start sm:items-center gap-3.5 min-w-0 flex-1">
-                    {/* Reorder Arrows */}
+                    {/* Reorder Arrows (respect active category filter) */}
                     <div className="flex sm:flex-col gap-1 shrink-0 pt-1 sm:pt-0">
                       <button
                         type="button"
                         aria-label="Move up"
-                        onClick={() => move(index, -1)}
-                        disabled={index === 0}
+                        onClick={() => moveFiltered(filteredIndex, -1)}
+                        disabled={filteredIndex === 0}
                         className="p-1 rounded-md text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:pointer-events-none transition"
                       >
                         <ArrowUp className="w-3.5 h-3.5" />
@@ -1501,8 +1555,8 @@ export default function GatewaysPage() {
                       <button
                         type="button"
                         aria-label="Move down"
-                        onClick={() => move(index, 1)}
-                        disabled={index === gateways.length - 1}
+                        onClick={() => moveFiltered(filteredIndex, 1)}
+                        disabled={filteredIndex === filteredGateways.length - 1}
                         className="p-1 rounded-md text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:pointer-events-none transition"
                       >
                         <ArrowDown className="w-3.5 h-3.5" />
@@ -1599,6 +1653,11 @@ export default function GatewaysPage() {
                           </>
                         )}
                       </div>
+                      {reasonHint && g.readiness !== "live_ready" && g.readiness !== "ready_test" && (
+                        <p className="text-[11px] text-amber-700 dark:text-amber-400 font-sans leading-snug pt-1">
+                          {reasonHint}
+                        </p>
+                      )}
                     </div>
                   </div>
 

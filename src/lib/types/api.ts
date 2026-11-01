@@ -134,6 +134,7 @@ export interface MerchantGateway {
   qrBytes?: number | null;
   supportsQr: boolean;
   readiness: GatewayReadiness | string;
+  readinessReasons?: string[];
   r2Configured?: boolean;
   qrImageUrl?: string | null;
   createdAt?: string;

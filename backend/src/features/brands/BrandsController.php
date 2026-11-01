@@ -79,6 +79,14 @@ final class BrandsController
             }
             $logoKey = trim((string) ($row['logo_object_key'] ?? ''));
             $logoUrl = trim((string) ($row['logo_url'] ?? ''));
+            $previewLogo = $logoUrl !== '' ? $logoUrl : null;
+            if ($previewLogo === null && $logoKey !== '' && R2Client::isConfigured()) {
+                try {
+                    $previewLogo = R2Client::presignGet($logoKey, min(3600, max(900, GpConfig::r2PresignTtl())));
+                } catch (Throwable $e) {
+                    $previewLogo = null;
+                }
+            }
             $out[] = [
                 'brandId' => $row['brand_id'],
                 'name' => $row['name'],
@@ -89,7 +97,7 @@ final class BrandsController
                 'deviceCount' => $deviceCount,
                 'gatewayCount' => $gwCount,
                 'logoConfigured' => $logoKey !== '' || $logoUrl !== '',
-                'logoUrl' => $logoUrl !== '' ? $logoUrl : null,
+                'logoUrl' => $previewLogo,
                 'websiteApiKey' => $websitePlain,
                 'websiteApiKeyMasked' => ($websitePlain !== '' || (is_array($liveKey) && ($liveKey['prefix'] ?? '') !== ''))
                     ? '**********'
@@ -337,9 +345,15 @@ final class BrandsController
     private static function logoDelete(array $actor, array $brand): never
     {
         $key = trim((string) ($brand['logo_object_key'] ?? ''));
+        $now = GpIds::now();
+        // Clear R2 key and direct data-URL / HTTP logo so checkout stops showing a stale brand mark.
         GpDb::exec(
-            'UPDATE gp_brands SET logo_object_key = NULL, logo_mime = NULL, updated_at = ? WHERE brand_id = ?',
-            [GpIds::now(), $brand['brand_id']]
+            'UPDATE gp_brands SET logo_object_key = NULL, logo_mime = NULL, logo_url = NULL, updated_at = ? WHERE brand_id = ?',
+            [$now, $brand['brand_id']]
+        );
+        GpDb::exec(
+            'UPDATE gp_merchants SET brand_logo_url = NULL, updated_at = ? WHERE merchant_id = ?',
+            [$now, $actor['merchant_id']]
         );
         if ($key !== '' && R2Client::isConfigured()) {
             R2Client::deleteObject($key);

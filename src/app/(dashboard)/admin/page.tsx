@@ -1308,6 +1308,14 @@ export default function AdminPage() {
                       <span className="text-zinc-500">Monthly Trx Limit:</span>
                       <span className="font-semibold">{p.creditAllowance} txns</span>
                     </div>
+                    <div className="flex justify-between">
+                      <span className="text-zinc-500">Devices:</span>
+                      <span className="font-semibold">{p.deviceLimit ?? "—"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-zinc-500">Gateways:</span>
+                      <span className="font-semibold">{p.methodLimit ?? "—"}</span>
+                    </div>
                     {p.isFree ? (
                       <div className="text-[11px] text-amber-600 dark:text-amber-400 font-sans font-medium">Free Tier Account</div>
                     ) : null}
@@ -1319,7 +1327,7 @@ export default function AdminPage() {
                     variant="outline"
                     onClick={() => handleOpenEditPlan(p)}
                   >
-                    Edit Plan
+                    Edit Plan Details
                   </Button>
                 </div>
               </Card>
@@ -1329,17 +1337,58 @@ export default function AdminPage() {
           <Card className="p-5 space-y-3 border border-amber-200 dark:border-amber-900/50 bg-amber-50/40 dark:bg-amber-950/20">
             <div>
               <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                Plan payment collection
+                Account plan billing brand
               </h3>
               <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
-                Merchants pay SaaS plans through the <span className="font-semibold">Account plan billing brand</span>{" "}
-                (Global Gateway Control tab). Configure receiving wallets on that brand under View Gateways — legacy
-                &quot;Admin Receiving Wallets&quot; fields are unused and no longer shown.
+                Merchants pay SaaS plans through this brand&apos;s live gateways (My Payments → checkout). Pick a brand
+                that already has receiving wallets under View Gateways. Brand ID is also shown on the Brands page.
               </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2 items-end">
+              <div className="flex-1 w-full space-y-1.5">
+                <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                  Billing brand ID
+                </label>
+                <select
+                  value={billingBrandId}
+                  onChange={(e) => setBillingBrandId(e.target.value)}
+                  className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs font-mono text-zinc-900 dark:text-zinc-100"
+                >
+                  <option value="">Select brand (brd_…)</option>
+                  {billingBrandOptions.map((b) => (
+                    <option key={b.brandId} value={b.brandId}>
+                      {b.name} — {b.brandId} ({b.liveGatewayCount} live gateway
+                      {b.liveGatewayCount === 1 ? "" : "s"})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <Button
+                size="sm"
+                variant="primary"
+                className="self-end"
+                isLoading={savingBillingBrand}
+                disabled={!billingBrandId.trim()}
+                onClick={async () => {
+                  setSavingBillingBrand(true);
+                  setErrorMessage(null);
+                  try {
+                    await api.setAdminBillingBrand(billingBrandId.trim());
+                    setSuccessMessage("Billing brand saved. Plan upgrades will use this brand's gateways.");
+                    await loadData();
+                  } catch (err: unknown) {
+                    setErrorMessage(err instanceof Error ? err.message : "Failed to save billing brand.");
+                  } finally {
+                    setSavingBillingBrand(false);
+                  }
+                }}
+              >
+                Save billing brand
+              </Button>
             </div>
             {billingBrandName ? (
               <p className="text-[11px] text-zinc-600 dark:text-zinc-400">
-                Active billing brand: <span className="font-semibold">{billingBrandName}</span>
+                Active: <span className="font-semibold">{billingBrandName}</span>
                 {" · "}
                 <span className="font-mono">{billingBrandId}</span>
                 {" · "}
@@ -1347,7 +1396,13 @@ export default function AdminPage() {
               </p>
             ) : (
               <p className="text-[11px] text-amber-700 dark:text-amber-400">
-                No billing brand set yet. Open Global Gateway Control and select a brand with live gateways.
+                No billing brand set yet. Select a brand with live gateways above.
+              </p>
+            )}
+            {billingBrandId && billingLiveGatewayCount < 1 && (
+              <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                This brand has no active receiving gateways yet. Add wallets under that brand&apos;s View Gateways
+                before merchants can pay.
               </p>
             )}
           </Card>

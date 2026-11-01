@@ -44,6 +44,8 @@ export default function BrandsPage() {
   const [logoModalBrand, setLogoModalBrand] = useState<BrandRow | null>(null);
   const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [platformBillingBrandId, setPlatformBillingBrandId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -53,6 +55,19 @@ export default function BrandsPage() {
       setBrands(data.brands || []);
       setActiveBrandId(data.activeBrandId || "");
       if (data.activeBrandId) api.setBrandId(data.activeBrandId);
+
+      const me = await api.getMe().catch(() => null);
+      const admin =
+        me?.user?.role === "admin" ||
+        Boolean(me?.user?.isAdmin) ||
+        Boolean((me?.user as { is_admin?: boolean } | undefined)?.is_admin);
+      setIsAdmin(admin);
+      if (admin) {
+        const billing = await api.getAdminBillingBrand().catch(() => null);
+        setPlatformBillingBrandId(billing?.billingBrandId ?? null);
+      } else {
+        setPlatformBillingBrandId(null);
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load brands.");
     } finally {
@@ -107,11 +122,17 @@ export default function BrandsPage() {
   };
 
   const setAsPlatformBilling = async (b: BrandRow) => {
+    if (!isAdmin) {
+      toastError("Only Super Admin can set the platform billing brand.");
+      setMenuOpen(null);
+      return;
+    }
     setBusy(`billing-${b.brandId}`);
     setMenuOpen(null);
     try {
       await api.setAdminBillingBrand(b.brandId);
-      success(`Brand "${b.name}" set as the Platform Billing Brand!`);
+      setPlatformBillingBrandId(b.brandId);
+      success(`Brand "${b.name}" set as the Platform Billing Brand.`);
       await load();
     } catch (err: unknown) {
       toastError(err instanceof Error ? err.message : "Could not set platform billing brand.");
@@ -274,11 +295,16 @@ export default function BrandsPage() {
                         )}
                       </div>
                       <div className="min-w-0">
-                        <div className="font-semibold text-zinc-900 dark:text-zinc-100 truncate flex items-center gap-1.5">
+                        <div className="font-semibold text-zinc-900 dark:text-zinc-100 truncate flex items-center gap-1.5 flex-wrap">
                           <span>{b.name}</span>
                           {isSelected && (
                             <span className="text-[9px] font-mono font-bold uppercase px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                               Current
+                            </span>
+                          )}
+                          {platformBillingBrandId === b.brandId && (
+                            <span className="text-[9px] font-mono font-bold uppercase px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
+                              Billing Brand
                             </span>
                           )}
                         </div>
@@ -365,14 +391,21 @@ export default function BrandsPage() {
                           <ImageIcon className="h-3.5 w-3.5 text-zinc-400" />
                           <span>Upload / Change Logo</span>
                         </button>
-                        <button
-                          type="button"
-                          className="flex items-center gap-2 w-full px-3 py-2 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800 text-emerald-600 dark:text-emerald-400 font-medium"
-                          onClick={() => setAsPlatformBilling(b)}
-                        >
-                          <Star className="h-3.5 w-3.5 text-emerald-500" />
-                          <span>Set as Billing Brand</span>
-                        </button>
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            className="flex items-center gap-2 w-full px-3 py-2 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800 text-emerald-600 dark:text-emerald-400 font-medium"
+                            onClick={() => setAsPlatformBilling(b)}
+                            disabled={busy === `billing-${b.brandId}`}
+                          >
+                            <Star className="h-3.5 w-3.5 text-emerald-500" />
+                            <span>
+                              {platformBillingBrandId === b.brandId
+                                ? "Billing brand (active)"
+                                : "Set as Billing Brand"}
+                            </span>
+                          </button>
+                        )}
                         {!isSelected && (
                           <button
                             type="button"
