@@ -191,7 +191,7 @@ final class CompanionController
             );
             $now = GpIds::now();
             // Prefer device-bound wallet digits for matching (APK still sends SMS shortcode as number).
-            $smsNumber = self::resolveSmsWalletNumber($device, (string) $req->input('number', ''));
+            $smsNumber = self::resolveSmsWalletNumber($device, (string) $req->input('number', ''), $sender);
             // Audit: store amount/trx/sender/device — never full SMS body.
             if ($existingApproved) {
                 GpDb::exec(
@@ -416,7 +416,7 @@ final class CompanionController
      *
      * @param array<string,mixed> $device
      */
-    private static function resolveSmsWalletNumber(array $device, string $incomingNumber): string
+    private static function resolveSmsWalletNumber(array $device, string $incomingNumber, string $sender = ''): string
     {
         $boundId = trim((string) ($device['bound_gateway_id'] ?? ''));
         if ($boundId !== '') {
@@ -427,6 +427,15 @@ final class CompanionController
             $account = trim((string) ($gw['account'] ?? ''));
             if ($account !== '') {
                 return $account;
+            }
+        }
+        if ($sender !== '') {
+            $single = GpDb::all(
+                'SELECT account FROM gp_gateways WHERE brand_id = ? AND method_code = ? AND status = ?',
+                [(string) $device['brand_id'], $sender, 'active']
+            );
+            if (count($single) === 1 && !empty($single[0]['account'])) {
+                return trim((string) $single[0]['account']);
             }
         }
         return $incomingNumber;

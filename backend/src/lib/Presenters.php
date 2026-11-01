@@ -475,7 +475,7 @@ final class GpPresenters
                 }
             }
             $brandUrl = trim((string) ($brand['logo_url'] ?? ''));
-            if ($brandUrl !== '' && str_starts_with(strtolower($brandUrl), 'https://')) {
+            if ($brandUrl !== '' && (str_starts_with(strtolower($brandUrl), 'https://') || str_starts_with(strtolower($brandUrl), 'http://') || str_starts_with(strtolower($brandUrl), 'data:image/'))) {
                 return $brandUrl;
             }
             $merchantId = (string) ($brand['merchant_id'] ?? '');
@@ -484,7 +484,10 @@ final class GpPresenters
             }
             $m = GpDb::one('SELECT brand_logo_url FROM gp_merchants WHERE merchant_id = ?', [$merchantId]);
             $logo = trim((string) ($m['brand_logo_url'] ?? ''));
-            return $logo !== '' ? $logo : null;
+            if ($logo !== '' && (str_starts_with(strtolower($logo), 'https://') || str_starts_with(strtolower($logo), 'http://') || str_starts_with(strtolower($logo), 'data:image/'))) {
+                return $logo;
+            }
+            return null;
         } catch (Throwable $e) {
             return null;
         }

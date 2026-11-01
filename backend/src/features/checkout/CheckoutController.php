@@ -906,7 +906,18 @@ final class CheckoutController
                 }
             }
         }
-        if (count($activeSameRail) > 1) {
+        $knownShortcodes = ['16247', '16167', '16262', '16216', '16268', '16259'];
+        $isShortcode = $smsNumber === '' || strlen($smsNumber) <= 6 || in_array($smsNumber, $knownShortcodes, true);
+
+        if (count($activeSameRail) === 1) {
+            // Single gateway on this brand for this rail: carrier shortcode SMS resolves directly to this wallet.
+            if ($isShortcode) {
+                $onlyAccount = preg_replace('/\D+/', '', (string) ($activeSameRail[0]['account'] ?? '')) ?: '';
+                if ($onlyAccount !== '') {
+                    $smsNumber = $onlyAccount;
+                }
+            }
+        } elseif (count($activeSameRail) > 1) {
             // Multi-account: require SMS number match to expected gateway account (no amount-only guess).
             $targetAccount = $expectedAccount;
             if ($gatewayId !== null && $gatewayId !== '') {
@@ -927,9 +938,11 @@ final class CheckoutController
             if ($a !== $b && substr($smsNumber, -10) !== substr($targetDigits, -10)) {
                 return null;
             }
-        } elseif ($expectedAccount !== null && $expectedAccount !== '' && $smsNumber !== '') {
+        }
+
+        if ($expectedAccount !== null && $expectedAccount !== '' && $smsNumber !== '' && !$isShortcode) {
             $targetDigits = preg_replace('/\D+/', '', $expectedAccount) ?: '';
-            if ($targetDigits !== '') {
+            if (strlen($targetDigits) >= 10 && strlen($smsNumber) >= 10) {
                 $a = substr($smsNumber, -11);
                 $b = substr($targetDigits, -11);
                 if ($a !== $b && substr($smsNumber, -10) !== substr($targetDigits, -10)) {

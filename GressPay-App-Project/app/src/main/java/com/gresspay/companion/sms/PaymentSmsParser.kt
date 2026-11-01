@@ -17,7 +17,7 @@ data class ParsedPaymentSms(
 object PaymentSmsParser {
 
     private val BKASH_SENDERS = setOf("16247", "bkash", "bkas")
-    private val NAGAD_SENDERS = setOf("16262", "nagad")
+    private val NAGAD_SENDERS = setOf("16167", "16262", "nagad")
     private val ROCKET_SENDERS = setOf("16216", "rocket", "dbbl")
     private val UPAY_SENDERS = setOf("16268", "upay", "ucb")
     private val CELLFIN_SENDERS = setOf("16259", "cellfin", "ibbl")
@@ -79,7 +79,7 @@ object PaymentSmsParser {
         val upperBody = body.uppercase(Locale.US)
 
         if (digits in setOf("16247") || BKASH_SENDERS.any { fromNorm.contains(it) }) return "bkash"
-        if (digits in setOf("16262") || NAGAD_SENDERS.any { fromNorm.contains(it) }) return "nagad"
+        if (digits in setOf("16167", "16262") || NAGAD_SENDERS.any { fromNorm.contains(it) }) return "nagad"
         if (digits in setOf("16216") || ROCKET_SENDERS.any { fromNorm.contains(it) }) return "rocket"
         if (digits in setOf("16268") || UPAY_SENDERS.any { fromNorm.contains(it) }) return "upay"
         if (digits in setOf("16259") || CELLFIN_SENDERS.any { fromNorm.contains(it) }) return "cellfin"

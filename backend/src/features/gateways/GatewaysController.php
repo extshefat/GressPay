@@ -3,12 +3,12 @@ declare(strict_types=1);
 
 final class GatewaysController
 {
-    /** Methods that support optional checkout QR image upload (R2). */
+    /** Methods that support optional checkout QR image upload (R2 or direct). */
     private static function qrCapableMethods(): array
     {
         return array_merge(
             GpCatalog::bdMobileWalletCodes(),
-            ['usdt_trc20', 'binance_pay']
+            ['usdt_trc20', 'binance_pay', 'bybit_pay', 'custom_provider']
         );
     }
     private const MAX_GATEWAYS_PER_BRAND = 40;
@@ -52,6 +52,9 @@ final class GatewaysController
         }
         if ($req->method === 'POST' && $action === 'disable') {
             self::setStatus($actor, $gw, 'inactive');
+        }
+        if ($action === 'qr' && ($sub === 'direct' || $sub === 'upload') && $req->method === 'POST') {
+            self::directUploadQr($actor, $gw, $req);
         }
         if ($action === 'qr' && $sub === 'upload-intent' && $req->method === 'POST') {
             self::uploadIntent($actor, $gw, $req);
@@ -460,12 +463,74 @@ final class GatewaysController
         GpJson::send(['gateway' => self::present(self::owned($actor['brand_id'], (string) $gw['gateway_id']))]);
     }
 
+    /** @param array{brand_id:string,merchant_id?:string} $actor @param array<string,mixed> $gw */
+    private static function directUploadQr(array $actor, array $gw, GpRequest $req): never
+    {
+        GpRateLimiter::guard('qr-direct:' . $actor['brand_id'], 30, 60);
+        $dataUrl = trim((string) $req->input('dataUrl', $req->input('image', '')));
+        if ($dataUrl === '' && !empty($_FILES['file']['tmp_name'])) {
+            $tmp = $_FILES['file']['tmp_name'];
+            $mime = mime_content_type($tmp) ?: 'image/png';
+            $data = file_get_contents($tmp);
+            if ($data !== false) {
+                $dataUrl = 'data:' . $mime . ';base64,' . base64_encode($data);
+            }
+        }
+
+        if ($dataUrl === '' || !str_starts_with($dataUrl, 'data:image/')) {
+            GpJson::error('INVALID_IMAGE', 'Please provide a valid image (PNG, JPEG, WebP).', 400);
+        }
+
+        $parts = explode(',', $dataUrl, 2);
+        if (count($parts) !== 2) {
+            GpJson::error('INVALID_DATA_URL', 'Invalid data URL format.', 400);
+        }
+
+        $header = $parts[0];
+        $binary = base64_decode($parts[1], true);
+        if ($binary === false) {
+            GpJson::error('BASE64_DECODE_FAILED', 'Could not decode image.', 400);
+        }
+
+        $len = strlen($binary);
+        if ($len > 3 * 1024 * 1024) {
+            GpJson::error('FILE_TOO_LARGE', 'QR image must be 3MB or smaller.', 400);
+        }
+
+        preg_match('/data:(image\/[a-zA-Z0-9\.\+]+);base64/', $header, $m);
+        $mime = $m[1] ?? 'image/png';
+        $checksum = hash('sha256', $binary);
+
+        GpDb::exec(
+            'UPDATE gp_gateways SET qr_object_key = ?, qr_mime = ?, qr_bytes = ?, qr_checksum = ?, qr_status = ?, updated_at = ?
+             WHERE brand_id = ? AND gateway_id = ?',
+            [$dataUrl, $mime, $len, $checksum, 'ready', GpIds::now(), $actor['brand_id'], $gw['gateway_id']]
+        );
+
+        self::audit($actor, 'gateway.qr.direct', ['gatewayId' => $gw['gateway_id'], 'bytes' => $len]);
+
+        GpJson::send([
+            'ok' => true,
+            'gatewayId' => $gw['gateway_id'],
+            'qrStatus' => 'ready',
+            'qrUrl' => $dataUrl,
+        ]);
+    }
+
     /** @param array<string,mixed> $gw */
     private static function previewQr(array $gw): never
     {
         $key = (string) ($gw['qr_object_key'] ?? '');
         if ($key === '' || ($gw['qr_status'] ?? '') !== 'ready') {
             GpJson::error('NO_QR', 'No QR image ready for this gateway.', 404);
+        }
+        if (str_starts_with($key, 'data:image/')) {
+            GpJson::send([
+                'url' => $key,
+                'expiresIn' => 86400,
+                'mime' => $gw['qr_mime'] ?? 'image/png',
+                'note' => 'Direct data-URL preview.',
+            ]);
         }
         if (!R2Client::isConfigured()) {
             GpJson::error('R2_UNAVAILABLE', 'QR preview unavailable.', 503);
@@ -565,10 +630,17 @@ final class GatewaysController
         if (isset($opts['custom_rate_bdt']) && (float) $opts['custom_rate_bdt'] > 0) {
             $out['custom_rate_bdt'] = (float) $opts['custom_rate_bdt'];
         }
-        if ($includeQrUrl && $qrStatus === 'ready' && !empty($gw['qr_object_key']) && R2Client::isConfigured()) {
-            try {
-                $out['qrImageUrl'] = R2Client::presignGet((string) $gw['qr_object_key'], min(900, GpConfig::r2PresignTtl()));
-            } catch (Throwable $e) {
+        if ($includeQrUrl && $qrStatus === 'ready' && !empty($gw['qr_object_key'])) {
+            $qrKey = (string) $gw['qr_object_key'];
+            if (str_starts_with($qrKey, 'data:image/')) {
+                $out['qrImageUrl'] = $qrKey;
+            } elseif (R2Client::isConfigured()) {
+                try {
+                    $out['qrImageUrl'] = R2Client::presignGet($qrKey, min(900, GpConfig::r2PresignTtl()));
+                } catch (Throwable $e) {
+                    $out['qrImageUrl'] = null;
+                }
+            } else {
                 $out['qrImageUrl'] = null;
             }
         }
@@ -836,13 +908,16 @@ final class GatewaysController
             $apiKey = trim((string) $req->input('api_key', $req->input('apiKey', '')));
             $apiSecret = trim((string) $req->input('api_secret', $req->input('apiSecret', $req->input('secret', ''))));
             $certSn = trim((string) $req->input('certificate_sn', $req->input('certificateSn', '')));
-            if ($apiKey !== '' || $apiSecret !== '' || $certSn !== '') {
-                if ($apiKey === '' || $apiSecret === '' || $certSn === '') {
+            if ($apiKey !== '' || $apiSecret !== '') {
+                if ($apiKey === '' || $apiSecret === '') {
                     GpJson::error(
                         'MISSING_FIELD',
-                        'Binance Pay merchant API requires api_key, api_secret, and certificate_sn together.',
+                        'Binance Pay requires api_key and api_secret together.',
                         400
                     );
+                }
+                if ($certSn === '') {
+                    $certSn = 'binance_live_sn';
                 }
                 $sealed = GpCrypto::seal(json_encode([
                     'apiKey' => $apiKey,

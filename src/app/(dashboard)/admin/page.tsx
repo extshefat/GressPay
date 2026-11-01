@@ -45,6 +45,13 @@ import {
   Zap,
 } from "lucide-react";
 
+function formatCleanNumber(numStr?: string | number | null): string {
+  if (numStr === undefined || numStr === null || numStr === "") return "—";
+  const n = typeof numStr === "number" ? numStr : parseFloat(String(numStr));
+  if (isNaN(n)) return String(numStr);
+  return n.toLocaleString("en-US", { maximumFractionDigits: 4 });
+}
+
 export default function AdminPage() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [merchants, setMerchants] = useState<AdminMerchant[]>([]);
@@ -772,7 +779,7 @@ export default function AdminPage() {
 
                   <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-900 flex items-center justify-between text-xs">
                     <div className="text-zinc-500 font-mono">
-                      Limits: {gw.min_amount} – {gw.max_amount} {gw.currency}
+                      Limits: {formatCleanNumber(gw.min_amount)} – {formatCleanNumber(gw.max_amount)} {gw.currency}
                     </div>
                     <Button
                       size="sm"

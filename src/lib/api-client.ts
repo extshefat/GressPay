@@ -492,6 +492,16 @@ class ApiClient {
     });
   }
 
+  async uploadDirectQr(
+    id: string,
+    dataUrl: string
+  ): Promise<{ ok: boolean; gatewayId: string; qrStatus: string; qrUrl: string }> {
+    return this.request(`/api/v1/gateways/${id}/qr/direct`, {
+      method: "POST",
+      body: JSON.stringify({ dataUrl }),
+    });
+  }
+
   async qrUploadIntent(
     id: string,
     contentType: string,
@@ -720,6 +730,16 @@ class ApiClient {
 
   async previewBrandLogo(brandId: string): Promise<{ url: string; expiresIn: number }> {
     return this.request(`/api/v1/brands/${brandId}/logo/preview`);
+  }
+
+  async uploadDirectBrandLogo(
+    brandId: string,
+    dataUrl: string
+  ): Promise<{ ok: boolean; brandId: string; logoUrl: string }> {
+    return this.request(`/api/v1/brands/${brandId}/logo/direct`, {
+      method: "POST",
+      body: JSON.stringify({ dataUrl }),
+    });
   }
 
   async testWebhookPing(): Promise<{ ok: boolean; httpCode?: number; message?: string }> {
