@@ -8,7 +8,7 @@ services:
     environment:
       APP_NAME: GressPay
       APP_ENV: production
-      PORT: "8080"
+      GP_API_PORT: "8080"
       DB_DRIVER: ${DB_DRIVER:-mysql}
       DB_HOST: ${DB_HOST:-mariadb}
       DB_PORT: ${DB_PORT:-3306}
@@ -22,11 +22,6 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-https://your-subdomain.example}
       APP_URL: ${APP_URL:-https://api.your-subdomain.example}
       PUBLIC_APP_URL: ${PUBLIC_APP_URL:-https://your-subdomain.example}
-      BINANCE_PAY_API_BASE: ${BINANCE_PAY_API_BASE:-https://bpay.binanceapi.com}
-      TRON_API_BASE: ${TRON_API_BASE:-https://api.trongrid.io}
-      TRON_API_KEY: ${TRON_API_KEY:-}
-      USDT_TRC20_CONTRACT: ${USDT_TRC20_CONTRACT:-TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t}
-      USDT_CONFIRMATIONS: ${USDT_CONFIRMATIONS:-20}
       WEBHOOK_MAX_RETRIES: ${WEBHOOK_MAX_RETRIES:-5}
       WEBHOOK_TIMEOUT_SECONDS: ${WEBHOOK_TIMEOUT_SECONDS:-8}
     depends_on:
@@ -34,8 +29,9 @@ services:
     restart: unless-stopped
 
   webhook-worker:
+    profiles: ["workers"]
     build: .
-    command: ["webhook-worker"]
+    command: ["php", "/var/www/gresspay-api/jobs/WebhookWorker.php"]
     environment:
       APP_ENV: production
       DB_DRIVER: ${DB_DRIVER:-mysql}
@@ -46,12 +42,8 @@ services:
       DB_PASS: ${DB_PASS:?Set DB_PASS in the environment}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the environment}
       APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:?Set APP_ENCRYPTION_KEY in the environment}
-      WEBHOOK_MAX_RETRIES: ${WEBHOOK_MAX_RETRIES:-5}
-      WEBHOOK_TIMEOUT_SECONDS: ${WEBHOOK_TIMEOUT_SECONDS:-8}
-      WEBHOOK_WORKER_POLL_SECONDS: ${WEBHOOK_WORKER_POLL_SECONDS:-5}
     depends_on:
       - mariadb
-      - php
     restart: unless-stopped
 
   mariadb:
