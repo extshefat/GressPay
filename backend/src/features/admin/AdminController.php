@@ -104,9 +104,12 @@ final class AdminController
         $matchedSms = (int) (GpDb::one("SELECT COUNT(*) as c FROM gp_sms_data WHERE status = 'used'")['c'] ?? 0);
         $unmatchedSms = (int) (GpDb::one("SELECT COUNT(*) as c FROM gp_sms_data WHERE status = 'approved'")['c'] ?? 0);
 
-        // Webhook Deliveries
+        // Webhook Deliveries + persistent queue
         $totalWebhooks = (int) (GpDb::one('SELECT COUNT(*) as c FROM gp_webhook_deliveries')['c'] ?? 0);
         $deliveredWebhooks = (int) (GpDb::one("SELECT COUNT(*) as c FROM gp_webhook_deliveries WHERE status IN ('completed', 'delivered')")['c'] ?? 0);
+        $queuePending = (int) (GpDb::one("SELECT COUNT(*) as c FROM gp_webhook_queue WHERE status IN ('pending', 'processing')")['c'] ?? 0);
+        $queueDelivered = (int) (GpDb::one("SELECT COUNT(*) as c FROM gp_webhook_queue WHERE status = 'delivered'")['c'] ?? 0);
+        $queueFailed = (int) (GpDb::one("SELECT COUNT(*) as c FROM gp_webhook_queue WHERE status = 'failed'")['c'] ?? 0);
         $webhookHealth = $totalWebhooks > 0 ? round(($deliveredWebhooks / $totalWebhooks) * 100, 1) : 100.0;
 
         $plansCount = (int) (GpDb::one("SELECT COUNT(*) as c FROM gp_subscription_plans WHERE status = 'active'")['c'] ?? 0);
@@ -145,6 +148,9 @@ final class AdminController
                 'total' => $totalWebhooks,
                 'delivered' => $deliveredWebhooks,
                 'healthPercent' => $webhookHealth,
+                'queuePending' => $queuePending,
+                'queueDelivered' => $queueDelivered,
+                'queueFailed' => $queueFailed,
             ],
             'gateways' => [
                 'total' => $totalGateways,
