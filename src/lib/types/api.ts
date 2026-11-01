@@ -271,6 +271,17 @@ export interface CheckoutSession {
   merchantName: string;
   merchantLogo?: string;
   merchantVerified: boolean;
+  websiteUrl?: string | null;
+  supportMobile?: string | null;
+  supportWhatsapp?: string | null;
+  supportEmail?: string | null;
+  supportTelegram?: string | null;
+  checkoutTheme?: "default" | "luxury" | "minimal" | string;
+  verificationMode?: "trx_id" | "sms_auto" | string;
+  amountPolicy?: "exact" | "equal_or_more" | string;
+  amountFormat?: "as_is" | "floor" | "ceil" | string;
+  brandFee?: number;
+  brandFeeType?: "fixed" | "percentage" | string;
   orderTitle: string;
   orderDescription?: string;
   amount: number;
@@ -280,6 +291,22 @@ export interface CheckoutSession {
   ledgerMode?: "live" | "test";
   expiresAt: string;
   createdAt: string;
+}
+
+export interface BrandCheckoutSettings {
+  websiteUrl?: string | null;
+  supportMobile?: string | null;
+  supportWhatsapp?: string | null;
+  supportEmail?: string | null;
+  supportTelegram?: string | null;
+  checkoutTheme?: "default" | "luxury" | "minimal" | string;
+  brandStatus?: "active" | "inactive" | string;
+  verificationMode?: "trx_id" | "sms_auto" | string;
+  amountPolicy?: "exact" | "equal_or_more" | string;
+  amountFormat?: "as_is" | "floor" | "ceil" | string;
+  brandFee?: number;
+  brandFeeType?: "fixed" | "percentage" | string;
+  shuffleDuplicateGateways?: boolean;
 }
 
 export interface CheckoutStatusResponse {

@@ -396,8 +396,11 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
           res.redirectUrl || res.returnUrl || session.successRedirectUrl || session.returnUrl
         );
       } else {
-        // Scenario B: Customer submitted TxID first, awaiting SMS from companion APK
-        setStatusMessage("Verifying your Transaction ID automatically... Please wait");
+        setStatusMessage(
+          smsAuto && !cleanTrx
+            ? "Waiting for Companion SMS confirmation… Please keep this page open."
+            : "Verifying your Transaction ID automatically... Please wait"
+        );
         setIsVerifying(false);
         startStatusPolling();
       }
@@ -691,11 +694,59 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
   }
 
   const instructions = getInstructions(selectedMethod);
+  const theme = session.checkoutTheme || "default";
+  const themeClass =
+    theme === "luxury"
+      ? "gp-theme-luxury"
+      : theme === "minimal"
+        ? "gp-theme-minimal"
+        : "gp-theme-default";
+  const smsAuto =
+    (session.verificationMode || "trx_id") === "sms_auto" &&
+    !selectedMethod.requiresTxidInput;
+
+  const feeLabel = (() => {
+    const pct = Number(selectedMethod.feePercentage || 0);
+    const fixed = Number(selectedMethod.fixedFee || 0);
+    const brandFee = Number(session.brandFee || 0);
+    const brandType = session.brandFeeType || "fixed";
+    const parts: string[] = [];
+    if (pct > 0) parts.push(`${pct}%`);
+    if (fixed > 0) parts.push(`${fixed} fixed`);
+    if (brandFee > 0) parts.push(brandType === "percentage" ? `${brandFee}% brand` : `${brandFee} brand`);
+    return parts.length ? parts.join(" + ") : "0% Fee";
+  })();
+
+  const whatsappHref = session.supportWhatsapp
+    ? `https://wa.me/${session.supportWhatsapp.replace(/[^\d]/g, "")}`
+    : null;
+  const telHref = session.supportMobile ? `tel:${session.supportMobile}` : null;
+  const mailHref = session.supportEmail ? `mailto:${session.supportEmail}` : null;
+  const tgHref = session.supportTelegram
+    ? session.supportTelegram.startsWith("http")
+      ? session.supportTelegram
+      : `https://t.me/${session.supportTelegram.replace(/^@/, "")}`
+    : null;
 
   return (
-    <div className="w-full max-w-2xl mx-auto bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-2xl overflow-hidden transition-all">
+    <div
+      className={`w-full max-w-2xl mx-auto bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-2xl overflow-hidden transition-all ${themeClass}`}
+      style={
+        theme === "luxury"
+          ? { boxShadow: "0 25px 50px -12px rgba(15, 23, 42, 0.35)" }
+          : theme === "minimal"
+            ? { borderRadius: "1rem" }
+            : undefined
+      }
+    >
       {/* Merchant Header */}
-      <div className="p-5 sm:p-6 bg-zinc-50/80 dark:bg-zinc-900/60 border-b border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div
+        className={`p-5 sm:p-6 border-b border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+          theme === "luxury"
+            ? "bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 text-white"
+            : "bg-zinc-50/80 dark:bg-zinc-900/60"
+        }`}
+      >
         <div className="flex items-center gap-3.5 min-w-0">
           {session.merchantLogo ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -711,16 +762,26 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
           )}
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate">
+              <span
+                className={`text-sm font-bold truncate ${
+                  theme === "luxury" ? "text-white" : "text-zinc-900 dark:text-zinc-100"
+                }`}
+              >
                 {session.merchantName}
               </span>
               <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
             </div>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
+            <p
+              className={`text-xs truncate mt-0.5 ${
+                theme === "luxury" ? "text-zinc-300" : "text-zinc-500 dark:text-zinc-400"
+              }`}
+            >
               {locale === "bn" ? "ইনভয়েস" : "Invoice ID"}:{" "}
               <button
                 type="button"
-                className="font-mono text-[10px] text-zinc-700 dark:text-zinc-300 underline-offset-2 hover:underline"
+                className={`font-mono text-[10px] underline-offset-2 hover:underline ${
+                  theme === "luxury" ? "text-zinc-200" : "text-zinc-700 dark:text-zinc-300"
+                }`}
                 onClick={() => copyToClipboard(session.sessionId, "invoice")}
               >
                 {session.sessionId.slice(0, 8)}…{session.sessionId.slice(-6)}
@@ -731,6 +792,50 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
                 <Copy className="inline w-3 h-3 ml-1 text-zinc-400" />
               )}
             </p>
+            {(whatsappHref || telHref || mailHref || tgHref || session.websiteUrl) && (
+              <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                {whatsappHref && (
+                  <a
+                    href={whatsappHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[10px] font-semibold px-2 py-1 rounded-lg bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                  >
+                    WhatsApp
+                  </a>
+                )}
+                {telHref && (
+                  <a href={telHref} className="text-[10px] font-semibold px-2 py-1 rounded-lg bg-zinc-500/10 text-zinc-700 dark:text-zinc-200">
+                    Call
+                  </a>
+                )}
+                {mailHref && (
+                  <a href={mailHref} className="text-[10px] font-semibold px-2 py-1 rounded-lg bg-sky-500/10 text-sky-700 dark:text-sky-300">
+                    Email
+                  </a>
+                )}
+                {tgHref && (
+                  <a
+                    href={tgHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[10px] font-semibold px-2 py-1 rounded-lg bg-sky-500/10 text-sky-700 dark:text-sky-300"
+                  >
+                    Telegram
+                  </a>
+                )}
+                {session.websiteUrl && (
+                  <a
+                    href={session.websiteUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[10px] font-semibold px-2 py-1 rounded-lg bg-zinc-500/10 text-zinc-700 dark:text-zinc-200"
+                  >
+                    Website
+                  </a>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -920,9 +1025,22 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
                     )}
                   </div>
 
-                  <div className="text-[11px] text-zinc-500 font-mono mt-3 flex items-center justify-between">
+                  <div className="text-[11px] text-zinc-500 font-mono mt-3 flex items-center justify-between gap-2">
                     <span>{method.currency}</span>
-                    <span>0% Fee</span>
+                    <span className="truncate text-right">
+                      {(() => {
+                        const pct = Number(method.feePercentage || 0);
+                        const fixed = Number(method.fixedFee || 0);
+                        const bf = Number(session.brandFee || 0);
+                        if (pct <= 0 && fixed <= 0 && bf <= 0) return "0% Fee";
+                        if (isSelected) return feeLabel;
+                        const bits: string[] = [];
+                        if (pct > 0) bits.push(`${pct}%`);
+                        if (fixed > 0) bits.push(`${fixed}`);
+                        if (bf > 0) bits.push("fee");
+                        return bits.join("+") || "0% Fee";
+                      })()}
+                    </span>
                   </div>
                 </button>
               );
@@ -1118,6 +1236,36 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
                   />
                 </div>
               </div>
+            ) : smsAuto ? (
+              <div className="space-y-3">
+                <div className="rounded-xl border border-emerald-200/70 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-950/20 p-3 text-xs text-emerald-900 dark:text-emerald-200 leading-relaxed">
+                  Pay the exact amount to the number above. Confirmation is automatic via the merchant&apos;s
+                  Companion SMS — you do not need to paste a TrxID.
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                    Your Mobile Number (Optional)
+                  </label>
+                  <Input
+                    placeholder="e.g. 01XXXXXXXXX"
+                    value={senderNumber}
+                    onChange={(e) => setSenderNumber(e.target.value.trim())}
+                    className="font-mono text-xs"
+                  />
+                </div>
+                <details className="text-xs text-zinc-500">
+                  <summary className="cursor-pointer font-semibold text-zinc-600 dark:text-zinc-300">
+                    Advanced: enter TrxID manually
+                  </summary>
+                  <div className="mt-2">
+                    <Input
+                      placeholder="Optional Transaction ID"
+                      value={txidInput}
+                      onChange={(e) => setTxidInput(e.target.value.trim().toUpperCase())}
+                    />
+                  </div>
+                </details>
+              </div>
             ) : null}
 
             {demoMode && selectedMethod.code !== "binance_pay" && (
@@ -1160,15 +1308,19 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
               {isVerifying
                 ? "Checking Settlement Ledger…"
                 : selectedMethod.code === "binance_pay"
-                ? "Open Binance Pay Checkout"
-                : activeTab === "crypto"
-                ? `Pay ${formatCurrency(payableAmount, payableCurrency)}`
-                : `Pay ${formatCurrency(payableAmount, payableCurrency)}`}
+                  ? "Open Binance Pay Checkout"
+                  : smsAuto
+                    ? locale === "bn"
+                      ? "পেমেন্ট করে অপেক্ষা করুন"
+                      : "I have paid — wait for SMS"
+                    : `Pay ${formatCurrency(payableAmount, payableCurrency)}`}
             </Button>
             {(selectedMethod.category === "mfs" ||
               ["bkash", "nagad", "rocket", "upay", "cellfin"].includes(selectedMethod.code)) && (
               <p className="text-[11px] text-center text-zinc-500">
-                After sending money, paste the TrxID above — we match it against companion SMS for this brand.
+                {smsAuto
+                  ? "After sending money, wait here — Companion SMS confirms payment automatically for this brand."
+                  : "After sending money, paste the TrxID above — we match it against companion SMS for this brand."}
               </p>
             )}
           </form>

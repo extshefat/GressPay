@@ -87,7 +87,7 @@ final class BrandsController
                     $previewLogo = null;
                 }
             }
-            $out[] = [
+            $out[] = array_merge(self::presentBrandSettings($row), [
                 'brandId' => $row['brand_id'],
                 'name' => $row['name'],
                 'currencyCode' => $row['currency_code'] ?? 'BDT',
@@ -104,7 +104,7 @@ final class BrandsController
                     : '—',
                 'websiteApiKeyCopyable' => $websitePlain !== '',
                 'createdAt' => $row['created_at'] ?? null,
-            ];
+            ]);
         }
         GpJson::send([
             'brands' => $out,
@@ -227,35 +227,148 @@ final class BrandsController
             GpJson::error('NOT_FOUND', 'Brand not found.', 404);
         }
         $name = trim((string) $req->input('name', $brand['name']));
-        $webhookUrl = trim((string) $req->input('webhook_url', $brand['webhook_url'] ?? ''));
+        if ($name === '' || strlen($name) > 120) {
+            GpJson::error('INVALID_NAME', 'Brand name is required (max 120 chars).', 400);
+        }
+        $webhookUrl = trim((string) $req->input('webhook_url', $req->input('webhookUrl', $brand['webhook_url'] ?? '')));
         if ($webhookUrl !== '') {
             $wh = GpWebhook::validateDestination($webhookUrl);
             if (!$wh['ok']) {
                 GpJson::error('INVALID_URL', 'webhook_url rejected (' . ($wh['error'] ?? 'unsafe') . ').', 400);
             }
         }
-        GpDb::exec(
-            'UPDATE gp_brands SET name = ?, webhook_url = ?, updated_at = ? WHERE brand_id = ?',
-            [$name, $webhookUrl !== '' ? $webhookUrl : null, GpIds::now(), $brandId]
-        );
-        $logoUrl = trim((string) $req->input('logoUrl', $req->input('logo_url', $brand['logo_url'] ?? '')));
-        if ($logoUrl !== '' && !preg_match('#^https://#i', $logoUrl)) {
-            GpJson::error('INVALID_URL', 'logoUrl must be an HTTPS URL.', 400);
+
+        $websiteUrl = trim((string) $req->input('websiteUrl', $req->input('website_url', $brand['website_url'] ?? '')));
+        if ($websiteUrl !== '' && !preg_match('#^https?://#i', $websiteUrl)) {
+            GpJson::error('INVALID_URL', 'websiteUrl must start with http:// or https://.', 400);
         }
+
+        $supportMobile = self::clip(trim((string) $req->input('supportMobile', $req->input('support_mobile', $brand['support_mobile'] ?? ''))), 40);
+        $supportWhatsapp = self::clip(trim((string) $req->input('supportWhatsapp', $req->input('support_whatsapp', $brand['support_whatsapp'] ?? ''))), 40);
+        $supportEmail = self::clip(trim((string) $req->input('supportEmail', $req->input('support_email', $brand['support_email'] ?? ''))), 160);
+        $supportTelegram = self::clip(trim((string) $req->input('supportTelegram', $req->input('support_telegram', $brand['support_telegram'] ?? ''))), 80);
+        if ($supportEmail !== '' && !filter_var($supportEmail, FILTER_VALIDATE_EMAIL)) {
+            GpJson::error('INVALID_EMAIL', 'supportEmail must be a valid email address.', 400);
+        }
+
+        $theme = strtolower(trim((string) $req->input('checkoutTheme', $req->input('checkout_theme', $brand['checkout_theme'] ?? 'default'))));
+        if (!in_array($theme, ['default', 'luxury', 'minimal'], true)) {
+            GpJson::error('INVALID_THEME', 'checkoutTheme must be default, luxury, or minimal.', 400);
+        }
+        $status = strtolower(trim((string) $req->input('brandStatus', $req->input('brand_status', $brand['brand_status'] ?? 'active'))));
+        if (!in_array($status, ['active', 'inactive'], true)) {
+            GpJson::error('INVALID_STATUS', 'brandStatus must be active or inactive.', 400);
+        }
+        $verifyMode = strtolower(trim((string) $req->input('verificationMode', $req->input('verification_mode', $brand['verification_mode'] ?? 'trx_id'))));
+        if (!in_array($verifyMode, ['trx_id', 'sms_auto'], true)) {
+            GpJson::error('INVALID_MODE', 'verificationMode must be trx_id or sms_auto.', 400);
+        }
+        $amountPolicy = strtolower(trim((string) $req->input('amountPolicy', $req->input('amount_policy', $brand['amount_policy'] ?? 'exact'))));
+        if (!in_array($amountPolicy, ['exact', 'equal_or_more'], true)) {
+            GpJson::error('INVALID_POLICY', 'amountPolicy must be exact or equal_or_more.', 400);
+        }
+        $amountFormat = strtolower(trim((string) $req->input('amountFormat', $req->input('amount_format', $brand['amount_format'] ?? 'as_is'))));
+        if (!in_array($amountFormat, ['as_is', 'floor', 'ceil'], true)) {
+            GpJson::error('INVALID_FORMAT', 'amountFormat must be as_is, floor, or ceil.', 400);
+        }
+        $feeType = strtolower(trim((string) $req->input('brandFeeType', $req->input('brand_fee_type', $brand['brand_fee_type'] ?? 'fixed'))));
+        if (!in_array($feeType, ['fixed', 'percentage'], true)) {
+            GpJson::error('INVALID_FEE_TYPE', 'brandFeeType must be fixed or percentage.', 400);
+        }
+        $brandFee = (float) $req->input('brandFee', $req->input('brand_fee', $brand['brand_fee'] ?? 0));
+        if ($brandFee < 0 || ($feeType === 'percentage' && $brandFee > 100)) {
+            GpJson::error('INVALID_FEE', 'brandFee must be >= 0 (and <= 100 for percentage).', 400);
+        }
+        $shuffleRaw = $req->input('shuffleDuplicateGateways', $req->input('shuffle_duplicate_gateways', $brand['shuffle_duplicate_gateways'] ?? 0));
+        $shuffle = ($shuffleRaw === true || $shuffleRaw === 1 || $shuffleRaw === '1' || $shuffleRaw === 'true') ? 1 : 0;
+
+        // equal_or_more uses a small default tolerance so SMS overpay can still match.
+        $tolerance = $amountPolicy === 'equal_or_more'
+            ? (string) ($brand['payment_tolerance'] ?? '0.5')
+            : (string) ($brand['payment_tolerance'] ?? '0');
+        if ($amountPolicy === 'equal_or_more' && (float) $tolerance <= 0) {
+            $tolerance = '0.5';
+        }
+
+        GpDb::exec(
+            'UPDATE gp_brands SET
+                name = ?, webhook_url = ?, website_url = ?,
+                support_mobile = ?, support_whatsapp = ?, support_email = ?, support_telegram = ?,
+                checkout_theme = ?, brand_status = ?, verification_mode = ?,
+                amount_policy = ?, amount_format = ?, brand_fee = ?, brand_fee_type = ?,
+                shuffle_duplicate_gateways = ?, payment_tolerance = ?, updated_at = ?
+             WHERE brand_id = ?',
+            [
+                $name,
+                $webhookUrl !== '' ? $webhookUrl : null,
+                $websiteUrl !== '' ? $websiteUrl : null,
+                $supportMobile !== '' ? $supportMobile : null,
+                $supportWhatsapp !== '' ? $supportWhatsapp : null,
+                $supportEmail !== '' ? $supportEmail : null,
+                $supportTelegram !== '' ? $supportTelegram : null,
+                $theme,
+                $status,
+                $verifyMode,
+                $amountPolicy,
+                $amountFormat,
+                $brandFee,
+                $feeType,
+                $shuffle,
+                $tolerance,
+                GpIds::now(),
+                $brandId,
+            ]
+        );
+
+        $logoUrl = trim((string) $req->input('logoUrl', $req->input('logo_url', $brand['logo_url'] ?? '')));
         if ($req->input('logoUrl', $req->input('logo_url', null)) !== null) {
+            if ($logoUrl !== '' && !preg_match('#^(https://|data:image/)#i', $logoUrl)) {
+                GpJson::error('INVALID_URL', 'logoUrl must be an HTTPS URL or data:image upload.', 400);
+            }
             GpDb::exec(
                 'UPDATE gp_brands SET logo_url = ?, updated_at = ? WHERE brand_id = ?',
                 [$logoUrl !== '' ? $logoUrl : null, GpIds::now(), $brandId]
             );
         }
+
+        $fresh = GpDb::one('SELECT * FROM gp_brands WHERE brand_id = ?', [$brandId]);
         GpJson::send([
-            'brand' => [
+            'brand' => array_merge([
                 'brandId' => $brandId,
                 'name' => $name,
                 'webhookUrl' => $webhookUrl !== '' ? $webhookUrl : null,
-                'logoUrl' => $logoUrl !== '' ? $logoUrl : null,
-            ],
+                'logoUrl' => trim((string) ($fresh['logo_url'] ?? '')) ?: null,
+            ], self::presentBrandSettings(is_array($fresh) ? $fresh : [])),
         ]);
+    }
+
+    /** @param array<string,mixed> $row @return array<string,mixed> */
+    public static function presentBrandSettings(array $row): array
+    {
+        $fee = isset($row['brand_fee']) ? (float) $row['brand_fee'] : 0.0;
+        return [
+            'websiteUrl' => trim((string) ($row['website_url'] ?? '')) ?: null,
+            'supportMobile' => trim((string) ($row['support_mobile'] ?? '')) ?: null,
+            'supportWhatsapp' => trim((string) ($row['support_whatsapp'] ?? '')) ?: null,
+            'supportEmail' => trim((string) ($row['support_email'] ?? '')) ?: null,
+            'supportTelegram' => trim((string) ($row['support_telegram'] ?? '')) ?: null,
+            'checkoutTheme' => (string) ($row['checkout_theme'] ?? 'default') ?: 'default',
+            'brandStatus' => (string) ($row['brand_status'] ?? 'active') ?: 'active',
+            'verificationMode' => (string) ($row['verification_mode'] ?? 'trx_id') ?: 'trx_id',
+            'amountPolicy' => (string) ($row['amount_policy'] ?? 'exact') ?: 'exact',
+            'amountFormat' => (string) ($row['amount_format'] ?? 'as_is') ?: 'as_is',
+            'brandFee' => $fee,
+            'brandFeeType' => (string) ($row['brand_fee_type'] ?? 'fixed') ?: 'fixed',
+            'shuffleDuplicateGateways' => !empty($row['shuffle_duplicate_gateways']),
+        ];
+    }
+
+    private static function clip(string $value, int $max): string
+    {
+        if ($value === '') {
+            return '';
+        }
+        return strlen($value) > $max ? substr($value, 0, $max) : $value;
     }
 
     /** @param array<string,mixed> $actor @param array<string,mixed> $brand */

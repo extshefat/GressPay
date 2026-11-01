@@ -687,12 +687,36 @@ class ApiClient {
       gatewayCount: number;
       websiteApiKey?: string;
       websiteApiKeyMasked?: string;
+      websiteApiKeyCopyable?: boolean;
       logoConfigured?: boolean;
       logoUrl?: string | null;
+      websiteUrl?: string | null;
+      supportMobile?: string | null;
+      supportWhatsapp?: string | null;
+      supportEmail?: string | null;
+      supportTelegram?: string | null;
+      checkoutTheme?: string;
+      brandStatus?: string;
+      verificationMode?: string;
+      amountPolicy?: string;
+      amountFormat?: string;
+      brandFee?: number;
+      brandFeeType?: string;
+      shuffleDuplicateGateways?: boolean;
     }>;
     activeBrandId: string;
   }> {
     return this.request("/api/v1/brands");
+  }
+
+  async updateBrand(
+    brandId: string,
+    payload: Record<string, unknown>
+  ): Promise<{ brand: Record<string, unknown> }> {
+    return this.request(`/api/v1/brands/${brandId}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
   }
 
   async createBrand(name: string): Promise<{ brand: { brandId: string; name: string }; token: string }> {

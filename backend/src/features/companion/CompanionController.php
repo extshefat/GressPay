@@ -233,6 +233,23 @@ final class CompanionController
                 'SELECT * FROM gp_transactions WHERE brand_id = ? AND (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND status IN (?, ?) ORDER BY id DESC',
                 [$device['brand_id'], $trxId, strtoupper($trxId), strtolower($trxId), 'pending', 'initiated']
             );
+            // sms_auto: pending checkouts may have no trx_id yet — match by method + amount.
+            if ($pending === null) {
+                $brandMode = GpDb::one(
+                    'SELECT verification_mode FROM gp_brands WHERE brand_id = ?',
+                    [$device['brand_id']]
+                );
+                if (is_array($brandMode) && strtolower((string) ($brandMode['verification_mode'] ?? '')) === 'sms_auto') {
+                    $pending = GpDb::one(
+                        "SELECT * FROM gp_transactions
+                         WHERE brand_id = ? AND status IN (?, ?)
+                           AND (method_code = ? OR method_code = ?)
+                           AND (trx_id IS NULL OR trx_id = '')
+                         ORDER BY id DESC",
+                        [$device['brand_id'], 'pending', 'initiated', $sender, GpCatalog::slug($sender)]
+                    );
+                }
+            }
             $matched = false;
             if ($pending) {
                 $methodCode = GpCatalog::publicCode((string) ($pending['method_code'] ?: $sender));

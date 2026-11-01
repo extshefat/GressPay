@@ -9,7 +9,7 @@ import { Alert } from "@/components/ui/alert";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { MerchantEnvSnippet } from "@/features/developers/MerchantEnvSnippet";
-import { Plus, RefreshCw, Copy, MoreVertical, Check, RotateCw, ImageIcon, Star, Trash2 } from "lucide-react";
+import { Plus, RefreshCw, Copy, MoreVertical, Check, RotateCw, ImageIcon, Star, Trash2, Pencil } from "lucide-react";
 import Link from "next/link";
 
 type BrandRow = {
@@ -24,6 +24,19 @@ type BrandRow = {
   webhookUrl?: string | null;
   logoConfigured?: boolean;
   logoUrl?: string | null;
+  websiteUrl?: string | null;
+  supportMobile?: string | null;
+  supportWhatsapp?: string | null;
+  supportEmail?: string | null;
+  supportTelegram?: string | null;
+  checkoutTheme?: string;
+  brandStatus?: string;
+  verificationMode?: string;
+  amountPolicy?: string;
+  amountFormat?: string;
+  brandFee?: number;
+  brandFeeType?: string;
+  shuffleDuplicateGateways?: boolean;
 };
 
 const MASKED_KEY = "**********";
@@ -46,6 +59,24 @@ export default function BrandsPage() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [platformBillingBrandId, setPlatformBillingBrandId] = useState<string | null>(null);
+
+  // Edit Brand modal (ZiNiPay-style)
+  const [editBrand, setEditBrand] = useState<BrandRow | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editWebsite, setEditWebsite] = useState("");
+  const [editMobile, setEditMobile] = useState("");
+  const [editWhatsapp, setEditWhatsapp] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editTelegram, setEditTelegram] = useState("");
+  const [editTheme, setEditTheme] = useState("default");
+  const [editStatus, setEditStatus] = useState("active");
+  const [editVerifyMode, setEditVerifyMode] = useState<"trx_id" | "sms_auto">("trx_id");
+  const [editAmountPolicy, setEditAmountPolicy] = useState("exact");
+  const [editAmountFormat, setEditAmountFormat] = useState("as_is");
+  const [editFee, setEditFee] = useState("0");
+  const [editFeeType, setEditFeeType] = useState<"fixed" | "percentage">("fixed");
+  const [editShuffle, setEditShuffle] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -118,6 +149,56 @@ export default function BrandsPage() {
       toastError(err instanceof Error ? err.message : "Could not switch brand.");
     } finally {
       setBusy(null);
+    }
+  };
+
+  const openEditBrand = (b: BrandRow) => {
+    setMenuOpen(null);
+    setEditBrand(b);
+    setEditName(b.name || "");
+    setEditWebsite(b.websiteUrl || "");
+    setEditMobile(b.supportMobile || "");
+    setEditWhatsapp(b.supportWhatsapp || "");
+    setEditEmail(b.supportEmail || "");
+    setEditTelegram(b.supportTelegram || "");
+    setEditTheme(b.checkoutTheme || "default");
+    setEditStatus(b.brandStatus || "active");
+    setEditVerifyMode((b.verificationMode as "trx_id" | "sms_auto") || "trx_id");
+    setEditAmountPolicy(b.amountPolicy || "exact");
+    setEditAmountFormat(b.amountFormat || "as_is");
+    setEditFee(String(b.brandFee ?? 0));
+    setEditFeeType((b.brandFeeType as "fixed" | "percentage") || "fixed");
+    setEditShuffle(Boolean(b.shuffleDuplicateGateways));
+  };
+
+  const saveEditBrand = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editBrand) return;
+    setEditSaving(true);
+    try {
+      await api.updateBrand(editBrand.brandId, {
+        name: editName.trim(),
+        websiteUrl: editWebsite.trim(),
+        supportMobile: editMobile.trim(),
+        supportWhatsapp: editWhatsapp.trim(),
+        supportEmail: editEmail.trim(),
+        supportTelegram: editTelegram.trim(),
+        checkoutTheme: editTheme,
+        brandStatus: editStatus,
+        verificationMode: editVerifyMode,
+        amountPolicy: editAmountPolicy,
+        amountFormat: editAmountFormat,
+        brandFee: Number(editFee) || 0,
+        brandFeeType: editFeeType,
+        shuffleDuplicateGateways: editShuffle,
+      });
+      success(`Brand “${editName.trim()}” settings saved.`);
+      setEditBrand(null);
+      await load();
+    } catch (err: unknown) {
+      toastError(err instanceof Error ? err.message : "Could not save brand settings.");
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -352,11 +433,17 @@ export default function BrandsPage() {
                   </td>
                   <td className="px-4 py-3.5">
                     <div className="space-y-1">
-                      <Badge variant={isSelected ? "emerald" : "slate"}>
-                        {isSelected ? "Active" : "Inactive"}
-                      </Badge>
+                      <div className="flex flex-wrap gap-1">
+                        <Badge variant={isSelected ? "emerald" : "slate"}>
+                          {isSelected ? "Current" : "Idle"}
+                        </Badge>
+                        <Badge variant={b.brandStatus === "inactive" ? "rose" : "emerald"}>
+                          {b.brandStatus === "inactive" ? "Disabled" : "Active"}
+                        </Badge>
+                      </div>
                       <div className="text-[11px] font-mono text-zinc-500">
-                        {b.gatewayCount} live gateway{b.gatewayCount === 1 ? "" : "s"}
+                        {b.gatewayCount} gateway{b.gatewayCount === 1 ? "" : "s"}
+                        {b.verificationMode === "sms_auto" ? " · SMS auto" : " · TrxID"}
                       </div>
                     </div>
                   </td>
@@ -383,6 +470,14 @@ export default function BrandsPage() {
                     </div>
                     {menuOpen === b.brandId && (
                       <div className="absolute right-4 top-10 z-20 min-w-[200px] rounded-xl border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900 text-left">
+                        <button
+                          type="button"
+                          className="flex items-center gap-2 w-full px-3 py-2 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200"
+                          onClick={() => openEditBrand(b)}
+                        >
+                          <Pencil className="h-3.5 w-3.5 text-zinc-400" />
+                          <span>Edit Brand</span>
+                        </button>
                         <button
                           type="button"
                           className="flex items-center gap-2 w-full px-3 py-2 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200"
@@ -478,6 +573,155 @@ export default function BrandsPage() {
             </Button>
             <Button type="submit" variant="primary" isLoading={busy === "create"} leftIcon={<Plus className="h-3.5 w-3.5" />}>
               Create brand
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit Brand Modal */}
+      <Modal
+        open={Boolean(editBrand)}
+        onClose={() => setEditBrand(null)}
+        title={`Edit Brand — ${editBrand?.name || ""}`}
+      >
+        <form onSubmit={saveEditBrand} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Input label="Brand Name" value={editName} onChange={(e) => setEditName(e.target.value)} required />
+            <Input
+              label="Website URL"
+              value={editWebsite}
+              onChange={(e) => setEditWebsite(e.target.value)}
+              placeholder="https://example.com"
+            />
+            <Input label="Mobile Number" value={editMobile} onChange={(e) => setEditMobile(e.target.value)} placeholder="+8801…" />
+            <Input label="WhatsApp Number" value={editWhatsapp} onChange={(e) => setEditWhatsapp(e.target.value)} placeholder="+8801…" />
+            <Input label="Support Mail" type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
+            <Input label="Telegram ID" value={editTelegram} onChange={(e) => setEditTelegram(e.target.value)} placeholder="@username" />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label className="block text-xs font-medium space-y-1.5 text-zinc-700 dark:text-zinc-300">
+              <span>Payment Amount Type</span>
+              <select
+                className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs"
+                value={editAmountPolicy}
+                onChange={(e) => setEditAmountPolicy(e.target.value)}
+              >
+                <option value="exact">Exact Amount</option>
+                <option value="equal_or_more">Equal Amount and More</option>
+              </select>
+            </label>
+            <label className="block text-xs font-medium space-y-1.5 text-zinc-700 dark:text-zinc-300">
+              <span>Amount Format</span>
+              <select
+                className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs"
+                value={editAmountFormat}
+                onChange={(e) => setEditAmountFormat(e.target.value)}
+              >
+                <option value="as_is">As Is (20.40 → 20.40)</option>
+                <option value="floor">Floor (20.40 → 20.40 truncated)</option>
+                <option value="ceil">Ceil (20.40 → 20.40 up)</option>
+              </select>
+            </label>
+            <Input
+              label="Transaction Fee"
+              value={editFee}
+              onChange={(e) => setEditFee(e.target.value)}
+              className="font-mono text-xs"
+            />
+            <label className="block text-xs font-medium space-y-1.5 text-zinc-700 dark:text-zinc-300">
+              <span>Transaction Fee Type</span>
+              <select
+                className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs"
+                value={editFeeType}
+                onChange={(e) => setEditFeeType(e.target.value as "fixed" | "percentage")}
+              >
+                <option value="fixed">Fixed</option>
+                <option value="percentage">Percentage (%)</option>
+              </select>
+            </label>
+            <label className="block text-xs font-medium space-y-1.5 text-zinc-700 dark:text-zinc-300">
+              <span>Checkout Theme</span>
+              <select
+                className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs"
+                value={editTheme}
+                onChange={(e) => setEditTheme(e.target.value)}
+              >
+                <option value="default">Default</option>
+                <option value="luxury">Luxury</option>
+                <option value="minimal">Minimal</option>
+              </select>
+            </label>
+            <label className="block text-xs font-medium space-y-1.5 text-zinc-700 dark:text-zinc-300">
+              <span>Status</span>
+              <select
+                className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs"
+                value={editStatus}
+                onChange={(e) => setEditStatus(e.target.value)}
+              >
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </label>
+          </div>
+
+          <div className="space-y-2">
+            <div className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">Payment Verification Method</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setEditVerifyMode("trx_id")}
+                className={`rounded-xl border p-3 text-left text-xs transition ${
+                  editVerifyMode === "trx_id"
+                    ? "border-sky-500 bg-sky-50/80 dark:bg-sky-950/30 ring-1 ring-sky-500"
+                    : "border-zinc-200 dark:border-zinc-800"
+                }`}
+              >
+                <div className="font-bold text-zinc-900 dark:text-zinc-100">Verify using Transaction ID</div>
+                <p className="mt-1 text-zinc-500">Customer pays and enters the TrxID. Companion SMS still confirms live MFS.</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditVerifyMode("sms_auto")}
+                className={`rounded-xl border p-3 text-left text-xs transition ${
+                  editVerifyMode === "sms_auto"
+                    ? "border-sky-500 bg-sky-50/80 dark:bg-sky-950/30 ring-1 ring-sky-500"
+                    : "border-zinc-200 dark:border-zinc-800"
+                }`}
+              >
+                <div className="font-bold text-zinc-900 dark:text-zinc-100">Verify using Phone / SMS</div>
+                <p className="mt-1 text-zinc-500">Customer pays; Companion SMS auto-settles without requiring TrxID entry.</p>
+              </button>
+            </div>
+          </div>
+
+          <label className="flex items-start gap-3 rounded-xl border border-zinc-200 dark:border-zinc-800 p-3 text-xs cursor-pointer">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={editShuffle}
+              onChange={(e) => setEditShuffle(e.target.checked)}
+            />
+            <span>
+              <span className="font-semibold text-zinc-800 dark:text-zinc-200">Shuffle duplicate gateway numbers</span>
+              <span className="block text-zinc-500 mt-0.5">
+                If the same rail has multiple wallets, checkout shows one random number for that session and keeps it.
+              </span>
+            </span>
+          </label>
+
+          <p className="text-[11px] text-zinc-500 rounded-lg border border-amber-200/60 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-950/20 p-2.5">
+            Merchant Transaction Verification API is always available for server-side clients (
+            <code className="font-mono">POST /api/v1/checkout/verify-payment</code>
+            ). Logo upload stays in the separate Logo action.
+          </p>
+
+          <div className="flex justify-end gap-2 border-t border-zinc-100 dark:border-zinc-800 pt-3 sticky bottom-0 bg-white dark:bg-zinc-950">
+            <Button type="button" variant="outline" onClick={() => setEditBrand(null)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary" isLoading={editSaving}>
+              Save Changes
             </Button>
           </div>
         </form>

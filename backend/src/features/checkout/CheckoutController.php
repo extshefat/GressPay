@@ -183,6 +183,13 @@ final class CheckoutController
     private static function openSession(GpRequest $req, string $brandId, string $mode, ?array $link, string $source): array
     {
         $mode = $mode === 'test' ? 'test' : 'live';
+        $brandRow = GpDb::one('SELECT * FROM gp_brands WHERE brand_id = ?', [$brandId]);
+        if ($brandRow === null) {
+            GpJson::error('NOT_FOUND', 'Brand not found.', 404);
+        }
+        if (strtolower((string) ($brandRow['brand_status'] ?? 'active')) === 'inactive') {
+            GpJson::error('BRAND_INACTIVE', 'This brand is inactive and cannot accept new checkouts.', 403);
+        }
         if ($mode === 'live') {
             GpPlanLimits::assertCheckoutCreateAllowed($brandId);
         }
@@ -286,6 +293,11 @@ final class CheckoutController
             }
         }
 
+        // Stable per-session shuffle: one gateway per method_code when brand enables it.
+        if (!empty($brandRow['shuffle_duplicate_gateways'])) {
+            $meta['shuffledGatewayIds'] = self::pickShuffledGatewayIds($brandId);
+        }
+
         GpDb::exec(
             'INSERT INTO gp_transactions
              (session_id, brand_id, source, source_id, customer_json, amount, currency, ledger_mode, webhook_url, metadata, status, expires_at, created_at, updated_at)
@@ -340,17 +352,63 @@ final class CheckoutController
                 ];
             }
         }
-        $methods = self::enabledMethods($txn['brand_id'], (string) $txn['amount'], (string) $txn['currency']);
-        return GpPresenters::checkoutSession($txn, $link, $brand, $methods);
+        $allowedGw = null;
+        if (!empty($meta['shuffledGatewayIds']) && is_array($meta['shuffledGatewayIds'])) {
+            $allowedGw = array_values(array_filter(array_map('strval', $meta['shuffledGatewayIds'])));
+        }
+        $methods = self::enabledMethods(
+            $txn['brand_id'],
+            (string) $txn['amount'],
+            (string) $txn['currency'],
+            $allowedGw
+        );
+        return GpPresenters::checkoutSession($txn, $link, is_array($brand) ? $brand : [], $methods);
     }
 
-    /** @return list<array<string,mixed>> */
-    public static function enabledMethods(string $brandId, ?string $amount = null, ?string $currency = null): array
+    /** @return list<string> */
+    private static function pickShuffledGatewayIds(string $brandId): array
     {
+        $rows = GpDb::all(
+            'SELECT gateway_id, method_code FROM gp_gateways WHERE brand_id = ? AND status = ? ORDER BY display_order ASC, id ASC',
+            [$brandId, 'active']
+        );
+        $byCode = [];
+        foreach ($rows as $r) {
+            $code = GpCatalog::publicCode((string) ($r['method_code'] ?? ''));
+            if ($code === '') {
+                continue;
+            }
+            $byCode[$code][] = (string) $r['gateway_id'];
+        }
+        $picked = [];
+        foreach ($byCode as $ids) {
+            if ($ids === []) {
+                continue;
+            }
+            $picked[] = $ids[random_int(0, count($ids) - 1)];
+        }
+        return $picked;
+    }
+
+    /** @param list<string>|null $allowedGatewayIds @return list<array<string,mixed>> */
+    public static function enabledMethods(
+        string $brandId,
+        ?string $amount = null,
+        ?string $currency = null,
+        ?array $allowedGatewayIds = null
+    ): array {
         $brand = GpDb::one('SELECT * FROM gp_brands WHERE brand_id = ?', [$brandId]);
         $ctx = [];
         if ($amount !== null && $currency !== null) {
             $ctx = ['amount' => $amount, 'currency' => $currency, 'brandId' => $brandId];
+        }
+        $verifyMode = strtolower((string) ($brand['verification_mode'] ?? 'trx_id'));
+        $amountFormat = strtolower((string) ($brand['amount_format'] ?? 'as_is'));
+        $brandFee = (float) ($brand['brand_fee'] ?? 0);
+        $brandFeeType = strtolower((string) ($brand['brand_fee_type'] ?? 'fixed'));
+        $allowedSet = null;
+        if (is_array($allowedGatewayIds) && $allowedGatewayIds !== []) {
+            $allowedSet = array_fill_keys($allowedGatewayIds, true);
         }
 
         $gateways = GpDb::all(
@@ -360,6 +418,10 @@ final class CheckoutController
         if ($gateways !== []) {
             $out = [];
             foreach ($gateways as $gw) {
+                $gwId = (string) ($gw['gateway_id'] ?? '');
+                if ($allowedSet !== null && $gwId !== '' && !isset($allowedSet[$gwId])) {
+                    continue;
+                }
                 $code = GpCatalog::publicCode((string) ($gw['method_code'] ?? ''));
                 $cat = GpCatalog::find($code);
                 if ($cat === null || !GpCatalog::isPlatformEnabled($code)) {
@@ -414,6 +476,35 @@ final class CheckoutController
                 $presented['qrImageUrl'] = $gwPresent['qrImageUrl'] ?? null;
                 $presented['qrStatus'] = $gwPresent['qrStatus'];
                 $presented['readiness'] = $gwPresent['readiness'];
+
+                // Gateway fee + brand fee on payable amount shown to buyer.
+                $payable = isset($presented['payableAmount']) ? (float) $presented['payableAmount'] : null;
+                if ($payable !== null) {
+                    $gwFee = (float) ($gw['gateway_fee'] ?? 0);
+                    $gwFeeType = strtolower((string) ($gw['gateway_fee_type'] ?? 'percentage'));
+                    if ($gwFee > 0) {
+                        $payable += $gwFeeType === 'fixed' ? $gwFee : ($payable * $gwFee / 100.0);
+                    }
+                    if ($brandFee > 0) {
+                        $payable += $brandFeeType === 'fixed' ? $brandFee : ($payable * $brandFee / 100.0);
+                    }
+                    if ($amountFormat === 'floor') {
+                        $payable = floor($payable * 100) / 100;
+                    } elseif ($amountFormat === 'ceil') {
+                        $payable = ceil($payable * 100) / 100;
+                    }
+                    $presented['payableAmount'] = round($payable, 8);
+                    $presented['feePercentage'] = $gwFeeType === 'percentage' ? $gwFee : (float) ($presented['feePercentage'] ?? 0);
+                    $presented['fixedFee'] = $gwFeeType === 'fixed' ? $gwFee : (float) ($presented['fixedFee'] ?? 0);
+                    $presented['brandFee'] = $brandFee;
+                    $presented['brandFeeType'] = $brandFeeType;
+                }
+
+                // sms_auto: buyer does not need to paste TrxID (SMS still required for live settle).
+                if ($verifyMode === 'sms_auto' && in_array($code, GpCatalog::bdMobileWalletCodes(), true)) {
+                    $presented['requiresTxidInput'] = false;
+                }
+
                 // Rebuild instruction steps with wallet account-type verbs (Personal / Agent / Payment).
                 $accountType = strtolower((string) ($gwPresent['accountType'] ?? 'personal'));
                 $plugin = GpCatalog::loadPlugin((string) ($cat['slug'] ?? $cat['code'] ?? $code));
@@ -473,7 +564,89 @@ final class CheckoutController
             GpJson::error('NOT_FOUND', 'Checkout session not found.', 404);
         }
         $row = self::expireIfNeeded($row);
+        $row = self::trySmsAutoSettle($row);
         GpJson::send(GpPresenters::checkoutStatus($row));
+    }
+
+    /**
+     * For sms_auto sessions waiting without TrxID, complete when a matching SMS arrives.
+     *
+     * @param array<string,mixed> $row
+     * @return array<string,mixed>
+     */
+    private static function trySmsAutoSettle(array $row): array
+    {
+        $status = strtolower((string) ($row['status'] ?? ''));
+        if (!in_array($status, ['initiated', 'pending'], true)) {
+            return $row;
+        }
+        $methodCode = GpCatalog::publicCode((string) ($row['method_code'] ?? ''));
+        if ($methodCode === '' || !in_array($methodCode, GpCatalog::bdMobileWalletCodes(), true)) {
+            return $row;
+        }
+        $brand = GpDb::one('SELECT * FROM gp_brands WHERE brand_id = ?', [$row['brand_id']]);
+        if (!is_array($brand) || strtolower((string) ($brand['verification_mode'] ?? '')) !== 'sms_auto') {
+            return $row;
+        }
+        $existingTrx = trim((string) ($row['trx_id'] ?? ''));
+        $cat = GpCatalog::find($methodCode);
+        if ($cat === null) {
+            return $row;
+        }
+        $payable = GpRatesEngine::convert(
+            (string) $row['brand_id'],
+            (string) $row['amount'],
+            (string) $row['currency'],
+            (string) $cat['currency']
+        );
+        $gwAccount = null;
+        if (!empty($row['gateway_id'])) {
+            $g = GpDb::one(
+                'SELECT account FROM gp_gateways WHERE brand_id = ? AND gateway_id = ?',
+                [$row['brand_id'], $row['gateway_id']]
+            );
+            $gwAccount = $g ? (string) ($g['account'] ?? '') : null;
+        }
+        $sms = $existingTrx !== ''
+            ? self::matchingSms(
+                (string) $row['brand_id'],
+                $existingTrx,
+                $payable,
+                $methodCode,
+                isset($row['gateway_id']) ? (string) $row['gateway_id'] : null,
+                $gwAccount
+            )
+            : self::matchingSmsByAmount(
+                (string) $row['brand_id'],
+                $payable,
+                $methodCode,
+                isset($row['gateway_id']) ? (string) $row['gateway_id'] : null,
+                $gwAccount
+            );
+        if ($sms === null) {
+            return $row;
+        }
+        $trxId = $existingTrx !== '' ? $existingTrx : trim((string) ($sms['trx_id'] ?? ''));
+        if ($trxId === '') {
+            return $row;
+        }
+        $methodRow = GpDb::one(
+            'SELECT * FROM gp_methods WHERE brand_id = ? AND (code = ? OR code = ?) ORDER BY id DESC',
+            [$row['brand_id'], $methodCode, GpCatalog::slug($methodCode)]
+        );
+        if ($methodRow === null) {
+            return $row;
+        }
+        return self::markPaid(
+            $row,
+            $trxId,
+            $methodCode,
+            $methodRow,
+            $payable,
+            (string) $cat['currency'],
+            $sms,
+            'matched'
+        );
     }
 
     /** @param array<string,mixed> $row @return array<string,mixed> */
@@ -609,54 +782,58 @@ final class CheckoutController
             );
         }
 
+        $brandForMode = GpDb::one('SELECT * FROM gp_brands WHERE brand_id = ?', [$row['brand_id']]);
+        $verifyMode = strtolower((string) ($brandForMode['verification_mode'] ?? 'trx_id'));
+        $smsAuto = $verifyMode === 'sms_auto'
+            && in_array($methodCode, GpCatalog::bdMobileWalletCodes(), true);
+
         $plugin = GpCatalog::loadPlugin($methodCode);
         $trxId = trim((string) $req->input('trx_id', $req->input('trxId', '')));
-        if ($plugin) {
-            $trxId = $plugin->normalizeTrx($trxId);
-            $check = $plugin->verifyTx([
-                'trx_id' => $trxId,
-                'transaction' => $row,
-                'mode' => $ledgerMode,
-            ]);
-            if (empty($check['ok'])) {
-                GpJson::error('INVALID_TRX', (string) ($check['message'] ?? 'Transaction ID is not valid for this rail.'));
+        if ($trxId !== '') {
+            if ($plugin) {
+                $trxId = $plugin->normalizeTrx($trxId);
+                $check = $plugin->verifyTx([
+                    'trx_id' => $trxId,
+                    'transaction' => $row,
+                    'mode' => $ledgerMode,
+                ]);
+                if (empty($check['ok'])) {
+                    GpJson::error('INVALID_TRX', (string) ($check['message'] ?? 'Transaction ID is not valid for this rail.'));
+                }
+                if (!empty($check['trx_id'])) {
+                    $trxId = (string) $check['trx_id'];
+                }
             }
-            if (!empty($check['trx_id'])) {
-                $trxId = (string) $check['trx_id'];
-            }
-        } elseif ($trxId === '') {
+        } elseif (!$smsAuto) {
             GpJson::error('MISSING_FIELD', 'trx_id is required.');
         }
 
-        if ($trxId === '') {
-            GpJson::error('MISSING_FIELD', 'trx_id is required.');
-        }
+        // Anti-Fraud & Duplicate TrxID Protection (skip when sms_auto with no TrxID yet).
+        if ($trxId !== '') {
+            $dupCompleted = GpDb::one(
+                'SELECT session_id FROM gp_transactions WHERE (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND status = ?',
+                [$trxId, strtoupper($trxId), strtolower($trxId), 'completed']
+            );
+            if ($dupCompleted) {
+                GpJson::error('DUPLICATE_TRX', 'This Transaction ID has already been used.', 409);
+            }
 
-        // Anti-Fraud & Duplicate TrxID Protection:
-        // A trx_id that has already been matched to ANY completed transaction can NEVER be reused.
-        $dupCompleted = GpDb::one(
-            'SELECT session_id FROM gp_transactions WHERE (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND status = ?',
-            [$trxId, strtoupper($trxId), strtolower($trxId), 'completed']
-        );
-        if ($dupCompleted) {
-            GpJson::error('DUPLICATE_TRX', 'This Transaction ID has already been used.', 409);
-        }
+            $usedSms = GpDb::one(
+                'SELECT id FROM gp_sms_data WHERE (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND status = ?',
+                [$trxId, strtoupper($trxId), strtolower($trxId), 'used']
+            );
+            if ($usedSms) {
+                GpJson::error('DUPLICATE_TRX', 'This Transaction ID has already been used.', 409);
+            }
 
-        $usedSms = GpDb::one(
-            'SELECT id FROM gp_sms_data WHERE (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND status = ?',
-            [$trxId, strtoupper($trxId), strtolower($trxId), 'used']
-        );
-        if ($usedSms) {
-            GpJson::error('DUPLICATE_TRX', 'This Transaction ID has already been used.', 409);
-        }
-
-        $openDup = GpDb::one(
-            'SELECT session_id FROM gp_transactions
-             WHERE (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND brand_id = ? AND session_id != ? AND status IN (?, ?)',
-            [$trxId, strtoupper($trxId), strtolower($trxId), $row['brand_id'], $id, 'pending', 'initiated']
-        );
-        if ($openDup) {
-            GpJson::error('DUPLICATE_TRX', 'This Transaction ID is already attached to another open checkout.', 409);
+            $openDup = GpDb::one(
+                'SELECT session_id FROM gp_transactions
+                 WHERE (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND brand_id = ? AND session_id != ? AND status IN (?, ?)',
+                [$trxId, strtoupper($trxId), strtolower($trxId), $row['brand_id'], $id, 'pending', 'initiated']
+            );
+            if ($openDup) {
+                GpJson::error('DUPLICATE_TRX', 'This Transaction ID is already attached to another open checkout.', 409);
+            }
         }
 
         $senderNumber = trim((string) $req->input('sender_number', $req->input('senderNumber', '')));
@@ -759,21 +936,35 @@ final class CheckoutController
             );
             $gwAccount = $g ? (string) ($g['account'] ?? '') : null;
         }
-        $sms = self::matchingSms(
-            $row['brand_id'],
-            $trxId,
-            $payable,
-            $methodCode,
-            isset($row['gateway_id']) ? (string) $row['gateway_id'] : null,
-            $gwAccount
-        );
+        $sms = null;
+        if ($trxId !== '') {
+            $sms = self::matchingSms(
+                $row['brand_id'],
+                $trxId,
+                $payable,
+                $methodCode,
+                isset($row['gateway_id']) ? (string) $row['gateway_id'] : null,
+                $gwAccount
+            );
+        } elseif ($smsAuto) {
+            $sms = self::matchingSmsByAmount(
+                $row['brand_id'],
+                $payable,
+                $methodCode,
+                isset($row['gateway_id']) ? (string) $row['gateway_id'] : null,
+                $gwAccount
+            );
+            if ($sms !== null) {
+                $trxId = trim((string) ($sms['trx_id'] ?? ''));
+            }
+        }
 
-        // Persist submitted TxID as pending (submitted) — not proof of payment on live.
+        // Persist submitted TxID (or empty for sms_auto wait) as pending — not proof of payment on live.
         GpDb::exec(
             'UPDATE gp_transactions SET trx_id = ?, method_code = ?, status = ?, metadata = ?, updated_at = ?
              WHERE session_id = ? AND status IN (?, ?)',
             [
-                $trxId,
+                $trxId !== '' ? $trxId : null,
                 $methodCode,
                 'pending',
                 json_encode($meta, JSON_UNESCAPED_SLASHES),
@@ -814,11 +1005,18 @@ final class CheckoutController
 
         if (!$canComplete) {
             $row['confirmationState'] = 'verifying';
-            $row['message'] = 'Verifying your Transaction ID automatically... Please wait';
+            $waitMsg = $smsAuto && $trxId === ''
+                ? 'Waiting for payment SMS confirmation on the merchant Companion device…'
+                : 'Verifying your Transaction ID automatically... Please wait';
+            $row['message'] = $waitMsg;
             $out = GpPresenters::checkoutStatus($row);
             $out['confirmationState'] = 'verifying';
-            $out['message'] = 'Verifying your Transaction ID automatically... Please wait';
+            $out['message'] = $waitMsg;
             GpJson::send($out);
+        }
+
+        if ($trxId === '') {
+            GpJson::error('MISSING_FIELD', 'A matched SMS Transaction ID is required to complete payment.', 409);
         }
 
         $paid = self::markPaid(
@@ -954,13 +1152,42 @@ final class CheckoutController
     }
 
     /**
-     * Complete a checkout only via conditional UPDATE (idempotent under concurrency).
+     * Match unused SMS to a pending sms_auto checkout by amount + rail + wallet (no buyer TrxID yet).
      *
-     * @param array<string,mixed> $row
-     * @param array<string,mixed> $methodRow
-     * @param array<string,mixed>|null $sms
-     * @return array<string,mixed>
+     * @return array<string,mixed>|null
      */
+    public static function matchingSmsByAmount(
+        string $brandId,
+        string $payable,
+        string $methodCode,
+        ?string $gatewayId = null,
+        ?string $expectedAccount = null
+    ): ?array {
+        $candidates = GpDb::all(
+            'SELECT * FROM gp_sms_data WHERE brand_id = ? AND status IN (?, ?) ORDER BY id DESC LIMIT 40',
+            [$brandId, 'approved', 'unmatched']
+        );
+        foreach ($candidates as $sms) {
+            $trx = trim((string) ($sms['trx_id'] ?? ''));
+            if ($trx === '') {
+                continue;
+            }
+            // Reuse TrxID path so amount/wallet/age rules stay identical.
+            $hit = self::matchingSms(
+                $brandId,
+                $trx,
+                $payable,
+                $methodCode,
+                $gatewayId,
+                $expectedAccount
+            );
+            if ($hit !== null) {
+                return $hit;
+            }
+        }
+        return null;
+    }
+
     /**
      * @param array<string,mixed> $row
      * @param array<string,mixed> $methodRow
