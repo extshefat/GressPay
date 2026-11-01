@@ -13,7 +13,8 @@ services:
       APP_URL: ${APP_URL}
       NEXT_PUBLIC_APP_URL: ${APP_URL}
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
-      GRESSPAY_PHP_URL: ${GRESSPAY_PHP_URL}
+      GRESSPAY_PHP_URL: ${GRESSPAY_PHP_URL:-http://php:8080}
+      PORT: "3000"
     ports:
       - "3000"
     restart: unless-stopped
@@ -25,6 +26,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     environment:
+      PORT: "8080"
       APP_URL: ${APP_URL}
       DB_DRIVER: ${DB_DRIVER}
       DB_CONNECTION: ${DB_CONNECTION}
