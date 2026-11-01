@@ -14,12 +14,11 @@ docker compose up -d --build
 
 ## Production runtime
 
-The API Docker image runs **nginx → php-fpm** on `$PORT` (default 8080). Do **not** use `php -S` in Coolify/production. A separate `webhook-worker` service (`command: webhook-worker`) drains `gp_webhook_queue`.
+The API Docker image listens on `$PORT` (default 8080) via the entrypoint (`php -S` for Coolify compatibility after #26/#hotfix). A separate `webhook-worker` service (`command: webhook-worker`) drains `gp_webhook_queue` so deliveries are not in-process.
 
-## One-off local PHP check (dev only)
+## One-off local PHP check
 
 ```bash
-# Dev convenience only — never in Coolify/production compose.
 php -S 0.0.0.0:8080 -t public public/index.php
 ```
 

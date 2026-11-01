@@ -1,5 +1,4 @@
 # VPS deploy for GressPay-API. Secrets MUST come from the host environment — no weak defaults.
-# API image runs nginx (HTTP :8080) → php-fpm (:9000). Never php -S.
 # Required: JWT_SECRET, APP_ENCRYPTION_KEY, DB_PASS, MYSQL_ROOT_PASSWORD (each ≥32 chars recommended).
 services:
   php:
