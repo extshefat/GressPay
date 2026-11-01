@@ -108,6 +108,13 @@ final class GpCatalog
             'slug' => $slug,
             'title' => $title,
             'country' => $country,
+            'availability' => in_array($country, ['IN', 'PK', 'NP'], true) ? 'planned' : 'configuration_required',
+            'verificationCapability' => match ($type) {
+                'automation' => 'companion_sms',
+                'binance_pay_merchant' => 'official_merchant_api',
+                'onchain' => 'trongrid_confirmations',
+                default => 'manual_unverified',
+            },
             'currency' => $currency,
             'category' => $category,
             'type' => $type,

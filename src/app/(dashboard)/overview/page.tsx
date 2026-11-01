@@ -128,6 +128,21 @@ export default function OverviewPage() {
         </Alert>
       )}
 
+      <Card className="p-5">
+        <h2 className="text-sm font-semibold">Set up your first verified payment</h2>
+        <p className="mt-1 text-xs text-zinc-500">Follow these steps in order. A submitted TxID stays pending until the paired phone supplies matching payment evidence.</p>
+        <ol className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
+          {[
+            ["1. Create your brand", "/dashboard/brands"],
+            ["2. Add a receiving wallet", "/dashboard/methods"],
+            ["3. Pair and bind your phone", "/dashboard/devices"],
+            ["4. Create a website API key", "/dashboard/api-keys"],
+            ["5. Create a test checkout", "/dashboard/payment-links"],
+            ["6. Check signed webhook delivery", "/dashboard/webhooks"],
+          ].map(([label, href]) => <li key={href}><Link className="underline underline-offset-4" href={href}>{label}</Link></li>)}
+        </ol>
+      </Card>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard
           title="Total Verified Volume"

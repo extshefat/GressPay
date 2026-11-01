@@ -161,6 +161,8 @@ final class GpPresenters
             'code' => $catalog['code'],
             'name' => $ready['label'] !== '' ? $ready['label'] : $catalog['title'],
             'country' => $catalog['country'],
+            'availability' => $catalog['availability'] ?? 'configuration_required',
+            'verificationCapability' => $catalog['verificationCapability'] ?? 'manual_unverified',
             'category' => $catalog['category'],
             'logo' => self::methodLogoPath((string) $catalog['code']),
             'currency' => $methodCurrency,

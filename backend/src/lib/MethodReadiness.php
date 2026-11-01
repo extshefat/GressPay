@@ -15,6 +15,10 @@ final class GpMethodReadiness
         $type = (string) ($catalog['type'] ?? 'manual');
         $reasons = [];
         $liveReady = true;
+        if (($catalog['availability'] ?? '') === 'planned') {
+            return ['liveReady' => false, 'reasons' => ['Country adapter planned; live verification is not available.'],
+                'integrationType' => $type, 'label' => (string) $catalog['title']];
+        }
 
         if (empty($catalog['releaseScope'])) {
             return [

@@ -459,6 +459,9 @@ final class CheckoutController
                 if ($cat === null || !GpCatalog::isPlatformEnabled($code)) {
                     continue;
                 }
+                if (($cat['availability'] ?? '') === 'planned') {
+                    continue;
+                }
                 $readiness = GatewaysController::readiness($gw);
                 if (!in_array($readiness, ['live_ready', 'ready_test'], true)) {
                     continue;
@@ -575,6 +578,9 @@ final class CheckoutController
         }
         $out = [];
         foreach (GpCatalog::releaseMethods() as $cat) {
+            if (($cat['availability'] ?? '') === 'planned') {
+                continue;
+            }
             $row = $map[$cat['code']] ?? null;
             if (!$row || ($row['status'] ?? '') !== 'active') {
                 continue;
@@ -734,6 +740,9 @@ final class CheckoutController
         $cat = GpCatalog::find($methodCode);
         if ($cat === null) {
             GpJson::error('UNKNOWN_METHOD', 'Unknown payment method.');
+        }
+        if (($cat['availability'] ?? '') === 'planned') {
+            GpJson::error('METHOD_UNAVAILABLE', 'Live verification for this country adapter is not available.', 409);
         }
 
         $methodRow = GpDb::one(
