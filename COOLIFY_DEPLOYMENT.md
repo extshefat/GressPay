@@ -6,12 +6,33 @@ Deploy from **GitHub → Coolify on your VPS**. Do not run PHP, JDK, MySQL, or D
 
 | Coolify service | Source | Role |
 |-----------------|--------|------|
-| `gresspay-web` | [`GressPay- Web/Dockerfile`](GressPay-%20Web/Dockerfile) | Next.js (standalone), public HTTPS |
-| `gresspay-api` | [`backend/Dockerfile`](backend/Dockerfile) | PHP HTTP API on **8080** (`GP_API_PORT`, not Coolify web `PORT`) |
-| `gresspay-webhook-worker` (optional) | same API image; custom command below | Persistent webhook queue consumer — **do not** put in the main compose if it can block web |
+| `gresspay-web` | root [`Dockerfile`](Dockerfile) | Next.js (standalone), public HTTPS |
+| `gresspay-api` | [`backend/Dockerfile`](backend/Dockerfile) | PHP HTTP API on `$PORT` (default 8080) |
 | `gresspay-db` | Managed MySQL / MariaDB | Persistent volume required |
 
 Redis is **not** used (rate limits use MySQL/`gp_rate_limit`). Do not add Redis.
+
+## Emergency: Cloudflare 502 (Host error)
+
+Cloudflare 502 with **Host = Error** means Coolify’s proxy cannot reach a running container. GitHub merges alone do not fix that until Coolify **successfully rebuilds and starts** the app.
+
+### Do this in Coolify (in order)
+
+1. Open the **gresspay** application that serves `gresspay.extxcheats.com`.
+2. Open the latest **Deployment** → read the build/runtime log for red errors (OOM, bind port, missing env, image build fail).
+3. Click **Redeploy** and enable **Force rebuild** / disable build cache if the option exists.
+4. Confirm containers are **Running** (not Exited / Unhealthy):
+   - Web must listen on **3000**
+   - API must listen on **8080** (or whatever `PORT` you set on the API service)
+5. From Coolify’s container terminal (or VPS SSH):
+   ```bash
+   curl -sS http://127.0.0.1:3000/ | head
+   curl -sS http://127.0.0.1:8080/api/v1/health
+   ```
+6. Confirm env on **web**: `GRESSPAY_PHP_URL=http://<api-service-name>:8080`
+7. Confirm env on **api**: `JWT_SECRET`, `APP_ENCRYPTION_KEY`, `DB_*`, `PORT=8080`
+
+If deploy status is **Failed**, the public site will stay 502 until that deploy is green—no amount of Cloudflare refresh will help.
 
 ## Platform environment variables (Coolify secrets)
 
@@ -38,11 +59,9 @@ USDT_TRC20_CONTRACT=TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t
 USDT_CONFIRMATIONS=20
 WEBHOOK_TIMEOUT_SECONDS=8
 WEBHOOK_MAX_RETRIES=5
-WEBHOOK_WORKER_POLL_SECONDS=5
 PORT=8080
 
 # Google OAuth 2.0 / OpenID Connect (Optional)
-# If omitted or empty, Google login button is cleanly disabled in the UI with a helpful tooltip.
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 GOOGLE_REDIRECT_URI=https://your-domain.com/callback/google
@@ -97,25 +116,9 @@ Those are configured **after deploy** in the merchant dashboard and stored brand
 | Public `https://your-domain.com` | Next.js UI + same-origin `/api/v1` proxy |
 | Public `https://api.your-domain.com` (optional) | Direct API if exposed; health `GET /api/v1/health` |
 | Internal `http://gresspay-api:8080` | Web → API (`GRESSPAY_PHP_URL`) |
-| Internal MySQL host | API + webhook-worker → DB |
+| Internal MySQL host | API → DB |
 
 TLS terminates at Coolify. Force HTTPS for merchant credential forms.
-
-### Webhook worker (required for reliable merchant callbacks)
-
-`GpWebhook::dispatch()` only **enqueues** to `gp_webhook_queue`. Run a **separate** Coolify service (same API Dockerfile) with custom start command:
-
-```
-php /var/www/gresspay-api/jobs/WebhookWorker.php
-```
-
-Do **not** add this to the main web+php compose unless you accept worker failures showing as app-unhealthy. Without the worker, deliveries stay `pending`.
-
-### Coolify 502 after deploy — common causes
-
-1. API listened on Coolify’s global `PORT` (often `3000` for Next) while `GRESSPAY_PHP_URL=http://php:8080` → proxy 502. Fix: API uses `GP_API_PORT=8080` only.
-2. nginx→php-fpm image (#26) failed health — reverted to `php -S` on 8080.
-3. Extra `webhook-worker` in compose made the whole stack unhealthy — removed from default compose.
 
 ## Health checks
 
@@ -136,34 +139,3 @@ Leave `GRESSPAY_CRYPTO_ALLOWED=0` until:
 1. Strong secrets set  
 2. Merchant enables crypto in Settings  
 3. Merchant saves Binance credentials and/or USDT address on Methods  
-4. You intentionally set `GRESSPAY_CRYPTO_ALLOWED=1`
-
-## Merchant post-deploy checklist
-
-1. Register / login → open **Settings** (platform vs merchant vs rail readiness).  
-2. **Payment methods**: save bKash/Nagad numbers; USDT Base58 address; enable rails.  
-3. **Settings → Binance Pay**: paste Merchant API key/secret/SN once → save → fields clear.  
-4. **Devices**: register Android companion; grant RECEIVE_SMS; revoke from dashboard when needed.  
-5. Create payment link → buyer checkout shows **this merchant’s** destination only.
-
-### Rotate / disable
-
-| Action | How |
-|--------|-----|
-| Rotate Binance credentials | Settings → save new key/secret/SN (overwrites sealed JSON) |
-| Clear Binance | Settings → Clear credentials |
-| Disable a rail | Methods → Disable |
-| Clear wallet | Methods → Clear |
-| Revoke companion | Devices → revoke |
-
-## Verification (not on your PC)
-
-- GitHub Actions: [`.github/workflows/verify.yml`](.github/workflows/verify.yml) (tsc, live build, PHP in container, Android Gradle).  
-- After Coolify deploy: curl health endpoints.  
-- Do not claim live Binance/Tron E2E without merchant credentials.
-
-## Related
-
-- [`DEPLOYMENT_CHECKLIST.md`](DEPLOYMENT_CHECKLIST.md)  
-- [`GressPay- Web/backend/docs/PHASE1_RAILS.md`](GressPay-%20Web/backend/docs/PHASE1_RAILS.md)  
-- [`GressPay- Web/backend/.env.example`](GressPay-%20Web/backend/.env.example)

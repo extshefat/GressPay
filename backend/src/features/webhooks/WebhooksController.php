@@ -51,16 +51,12 @@ final class WebhooksController
             'timestamp' => GpIds::now(),
         ];
         $code = GpWebhook::dispatch($brand, $url, $payload, 'payment.completed');
-        $queued = $code === 202;
         GpJson::send([
-            'ok' => $queued || ($code >= 200 && $code < 300),
+            'ok' => $code >= 200 && $code < 300,
             'httpCode' => $code,
-            'queued' => $queued,
-            'message' => $queued
-                ? 'Test webhook queued for delivery.'
-                : ($code >= 200 && $code < 300
-                    ? 'Test webhook accepted by your endpoint.'
-                    : 'Test delivery failed — check Payment events.'),
+            'message' => $code >= 200 && $code < 300
+                ? 'Test webhook accepted by your endpoint.'
+                : 'Test delivery failed — check Delivery logs below.',
         ]);
     }
 
@@ -71,14 +67,10 @@ final class WebhooksController
             GpJson::send(['deliveries' => [], 'noBrand' => true]);
         }
         $rows = GpDb::all(
-            'SELECT d.id, d.event_id, d.session_id, d.event_name, d.url, d.http_code, d.status, d.note, d.attempt,
-                    d.created_at, d.updated_at,
-                    q.attempt_count AS queue_attempt_count, q.max_attempts AS queue_max_attempts,
-                    q.next_attempt_at AS queue_next_attempt_at, q.status AS queue_status, q.last_error AS queue_last_error
-             FROM gp_webhook_deliveries d
-             LEFT JOIN gp_webhook_queue q ON q.webhook_delivery_id = d.id
-             WHERE d.brand_id = ?
-             ORDER BY d.id DESC
+            'SELECT id, event_id, session_id, event_name, url, http_code, status, note, attempt, created_at, updated_at
+             FROM gp_webhook_deliveries
+             WHERE brand_id = ?
+             ORDER BY id DESC
              LIMIT 100',
             [$actor['brand_id']]
         );
@@ -96,11 +88,6 @@ final class WebhooksController
                 'attempt' => (int) ($r['attempt'] ?? 1),
                 'createdAt' => (string) ($r['created_at'] ?? ''),
                 'updatedAt' => (string) ($r['updated_at'] ?? ''),
-                'queueAttemptCount' => isset($r['queue_attempt_count']) ? (int) $r['queue_attempt_count'] : null,
-                'queueMaxAttempts' => isset($r['queue_max_attempts']) ? (int) $r['queue_max_attempts'] : null,
-                'nextAttemptAt' => ($r['queue_next_attempt_at'] ?? '') !== '' ? (string) $r['queue_next_attempt_at'] : null,
-                'queueStatus' => ($r['queue_status'] ?? '') !== '' ? (string) $r['queue_status'] : null,
-                'queueLastError' => ($r['queue_last_error'] ?? '') !== '' ? (string) $r['queue_last_error'] : null,
             ];
         }
         GpJson::send(['deliveries' => $out]);
@@ -134,12 +121,10 @@ final class WebhooksController
         }
         $event = (string) ($row['event_name'] ?? 'payment.completed');
         $code = GpWebhook::dispatch($brand, $url, $payload, $event);
-        $queued = $code === 202;
         GpJson::send([
-            'ok' => $queued || ($code >= 200 && $code < 300),
+            'ok' => $code >= 200 && $code < 300,
             'httpCode' => $code,
-            'queued' => $queued,
-            'message' => $queued ? 'Webhook re-queued for delivery.' : ($code >= 200 && $code < 300 ? 'Webhook redelivered.' : 'Retry failed — see latest log row.'),
+            'message' => $code >= 200 && $code < 300 ? 'Webhook redelivered.' : 'Retry failed — see latest log row.',
         ]);
     }
 }
