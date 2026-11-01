@@ -11,6 +11,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Check for merge conflict markers
+        run: |
+          if grep -rnE '<<<<<<< |>>>>>>> ' src/ backend/ --include='*.php' --include='*.ts' --include='*.tsx'; then
+            echo "ERROR: Merge conflict markers found"
+            exit 1
+          fi
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
@@ -29,6 +35,12 @@ jobs:
       image: php:8.2-cli-alpine
     steps:
       - uses: actions/checkout@v4
+      - name: Check for merge conflict markers
+        run: |
+          if grep -rnE '<<<<<<< |>>>>>>> ' src/ backend/ --include='*.php' --include='*.ts' --include='*.tsx'; then
+            echo "ERROR: Merge conflict markers found"
+            exit 1
+          fi
       - name: Install extensions
         run: |
           apk add --no-cache $PHPIZE_DEPS icu-dev curl-dev

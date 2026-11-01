@@ -676,12 +676,17 @@ class ApiClient {
       attempt: number;
       createdAt: string;
       updatedAt: string;
+      queueAttemptCount?: number | null;
+      queueMaxAttempts?: number | null;
+      nextAttemptAt?: string | null;
+      queueStatus?: string | null;
+      queueLastError?: string | null;
     }[];
   }> {
     return this.request("/api/v1/webhooks/deliveries");
   }
 
-  async retryWebhookDelivery(deliveryId: number): Promise<{ ok: boolean; httpCode?: number; message?: string }> {
+  async retryWebhookDelivery(deliveryId: number): Promise<{ ok: boolean; httpCode?: number; message?: string; queued?: boolean }> {
     return this.request(`/api/v1/webhooks/deliveries/${deliveryId}/retry`, {
       method: "POST",
       body: "{}",

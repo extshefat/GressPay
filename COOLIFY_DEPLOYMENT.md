@@ -7,7 +7,8 @@ Deploy from **GitHub → Coolify on your VPS**. Do not run PHP, JDK, MySQL, or D
 | Coolify service | Source | Role |
 |-----------------|--------|------|
 | `gresspay-web` | [`GressPay- Web/Dockerfile`](GressPay-%20Web/Dockerfile) | Next.js (standalone), public HTTPS |
-| `gresspay-api` | [`GressPay- Web/backend/Dockerfile`](GressPay-%20Web/backend/Dockerfile) | PHP HTTP API on `$PORT` |
+| `gresspay-api` | [`backend/Dockerfile`](backend/Dockerfile) | nginx → php-fpm HTTP API on `$PORT` (never `php -S`) |
+| `gresspay-webhook-worker` | same `backend/Dockerfile`, command `webhook-worker` | Persistent webhook queue consumer |
 | `gresspay-db` | Managed MySQL / MariaDB | Persistent volume required |
 
 Redis is **not** used (rate limits use MySQL/`gp_rate_limit`). Do not add Redis.
@@ -37,6 +38,7 @@ USDT_TRC20_CONTRACT=TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t
 USDT_CONFIRMATIONS=20
 WEBHOOK_TIMEOUT_SECONDS=8
 WEBHOOK_MAX_RETRIES=5
+WEBHOOK_WORKER_POLL_SECONDS=5
 PORT=8080
 
 # Google OAuth 2.0 / OpenID Connect (Optional)
@@ -94,10 +96,20 @@ Those are configured **after deploy** in the merchant dashboard and stored brand
 |-----|---------|
 | Public `https://your-domain.com` | Next.js UI + same-origin `/api/v1` proxy |
 | Public `https://api.your-domain.com` (optional) | Direct API if exposed; health `GET /api/v1/health` |
-| Internal `http://gresspay-api:8080` | Web → API (`GRESSPAY_PHP_URL`) |
-| Internal MySQL host | API → DB |
+| Internal `http://gresspay-api:8080` | Web → API (`GRESSPAY_PHP_URL`) — nginx inside API image FastCGI-proxies to php-fpm |
+| Internal MySQL host | API + webhook-worker → DB |
 
 TLS terminates at Coolify. Force HTTPS for merchant credential forms.
+
+### Webhook worker (required for reliable merchant callbacks)
+
+`GpWebhook::dispatch()` only **enqueues** to `gp_webhook_queue` (returns HTTP 202 semantics). Run a second Coolify service from the same API image with start command / Docker command:
+
+```
+webhook-worker
+```
+
+(entrypoint maps that to `php /var/www/gresspay-api/jobs/WebhookWorker.php`). Without this worker, deliveries stay `pending`.
 
 ## Health checks
 

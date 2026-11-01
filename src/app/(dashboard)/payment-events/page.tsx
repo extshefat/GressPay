@@ -22,6 +22,11 @@ type DeliveryRow = {
   note?: string | null;
   attempt: number;
   createdAt: string;
+  queueAttemptCount?: number | null;
+  queueMaxAttempts?: number | null;
+  nextAttemptAt?: string | null;
+  queueStatus?: string | null;
+  queueLastError?: string | null;
 };
 
 export default function PaymentEventsPage() {
@@ -82,7 +87,7 @@ export default function PaymentEventsPage() {
         <div>
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Payment events</h1>
           <p className="mt-1 text-xs text-zinc-500">
-            Webhook delivery log for your active brand — each HTTP attempt from <code className="font-mono">GpWebhook::dispatch</code>.
+            Webhook delivery log for your active brand — queued asynchronously with exponential backoff (no in-process retry).
           </p>
         </div>
         <div className="flex gap-2">
@@ -123,6 +128,7 @@ export default function PaymentEventsPage() {
                   <th className="px-4 py-3">HTTP</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Attempt</th>
+                  <th className="px-4 py-3">Next retry</th>
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
@@ -142,12 +148,25 @@ export default function PaymentEventsPage() {
                     <td className="px-4 py-3 font-mono">{row.httpCode ?? "—"}</td>
                     <td className="px-4 py-3">
                       <span
-                        className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-mono font-bold uppercase ${statusTone(row.status, row.httpCode)}`}
+                        className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-mono font-bold uppercase ${statusTone(row.queueStatus || row.status, row.httpCode)}`}
                       >
-                        {row.status}
+                        {row.queueStatus || row.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 font-mono">{row.attempt}</td>
+                    <td className="px-4 py-3 font-mono">
+                      {row.queueAttemptCount != null
+                        ? `${row.queueAttemptCount}/${row.queueMaxAttempts ?? "—"}`
+                        : row.attempt}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-[11px] text-zinc-500">
+                      {row.queueStatus === "pending" && row.nextAttemptAt
+                        ? formatDate(row.nextAttemptAt)
+                        : row.queueStatus === "delivered" || row.status === "delivered" || row.status === "completed"
+                          ? "—"
+                          : row.queueLastError
+                            ? row.queueLastError.slice(0, 24)
+                            : "—"}
+                    </td>
                     <td className="px-4 py-3 text-right">
                       <Button
                         size="sm"

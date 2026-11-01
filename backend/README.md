@@ -12,10 +12,15 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-## One-off PHP check (not production)
+## Production runtime
+
+The API Docker image runs **nginx → php-fpm** on `$PORT` (default 8080). Do **not** use `php -S` in Coolify/production. A separate `webhook-worker` service (`command: webhook-worker`) drains `gp_webhook_queue`.
+
+## One-off local PHP check (dev only)
 
 ```bash
-php -S 0.0.0.0:8080 -t public
+# Dev convenience only — never in Coolify/production compose.
+php -S 0.0.0.0:8080 -t public public/index.php
 ```
 
 Then `GET http://127.0.0.1:8080/api/v1/health`. SQLite is used under `storage/` when `DB_DRIVER=sqlite`.

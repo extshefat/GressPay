@@ -57,7 +57,7 @@ async function proxy(req: NextRequest, ctx: RouteContext): Promise<NextResponse>
         error: {
           code: "PHP_UNREACHABLE",
           message:
-            "GressPay PHP is not running. Start it with: php -S 127.0.0.1:8080 -t backend/public backend/public/index.php",
+            "GressPay PHP is not reachable at GRESSPAY_PHP_URL. In Docker/Coolify the API image serves nginx→php-fpm on :8080 (not php -S).",
         },
       },
       { status: 502 }

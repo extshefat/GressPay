@@ -775,14 +775,35 @@ $wrongLiveBrand = 'gp_live_' . bin2hex(random_bytes(8));
 $viaResolve = CompanionController::resolveActiveDevice($wrongLiveBrand, $plainTok);
 assert_true(is_array($viaResolve) && ($viaResolve['device_id'] ?? '') === $smsDevId, 'gp_live brand hint ignored; token binds to owning brand');
 
-// —— Webhook retry attempts logged ——
+// —— Webhook queue enqueue (no in-process retry) ——
 putenv('WEBHOOK_MAX_RETRIES=2');
 $_ENV['WEBHOOK_MAX_RETRIES'] = '2';
-$whBrand = ['brand_id' => $limBrand, 'webhook_secret' => 'gpwh_testsecret'];
+$whBrand = ['brand_id' => $limBrand, 'merchant_id' => $limMerch, 'webhook_secret' => 'gpwh_testsecret'];
 $beforeWh = (int) (GpDb::one('SELECT COUNT(*) AS c FROM gp_webhook_deliveries')['c'] ?? 0);
-GpWebhook::dispatch($whBrand, 'https://example.com/gresspay-webhook-test', ['eventId' => 'evt_retry_test', 'sessionId' => 'chs_none'], 'payment.completed');
+$beforeQ = (int) (GpDb::one('SELECT COUNT(*) AS c FROM gp_webhook_queue')['c'] ?? 0);
+$codeQueued = GpWebhook::dispatch($whBrand, 'https://example.com/gresspay-webhook-test', ['eventId' => 'evt_retry_test', 'sessionId' => 'chs_none'], 'payment.completed');
+assert_true($codeQueued === 202, 'dispatch returns 202 Accepted when queued');
 $afterWh = (int) (GpDb::one('SELECT COUNT(*) AS c FROM gp_webhook_deliveries')['c'] ?? 0);
-assert_true($afterWh - $beforeWh >= 2, 'failed webhook dispatch logs multiple attempts when WEBHOOK_MAX_RETRIES=2');
+$afterQ = (int) (GpDb::one('SELECT COUNT(*) AS c FROM gp_webhook_queue')['c'] ?? 0);
+assert_true($afterWh - $beforeWh === 1, 'dispatch inserts one delivery row (queued, not multi-attempt in-process)');
+assert_true($afterQ - $beforeQ === 1, 'dispatch inserts one gp_webhook_queue row');
+assert_true(GpWebhook::backoffSeconds(1) === 30, 'backoff attempt 1 = 30s');
+assert_true(GpWebhook::backoffSeconds(2) === 120, 'backoff attempt 2 = 2m');
+assert_true(GpWebhook::backoffSeconds(3) === 600, 'backoff attempt 3 = 10m');
+assert_true(GpWebhook::backoffSeconds(4) === 1800, 'backoff attempt 4 = 30m');
+assert_true(GpWebhook::backoffSeconds(5) === 7200, 'backoff attempt 5 = 2h');
+$qRow = GpDb::one("SELECT * FROM gp_webhook_queue WHERE status = 'pending' ORDER BY id DESC LIMIT 1");
+assert_true(is_array($qRow) && (int) ($qRow['max_attempts'] ?? 0) === 2, 'queue row stores max_attempts from WEBHOOK_MAX_RETRIES');
+// Simulate one failed worker attempt → re-schedule pending with backoff
+GpDb::exec("UPDATE gp_webhook_queue SET status = 'processing' WHERE id = ?", [(int) $qRow['id']]);
+$claimed = GpDb::one('SELECT * FROM gp_webhook_queue WHERE id = ?', [(int) $qRow['id']]);
+GpWebhook::processQueueRow($claimed);
+$afterProcess = GpDb::one('SELECT * FROM gp_webhook_queue WHERE id = ?', [(int) $qRow['id']]);
+assert_true(
+    is_array($afterProcess) && in_array((string) ($afterProcess['status'] ?? ''), ['pending', 'failed', 'delivered'], true),
+    'worker leaves queue in terminal or re-pending status'
+);
+assert_true((int) ($afterProcess['attempt_count'] ?? 0) >= 1, 'worker increments attempt_count');
 putenv('WEBHOOK_MAX_RETRIES=5');
 $_ENV['WEBHOOK_MAX_RETRIES'] = '5';
 

@@ -319,6 +319,52 @@ final class GpDb
               )";
         self::execDdl($deliveries);
 
+        $webhookQueue = self::$driver === 'mysql'
+            ? "CREATE TABLE IF NOT EXISTS gp_webhook_queue (
+                id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                webhook_delivery_id INT NOT NULL,
+                brand_id VARCHAR(24) NOT NULL,
+                merchant_id VARCHAR(24) NOT NULL DEFAULT '',
+                payload MEDIUMTEXT NOT NULL,
+                endpoint_url VARCHAR(2048) NOT NULL,
+                signing_secret VARCHAR(512) NOT NULL,
+                event_name VARCHAR(64) NOT NULL DEFAULT 'payment.completed',
+                attempt_count INT NOT NULL DEFAULT 0,
+                max_attempts INT NOT NULL DEFAULT 5,
+                next_attempt_at VARCHAR(32) NOT NULL,
+                status VARCHAR(16) NOT NULL DEFAULT 'pending',
+                last_error TEXT NULL,
+                created_at VARCHAR(32) NOT NULL,
+                updated_at VARCHAR(32) NOT NULL,
+                KEY idx_gp_whq_next (status, next_attempt_at),
+                KEY idx_gp_whq_delivery (webhook_delivery_id)
+              ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+            : "CREATE TABLE IF NOT EXISTS gp_webhook_queue (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                webhook_delivery_id INTEGER NOT NULL,
+                brand_id VARCHAR(24) NOT NULL,
+                merchant_id VARCHAR(24) NOT NULL DEFAULT '',
+                payload TEXT NOT NULL,
+                endpoint_url TEXT NOT NULL,
+                signing_secret VARCHAR(512) NOT NULL,
+                event_name VARCHAR(64) NOT NULL DEFAULT 'payment.completed',
+                attempt_count INTEGER NOT NULL DEFAULT 0,
+                max_attempts INTEGER NOT NULL DEFAULT 5,
+                next_attempt_at TEXT NOT NULL,
+                status VARCHAR(16) NOT NULL DEFAULT 'pending',
+                last_error TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+              )";
+        self::execDdl($webhookQueue);
+        try {
+            if (self::$driver !== 'mysql') {
+                self::pdo()->exec('CREATE INDEX IF NOT EXISTS idx_gp_whq_next ON gp_webhook_queue (status, next_attempt_at)');
+            }
+        } catch (PDOException $e) {
+            self::logSchemaFailure('webhook_queue_index', 'idx_gp_whq_next', $e);
+        }
+
         $providerOrders = self::$driver === 'mysql'
             ? "CREATE TABLE IF NOT EXISTS gp_provider_orders (
                 id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,

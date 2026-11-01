@@ -139,8 +139,10 @@ cd backend
 cp .env.example .env
 # JWT_SECRET, APP_URL, DB_* (sqlite is fine for unit tests)
 
-php -S 0.0.0.0:8080 -t public
+# Local/dev only — production Coolify image uses nginx → php-fpm on :8080.
+php -S 0.0.0.0:8080 -t public public/index.php
 # Health: GET http://127.0.0.1:8080/api/v1/health
+# Also run: php jobs/WebhookWorker.php  (or compose service webhook-worker)
 ```
 
 ### Android companion
