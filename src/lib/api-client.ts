@@ -62,22 +62,57 @@ class ApiClient {
   private token: string | null = null;
   private ledgerMode: "live" | "test" = "live";
   private brandId: string | null = null;
+  /** When true, JWT persists in localStorage across browser restarts. */
+  private rememberMe = false;
 
   constructor() {
     if (typeof window !== "undefined") {
-      this.token = localStorage.getItem("gresspay_jwt");
+      this.rememberMe = localStorage.getItem("gresspay_remember") === "1";
+      this.token =
+        sessionStorage.getItem("gresspay_jwt") ||
+        localStorage.getItem("gresspay_jwt");
+      // Migrate: prefer remember flag; clear legacy dual storage noise later on set/clear.
       const mode = localStorage.getItem("gresspay_ledger_mode");
       if (mode === "live" || mode === "test") this.ledgerMode = mode;
       this.brandId = localStorage.getItem("gresspay_brand_id");
+      this.clearLegacyJwtCookie();
     }
   }
 
-  setToken(token: string) {
-    this.token = token;
+  private clearLegacyJwtCookie() {
+    if (typeof window === "undefined") return;
+    document.cookie = "gresspay_jwt=; Path=/; SameSite=Lax; Max-Age=0";
+    const secure = window.location.protocol === "https:" ? "; Secure" : "";
+    document.cookie = `gresspay_jwt=; Path=/; SameSite=Lax; Max-Age=0${secure}`;
+  }
+
+  setRememberMe(remember: boolean) {
+    this.rememberMe = remember;
     if (typeof window !== "undefined") {
-      localStorage.setItem("gresspay_jwt", token);
-      const secure = window.location.protocol === "https:" ? "; Secure" : "";
-      document.cookie = `gresspay_jwt=${encodeURIComponent(token)}; Path=/; SameSite=Lax; Max-Age=2592000${secure}`;
+      if (remember) localStorage.setItem("gresspay_remember", "1");
+      else localStorage.removeItem("gresspay_remember");
+    }
+  }
+
+  getRememberMe(): boolean {
+    return this.rememberMe;
+  }
+
+  setToken(token: string, options?: { rememberMe?: boolean }) {
+    this.token = token;
+    if (options?.rememberMe !== undefined) {
+      this.setRememberMe(options.rememberMe);
+    }
+    if (typeof window !== "undefined") {
+      // Never store JWT in a JS-readable cookie.
+      this.clearLegacyJwtCookie();
+      if (this.rememberMe) {
+        localStorage.setItem("gresspay_jwt", token);
+        sessionStorage.removeItem("gresspay_jwt");
+      } else {
+        sessionStorage.setItem("gresspay_jwt", token);
+        localStorage.removeItem("gresspay_jwt");
+      }
     }
   }
 
@@ -96,7 +131,9 @@ class ApiClient {
 
   getToken(): string | null {
     if (!this.token && typeof window !== "undefined") {
-      this.token = localStorage.getItem("gresspay_jwt");
+      this.token =
+        sessionStorage.getItem("gresspay_jwt") ||
+        localStorage.getItem("gresspay_jwt");
     }
     return this.token;
   }
@@ -109,7 +146,10 @@ class ApiClient {
     this.token = null;
     if (typeof window !== "undefined") {
       localStorage.removeItem("gresspay_jwt");
-      document.cookie = "gresspay_jwt=; Path=/; SameSite=Lax; Max-Age=0";
+      sessionStorage.removeItem("gresspay_jwt");
+      localStorage.removeItem("gresspay_remember");
+      this.rememberMe = false;
+      this.clearLegacyJwtCookie();
     }
   }
 
@@ -171,13 +211,17 @@ class ApiClient {
         return this.request<{ user: User }>("/api/v1/me");
   }
 
-  async login(email: string, password?: string): Promise<{ token: string; user: User }> {
-        const res = await this.request<{ token: string; user: User }>("/api/v1/auth/login", {
+  async login(
+    email: string,
+    password?: string,
+    rememberMe = false
+  ): Promise<{ token: string; user: User }> {
+    const res = await this.request<{ token: string; user: User }>("/api/v1/auth/login", {
       method: "POST",
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, rememberMe }),
     });
     if (res.token) {
-      this.setToken(res.token);
+      this.setToken(res.token, { rememberMe });
     }
     return res;
   }
@@ -211,16 +255,23 @@ class ApiClient {
     code: string;
     state: string;
     code_verifier?: string;
+    rememberMe?: boolean;
   }): Promise<{ token: string; user: User; isNew?: boolean }> {
-        const res = await this.request<{ token: string; user: User; isNew?: boolean }>(
+    const rememberMe = Boolean(payload.rememberMe);
+    const res = await this.request<{ token: string; user: User; isNew?: boolean }>(
       "/api/v1/auth/google/callback",
       {
         method: "POST",
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          code: payload.code,
+          state: payload.state,
+          code_verifier: payload.code_verifier,
+          rememberMe,
+        }),
       }
     );
     if (res.token) {
-      this.setToken(res.token);
+      this.setToken(res.token, { rememberMe });
     }
     return res;
   }
@@ -230,12 +281,14 @@ class ApiClient {
     email: string;
     password: string;
     businessName: string;
+    rememberMe?: boolean;
   }): Promise<{ token: string; user: User }> {
-        const res = await this.request<{ token: string; user: User }>("/api/v1/auth/register", {
+    const rememberMe = Boolean(payload.rememberMe);
+    const res = await this.request<{ token: string; user: User }>("/api/v1/auth/register", {
       method: "POST",
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...payload, rememberMe }),
     });
-    if (res.token) this.setToken(res.token);
+    if (res.token) this.setToken(res.token, { rememberMe });
     return res;
   }
 

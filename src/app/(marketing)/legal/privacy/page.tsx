@@ -43,8 +43,11 @@ export default function PrivacyPage() {
         <section className="space-y-2">
           <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Sessions and cookies</h2>
           <p>
-            Dashboard sign-in uses a JWT kept in browser storage. Theme preference may be saved
-            locally as <code className="font-mono text-zinc-900 dark:text-zinc-100">gresspay_theme</code>.
+            Dashboard sign-in uses a Bearer JWT stored in the browser (session storage by default, or
+            local storage when you choose Remember me). Session length is up to 24 hours, or 7 days
+            with Remember me. Theme preference may be saved locally as{" "}
+            <code className="font-mono text-zinc-900 dark:text-zinc-100">gresspay_theme</code>. We do
+            not use a JavaScript-readable session cookie for dashboard auth.
           </p>
         </section>
 

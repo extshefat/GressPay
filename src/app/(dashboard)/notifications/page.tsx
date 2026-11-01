@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { api } from "@/lib/api-client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -119,9 +120,9 @@ export default function NotificationsPage() {
 
       <p className="text-xs text-zinc-500">
         Telegram / Discord instant alerts are configured under{" "}
-        <a href="/dashboard/settings" className="font-semibold underline">
+        <Link href="/dashboard/settings" className="font-semibold underline">
           Settings → Instant alerts
-        </a>
+        </Link>
         .
       </p>
     </div>

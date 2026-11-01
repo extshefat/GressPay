@@ -3,7 +3,13 @@ declare(strict_types=1);
 
 final class GpJwt
 {
-    public static function encode(array $payload, int $ttlSeconds = 604800): string
+    /** Default dashboard session: 24 hours. */
+    public const TTL_DEFAULT = 86400;
+
+    /** Remember-me dashboard session: 7 days. */
+    public const TTL_REMEMBER = 604800;
+
+    public static function encode(array $payload, int $ttlSeconds = self::TTL_DEFAULT): string
     {
         $header = ['alg' => 'HS256', 'typ' => 'JWT'];
         $payload['iat'] = time();

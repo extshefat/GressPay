@@ -69,9 +69,9 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
         key={item.href}
         href={item.href}
         onClick={onClose}
-        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700/40 ${
           isActive
-            ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 shadow-sm"
+            ? "bg-teal-700 text-white dark:bg-teal-400 dark:text-teal-950 shadow-sm"
             : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900"
         }`}
       >
@@ -123,7 +123,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               onClick={onClose}
               className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
                 pathname.startsWith("/admin") || pathname.startsWith("/dashboard/admin")
-                  ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 shadow-sm"
+                  ? "bg-teal-700 text-white dark:bg-teal-400 dark:text-teal-950 shadow-sm"
                   : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900"
               }`}
             >

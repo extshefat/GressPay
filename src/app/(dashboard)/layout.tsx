@@ -21,6 +21,7 @@ export default function DashboardLayout({
   const [isLoading, setIsLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
   const [ledgerMode, setLedgerMode] = useState<"live" | "test">("live");
+  const [activeBrandId, setActiveBrandId] = useState<string>("");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
@@ -67,12 +68,16 @@ export default function DashboardLayout({
       api.setLedgerMode("live");
     }
     setLedgerMode(api.getLedgerMode());
+    setActiveBrandId(api.getBrandId() || "");
     const onMode = () => setLedgerMode(api.getLedgerMode());
+    const onBrand = () => setActiveBrandId(api.getBrandId() || "");
     window.addEventListener("gresspay-mode", onMode);
+    window.addEventListener("gresspay-brand", onBrand);
 
     return () => {
       isMounted = false;
       window.removeEventListener("gresspay-mode", onMode);
+      window.removeEventListener("gresspay-brand", onBrand);
     };
   }, [router]);
 
@@ -126,7 +131,7 @@ export default function DashboardLayout({
       <DashboardSidebar mobileOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} user={user} />
       <div className="flex-1 flex flex-col min-w-0">
         <DashboardHeader user={user} onMenuClick={() => setMobileNavOpen(true)} />
-        <main key={ledgerMode} className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto">
+        <main key={`${ledgerMode}-${activeBrandId}`} className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto bg-gradient-to-b from-zinc-50/80 to-zinc-50/40 dark:from-zinc-950 dark:to-zinc-950">
           <NoBrandBanner user={user} />
           <PlanUsageBanner usage={user?.planUsage} className="mb-6 max-w-7xl mx-auto" />
           {children}

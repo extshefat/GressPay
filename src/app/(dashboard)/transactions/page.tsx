@@ -29,6 +29,20 @@ import {
 } from "lucide-react";
 
 export default function TransactionsPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <div className="mx-auto max-w-7xl py-10 text-xs text-zinc-500">
+          Loading transactions…
+        </div>
+      }
+    >
+      <TransactionsContent />
+    </React.Suspense>
+  );
+}
+
+function TransactionsContent() {
   const { success, error: toastError } = useToast();
   const searchParams = useSearchParams();
 

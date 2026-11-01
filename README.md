@@ -151,11 +151,22 @@ php -S 0.0.0.0:8080 -t public public/index.php
 cd GressPay-App-Project
 # JDK 17+ and Android SDK
 ./gradlew :app:testDebugUnitTest --tests com.gresspay.companion.sms.PaymentSmsParserTest
+# Local/CI development APK (applicationId …companion.debug) — do NOT publish this as the site download:
 ./gradlew :app:assembleDebug
-cp app/build/outputs/apk/debug/app-debug.apk ../public/download/gresspay-companion.apk
 ```
 
-Pair with your brand website `gp_live_` API key (Dashboard → Brands) → opt-in → enable matching.  
+**Published download APK** (`public/download/gresspay-companion.apk`) must be a **release** build signed with your release keystore. Never copy a debug-signed APK there. See [`GressPay-App-Project/RELEASE.md`](GressPay-App-Project/RELEASE.md):
+
+```bash
+# Requires GRESSPAY_RELEASE_KEYSTORE (+ passwords). assembleRelease fails without them.
+export GRESSPAY_RELEASE_KEYSTORE=/path/to/gresspay-companion-release.jks
+export GRESSPAY_RELEASE_STORE_PASSWORD=…
+export GRESSPAY_RELEASE_KEY_PASSWORD=…
+./gradlew :app:assembleRelease
+cp app/build/outputs/apk/release/app-release.apk ../public/download/gresspay-companion.apk
+```
+
+Pair with a Device API key (`gpdev_…` from Dashboard → Devices) → opt-in → enable matching.  
 `READ_SMS` is requested only when you tap **Scan Inbox (24h)** in the Companion app.
 
 ---

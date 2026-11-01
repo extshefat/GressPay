@@ -15,6 +15,8 @@ import {
   ArrowRight,
 } from "lucide-react";
 
+import { COMPANION_APK } from "@/lib/marketing/companion-download";
+
 const CHECKLIST = [
   {
     step: "1",
@@ -52,7 +54,7 @@ const CHECKLIST = [
 
 const TOOLS = [
   {
-    title: "GressPay Companion v1.2",
+    title: `GressPay Companion ${COMPANION_APK.versionLabel}`,
     description:
       "Android SMS verification app. Required for personal MFS (bKash/Nagad/Rocket/…) and for brands using SMS auto verification.",
     href: "/download/gresspay-companion.apk",
@@ -150,10 +152,10 @@ export default function AppsPluginsPage() {
             const Icon = tool.icon;
             return (
               <Card key={tool.title} className="flex flex-col border-zinc-200 p-5 dark:border-zinc-800">
-                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-blue-600/10 text-blue-600">
+                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-teal-700/10 text-teal-800 dark:bg-teal-400/15 dark:text-teal-300">
                   <Icon className="h-5 w-5" />
                 </div>
-                <h2 className="text-sm font-bold text-blue-700 dark:text-blue-400">{tool.title}</h2>
+                <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{tool.title}</h2>
                 <p className="mt-2 flex-1 text-xs text-zinc-600 dark:text-zinc-400">{tool.description}</p>
                 {tool.disabled ? (
                   <Button size="sm" variant="outline" className="mt-4 w-fit" disabled>

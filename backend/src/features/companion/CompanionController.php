@@ -235,73 +235,79 @@ final class CompanionController
                 }
             }
 
-            $pending = GpDb::one(
-                'SELECT * FROM gp_transactions WHERE brand_id = ? AND (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND status IN (?, ?) ORDER BY id DESC',
+            $pendingCandidates = GpDb::all(
+                'SELECT * FROM gp_transactions WHERE brand_id = ? AND (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND status IN (?, ?) ORDER BY id ASC LIMIT 40',
                 [$device['brand_id'], $trxId, strtoupper($trxId), strtolower($trxId), 'pending', 'initiated']
             );
-            // sms_auto: pending checkouts may have no trx_id yet — match by method + amount.
-            if ($pending === null) {
+            // sms_auto: pending checkouts may have no trx_id yet — scan concurrent candidates by amount/wallet.
+            if ($pendingCandidates === []) {
                 $brandMode = GpDb::one(
                     'SELECT verification_mode FROM gp_brands WHERE brand_id = ?',
                     [$device['brand_id']]
                 );
                 if (is_array($brandMode) && strtolower((string) ($brandMode['verification_mode'] ?? '')) === 'sms_auto') {
-                    $pending = GpDb::one(
+                    $pendingCandidates = GpDb::all(
                         "SELECT * FROM gp_transactions
                          WHERE brand_id = ? AND status IN (?, ?)
                            AND (method_code = ? OR method_code = ?)
                            AND (trx_id IS NULL OR trx_id = '')
-                         ORDER BY id DESC",
+                         ORDER BY id ASC
+                         LIMIT 40",
                         [$device['brand_id'], 'pending', 'initiated', $sender, GpCatalog::slug($sender)]
                     );
                 }
             }
             $matched = false;
-            if ($pending) {
+            foreach ($pendingCandidates as $pending) {
                 $methodCode = GpCatalog::publicCode((string) ($pending['method_code'] ?: $sender));
-                if ($methodCode === $sender) {
-                    $cat = GpCatalog::find($methodCode);
-                    $payable = $cat
-                        ? GpRatesEngine::convert(
-                            $pending['brand_id'],
-                            (string) $pending['amount'],
-                            (string) $pending['currency'],
-                            (string) $cat['currency']
-                        )
-                        : (string) $pending['amount'];
-                    $gwAccount = null;
-                    if (!empty($pending['gateway_id'])) {
-                        $gwRow = GpDb::one(
-                            'SELECT account FROM gp_gateways WHERE brand_id = ? AND gateway_id = ?',
-                            [$pending['brand_id'], $pending['gateway_id']]
-                        );
-                        $gwAccount = $gwRow ? (string) ($gwRow['account'] ?? '') : null;
-                    }
-                    $sms = CheckoutController::matchingSms(
+                if ($methodCode !== $sender) {
+                    continue;
+                }
+                $cat = GpCatalog::find($methodCode);
+                $payable = $cat
+                    ? GpRatesEngine::convert(
                         $pending['brand_id'],
-                        $trxId,
-                        $payable,
-                        $methodCode,
-                        isset($pending['gateway_id']) ? (string) $pending['gateway_id'] : null,
-                        $gwAccount
+                        (string) $pending['amount'],
+                        (string) $pending['currency'],
+                        (string) $cat['currency']
+                    )
+                    : (string) $pending['amount'];
+                $gwAccount = null;
+                if (!empty($pending['gateway_id'])) {
+                    $gwRow = GpDb::one(
+                        'SELECT account FROM gp_gateways WHERE brand_id = ? AND gateway_id = ?',
+                        [$pending['brand_id'], $pending['gateway_id']]
                     );
-                    if ($sms) {
-                        $methodRow = GpDb::one(
-                            'SELECT * FROM gp_methods WHERE brand_id = ? AND (code = ? OR code = ?) ORDER BY id DESC',
-                            [$pending['brand_id'], $methodCode, GpCatalog::slug($methodCode)]
-                        ) ?? ['options' => '{}', 'code' => $methodCode];
-                        $paid = CheckoutController::markPaid(
-                            $pending,
-                            $trxId,
-                            $methodCode,
-                            $methodRow,
-                            $payable,
-                            (string) ($cat['currency'] ?? $pending['currency']),
-                            $sms,
-                            'matched'
-                        );
-                        $matched = strtolower((string) ($paid['status'] ?? '')) === 'completed';
-                    }
+                    $gwAccount = $gwRow ? (string) ($gwRow['account'] ?? '') : null;
+                }
+                $sms = CheckoutController::matchingSms(
+                    $pending['brand_id'],
+                    $trxId,
+                    $payable,
+                    $methodCode,
+                    isset($pending['gateway_id']) ? (string) $pending['gateway_id'] : null,
+                    $gwAccount
+                );
+                if ($sms === null) {
+                    continue;
+                }
+                $methodRow = GpDb::one(
+                    'SELECT * FROM gp_methods WHERE brand_id = ? AND (code = ? OR code = ?) ORDER BY id DESC',
+                    [$pending['brand_id'], $methodCode, GpCatalog::slug($methodCode)]
+                ) ?? ['options' => '{}', 'code' => $methodCode];
+                $paid = CheckoutController::markPaid(
+                    $pending,
+                    $trxId,
+                    $methodCode,
+                    $methodRow,
+                    $payable,
+                    (string) ($cat['currency'] ?? $pending['currency']),
+                    $sms,
+                    'matched'
+                );
+                $matched = strtolower((string) ($paid['status'] ?? '')) === 'completed';
+                if ($matched) {
+                    break;
                 }
             }
 

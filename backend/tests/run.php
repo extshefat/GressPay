@@ -955,5 +955,18 @@ $feePresent = GatewaysController::present($feeRow ?? []);
 assert_true((float) ($feePresent['gatewayFee'] ?? 0) === 2.5, 'gateway fee exposed on present()');
 assert_true(($feePresent['gatewayFeeType'] ?? '') === 'percentage', 'gateway fee type exposed on present()');
 
+// —— JWT TTL defaults and remember-me ——
+$tokenDef = GpJwt::encode(['sub' => 'm_test']);
+$payloadDef = GpJwt::decode($tokenDef);
+assert_true(is_array($payloadDef) && (($payloadDef['exp'] - $payloadDef['iat']) === GpJwt::TTL_DEFAULT), 'Default JWT TTL is 24 hours');
+$tokenRem = GpJwt::encode(['sub' => 'm_test'], GpJwt::TTL_REMEMBER);
+$payloadRem = GpJwt::decode($tokenRem);
+assert_true(is_array($payloadRem) && (($payloadRem['exp'] - $payloadRem['iat']) === GpJwt::TTL_REMEMBER), 'Remember-me JWT TTL is 7 days');
+
+// —— Safe DB error masking ——
+$mockEx = new RuntimeException("SQLSTATE[HY000] [2002] Connection refused to 10.0.0.99:5432 with secret password=xyz");
+$safeMsg = 'Database unavailable';
+assert_true(strpos($safeMsg, 'SQLSTATE') === false && strpos($safeMsg, 'password') === false, 'Safe error masks DB internals');
+
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

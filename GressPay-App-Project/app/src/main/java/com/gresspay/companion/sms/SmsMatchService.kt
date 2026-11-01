@@ -70,6 +70,7 @@ class SmsMatchService : Service() {
 
         registerSmsReceiver()
         heartbeatHandler.removeCallbacks(heartbeatRunnable)
+        isRunning = true
         Thread { CompanionHeartbeat.sendIfConfigured(this) }.start()
         heartbeatHandler.postDelayed(heartbeatRunnable, HEARTBEAT_INTERVAL_MS)
         return START_STICKY
@@ -101,6 +102,7 @@ class SmsMatchService : Service() {
             }
         }
         smsReceiver = null
+        isRunning = false
         heartbeatHandler.removeCallbacks(heartbeatRunnable)
         super.onDestroy()
     }
@@ -108,6 +110,27 @@ class SmsMatchService : Service() {
     companion object {
         private const val NOTIF_ID = 4201
         private const val HEARTBEAT_INTERVAL_MS = 180_000L
+
+        @Volatile
+        var isRunning: Boolean = false
+            private set
+
+        fun isServiceRunning(context: android.content.Context): Boolean {
+            if (isRunning) return true
+            return try {
+                val am = context.getSystemService(android.content.Context.ACTIVITY_SERVICE) as? android.app.ActivityManager ?: return isRunning
+                @Suppress("DEPRECATION")
+                for (service in am.getRunningServices(50)) {
+                    if (SmsMatchService::class.java.name == service.service.className) {
+                        isRunning = true
+                        return true
+                    }
+                }
+                false
+            } catch (_: Exception) {
+                isRunning
+            }
+        }
 
         /** @return false when the FGS could not be started (caller should surface in UI). */
         fun start(context: android.content.Context): Boolean {

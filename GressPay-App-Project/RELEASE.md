@@ -1,32 +1,43 @@
 # GressPay Companion — release APK
 
-## Build (local or CI)
+## Build (requires release keystore)
+
+`assembleRelease` **fails** if `GRESSPAY_RELEASE_KEYSTORE` is not set. There is no silent debug-keystore fallback for release builds.
 
 ```bash
 cd GressPay-App-Project
+
+export GRESSPAY_RELEASE_KEYSTORE=/secure/path/gresspay-companion-release.jks
+export GRESSPAY_RELEASE_STORE_PASSWORD='…'
+export GRESSPAY_RELEASE_KEY_ALIAS=gresspay   # optional; default gresspay
+export GRESSPAY_RELEASE_KEY_PASSWORD='…'
+
 ./gradlew :app:assembleRelease
 ```
 
 Output: `app/build/outputs/apk/release/app-release.apk`
 
-Copy to the dashboard download path:
+Copy to the dashboard download path only after verifying the SHA-256 and package id (`com.gresspay.companion`, no `.debug` suffix):
 
 ```bash
 cp app/build/outputs/apk/release/app-release.apk ../public/download/gresspay-companion.apk
+# Then update src/lib/marketing/companion-download.ts (version, sizeBytes, sha256).
 ```
 
-## Release signing (recommended for sideload)
+## Debug / CI builds
 
-Without a release keystore, Gradle signs the release APK with the **debug** keystore (fine for internal testing). For a stable release identity, set these environment variables before `assembleRelease`:
+Use `assembleDebug` for local testing and CI artifacts. Debug APKs use `applicationIdSuffix = .debug` and must **not** be published as `public/download/gresspay-companion.apk`.
+
+## Release signing env
 
 | Variable | Description |
 |----------|-------------|
-| `GRESSPAY_RELEASE_KEYSTORE` | Path to `.jks` or `.keystore` file |
+| `GRESSPAY_RELEASE_KEYSTORE` | Path to `.jks` or `.keystore` file (**required** for release) |
 | `GRESSPAY_RELEASE_STORE_PASSWORD` | Keystore password |
 | `GRESSPAY_RELEASE_KEY_ALIAS` | Key alias (default `gresspay` if omitted) |
 | `GRESSPAY_RELEASE_KEY_PASSWORD` | Key password |
 
-When `GRESSPAY_RELEASE_KEYSTORE` is set, R8 **minify** and **resource shrink** are enabled automatically.
+Release builds enable R8 minify and resource shrink.
 
 Generate a keystore once (store the file in your secrets manager, not in git):
 
@@ -38,8 +49,10 @@ keytool -genkeypair -v -keystore gresspay-companion-release.jks \
 
 ## Sideload honesty
 
-Installing from **unknown sources** (APK outside Google Play) will still trigger Android warnings and may show Play Protect prompts for apps that are not widely installed. A proper release signature and minified build reduce false positives but **do not guarantee zero warnings**. Install only from your official download URL on the Devices / Apps & Plugins pages.
+Installing from **unknown sources** (APK outside Google Play) will still trigger Android warnings and may show Play Protect prompts. A proper release signature and minified build reduce false positives but **do not guarantee zero warnings**. Install only from your official download URL on the Devices / Apps & Plugins pages.
 
 ## Version
 
-Bump `versionCode` and `versionName` in `app/build.gradle.kts` for each published APK.
+Bump `versionCode` and `versionName` in `app/build.gradle.kts` for each published APK. Current source: **1.2.2** (`versionCode` 6).
+
+The artifact already under `public/download/` may still be an older or debug-signed build until you re-publish with the steps above; do not replace it from CI debug jobs.

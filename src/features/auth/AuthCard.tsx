@@ -48,6 +48,7 @@ export function AuthCard({ initialTab }: { initialTab: Tab }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
 
   useEffect(() => {
     setTab(initialTab);
@@ -98,6 +99,7 @@ export function AuthCard({ initialTab }: { initialTab: Tab }) {
       if (planParam) {
         localStorage.setItem("gresspay_selected_plan", planParam);
       }
+      sessionStorage.setItem("gresspay_oauth_remember", rememberMe ? "1" : "0");
       const redirectUri = `${window.location.origin}/callback/google`;
       const res = await api.getGoogleAuthUrl(redirectUri, AbortSignal.timeout(20000));
       if (res.enabled && res.url) {
@@ -128,8 +130,9 @@ export function AuthCard({ initialTab }: { initialTab: Tab }) {
             email: email.trim(),
             password,
             businessName: name.trim(),
+            rememberMe,
           })
-        : await api.login(email.trim(), password);
+        : await api.login(email.trim(), password, rememberMe);
       router.push(homeFor(res.user, selectedPlan));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Sign-in failed.");
@@ -139,33 +142,33 @@ export function AuthCard({ initialTab }: { initialTab: Tab }) {
   };
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center bg-zinc-50 p-4 selection:bg-zinc-950/15 dark:bg-black">
-      <div className="absolute right-5 top-5">
+    <div className="relative flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-zinc-50 via-white to-zinc-100 p-4 sm:p-6 selection:bg-teal-700/15 dark:from-zinc-950 dark:via-black dark:to-zinc-950">
+      <div className="absolute right-4 top-4 sm:right-5 sm:top-5">
         <ThemeToggle size="sm" />
       </div>
 
       <div className="w-full max-w-md space-y-6">
-        <div className="space-y-2 text-center">
-          <Link href="/" className="mb-2 inline-flex items-center justify-center">
+        <div className="space-y-2.5 text-center">
+          <Link href="/" className="mb-1 inline-flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700/40 rounded-lg">
             <GressPayLogo variant="auto" size="lg" />
           </Link>
-          <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-            {tab === "signup" ? "Create your account" : "Sign in to GressPay"}
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+            {tab === "signup" ? "Create your account" : "Welcome back"}
           </h1>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Bangladesh payment verification for the wallets you configure.
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            Merchant dashboard for wallets you configure — non-custodial verification.
           </p>
           {planParam && (
-            <p className="text-[11px] font-mono text-zinc-700 dark:text-zinc-300">
+            <p className="text-[11px] font-mono text-teal-800 dark:text-teal-300">
               Selected plan: <span className="font-bold uppercase">{planParam}</span>
             </p>
           )}
         </div>
 
-        <Card className="border-zinc-950 bg-white p-6 shadow-xl dark:border-white dark:bg-zinc-950 sm:p-8">
+        <Card className="border-zinc-200 bg-white/95 p-6 shadow-lg shadow-zinc-900/5 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/90 sm:p-8">
           <div className="space-y-4">
             {error && (
-              <Alert variant="danger" title="Authentication notice">
+              <Alert variant="danger" title="Could not continue">
                 {error}
               </Alert>
             )}
@@ -174,7 +177,7 @@ export function AuthCard({ initialTab }: { initialTab: Tab }) {
               type="button"
               onClick={google}
               disabled={googleBusy}
-              className="flex w-full cursor-pointer items-center justify-center gap-3 rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50 disabled:cursor-wait disabled:opacity-70 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-800/80"
+              className="flex w-full cursor-pointer items-center justify-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm font-semibold text-zinc-800 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700/40 disabled:cursor-wait disabled:opacity-70 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800/80"
             >
               <GoogleMark />
               <span>{googleBusy ? "Connecting to Google…" : "Continue with Google"}</span>
@@ -182,24 +185,24 @@ export function AuthCard({ initialTab }: { initialTab: Tab }) {
 
             <div className="relative flex items-center py-1">
               <div className="flex-grow border-t border-zinc-200 dark:border-zinc-800" />
-              <span className="mx-3 flex-shrink font-mono text-[11px] uppercase text-zinc-400">
-                or use email
+              <span className="mx-3 flex-shrink font-mono text-[11px] uppercase tracking-wide text-zinc-400">
+                or email
               </span>
               <div className="flex-grow border-t border-zinc-200 dark:border-zinc-800" />
             </div>
 
-            <div className="grid grid-cols-2 gap-2 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-950">
+            <div className="grid grid-cols-2 gap-1 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-900">
               <button
                 type="button"
                 onClick={() => switchTab("signin")}
-                className={`rounded-lg px-3 py-2 text-xs font-semibold ${tab === "signin" ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100" : "text-zinc-500"}`}
+                className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700/40 ${tab === "signin" ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100" : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"}`}
               >
                 Sign in
               </button>
               <button
                 type="button"
                 onClick={() => switchTab("signup")}
-                className={`rounded-lg px-3 py-2 text-xs font-semibold ${tab === "signup" ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100" : "text-zinc-500"}`}
+                className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700/40 ${tab === "signup" ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100" : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"}`}
               >
                 Sign up
               </button>
@@ -236,10 +239,20 @@ export function AuthCard({ initialTab }: { initialTab: Tab }) {
                 minLength={tab === "signup" ? 8 : 1}
                 autoComplete={tab === "signup" ? "new-password" : "current-password"}
               />
+              <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400">
+                <input
+                  type="checkbox"
+                  className="h-3.5 w-3.5 rounded border-zinc-300 text-teal-700 focus:ring-teal-700/40"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                />
+                <span>Remember me on this device (7 days)</span>
+              </label>
               <Button
                 type="submit"
                 size="lg"
-                className="mt-2 w-full !bg-zinc-950 !text-white hover:!bg-zinc-800 dark:!bg-white dark:!text-zinc-950 dark:hover:!bg-zinc-200"
+                className="mt-1 w-full"
+                variant="primary"
                 isLoading={busy}
                 rightIcon={<ArrowRight className="h-4 w-4" />}
               >
@@ -249,8 +262,8 @@ export function AuthCard({ initialTab }: { initialTab: Tab }) {
           </div>
         </Card>
 
-        <p className="flex items-center justify-center gap-1.5 text-center text-xs font-medium text-zinc-600 dark:text-zinc-300">
-          <ShieldCheck className="h-3.5 w-3.5 text-zinc-900 dark:text-zinc-100" />
+        <p className="flex items-center justify-center gap-1.5 text-center text-xs font-medium text-zinc-600 dark:text-zinc-400">
+          <ShieldCheck className="h-3.5 w-3.5 text-teal-700 dark:text-teal-400" />
           Funds stay in the wallets you configure.
         </p>
       </div>

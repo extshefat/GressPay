@@ -89,7 +89,10 @@ final class WC_Gateway_GressPay extends WC_Payment_Gateway
                 'order_title' => sprintf('Order #%s', $order->get_order_number()),
                 'email' => $order->get_billing_email(),
                 'mobile' => $order->get_billing_phone(),
-                'return_url' => $this->get_return_url($order),
+                'return_url' => add_query_arg(
+                    ['order_id' => (string) $order->get_id()],
+                    WC()->api_request_url('wc_gateway_gresspay_return')
+                ),
                 'metadata' => [
                     'woocommerce_order_id' => (string) $order->get_id(),
                 ],

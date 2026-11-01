@@ -232,6 +232,9 @@ final class BrandsController
         }
         $subject = self::jwtSubject($actor);
         $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$subject]);
+        $existingExp = isset($actor['exp']) ? (int) $actor['exp'] : 0;
+        $remaining = $existingExp - time();
+        $ttl = ($remaining > GpJwt::TTL_DEFAULT) ? $remaining : GpJwt::TTL_DEFAULT;
         $token = GpJwt::encode([
             'sub' => $subject,
             'brand' => $brand['brand_id'],
@@ -239,7 +242,7 @@ final class BrandsController
             'role' => $actor['role'] ?? 'merchant',
             'is_admin' => !empty($actor['is_admin']),
             'plan_id' => $actor['plan_id'] ?? 'starter',
-        ]);
+        ], $ttl);
         GpJson::send([
             'brandId' => $brand['brand_id'],
             'name' => $brand['name'],

@@ -14,18 +14,13 @@ require dirname(__DIR__) . '/src/bootstrap.php';
 try {
     GpRouter::dispatch();
 } catch (Throwable $e) {
-    error_log('GressPay: ' . $e->getMessage());
-    $detail = trim(preg_replace('/\s+/', ' ', $e->getMessage()) ?? '');
-    if (strlen($detail) > 240) {
-        $detail = substr($detail, 0, 240) . '…';
-    }
-    $message = $detail !== '' ? $detail : 'Unexpected error.';
+    error_log('GressPay: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
     http_response_code(500);
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode([
         'error' => [
             'code' => 'SERVER_ERROR',
-            'message' => $message,
+            'message' => 'Unexpected server error.',
         ],
     ], JSON_UNESCAPED_SLASHES);
 }

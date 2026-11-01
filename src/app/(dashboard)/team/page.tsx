@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +39,18 @@ const ROLE_HELP: Record<TeamRole, string> = {
 };
 
 export default function TeamPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="mx-auto max-w-5xl py-10 text-xs text-zinc-500">Loading team…</div>
+      }
+    >
+      <TeamPageContent />
+    </Suspense>
+  );
+}
+
+function TeamPageContent() {
   const searchParams = useSearchParams();
   const [isOwner, setIsOwner] = useState(true);
   const [staffRole, setStaffRole] = useState<string | null>(null);

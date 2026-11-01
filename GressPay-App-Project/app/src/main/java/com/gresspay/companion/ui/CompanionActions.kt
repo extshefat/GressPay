@@ -1,10 +1,14 @@
 package com.gresspay.companion.ui
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.os.PowerManager
 import android.provider.Settings
+import androidx.core.content.ContextCompat
 import com.gresspay.companion.BuildConfig
 import com.gresspay.companion.api.ApiException
 import com.gresspay.companion.api.CompanionApi
@@ -21,6 +25,7 @@ data class CompanionUiState(
     val apiKey: String = "",
     val deviceId: String = "",
     val deviceToken: String = "",
+    val brandId: String = "",
     val brandName: String = "",
     val paired: Boolean = false,
     val matchingEnabled: Boolean = false,
@@ -29,24 +34,43 @@ data class CompanionUiState(
     val matched: Int = 0,
     val latencyMs: Long = -1L,
     val lastError: String = "",
+    val lastSyncAt: Long = 0L,
     val statusLabel: String = "DISCONNECTED",
+    val smsReceiveGranted: Boolean = false,
+    val smsReadGranted: Boolean = false,
+    val notificationGranted: Boolean = false,
+    val batteryOptimizationIgnored: Boolean = false,
+    val serviceRunning: Boolean = false,
+    val allPermissionsGranted: Boolean = false,
 )
 
 class CompanionActions(private val context: Context, private val prefs: Prefs) {
 
     fun readState(): CompanionUiState {
-        val paired = prefs.deviceToken.isNotBlank() && prefs.baseUrl.isNotBlank() && prefs.brandId.isNotBlank()
-        val matching = prefs.matchingEnabled && paired
+        val smsReceive = ContextCompat.checkSelfPermission(context, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED
+        val smsRead = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED
+        val notif = Build.VERSION.SDK_INT < 33 ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        val pm = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+        val batteryOk = pm?.isIgnoringBatteryOptimizations(context.packageName) == true
+        val serviceActive = SmsMatchService.isServiceRunning(context)
+        val allPerms = smsReceive && smsRead && notif && batteryOk
+
+        val paired = prefs.deviceToken.isNotBlank() && prefs.baseUrl.isNotBlank()
         val label = when {
-            matching -> "MATCHING"
-            paired -> "PAIRED"
-            else -> "DISCONNECTED"
+            !paired -> "DISCONNECTED"
+            !prefs.matchingEnabled -> "PAUSED"
+            !smsReceive || !batteryOk -> "ACTION REQUIRED"
+            serviceActive -> "ACTIVE & MATCHING"
+            else -> "STANDBY"
         }
+
         return CompanionUiState(
             baseUrl = prefs.baseUrl.ifBlank { DEFAULT_BASE },
             apiKey = prefs.apiKey,
             deviceId = prefs.deviceId,
             deviceToken = prefs.deviceToken,
+            brandId = prefs.brandId,
             brandName = prefs.brandName,
             paired = paired,
             matchingEnabled = prefs.matchingEnabled,
@@ -55,7 +79,14 @@ class CompanionActions(private val context: Context, private val prefs: Prefs) {
             matched = prefs.totalPaymentsMatched,
             latencyMs = prefs.lastPingLatencyMs,
             lastError = prefs.lastError,
+            lastSyncAt = prefs.lastSyncAt,
             statusLabel = label,
+            smsReceiveGranted = smsReceive,
+            smsReadGranted = smsRead,
+            notificationGranted = notif,
+            batteryOptimizationIgnored = batteryOk,
+            serviceRunning = serviceActive,
+            allPermissionsGranted = allPerms,
         )
     }
 
@@ -78,30 +109,43 @@ class CompanionActions(private val context: Context, private val prefs: Prefs) {
         if (!Prefs.isAllowedBaseUrl(base)) {
             return@withContext Result.failure(IllegalArgumentException("API URL must be HTTPS (site root, no /api/v1)"))
         }
+        // Save base and token first so they persist even if network drops
         prefs.baseUrl = base
         prefs.deviceToken = token
         prefs.apiKey = ""
         try {
             val api = CompanionApi(base)
-            val configBase = api.fetchPublicConfig()
+            val configBase = try { api.fetchPublicConfig() } catch (_: Exception) { "" }
             if (configBase.isNotBlank() && Prefs.isAllowedBaseUrl(configBase)) {
                 prefs.baseUrl = configBase
             }
             val verify = CompanionApi(prefs.baseUrl).postVerify(token)
             if (!verify.ok) {
-                prefs.clearDevice()
+                // If it is explicitly 401 or revoked on server, clear credentials
+                if (verify.message.contains("401") || verify.message.contains("not found", ignoreCase = true) || verify.message.contains("revoked", ignoreCase = true)) {
+                    prefs.clearDevice()
+                } else {
+                    prefs.lastError = verify.message
+                }
                 return@withContext Result.failure(IllegalStateException(verify.message.ifBlank { "Verification failed" }))
             }
             applyPairingFromServer(verify)
+            prefs.onboardingComplete = true
+            prefs.matchingEnabled = true
+            prefs.lastSyncAt = System.currentTimeMillis()
             CompanionHeartbeat.sendIfConfigured(context)
             Result.success(Unit)
-        } catch (e: ApiException) {
-            prefs.clearDevice()
-            Result.failure(e)
         } catch (e: Exception) {
-            prefs.clearDevice()
+            // Keep deviceToken in prefs so the merchant never loses their typed key on temporary connection issues!
+            prefs.lastError = (e.message ?: "Connection error").take(200)
             Result.failure(e)
         }
+    }
+
+    fun unpairDevice() {
+        disableMatching()
+        prefs.clearDevice()
+        prefs.onboardingComplete = false
     }
 
     /** @deprecated Devices are created in the dashboard; use [pairDeviceCredentials]. */
@@ -133,12 +177,15 @@ class CompanionActions(private val context: Context, private val prefs: Prefs) {
                     )
                 )
                 prefs.lastPingLatencyMs = result.latencyMs.toLong()
+                prefs.lastSyncAt = System.currentTimeMillis()
+                prefs.lastError = ""
                 Result.success(result.latencyMs.toLong())
             } else {
                 prefs.lastError = result.message
                 Result.failure(IllegalStateException(result.message))
             }
         } catch (e: Exception) {
+            prefs.lastError = (e.message ?: "Ping failed").take(200)
             Result.failure(e)
         }
     }
@@ -162,8 +209,33 @@ class CompanionActions(private val context: Context, private val prefs: Prefs) {
         prefs.onboardingComplete = true
     }
 
-    fun openBatterySettings(): Intent =
-        Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+    fun openBatterySettings(): Intent {
+        val packageName = context.packageName
+        return try {
+            val pm = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+            if (pm != null && !pm.isIgnoringBatteryOptimizations(packageName)) {
+                Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                    data = Uri.parse("package:$packageName")
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+            } else {
+                Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+            }
+        } catch (_: Exception) {
+            Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+        }
+    }
+
+    fun openAppSettings(): Intent {
+        return Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = Uri.fromParts("package", context.packageName, null)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+    }
 
     fun openAutoStartSettings(): Intent {
         val manufacturer = Build.MANUFACTURER.lowercase()

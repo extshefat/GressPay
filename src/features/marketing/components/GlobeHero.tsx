@@ -28,9 +28,9 @@ const STEPS = [
 
 export const GlobeHero: React.FC = () => {
   return (
-    <section className="relative pt-28 pb-14 md:pt-32 md:pb-20 overflow-hidden bg-white dark:bg-zinc-950 transition-colors">
+    <section className="relative pt-28 pb-14 md:pt-32 md:pb-20 overflow-hidden bg-gradient-to-b from-white via-zinc-50/80 to-white dark:from-zinc-950 dark:via-zinc-950 dark:to-black transition-colors">
       <div className="pointer-events-none absolute inset-0" aria-hidden>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_20%_20%,rgba(9,9,11,0.04),transparent_55%)] dark:bg-[radial-gradient(ellipse_80%_60%_at_20%_20%,rgba(255,255,255,0.05),transparent_55%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_50%_at_15%_10%,rgba(13,148,136,0.08),transparent_55%)] dark:bg-[radial-gradient(ellipse_70%_50%_at_15%_10%,rgba(45,212,191,0.06),transparent_55%)]" />
       </div>
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -40,15 +40,16 @@ export const GlobeHero: React.FC = () => {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              className="space-y-2.5"
+              className="space-y-3"
             >
+              <GressPayLogo variant="auto" size="lg" />
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="slate" className="gap-1 font-mono text-[10px] uppercase">
-                  <ShieldCheck className="w-3 h-3" /> Non-custodial · Direct to your wallet
+                <Badge variant="emerald" className="gap-1 font-mono text-[10px] uppercase">
+                  <ShieldCheck className="w-3 h-3" /> Non-custodial
                 </Badge>
-              </div>
-              <div className="text-[11px] font-medium tracking-wide text-zinc-500 dark:text-zinc-400">
-                bKash · Nagad · Rocket · Upay · USDT · Binance Pay
+                <span className="text-[11px] font-medium tracking-wide text-zinc-500 dark:text-zinc-400">
+                  bKash · Nagad · Rocket · Upay · USDT · Binance Pay
+                </span>
               </div>
             </motion.div>
 
@@ -58,7 +59,7 @@ export const GlobeHero: React.FC = () => {
               transition={{ duration: 0.55, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
               className="text-3xl sm:text-4xl lg:text-[2.75rem] font-extrabold tracking-tight text-zinc-900 dark:text-zinc-100 leading-[1.1]"
             >
-              Auto-verify bKash &amp; Nagad — money lands in your wallet
+              Auto-verify MFS payments into wallets you own
             </motion.h1>
 
             <motion.p
@@ -67,52 +68,14 @@ export const GlobeHero: React.FC = () => {
               transition={{ duration: 0.5, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
               className="text-base text-zinc-600 dark:text-zinc-400 max-w-xl leading-relaxed"
             >
-              Payment automation for Bangladesh MFS and optional crypto. Customers pay numbers you configure; the
-              Companion or on-chain checks confirm payment, then your site gets a signed webhook.
+              Customers pay numbers you configure. Companion SMS or on-chain checks confirm settlement, then your site
+              receives a signed webhook — funds never sit with GressPay.
             </motion.p>
-
-            <motion.p
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.45, delay: 0.16, ease: [0.22, 1, 0.36, 1] }}
-              className="text-xs text-zinc-500 dark:text-zinc-500 max-w-xl"
-            >
-              Building a custom checkout?{" "}
-              <Link href="/developers" className="font-medium text-teal-700 dark:text-teal-400 hover:underline">
-                REST API docs
-              </Link>{" "}
-              cover hosted pay links, create/verify endpoints, and HMAC webhooks.
-            </motion.p>
-
-            <motion.ol
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-              className="grid grid-cols-2 gap-2 pt-1 max-w-lg"
-            >
-              {STEPS.map((step) => {
-                const Icon = step.icon;
-                return (
-                  <li key={step.n}>
-                    <Link
-                      href={step.href}
-                      className="flex items-center gap-2 rounded-lg border border-zinc-200/90 bg-zinc-50/60 px-2.5 py-2 text-xs font-medium text-zinc-800 transition hover:border-teal-600/40 dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-200"
-                    >
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-zinc-900 text-[10px] font-bold text-white dark:bg-white dark:text-zinc-950">
-                        {step.n}
-                      </span>
-                      <Icon className="h-3.5 w-3.5 shrink-0 opacity-60" />
-                      <span className="truncate">{step.title}</span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </motion.ol>
 
             <motion.div
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.28, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ duration: 0.5, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
               className="flex flex-wrap items-center gap-3 pt-1"
             >
               <Link href="/register">
@@ -121,11 +84,36 @@ export const GlobeHero: React.FC = () => {
                 </Button>
               </Link>
               <Link href="/developers">
-                <Button size="lg" variant="ghost" className="text-zinc-600 dark:text-zinc-400">
+                <Button size="lg" variant="outline">
                   Developer docs
                 </Button>
               </Link>
             </motion.div>
+
+            <motion.ol
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.28, ease: [0.22, 1, 0.36, 1] }}
+              className="grid grid-cols-2 gap-2 pt-2 max-w-lg"
+            >
+              {STEPS.map((step) => {
+                const Icon = step.icon;
+                return (
+                  <li key={step.n}>
+                    <Link
+                      href={step.href}
+                      className="flex items-center gap-2 rounded-lg border border-zinc-200/90 bg-white/80 px-2.5 py-2 text-xs font-medium text-zinc-800 transition hover:border-teal-600/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700/30 dark:border-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-200"
+                    >
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-teal-700 text-[10px] font-bold text-white dark:bg-teal-400 dark:text-teal-950">
+                        {step.n}
+                      </span>
+                      <Icon className="h-3.5 w-3.5 shrink-0 opacity-60" aria-hidden />
+                      <span className="truncate">{step.title}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </motion.ol>
           </div>
 
           <motion.div

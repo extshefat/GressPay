@@ -7,7 +7,8 @@
 | Field | Value |
 |-------|--------|
 | Package | `com.gresspay.companion` |
-| Version | `1.2.1` (`versionCode` 5) |
+| Version (source today) | `1.2.2` (`versionCode` 6) in `GressPay-App-Project/app/build.gradle.kts` |
+| Version (hosted APK at last review) | Confirm with `aapt dump badging` / Play Protect; marketing metadata tracks SHA-256 in `src/lib/marketing/companion-download.ts` |
 | `minSdk` / `targetSdk` | 26 / 35 |
 | Size | ~11 MB (3 DEX files — Compose + Material stack) |
 
@@ -30,9 +31,7 @@ From [`.github/workflows/verify.yml`](../.github/workflows/verify.yml):
 3. `./gradlew :app:assembleDebug`
 4. Artifact upload: `GressPay-App-Project/app/build/outputs/apk/debug/*.apk` (name: `gresspay-companion-debug`)
 
-**Important:** CI builds **debug** APKs (`applicationIdSuffix = .debug`). The file in `public/download/gresspay-companion.apk` is a **release package id** (`com.gresspay.companion`, no `.debug` suffix), consistent with local `assembleRelease` documented in [`GressPay-App-Project/RELEASE.md`](../GressPay-App-Project/RELEASE.md), then copied to `public/download/`.
-
-README still documents copying **debug** output in one place; RELEASE.md documents **release** — align publishing runbooks in a follow-up.
+**Important:** CI builds **debug** APKs (`applicationIdSuffix = .debug`). Publishable downloads must be **release** builds with a release keystore (`GRESSPAY_RELEASE_KEYSTORE`). `assembleRelease` now **fails** without those env vars (no debug-keystore fallback). See [`GressPay-App-Project/RELEASE.md`](../GressPay-App-Project/RELEASE.md) and the Android section of [`README.md`](../README.md).
 
 ---
 

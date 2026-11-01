@@ -32,14 +32,18 @@ android {
 
     buildTypes {
         release {
-            val hasReleaseKeystore = System.getenv("GRESSPAY_RELEASE_KEYSTORE")?.isNotBlank() == true
-            isMinifyEnabled = hasReleaseKeystore
-            isShrinkResources = hasReleaseKeystore
-            signingConfig = if (hasReleaseKeystore) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
+            val ksPath = System.getenv("GRESSPAY_RELEASE_KEYSTORE")
+            val hasReleaseKeystore = !ksPath.isNullOrBlank()
+            if (!hasReleaseKeystore) {
+                // Never silently fall back to the debug keystore for production/release APKs.
+                throw GradleException(
+                    "Release builds require GRESSPAY_RELEASE_KEYSTORE (and store/key passwords). " +
+                        "Use assembleDebug for local/CI unsigned-dev builds. See GressPay-App-Project/RELEASE.md."
+                )
             }
+            isMinifyEnabled = true
+            isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

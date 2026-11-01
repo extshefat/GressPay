@@ -45,46 +45,47 @@ export default function CheckoutPage() {
   }, [linkId]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 py-8 px-4 sm:px-6 flex flex-col items-center justify-center relative">
+    <div className="min-h-screen bg-gradient-to-b from-zinc-100 via-white to-zinc-50 dark:from-zinc-950 dark:via-zinc-950 dark:to-black py-8 px-4 sm:px-6 flex flex-col items-center justify-center relative">
       <div className="absolute top-4 right-4">
         <ThemeToggle size="sm" />
       </div>
 
-      <div className="w-full max-w-md mb-6 flex items-center justify-between text-zinc-400">
+      <div className="w-full max-w-md mb-6 flex items-center justify-between gap-3">
         <Link
           href="/"
-          className="text-xs font-mono text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 flex items-center gap-1.5 transition-colors"
+          className="text-xs font-medium text-zinc-500 hover:text-teal-800 dark:hover:text-teal-300 flex items-center gap-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700/40 rounded"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Back to GressPay</span>
+          <span>GressPay</span>
         </Link>
-        <span className="text-[11px] font-mono text-zinc-400 truncate max-w-[50%]">
-          {session ? `SESSION ${session.sessionId}` : linkId}
+        <span className="text-[11px] font-mono text-zinc-400 truncate max-w-[55%] text-right">
+          {session ? session.sessionId : linkId}
         </span>
       </div>
 
       {loading && (
-        <div className="py-20 text-center space-y-3">
-          <div className="w-8 h-8 border-2 border-zinc-900 dark:border-zinc-100 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-xs font-mono text-zinc-500">Initializing checkout session…</p>
+        <div className="py-20 text-center space-y-3" role="status" aria-live="polite">
+          <div className="w-8 h-8 border-2 border-teal-700 border-t-transparent rounded-full animate-spin mx-auto dark:border-teal-400 dark:border-t-transparent" />
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">Preparing secure checkout…</p>
+          <p className="text-[11px] text-zinc-400">Payment is confirmed only after verification — not by this screen alone.</p>
         </div>
       )}
 
       {error && (
-        <div className="w-full max-w-lg rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-8 text-center space-y-4 shadow-xl">
-          <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center mx-auto text-zinc-700 dark:text-zinc-300">
-            <AlertCircle className="w-6 h-6" />
+        <div className="w-full max-w-lg rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-8 text-center space-y-4 shadow-lg">
+          <div className="w-12 h-12 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-900 flex items-center justify-center mx-auto text-rose-600 dark:text-rose-400">
+            <AlertCircle className="w-6 h-6" aria-hidden />
           </div>
           <div className="space-y-1">
-            <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
-              Unable to Open Checkout
-            </h3>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-sm mx-auto leading-relaxed">
+            <h1 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+              Unable to open checkout
+            </h1>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-sm mx-auto leading-relaxed">
               {error}
             </p>
           </div>
           <Button
-            variant="outline"
+            variant="primary"
             size="sm"
             className="w-full"
             onClick={() => window.location.reload()}

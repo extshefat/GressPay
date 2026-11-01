@@ -75,12 +75,36 @@ final class AuthController
             GpJson::error($codeStr, $msg, $http);
         }
 
+        $remember = self::wantRemember($req);
+        // Re-issue with requested TTL when GoogleOAuthClient used default encode.
+        $user = $res['user'] ?? null;
+        $token = (string) ($res['token'] ?? '');
+        if ($remember && is_array($user) && $token !== '') {
+            $payload = GpJwt::decode($token);
+            if (is_array($payload)) {
+                unset($payload['iat'], $payload['exp']);
+                $token = GpJwt::encode($payload, GpJwt::TTL_REMEMBER);
+            }
+        }
         GpJson::send([
-            'token' => $res['token'],
+            'token' => $token,
             'tokenType' => 'Bearer',
-            'user' => $res['user'],
+            'user' => $user,
             'isNew' => $res['isNew'] ?? false,
+            'rememberMe' => $remember,
+            'expiresIn' => $remember ? GpJwt::TTL_REMEMBER : GpJwt::TTL_DEFAULT,
         ]);
+    }
+
+    /** @return bool */
+    private static function wantRemember(GpRequest $req): bool
+    {
+        $v = $req->input('rememberMe', $req->input('remember_me', false));
+        if (is_bool($v)) {
+            return $v;
+        }
+        $s = strtolower(trim((string) $v));
+        return in_array($s, ['1', 'true', 'yes', 'on'], true);
     }
 
     public static function register(GpRequest $req): never
@@ -93,6 +117,7 @@ final class AuthController
         if ($name === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($password) < 8) {
             GpJson::error('VALIDATION', 'full_name, valid email, and password (8+ chars) are required.');
         }
+        $remember = self::wantRemember($req);
 
         if (GpDb::one('SELECT id FROM gp_merchants WHERE email = ?', [$email])) {
             GpJson::error('EMAIL_TAKEN', 'An account with this email already exists.', 409);
@@ -123,7 +148,11 @@ final class AuthController
             GpJson::error('TRANSACTION_FAILED', 'Account creation could not be completed. Rolled back.', 500);
         }
 
-        $token = GpJwt::encode(['sub' => $merchantId, 'brand' => '', 'email' => $email, 'role' => $role, 'is_admin' => $isAdmin, 'plan_id' => $planId]);
+        $ttl = $remember ? GpJwt::TTL_REMEMBER : GpJwt::TTL_DEFAULT;
+        $token = GpJwt::encode(
+            ['sub' => $merchantId, 'brand' => '', 'email' => $email, 'role' => $role, 'is_admin' => $isAdmin, 'plan_id' => $planId],
+            $ttl
+        );
         $user = GpPresenters::user(
             ['merchant_id' => $merchantId, 'full_name' => $name, 'email' => $email, 'role' => $role, 'status' => 'active', 'plan_id' => $planId, 'created_at' => $now],
             ['name' => '', 'brand_id' => '']
@@ -133,6 +162,8 @@ final class AuthController
             'token' => $token,
             'tokenType' => 'Bearer',
             'user' => $user,
+            'rememberMe' => $remember,
+            'expiresIn' => $ttl,
             'note' => 'Create a brand under Dashboard → Brands when you are ready to accept payments.',
         ], 201);
     }
@@ -142,6 +173,7 @@ final class AuthController
         GpRateLimiter::guard('login:' . GpRateLimiter::ip(), 12, 300);
         $email = strtolower(trim((string) $req->input('email', '')));
         $password = (string) $req->input('password', '');
+        $remember = self::wantRemember($req);
         $row = GpDb::one('SELECT * FROM gp_merchants WHERE email = ?', [$email]);
         if ($row === null) {
             GpJson::error('INVALID_CREDENTIALS', 'Email or password is incorrect.', 401);
@@ -162,6 +194,7 @@ final class AuthController
             $row['plan_id'] = 'lifetime';
         }
         $brand = GpDb::one('SELECT * FROM gp_brands WHERE merchant_id = ? ORDER BY id ASC', [$row['merchant_id']]);
+        $ttl = $remember ? GpJwt::TTL_REMEMBER : GpJwt::TTL_DEFAULT;
         $token = GpJwt::encode([
             'sub' => $row['merchant_id'],
             'brand' => is_array($brand) ? (string) ($brand['brand_id'] ?? '') : '',
@@ -169,11 +202,13 @@ final class AuthController
             'role' => $isAdmin ? 'admin' : ($row['role'] ?? 'merchant'),
             'is_admin' => $isAdmin,
             'plan_id' => $isAdmin ? 'lifetime' : ($row['plan_id'] ?? 'starter'),
-        ]);
+        ], $ttl);
         GpJson::send([
             'token' => $token,
             'tokenType' => 'Bearer',
             'user' => GpPresenters::user($row, is_array($brand) ? $brand : ['name' => '', 'brand_id' => '']),
+            'rememberMe' => $remember,
+            'expiresIn' => $ttl,
         ]);
     }
 

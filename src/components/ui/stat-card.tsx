@@ -57,7 +57,7 @@ export function StatCard({
           </div>
         </div>
         {icon && (
-          <div className="p-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
+          <div className="p-2 rounded-xl bg-teal-700/10 text-teal-800 dark:bg-teal-400/15 dark:text-teal-200">
             {icon}
           </div>
         )}

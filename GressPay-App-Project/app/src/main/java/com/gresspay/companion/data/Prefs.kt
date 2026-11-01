@@ -4,6 +4,18 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import org.json.JSONArray
+import org.json.JSONObject
+
+data class RecentEvent(
+    val id: String,
+    val sender: String,
+    val amount: String,
+    val trxId: String,
+    val matched: Boolean,
+    val timestamp: Long,
+    val status: String
+)
 
 /**
  * Credentials and metrics stored via EncryptedSharedPreferences (Android Keystore-backed).
@@ -69,6 +81,70 @@ class Prefs(context: Context) {
         get() = sp.getLong(KEY_PING_MS, -1L)
         set(value) = sp.edit().putLong(KEY_PING_MS, value).apply()
 
+    fun addRecentEvent(
+        sender: String,
+        amount: String,
+        trxId: String,
+        matched: Boolean,
+        status: String
+    ) {
+        val current = getRecentEvents().toMutableList()
+        val newEvent = RecentEvent(
+            id = "${System.currentTimeMillis()}_$trxId",
+            sender = sender.lowercase(),
+            amount = amount,
+            trxId = trxId,
+            matched = matched,
+            timestamp = System.currentTimeMillis(),
+            status = status
+        )
+        // Keep newest first, max 30 items
+        current.add(0, newEvent)
+        val trimmed = current.take(30)
+        val arr = JSONArray()
+        for (item in trimmed) {
+            val obj = JSONObject()
+            obj.put("id", item.id)
+            obj.put("sender", item.sender)
+            obj.put("amount", item.amount)
+            obj.put("trxId", item.trxId)
+            obj.put("matched", item.matched)
+            obj.put("timestamp", item.timestamp)
+            obj.put("status", item.status)
+            arr.put(obj)
+        }
+        sp.edit().putString(KEY_RECENT_EVENTS, arr.toString()).apply()
+    }
+
+    fun getRecentEvents(): List<RecentEvent> {
+        val raw = sp.getString(KEY_RECENT_EVENTS, null) ?: return emptyList()
+        return try {
+            val arr = JSONArray(raw)
+            val list = mutableListOf<RecentEvent>()
+            for (i in 0 until arr.length()) {
+                val obj = arr.getJSONObject(i)
+                list.add(
+                    RecentEvent(
+                        id = obj.optString("id", ""),
+                        sender = obj.optString("sender", ""),
+                        amount = obj.optString("amount", ""),
+                        trxId = obj.optString("trxId", ""),
+                        matched = obj.optBoolean("matched", false),
+                        timestamp = obj.optLong("timestamp", 0L),
+                        status = obj.optString("status", "")
+                    )
+                )
+            }
+            list
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    fun clearRecentEvents() {
+        sp.edit().remove(KEY_RECENT_EVENTS).apply()
+    }
+
     fun clearDevice() {
         sp.edit()
             .remove(KEY_DEVICE_ID)
@@ -77,6 +153,7 @@ class Prefs(context: Context) {
             .remove(KEY_BRAND_NAME)
             .putBoolean(KEY_MATCHING, false)
             .putBoolean(KEY_CONSENT, false)
+            .putBoolean(KEY_ONBOARDING, false)
             .remove(KEY_LAST_ERROR)
             .apply()
     }
@@ -96,18 +173,38 @@ class Prefs(context: Context) {
         private const val KEY_TOTAL_MATCHED = "total_payments_matched"
         private const val KEY_ONBOARDING = "onboarding_complete"
         private const val KEY_PING_MS = "last_ping_ms"
+        private const val KEY_RECENT_EVENTS = "recent_sms_events"
 
         private fun createEncrypted(context: Context): SharedPreferences {
-            val masterKey = MasterKey.Builder(context)
-                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                .build()
-            return EncryptedSharedPreferences.create(
-                context,
-                "gresspay_companion_secure",
-                masterKey,
-                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-            )
+            return try {
+                val masterKey = MasterKey.Builder(context)
+                    .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                    .build()
+                EncryptedSharedPreferences.create(
+                    context,
+                    "gresspay_companion_secure",
+                    masterKey,
+                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+                )
+            } catch (e: Exception) {
+                // Recover if Android Keystore or EncryptedSharedPreferences corrupted on emulator or OS update
+                try {
+                    context.deleteSharedPreferences("gresspay_companion_secure")
+                    val masterKey = MasterKey.Builder(context)
+                        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                        .build()
+                    EncryptedSharedPreferences.create(
+                        context,
+                        "gresspay_companion_secure",
+                        masterKey,
+                        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+                    )
+                } catch (_: Exception) {
+                    context.getSharedPreferences("gresspay_companion_secure_fb", Context.MODE_PRIVATE)
+                }
+            }
         }
 
         /** Reject insecure non-loopback API bases in production builds. */

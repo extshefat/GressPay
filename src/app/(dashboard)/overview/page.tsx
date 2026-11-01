@@ -82,14 +82,14 @@ export default function OverviewPage() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-              Command Center
+              Overview
             </h1>
             <Badge variant="emerald" size="sm" dot>
-              Live production
+              Live
             </Badge>
           </div>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-            Real settlement metrics for your connected gateways and companion devices.
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+            Verified volume, open checkouts, and companion health for the active brand.
           </p>
         </div>
 

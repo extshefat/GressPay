@@ -41,17 +41,45 @@ class SmsUploadWorker(
                 if (res.matched) {
                     prefs.totalPaymentsMatched = prefs.totalPaymentsMatched + 1
                 }
+                prefs.addRecentEvent(
+                    sender = senderKey,
+                    amount = amount,
+                    trxId = trx,
+                    matched = res.matched,
+                    status = if (res.matched) "Matched & Settled" else "Captured & Uploaded"
+                )
                 Result.success()
             } else if (res.permanentFailure) {
                 // Do not retry permanent client errors (e.g. 401/403/409 duplicate).
                 prefs.lastError = res.message
+                prefs.addRecentEvent(
+                    sender = senderKey,
+                    amount = amount,
+                    trxId = trx,
+                    matched = false,
+                    status = "Skipped: ${res.message.take(24)}"
+                )
                 Result.failure()
             } else {
                 prefs.lastError = res.message
+                prefs.addRecentEvent(
+                    sender = senderKey,
+                    amount = amount,
+                    trxId = trx,
+                    matched = false,
+                    status = "Retry: ${res.message.take(24)}"
+                )
                 Result.retry()
             }
         } catch (e: Exception) {
             prefs.lastError = e.message ?: "upload_failed"
+            prefs.addRecentEvent(
+                sender = senderKey,
+                amount = amount,
+                trxId = trx,
+                matched = false,
+                status = "Error: ${(e.message ?: "upload_failed").take(24)}"
+            )
             Result.retry()
         }
     }

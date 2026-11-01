@@ -30,6 +30,9 @@ class MainActivity : AppCompatActivity() {
             CoroutineScope(Dispatchers.IO).launch {
                 CompanionHeartbeat.sendIfConfigured(this@MainActivity)
             }
+            if (prefs.matchingEnabled && prefs.consentAccepted) {
+                com.gresspay.companion.sms.SmsMatchService.start(this)
+            }
         }
     }
 }

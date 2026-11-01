@@ -67,10 +67,10 @@ export default function SupportPage() {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Card className="border-zinc-200 p-5 dark:border-zinc-800">
-          <BookOpen className="h-5 w-5 text-blue-600" />
+          <BookOpen className="h-5 w-5 text-teal-700 dark:text-teal-400" />
           <h2 className="mt-2 text-sm font-bold text-zinc-900 dark:text-zinc-100">Developers</h2>
           <p className="mt-1 text-xs text-zinc-500">REST reference, auth headers, and integration snippets.</p>
-          <Link href="/developers" className="mt-3 inline-block text-xs font-semibold text-blue-600 underline">
+          <Link href="/developers" className="mt-3 inline-block text-xs font-semibold text-teal-700 dark:text-teal-400 underline">
             Open API docs
           </Link>
         </Card>

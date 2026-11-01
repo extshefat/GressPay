@@ -55,13 +55,12 @@ final class GpRouter
     {
         $driver = 'unknown';
         $dbOk = false;
-        $dbError = null;
         try {
             $driver = GpDb::driver();
             GpDb::pdo()->query('SELECT 1');
             $dbOk = true;
         } catch (Throwable $e) {
-            $dbError = $e->getMessage();
+            error_log('GressPay health DB check failed: ' . $e->getMessage());
         }
         $body = [
             'ok' => $dbOk,
@@ -73,7 +72,8 @@ final class GpRouter
             ],
         ];
         if (!$dbOk) {
-            $body['database']['error'] = $dbError;
+            // Never expose raw DB/driver exception text to the public health endpoint.
+            $body['database']['error'] = 'Database unavailable';
             GpJson::send($body, 503);
         }
         GpJson::send($body);

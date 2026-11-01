@@ -40,35 +40,35 @@ const FAQS = [
 
 export default function HelpPage() {
   return (
-    <div className="pt-32 pb-24 space-y-16 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="pt-28 pb-20 space-y-16 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 transition-colors">
       <div className="text-center max-w-3xl mx-auto space-y-4">
         <Badge variant="cyan" dot>
           Help
         </Badge>
-        <h1 className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-zinc-900 dark:text-zinc-100 tracking-tight">
           Frequently asked questions
         </h1>
-        <p className="text-base text-slate-300 leading-relaxed">
+        <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 leading-relaxed">
           Honest answers for the first-release rails — SMS companion, Binance Pay, and USDT TRC-20.
         </p>
       </div>
 
       <div className="space-y-4">
         {FAQS.map((faq) => (
-          <Card key={faq.question} className="p-6 bg-void-card border-void-border/80 space-y-2">
-            <h3 className="text-base font-semibold text-white">{faq.question}</h3>
-            <p className="text-xs sm:text-sm text-slate-400 leading-relaxed pt-1">{faq.answer}</p>
+          <Card key={faq.question} className="p-6 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 space-y-2">
+            <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">{faq.question}</h3>
+            <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed pt-1">{faq.answer}</p>
           </Card>
         ))}
       </div>
 
-      <Card className="p-8 bg-void-surface border-brand-cyan/30 text-center space-y-4 max-w-2xl mx-auto">
-        <div className="w-12 h-12 rounded-full bg-cyan-500/20 border border-brand-cyan/40 flex items-center justify-center text-brand-cyan mx-auto">
+      <Card className="p-8 border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 text-center space-y-4 max-w-2xl mx-auto">
+        <div className="w-12 h-12 rounded-2xl bg-teal-700/10 text-teal-800 dark:bg-teal-400/15 dark:text-teal-300 flex items-center justify-center mx-auto">
           <MessageSquare className="w-6 h-6" />
         </div>
-        <h3 className="text-xl font-bold text-white">Need the API reference?</h3>
-        <p className="text-xs text-slate-300 leading-relaxed">
-          See backend/GressPay-API.md and the Developers page for scopes, webhooks, and state transitions.
+        <h3 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">Need the API reference?</h3>
+        <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+          See the Developers page for endpoints, authentication, webhooks, and state transitions.
         </p>
         <div className="pt-2 flex items-center justify-center gap-3">
           <Link href="/developers">

@@ -46,7 +46,11 @@ function GoogleCallbackContent() {
       }
 
       try {
-        const res = await api.handleGoogleCallback({ code, state });
+        const rememberMe =
+          typeof window !== "undefined" &&
+          sessionStorage.getItem("gresspay_oauth_remember") === "1";
+        sessionStorage.removeItem("gresspay_oauth_remember");
+        const res = await api.handleGoogleCallback({ code, state, rememberMe });
         if (alive) {
           setStatus("success");
           const admin = res.user?.role === "admin" || Boolean(res.user?.isAdmin);

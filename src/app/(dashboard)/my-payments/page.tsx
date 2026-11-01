@@ -13,6 +13,20 @@ import { RefreshCw, ExternalLink, CreditCard } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 
 export default function MyPaymentsPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <div className="mx-auto max-w-5xl py-10 text-xs text-zinc-500">
+          Loading payment history…
+        </div>
+      }
+    >
+      <MyPaymentsContent />
+    </React.Suspense>
+  );
+}
+
+function MyPaymentsContent() {
   const searchParams = useSearchParams();
   const [payments, setPayments] = useState<AccountPlanPayment[]>([]);
   const [plans, setPlans] = useState<{ code: string; name: string; priceBdt: string }[]>([]);
