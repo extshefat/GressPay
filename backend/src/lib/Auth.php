@@ -63,8 +63,18 @@ final class GpAuth
             if ($brand === null) {
                 return null;
             }
-            $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$brand['merchant_id']]);
-            $scopes = self::parseScopes($row['scopes'] ?? '');
+            $brandStatus = strtolower(trim((string) ($brand['brand_status'] ?? 'active')));
+            if ($brandStatus !== '' && $brandStatus !== 'active') {
+                return null;
+            }
+            $merchant = GpDb::one(
+                'SELECT * FROM gp_merchants WHERE merchant_id = ? AND status = ?',
+                [$brand['merchant_id'], 'active']
+            );
+            if ($merchant === null) {
+                return null;
+            }
+            $scopes = self::parseScopes((string) ($row['scopes'] ?? ''));
             return [
                 'merchant_id' => $brand['merchant_id'],
                 'brand_id' => $brand['brand_id'],

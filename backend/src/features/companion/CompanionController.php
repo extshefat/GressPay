@@ -257,7 +257,9 @@ final class CompanionController
                     );
                 }
             }
-            $matched = false;
+            // Collect full rule matches first. If more than one pending satisfies the same SMS
+            // (amount/wallet/rail), leave unsettled to avoid amount-tied ambiguity.
+            $hits = [];
             foreach ($pendingCandidates as $pending) {
                 $methodCode = GpCatalog::publicCode((string) ($pending['method_code'] ?: $sender));
                 if ($methodCode !== $sender) {
@@ -291,6 +293,21 @@ final class CompanionController
                 if ($sms === null) {
                     continue;
                 }
+                $hits[] = [
+                    'pending' => $pending,
+                    'methodCode' => $methodCode,
+                    'cat' => $cat,
+                    'payable' => $payable,
+                    'sms' => $sms,
+                ];
+            }
+
+            $matched = false;
+            if (count($hits) === 1) {
+                $hit = $hits[0];
+                $pending = $hit['pending'];
+                $methodCode = $hit['methodCode'];
+                $cat = $hit['cat'];
                 $methodRow = GpDb::one(
                     'SELECT * FROM gp_methods WHERE brand_id = ? AND (code = ? OR code = ?) ORDER BY id DESC',
                     [$pending['brand_id'], $methodCode, GpCatalog::slug($methodCode)]
@@ -300,18 +317,19 @@ final class CompanionController
                     $trxId,
                     $methodCode,
                     $methodRow,
-                    $payable,
+                    $hit['payable'],
                     (string) ($cat['currency'] ?? $pending['currency']),
-                    $sms,
+                    $hit['sms'],
                     'matched'
                 );
                 $matched = strtolower((string) ($paid['status'] ?? '')) === 'completed';
-                if ($matched) {
-                    break;
-                }
             }
 
-            GpJson::send(['ok' => true, 'matched' => $matched]);
+            GpJson::send([
+                'ok' => true,
+                'matched' => $matched,
+                'ambiguous' => count($hits) > 1,
+            ]);
         }
 
         GpJson::error('NOT_FOUND', 'Unknown companion route.', 404);

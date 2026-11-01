@@ -81,22 +81,46 @@ class PaymentSmsParserTest {
     }
 
     @Test
-    fun parsesTxnIdAlias() {
-        val body = "Payment of Tk 10 credited. TxnID ALIAS1234XY"
-        val p = PaymentSmsParser.parse("16247", body)
-        assertNotNull(p)
-        assertEquals("ALIAS1234XY", p!!.trxId)
+    fun rejectsOutgoingBkashSend() {
+        val body =
+            "You have sent Tk 500.00 to 017XXXXXXXX. Fee Tk 5.00. TrxID OUTGOING99X Balance Tk 100."
+        assertNull(PaymentSmsParser.parse("16247", body))
+    }
+
+    @Test
+    fun rejectsPaidToDebit() {
+        val body = "Paid to Merchant XYZ Tk 200.00. TrxID PAIDTO9912"
+        assertNull(PaymentSmsParser.parse("16247", body))
+    }
+
+    @Test
+    fun rejectsCashOut() {
+        val body = "Cash Out Tk 1000.00 from your Nagad. TrxID CASHOUT88A"
+        assertNull(PaymentSmsParser.parse("16262", body))
+    }
+
+    @Test
+    fun rejectsRefund() {
+        val body = "Refund Tk 50.00 credited? TrxID REFUND1234 — refund processed to sender."
+        // Debit/refund wording must not settle merchant cash-in
+        assertNull(PaymentSmsParser.parse("16247", body))
+    }
+
+    @Test
+    fun rejectsBarePaymentWithoutCredit() {
+        val body = "Payment Tk 100.00 TrxID PAYONLY9912 from customer"
+        assertNull(PaymentSmsParser.parse("16247", body))
     }
 
     @Test
     fun rejectsAmbiguousBothRails() {
-        val body = "BKASH and NAGAD Tk 100 TrxID AABBCCDD11"
+        val body = "You have received Tk 100. BKASH and NAGAD TrxID AABBCCDD11"
         assertNull(PaymentSmsParser.parse("unknown", body))
     }
 
     @Test
     fun rejectsMissingTrxLabel() {
-        val body = "You got Tk 100 from bKash. Have a nice day."
+        val body = "You have received Tk 100 from bKash. Have a nice day."
         assertNull(PaymentSmsParser.parse("16247", body))
     }
 
@@ -120,7 +144,13 @@ class PaymentSmsParserTest {
 
     @Test
     fun rejectsMissingAmount() {
-        val body = "bKash payment received. TrxID NOAMOUNT1X"
+        val body = "You have received payment. TrxID NOAMOUNT1X"
+        assertNull(PaymentSmsParser.parse("16247", body))
+    }
+
+    @Test
+    fun rejectsMalformedShortTrx() {
+        val body = "You have received Tk 10.00. TrxID AB12"
         assertNull(PaymentSmsParser.parse("16247", body))
     }
 }
