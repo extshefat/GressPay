@@ -81,7 +81,7 @@ assert_true(!BinancePayClient::verifyCallbackSignature('1000', $nonce, $body, $s
 $codes = array_map(static fn ($m) => $m['code'], GpCatalog::releaseMethods());
 assert_true(in_array('bkash', $codes, true) && in_array('nagad', $codes, true), 'BD rails in release');
 assert_true(in_array('binance_pay', $codes, true) && in_array('usdt_trc20', $codes, true), 'Crypto rails in release');
-assert_true(!in_array('upi_qr', $codes, true) && !in_array('jazzcash', $codes, true), 'IN/PK not in release');
+assert_true(in_array('upi_qr', $codes, true) && in_array('jazzcash', $codes, true), 'Regional rails in release');
 
 // —— Fixed-price / openSession integrity via DB seed ——
 $now = GpIds::now();
