@@ -660,6 +660,8 @@ class ApiClient {
       gatewayCount: number;
       websiteApiKey?: string;
       websiteApiKeyMasked?: string;
+      logoConfigured?: boolean;
+      logoUrl?: string | null;
     }>;
     activeBrandId: string;
   }> {

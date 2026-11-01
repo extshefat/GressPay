@@ -1445,8 +1445,6 @@ export default function GatewaysPage() {
           </form>
         </Card>
       )}
-        </Card>
-      )}
 
       {/* Unified Configured Gateways Section (ZiNiPay / UddoktaPay Standard) */}
       {isLoading ? (
