@@ -7,7 +7,7 @@ Deploy from **GitHub → Coolify on your VPS**. Do not run PHP, JDK, MySQL, or D
 | Coolify service | Source | Role |
 |-----------------|--------|------|
 | `gresspay-web` | [`GressPay- Web/Dockerfile`](GressPay-%20Web/Dockerfile) | Next.js (standalone), public HTTPS |
-| `gresspay-api` | [`backend/Dockerfile`](backend/Dockerfile) | nginx → php-fpm HTTP API on `$PORT` (never `php -S`) |
+| `gresspay-api` | [`backend/Dockerfile`](backend/Dockerfile) | PHP HTTP API on `$PORT` (Coolify-compatible built-in server; durable webhooks via worker) |
 | `gresspay-webhook-worker` | same `backend/Dockerfile`, command `webhook-worker` | Persistent webhook queue consumer |
 | `gresspay-db` | Managed MySQL / MariaDB | Persistent volume required |
 
@@ -96,7 +96,7 @@ Those are configured **after deploy** in the merchant dashboard and stored brand
 |-----|---------|
 | Public `https://your-domain.com` | Next.js UI + same-origin `/api/v1` proxy |
 | Public `https://api.your-domain.com` (optional) | Direct API if exposed; health `GET /api/v1/health` |
-| Internal `http://gresspay-api:8080` | Web → API (`GRESSPAY_PHP_URL`) — nginx inside API image FastCGI-proxies to php-fpm |
+| Internal `http://gresspay-api:8080` | Web → API (`GRESSPAY_PHP_URL`) |
 | Internal MySQL host | API + webhook-worker → DB |
 
 TLS terminates at Coolify. Force HTTPS for merchant credential forms.
