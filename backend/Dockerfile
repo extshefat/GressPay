@@ -13,6 +13,7 @@ RUN mkdir -p /var/www/gresspay-api/storage \
     && chown -R www-data:www-data /var/www/gresspay-api
 
 ENV PORT=8080
+ENV PHP_CLI_SERVER_WORKERS=8
 EXPOSE 8080
 
 USER www-data

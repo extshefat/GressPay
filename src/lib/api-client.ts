@@ -94,6 +94,17 @@ class ApiClient {
     return this.brandId;
   }
 
+  getToken(): string | null {
+    if (!this.token && typeof window !== "undefined") {
+      this.token = localStorage.getItem("gresspay_jwt");
+    }
+    return this.token;
+  }
+
+  hasToken(): boolean {
+    return Boolean(this.getToken());
+  }
+
   clearToken() {
     this.token = null;
     if (typeof window !== "undefined") {
@@ -121,23 +132,39 @@ class ApiClient {
     if (this.brandId) {
       headers.set("X-GressPay-Brand", this.brandId);
     }
-    if (this.token) {
-      headers.set("Authorization", `Bearer ${this.token}`);
+    const token = this.getToken();
+    if (token) {
+      headers.set("Authorization", `Bearer ${token}`);
     }
 
-    const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-      ...options,
-      headers,
-    });
+    const controller = new AbortController();
+    const timeoutMs = 12000;
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    const signal = options.signal || controller.signal;
 
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      const message =
-        errData?.error?.message || errData?.message || `API Error: ${res.status}`;
-      throw new Error(message);
+    try {
+      const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+        ...options,
+        headers,
+        signal,
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        const message =
+          errData?.error?.message || errData?.message || `API Error: ${res.status}`;
+        throw new Error(message);
+      }
+
+      return res.json();
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === "AbortError") {
+        throw new Error("Request timed out. Please check your network or try again.");
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeoutId);
     }
-
-    return res.json();
   }
 
   async getMe(): Promise<{ user: User }> {

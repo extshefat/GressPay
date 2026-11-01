@@ -319,7 +319,10 @@ final class AdminController
             }
         }
 
-        $planDef = GpDb::one('SELECT * FROM gp_plans WHERE plan_id = ?', [$planId]);
+        $planDef = GpDb::one('SELECT * FROM gp_plans WHERE plan_id = ? OR code = ?', [$planId, $planId]);
+        if ($planDef) {
+            $planId = (string) $planDef['plan_id'];
+        }
         $creditAllowance = (int) ($planDef['credit_allowance'] ?? 1000);
         $bonusCredits = max(0, (int) $req->input('bonus_credits', $req->input('bonusCredits', 0)));
         $totalCreditsToGrant = $creditAllowance + $bonusCredits;
@@ -738,10 +741,11 @@ final class AdminController
 
     private static function updatePlan(array $actor, string $planId, GpRequest $req): never
     {
-        $plan = GpDb::one('SELECT * FROM gp_plans WHERE plan_id = ?', [$planId]);
+        $plan = GpDb::one('SELECT * FROM gp_plans WHERE plan_id = ? OR code = ?', [$planId, $planId]);
         if (!$plan) {
             GpJson::error('NOT_FOUND', 'Plan not found.', 404);
         }
+        $planId = (string) $plan['plan_id'];
 
         $name = trim((string) $req->input('name', $plan['name']));
         $price = (float) $req->input('priceBdt', $req->input('price_bdt', $plan['price_bdt']));
@@ -835,10 +839,11 @@ final class AdminController
             GpJson::error('NOT_FOUND', 'Merchant not found.', 404);
         }
 
-        $plan = GpDb::one('SELECT * FROM gp_plans WHERE plan_id = ? AND status = ?', [$planId, 'active']);
+        $plan = GpDb::one('SELECT * FROM gp_plans WHERE (plan_id = ? OR code = ?) AND status = ?', [$planId, $planId, 'active']);
         if (!$plan) {
             GpJson::error('NOT_FOUND', 'Active plan not found.', 404);
         }
+        $planId = (string) $plan['plan_id'];
 
         $now = GpIds::now();
         $subId = 'sub_' . bin2hex(random_bytes(8));

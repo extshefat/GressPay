@@ -426,9 +426,7 @@ export default function GatewaysPage() {
         const filtered = ALL_METHOD_OPTIONS.filter((opt) => enabledCodes.has(opt.code));
         if (filtered.length > 0) {
           setAvailableOptions(filtered);
-          if (!enabledCodes.has(formMethod)) {
-            setFormMethod(filtered[0].code);
-          }
+          setFormMethod((prev) => (!enabledCodes.has(prev) ? filtered[0].code : prev));
         }
       }
     } catch (err: unknown) {
@@ -436,7 +434,7 @@ export default function GatewaysPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [formMethod]);
+  }, []);
 
   useEffect(() => {
     load();

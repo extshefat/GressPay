@@ -27,6 +27,7 @@ services:
       dockerfile: Dockerfile
     environment:
       PORT: "8080"
+      PHP_CLI_SERVER_WORKERS: "8"
       APP_URL: ${APP_URL}
       DB_DRIVER: ${DB_DRIVER}
       DB_CONNECTION: ${DB_CONNECTION}

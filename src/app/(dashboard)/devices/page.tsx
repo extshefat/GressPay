@@ -139,7 +139,7 @@ export default function CompanionDevicesPage() {
     }
   }, []);
 
-  const loadSmsLogs = async () => {
+  const loadSmsLogs = useCallback(async () => {
     setIsLoadingSms(true);
     try {
       const data = await api.listMerchantSmsLogs();
@@ -149,7 +149,7 @@ export default function CompanionDevicesPage() {
     } finally {
       setIsLoadingSms(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadDevices();
