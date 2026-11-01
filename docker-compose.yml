@@ -2,10 +2,6 @@
 # GressPay All-In-One Unified Docker Compose Stack for Coolify VPS
 # Runs Frontend (Next.js) + Backend (PHP API) connected to dedicated VPS PostgreSQL (gresspay-db)
 # Values come from Coolify. Direct ${VAR} references avoid baking defaults into the service env.
-#
-# NOTE: Do not inject Coolify's global PORT into `php` (it is often 3000 for web).
-# Webhook worker is optional — add as a separate Coolify service, not in this compose,
-# so a worker crash cannot take down the public site.
 # ==============================================================================
 
 services:
@@ -17,7 +13,7 @@ services:
       APP_URL: ${APP_URL}
       NEXT_PUBLIC_APP_URL: ${APP_URL}
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
-      GRESSPAY_PHP_URL: ${GRESSPAY_PHP_URL:-http://php:8080}
+      GRESSPAY_PHP_URL: ${GRESSPAY_PHP_URL}
     ports:
       - "3000"
     restart: unless-stopped
@@ -30,8 +26,6 @@ services:
       dockerfile: Dockerfile
     environment:
       APP_URL: ${APP_URL}
-      # Fixed API listen port — never ${PORT} from Coolify web proxy
-      GP_API_PORT: "8080"
       DB_DRIVER: ${DB_DRIVER}
       DB_CONNECTION: ${DB_CONNECTION}
       DB_HOST: ${DB_HOST}
@@ -57,6 +51,4 @@ services:
       R2_BUCKET_NAME: ${R2_BUCKET_NAME}
       R2_ENDPOINT: ${R2_ENDPOINT}
       R2_PUBLIC_BASE_URL: ${R2_PUBLIC_BASE_URL}
-      WEBHOOK_MAX_RETRIES: ${WEBHOOK_MAX_RETRIES:-5}
-      WEBHOOK_TIMEOUT_SECONDS: ${WEBHOOK_TIMEOUT_SECONDS:-8}
     restart: unless-stopped
