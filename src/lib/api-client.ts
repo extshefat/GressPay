@@ -848,6 +848,7 @@ class ApiClient {
     priceBdt: number;
     creditAllowance: number;
     description?: string;
+    billingCycle?: string;
     isFree?: boolean;
     features?: string[];
   }): Promise<{ ok: boolean; planId: string }> {
