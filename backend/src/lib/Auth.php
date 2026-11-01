@@ -112,28 +112,52 @@ final class GpAuth
         ];
     }
 
-    /** @return list<string> */
-    private static function parseScopes(string $raw): array
+    /**
+     * Fail closed: invalid/empty scope JSON yields no scopes (deny).
+     * Explicit ["*"] grants all; otherwise only allowlisted scope strings.
+     *
+     * @return list<string>
+     */
+    public static function parseScopes(string $raw): array
     {
-        $decoded = json_decode($raw, true);
-        if (!is_array($decoded)) {
-            return self::allScopes();
+        $trimmed = trim($raw);
+        if ($trimmed === '') {
+            return [];
         }
+        $decoded = json_decode($trimmed, true);
+        if (!is_array($decoded)) {
+            return [];
+        }
+        $allowed = self::allScopes();
         $out = [];
         foreach ($decoded as $s) {
-            if (is_string($s) && $s !== '') {
+            if (!is_string($s) || $s === '') {
+                continue;
+            }
+            if ($s === '*') {
+                return $allowed;
+            }
+            if (in_array($s, $allowed, true)) {
                 $out[] = $s;
             }
         }
-        return $out !== [] ? $out : self::allScopes();
+        return array_values(array_unique($out));
     }
 
     /**
-     * @param array{scopes?:list<string>} $actor
+     * @param array{scopes?:list<string>,auth?:string} $actor
      */
     public static function requireScope(array $actor, string $scope): void
     {
-        $scopes = $actor['scopes'] ?? self::allScopes();
+        // JWT dashboard actors retain full product scopes; API keys must declare scopes explicitly.
+        if (($actor['auth'] ?? '') === 'jwt') {
+            $scopes = $actor['scopes'] ?? self::allScopes();
+        } else {
+            $scopes = $actor['scopes'] ?? [];
+        }
+        if (!is_array($scopes)) {
+            $scopes = [];
+        }
         if (!in_array($scope, $scopes, true) && !in_array('*', $scopes, true)) {
             GpJson::error('FORBIDDEN', 'API key missing scope: ' . $scope, 403);
         }

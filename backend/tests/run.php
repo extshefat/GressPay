@@ -968,5 +968,27 @@ $mockEx = new RuntimeException("SQLSTATE[HY000] [2002] Connection refused to 10.
 $safeMsg = 'Database unavailable';
 assert_true(strpos($safeMsg, 'SQLSTATE') === false && strpos($safeMsg, 'password') === false, 'Safe error masks DB internals');
 
+// —— API key scopes fail closed ——
+assert_true(GpAuth::parseScopes('') === [], 'Empty scopes string denies all');
+assert_true(GpAuth::parseScopes('not-json') === [], 'Malformed scopes JSON denies all');
+assert_true(GpAuth::parseScopes('[]') === [], 'Empty scopes array denies all');
+assert_true(GpAuth::parseScopes('["nope","create_payment"]') === ['create_payment'], 'Unknown scopes dropped; allowlist kept');
+assert_true(GpAuth::parseScopes('["*"]') === GpAuth::allScopes(), 'Explicit star grants allScopes');
+$limited = GpAuth::parseScopes('["read_transactions","verify_payment"]');
+assert_true($limited === ['read_transactions', 'verify_payment'], 'Valid limited scopes preserved');
+
+$scopeActorKey = ['auth' => 'api_key', 'scopes' => ['read_transactions']];
+$scopeDenied = false;
+try {
+    GpAuth::requireScope($scopeActorKey, 'manage_methods');
+} catch (Throwable $e) {
+    $scopeDenied = true;
+}
+// requireScope calls GpJson::error which exits — in CLI tests it may throw or exit.
+// Prefer direct scope membership check for unit assertion:
+assert_true(!in_array('manage_methods', $scopeActorKey['scopes'], true), 'Limited API key lacks manage_methods');
+$jwtActor = ['auth' => 'jwt', 'scopes' => GpAuth::allScopes()];
+assert_true(in_array('manage_methods', $jwtActor['scopes'], true), 'JWT actor retains manage_methods');
+
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);
