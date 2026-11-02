@@ -57,6 +57,16 @@ jobs:
       - run: npm run build
         env:
           NEXT_PUBLIC_DATA_SOURCE: live
+      - name: Capture checkout preview on desktop and mobile
+        run: |
+          npm run start > /tmp/gresspay-preview.log 2>&1 &
+          for attempt in $(seq 1 30); do curl -fsS http://localhost:3000/checkout-preview > /dev/null && break || sleep 1; done
+          google-chrome --headless --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=5000 --screenshot=checkout-desktop.png --window-size=1440,1100 http://localhost:3000/checkout-preview
+          google-chrome --headless --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=5000 --screenshot=checkout-mobile.png --window-size=390,1000 http://localhost:3000/checkout-preview
+      - uses: actions/upload-artifact@v4
+        with:
+          name: checkout-previews
+          path: checkout-*.png
 
   php:
     name: PHP unit tests
