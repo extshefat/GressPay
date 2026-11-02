@@ -50,3 +50,16 @@ $expired = $delayed; $expired['session_id'] = GpIds::make('chs',6); $expired['st
 $expired['expires_at'] = gmdate('Y-m-d\TH:i:s\Z',time()-4000);
 check(CheckoutController::markPaid($expired,$delayedTrx,'bkash',$method,'100','BDT',$late)['status'] === 'pending','receipt outside payment window cannot settle expired checkout');
 echo "PostgreSQL integration checks completed\n";
+putenv('GRESSPAY_SMS_AUTO_ALLOWED=1'); $_ENV['GRESSPAY_SMS_AUTO_ALLOWED'] = '1';
+GpDb::exec('UPDATE gp_brands SET verification_mode = ? WHERE brand_id = ?', ['sms_auto',$brand]);
+$phoneId = GpIds::make('chs',6); $phoneTrx = 'PG'.strtoupper(bin2hex(random_bytes(5)));
+GpDb::exec('INSERT INTO gp_transactions (session_id,brand_id,source,amount,currency,ledger_mode,method_code,status,metadata,expires_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',[$phoneId,$brand,'api','100','BDT','live','bkash','pending',json_encode(['sender_number'=>'01712345678']),gmdate('Y-m-d\TH:i:s\Z',time()+600),$now,$now]);
+GpDb::exec('INSERT INTO gp_sms_data (brand_id,sender_key,amount,trx_id,received_at,payer_phone,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)',[$brand,'bkash','100',$phoneTrx,$now,'01812345678','approved',$now,$now]);
+$phoneRow = GpDb::one('SELECT * FROM gp_transactions WHERE session_id = ?',[$phoneId]);
+$phoneSms = GpDb::one('SELECT * FROM gp_sms_data WHERE brand_id = ? AND trx_id = ?',[$brand,$phoneTrx]);
+check(CheckoutController::markPaid($phoneRow,$phoneTrx,'bkash',$method,'100','BDT',$phoneSms)['status'] === 'pending','wrong payer phone cannot complete phone verification');
+check(GpDb::one('SELECT status FROM gp_sms_data WHERE id = ?',[$phoneSms['id']])['status'] === 'approved','wrong payer phone leaves evidence unused');
+GpDb::exec('UPDATE gp_transactions SET metadata = ? WHERE session_id = ?',[json_encode(['sender_number'=>'01812345678']),$phoneId]);
+$phoneRow = GpDb::one('SELECT * FROM gp_transactions WHERE session_id = ?',[$phoneId]);
+check(CheckoutController::markPaid($phoneRow,$phoneTrx,'bkash',$method,'100','BDT',$phoneSms)['status'] === 'completed','matching payer phone and trusted receipt can settle correct order');
+putenv('GRESSPAY_SMS_AUTO_ALLOWED=0'); $_ENV['GRESSPAY_SMS_AUTO_ALLOWED'] = '0';
