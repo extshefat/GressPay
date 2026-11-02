@@ -205,9 +205,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
               } else {
                 setStatusMessage("Confirming the payment window with the server. Retry status if this persists.");
               }
-            }).catch(() => setErrorMessage("Could not confirm server status. Reload status before attempting another payment.")).finally(() => {
-              checkingExpiryRef.current = false;
-            });
+            }).catch(() => setErrorMessage("Could not confirm server status. Reload status before attempting another payment."));
           }
           return 0;
         }
