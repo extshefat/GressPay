@@ -589,7 +589,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
           </h2>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed max-w-sm mx-auto">
             {statusMessage ||
-              "Your Transaction ID is registered. Our Android companion APK is listening for incoming carrier SMS to auto-verify your transaction."}
+              "Your Transaction ID is registered. The merchant GressPay app is listening for incoming carrier SMS to auto-verify your payment."}
           </p>
         </div>
 
@@ -644,73 +644,59 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
   // 3. COMPLETED STATE
   if (checkoutStatus === "COMPLETED") {
     const returnTarget = session.returnUrl;
+    const doneTheme = session.checkoutTheme || "default";
+    const doneThemeClass =
+      doneTheme === "luxury" ? "gp-theme-luxury" : doneTheme === "minimal" ? "gp-theme-minimal" : "gp-theme-default";
 
     return (
-      <div className="w-full max-w-lg mx-auto bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-2xl p-8 text-center space-y-5">
-        <div className="w-16 h-16 rounded-2xl bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 flex items-center justify-center mx-auto shadow-md">
-          <CheckCircle2 className="w-9 h-9 stroke-[2.5]" />
+      <div className={`gp-checkout-card mx-auto w-full max-w-lg overflow-hidden p-8 text-center space-y-5 ${doneThemeClass}`}>
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl" style={{ background: "var(--gp-ck-accent)", color: "#04110f" }}>
+          <CheckCircle2 className="h-9 w-9 stroke-[2.5]" />
         </div>
-
+        {session.merchantLogo ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={session.merchantLogo} alt="" className="mx-auto h-10 w-10 rounded-xl object-contain bg-white/90 p-1" />
+        ) : null}
         <div className="space-y-1">
-          <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400">
-            Payment Successful!
-          </span>
-          <h2 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight pt-1">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--gp-ck-accent)" }}>
+            Payment successful
+          </p>
+          <h2 className="pt-1 text-3xl font-bold tracking-tight" style={{ color: "var(--gp-ck-text)" }}>
             {checkoutAmount(payableAmount, payableCurrency)}
           </h2>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Successfully credited to{" "}
-            <span className="font-semibold text-zinc-900 dark:text-zinc-100">
-              {session.merchantName}
-            </span>
+          <p className="text-xs" style={{ color: "var(--gp-ck-muted)" }}>
+            Settled to <span className="font-semibold" style={{ color: "var(--gp-ck-text)" }}>{session.merchantName}</span>
           </p>
         </div>
-
-        <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-left font-mono text-xs space-y-2">
-          <div className="flex justify-between items-center text-zinc-500">
-            <span>Transaction ID</span>
-            <span className="text-zinc-900 dark:text-zinc-100 font-semibold break-all ml-4">
-              {txidInput || session.sessionId}
-            </span>
+        <div className="space-y-2 rounded-2xl border p-4 text-left font-mono text-xs" style={{ borderColor: "var(--gp-ck-border)", background: "var(--gp-ck-surface)" }}>
+          <div className="flex items-center justify-between gap-3" style={{ color: "var(--gp-ck-muted)" }}>
+            <span>TrxID</span>
+            <span className="break-all text-right font-semibold" style={{ color: "var(--gp-ck-text)" }}>{txidInput || "—"}</span>
           </div>
-          <div className="flex justify-between items-center text-zinc-500">
-            <span>Payment Method</span>
-            <span className="text-zinc-900 dark:text-zinc-100">{selectedMethod?.name || "—"}</span>
-          </div>
-          <div className="flex justify-between items-center text-zinc-500">
-            <span>Order Reference</span>
-            <span className="text-zinc-900 dark:text-zinc-100">{session.sessionId}</span>
+          <div className="flex items-center justify-between" style={{ color: "var(--gp-ck-muted)" }}>
+            <span>Method</span>
+            <span style={{ color: "var(--gp-ck-text)" }}>{selectedMethod?.name || "—"}</span>
           </div>
         </div>
-
         {returnTarget && redirectCountdown > 0 ? (
-          <p className="text-xs text-zinc-500 font-mono">
-            Redirecting to store in{" "}
-            <span className="font-bold text-zinc-900 dark:text-zinc-100">
-              {redirectCountdown}s
-            </span>
-            …
+          <p className="font-mono text-xs" style={{ color: "var(--gp-ck-muted)" }}>
+            Returning in <span className="font-bold" style={{ color: "var(--gp-ck-text)" }}>{redirectCountdown}s</span>…
           </p>
         ) : null}
-
-        <div className="pt-2">
-          <Button
-            variant="primary"
-            size="lg"
-            className="w-full bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 font-semibold"
-            onClick={() => {
-              if (returnTarget) {
-                window.location.href = returnTarget;
-              } else if (window.opener) {
-                window.close();
-              } else {
-                window.location.href = "/";
-              }
-            }}
-          >
-            {returnTarget ? "Return to store" : "Close Checkout"}
-          </Button>
-        </div>
+        <Button
+          variant="primary"
+          size="lg"
+          className="w-full font-semibold"
+          style={{ background: "var(--gp-ck-accent)", color: "#04110f" }}
+          onClick={() => {
+            if (returnTarget) window.location.href = returnTarget;
+            else if (window.opener) window.close();
+            else window.location.href = "/";
+          }}
+        >
+          {returnTarget ? "Return to store" : "Done"}
+        </Button>
+        <p className="text-[10px] tracking-wide" style={{ color: "var(--gp-ck-muted)" }}>Secured by GressPay</p>
       </div>
     );
   }
@@ -767,189 +753,117 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
     : null;
 
   return (
-    <div
-      className={`mx-auto w-full max-w-md overflow-hidden rounded-2xl border border-zinc-800 bg-[#0c0c0c] text-zinc-100 transition-all dark:border-zinc-800 sm:max-w-lg ${themeClass}`}
-      style={theme === "minimal" ? { borderRadius: "0.75rem" } : undefined}
-    >
-      <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
-        {methodChosen ? (
-          <button type="button" onClick={() => { setMethodChosen(false); setErrorMessage(null); }} className="text-sm font-semibold text-zinc-200">← {locale === "bn" ? "পেমেন্ট পদ্ধতি" : "Payment methods"}</button>
-        ) : (
-          <span className="flex items-center gap-2 text-sm font-semibold text-zinc-200"><Lock className="h-4 w-4 text-cyan-400" />{locale === "bn" ? "নিরাপদ চেকআউট" : "Secure checkout"}</span>
-        )}
-        {!demoMode && <button type="button" aria-label="Cancel invoice" onClick={handleCancelCheckout} disabled={isCanceling} className="text-xl leading-none text-zinc-400 hover:text-white">×</button>}
-      </div>
-      {/* Merchant Header */}
-      <div
-        className={`p-5 sm:p-6 border-b border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-          theme === "luxury"
-            ? "bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 text-white"
-            : "bg-zinc-50/80 dark:bg-zinc-900/60"
-        }`}
-      >
-        <div className="flex items-center gap-3.5 min-w-0">
-          {session.merchantLogo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={session.merchantLogo}
-              alt={session.merchantName}
-              className="w-12 h-12 rounded-2xl object-contain bg-white border border-zinc-200 dark:border-zinc-700 shrink-0 shadow-sm"
-            />
-          ) : (
-            <div className="w-12 h-12 rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 flex items-center justify-center font-bold text-base shrink-0 shadow-sm">
-              {session.merchantName ? session.merchantName.slice(0, 2).toUpperCase() : "GP"}
+    <div className={`gp-checkout-card mx-auto w-full max-w-md overflow-hidden transition-all sm:max-w-lg ${themeClass}`}>
+      {/* Merchant-first hero */}
+      <div className="gp-checkout-hero relative px-5 pb-5 pt-5 sm:px-6 sm:pt-6">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-[11px] font-semibold" style={{ color: "var(--gp-ck-muted)" }}>
+            <Lock className="h-3.5 w-3.5" style={{ color: "var(--gp-ck-accent)" }} />
+            {locale === "bn" ? "নিরাপদ পেমেন্ট" : "Secure payment"}
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex overflow-hidden rounded-lg border text-[10px] font-bold" style={{ borderColor: "var(--gp-ck-border)" }}>
+              <button type="button" onClick={() => setLocale("bn")} className="px-2 py-1" style={locale === "bn" ? { background: "var(--gp-ck-accent)", color: "#04110f" } : { color: "var(--gp-ck-muted)" }}>BN</button>
+              <button type="button" onClick={() => setLocale("en")} className="px-2 py-1" style={locale === "en" ? { background: "var(--gp-ck-accent)", color: "#04110f" } : { color: "var(--gp-ck-muted)" }}>EN</button>
             </div>
-          )}
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
-              <span
-                className={`text-sm font-bold truncate ${
-                  theme === "luxury" ? "text-white" : "text-zinc-900 dark:text-zinc-100"
-                }`}
-              >
-                {session.merchantName}
-              </span>
-              {session.merchantVerified && <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />}
-            </div>
-            <p
-              className={`text-xs truncate mt-0.5 ${
-                theme === "luxury" ? "text-zinc-300" : "text-zinc-500 dark:text-zinc-400"
-              }`}
-            >
-              {locale === "bn" ? "ইনভয়েস" : "Invoice ID"}:{" "}
-              <button
-                type="button"
-                className={`font-mono text-[10px] underline-offset-2 hover:underline ${
-                  theme === "luxury" ? "text-zinc-200" : "text-zinc-700 dark:text-zinc-300"
-                }`}
-                onClick={() => copyToClipboard(session.sessionId, "invoice")}
-              >
-                {session.sessionId.slice(0, 8)}…{session.sessionId.slice(-6)}
-              </button>
-              {copiedKey === "invoice" ? (
-                <Check className="inline w-3 h-3 ml-1 text-emerald-500" />
-              ) : (
-                <Copy className="inline w-3 h-3 ml-1 text-zinc-400" />
-              )}
-            </p>
-            <button type="button" onClick={() => setDetailsOpen(!detailsOpen)} aria-expanded={detailsOpen} className="mt-2 rounded-full border border-zinc-300 px-3 py-1 text-[11px] dark:border-zinc-700">{detailsOpen ? "Hide details" : "View details"}</button>
-            {(whatsappHref || telHref || mailHref || tgHref || session.websiteUrl) && (
-              <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                {whatsappHref && (
-                  <a
-                    href={whatsappHref}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[10px] font-semibold px-2 py-1 rounded-lg bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
-                  >
-                    WhatsApp
-                  </a>
-                )}
-                {telHref && (
-                  <a href={telHref} className="text-[10px] font-semibold px-2 py-1 rounded-lg bg-zinc-500/10 text-zinc-700 dark:text-zinc-200">
-                    Call
-                  </a>
-                )}
-                {mailHref && (
-                  <a href={mailHref} className="text-[10px] font-semibold px-2 py-1 rounded-lg bg-sky-500/10 text-sky-700 dark:text-sky-300">
-                    Email
-                  </a>
-                )}
-                {tgHref && (
-                  <a
-                    href={tgHref}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[10px] font-semibold px-2 py-1 rounded-lg bg-sky-500/10 text-sky-700 dark:text-sky-300"
-                  >
-                    Telegram
-                  </a>
-                )}
-                {session.websiteUrl && (
-                  <a
-                    href={session.websiteUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[10px] font-semibold px-2 py-1 rounded-lg bg-zinc-500/10 text-zinc-700 dark:text-zinc-200"
-                  >
-                    Website
-                  </a>
-                )}
-              </div>
+            {!demoMode && (
+              <button type="button" aria-label="Cancel" onClick={handleCancelCheckout} disabled={isCanceling} className="text-lg leading-none opacity-60 hover:opacity-100" style={{ color: "var(--gp-ck-muted)" }}>×</button>
             )}
           </div>
         </div>
 
-        <div className="grid grid-cols-2 items-center gap-3 border-t border-zinc-200 pt-3 text-right dark:border-zinc-800 sm:flex sm:flex-col sm:items-end sm:border-t-0 sm:pt-0">
-          <div className="flex rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden text-[10px] font-bold">
-            <button
-              type="button"
-              onClick={() => setLocale("bn")}
-              className={`px-2 py-1 ${locale === "bn" ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950" : "text-zinc-500"}`}
-            >
-              BN
-            </button>
-            <button
-              type="button"
-              onClick={() => setLocale("en")}
-              className={`px-2 py-1 ${locale === "en" ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950" : "text-zinc-500"}`}
-            >
-              Eng
-            </button>
-          </div>
-          <div className="text-2xl font-semibold tracking-tight tabular-nums text-zinc-900 dark:text-zinc-100">
-            {methodChosen ? checkoutAmount(payableAmount, payableCurrency) : checkoutAmount(session.amount, session.currency)}
-          </div>
-          <div className="col-span-2 flex items-center justify-end gap-1.5 text-[11px] font-mono text-zinc-500 mt-0.5">
-            <Clock className="w-3.5 h-3.5 text-zinc-400" />
-            <span>Expires in {timeFormatted}</span>
-          </div>
-          {!demoMode && (
-            <button
-              type="button"
-              onClick={handleCancelCheckout}
-              disabled={isCanceling}
-              className="mt-2 text-[10px] font-semibold text-rose-600 hover:underline disabled:opacity-50"
-            >
-              {isCanceling ? "Canceling…" : locale === "bn" ? "ইনভয়েস বাতিল" : "Cancel invoice"}
-            </button>
+        <div className="flex flex-col items-center text-center">
+          {session.merchantLogo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={session.merchantLogo} alt={session.merchantName} className="mb-3 h-16 w-16 rounded-2xl object-contain bg-white p-1.5 shadow-md" />
+          ) : (
+            <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-2xl text-lg font-bold shadow-md" style={{ background: "var(--gp-ck-accent)", color: "#04110f" }}>
+              {session.merchantName ? session.merchantName.slice(0, 2).toUpperCase() : "GP"}
+            </div>
           )}
+          <div className="flex items-center justify-center gap-1.5">
+            <h1 className="text-lg font-bold tracking-tight sm:text-xl" style={{ color: "var(--gp-ck-text)" }}>{session.merchantName}</h1>
+            {session.merchantVerified && <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-400" />}
+          </div>
+          {session.orderTitle && (
+            <p className="mt-1 max-w-sm text-xs" style={{ color: "var(--gp-ck-muted)" }}>{session.orderTitle}</p>
+          )}
+          <p className="mt-4 text-3xl font-bold tracking-tight tabular-nums sm:text-4xl" style={{ color: "var(--gp-ck-text)" }}>
+            {methodChosen ? checkoutAmount(payableAmount, payableCurrency) : checkoutAmount(session.amount, session.currency)}
+          </p>
+          <div className="mt-2 flex items-center gap-1.5 font-mono text-[11px]" style={{ color: "var(--gp-ck-muted)" }}>
+            <Clock className="h-3.5 w-3.5" />
+            <span>{locale === "bn" ? "মেয়াদ" : "Expires"} {timeFormatted}</span>
+          </div>
+          <button type="button" onClick={() => setDetailsOpen(!detailsOpen)} aria-expanded={detailsOpen} className="mt-3 text-[11px] font-semibold underline-offset-2 hover:underline" style={{ color: "var(--gp-ck-accent)" }}>
+            {detailsOpen ? (locale === "bn" ? "বিবরণ লুকান" : "Hide details") : (locale === "bn" ? "বিবরণ দেখুন" : "View details")}
+          </button>
+          {(whatsappHref || telHref || mailHref || tgHref || session.websiteUrl) && (
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5">
+              {whatsappHref && <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="rounded-lg px-2 py-1 text-[10px] font-semibold" style={{ background: "var(--gp-ck-accent-soft)", color: "var(--gp-ck-accent)" }}>WhatsApp</a>}
+              {telHref && <a href={telHref} className="rounded-lg px-2 py-1 text-[10px] font-semibold" style={{ background: "var(--gp-ck-surface)", color: "var(--gp-ck-muted)" }}>Call</a>}
+              {mailHref && <a href={mailHref} className="rounded-lg px-2 py-1 text-[10px] font-semibold" style={{ background: "var(--gp-ck-surface)", color: "var(--gp-ck-muted)" }}>Email</a>}
+              {tgHref && <a href={tgHref} target="_blank" rel="noopener noreferrer" className="rounded-lg px-2 py-1 text-[10px] font-semibold" style={{ background: "var(--gp-ck-surface)", color: "var(--gp-ck-muted)" }}>Telegram</a>}
+              {session.websiteUrl && <a href={session.websiteUrl} target="_blank" rel="noopener noreferrer" className="rounded-lg px-2 py-1 text-[10px] font-semibold" style={{ background: "var(--gp-ck-surface)", color: "var(--gp-ck-muted)" }}>Website</a>}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-5 flex items-center justify-center gap-4">
+          <div className="gp-checkout-step" data-active={!methodChosen}>
+            <span className="gp-checkout-step-dot">1</span>
+            {locale === "bn" ? "পদ্ধতি" : "Method"}
+          </div>
+          <div className="h-px w-6" style={{ background: "var(--gp-ck-border)" }} />
+          <div className="gp-checkout-step" data-active={methodChosen && checkoutStatus !== "COMPLETED"}>
+            <span className="gp-checkout-step-dot">2</span>
+            {locale === "bn" ? "পেমেন্ট" : "Pay"}
+          </div>
+          <div className="h-px w-6" style={{ background: "var(--gp-ck-border)" }} />
+          <div className="gp-checkout-step" data-active={false}>
+            <span className="gp-checkout-step-dot">3</span>
+            {locale === "bn" ? "নিশ্চিত" : "Confirm"}
+          </div>
         </div>
       </div>
 
-      {detailsOpen && <dl className="grid grid-cols-2 gap-3 border-b border-zinc-200 px-6 py-4 text-xs dark:border-zinc-800">
-        <dt className="text-zinc-500">Invoice</dt><dd className="break-all font-mono">{session.sessionId}</dd>
-        <dt className="text-zinc-500">Order</dt><dd>{session.orderTitle || "Payment"}</dd>
-        <dt className="text-zinc-500">Order amount</dt><dd>{checkoutAmount(session.amount, session.currency)}</dd>
-        {methodChosen && <><dt className="text-zinc-500">Selected gateway</dt><dd>{selectedMethod.name}</dd><dt className="text-zinc-500">Fees</dt><dd>{feeLabel}</dd><dt className="font-semibold">Payable</dt><dd className="font-semibold">{checkoutAmount(payableAmount, payableCurrency)}</dd></>}
-      </dl>}
-      {/* Main Body */}
-      <div className="p-5 sm:p-6 space-y-6">
+      {detailsOpen && (
+        <dl className="grid grid-cols-2 gap-3 border-b px-6 py-4 text-xs" style={{ borderColor: "var(--gp-ck-border)", color: "var(--gp-ck-muted)" }}>
+          <dt>Invoice</dt>
+          <dd className="break-all font-mono" style={{ color: "var(--gp-ck-text)" }}>
+            <button type="button" className="underline-offset-2 hover:underline" onClick={() => copyToClipboard(session.sessionId, "invoice")}>
+              {session.sessionId.slice(0, 10)}…{copiedKey === "invoice" ? " ✓" : ""}
+            </button>
+          </dd>
+          <dt>Order</dt><dd style={{ color: "var(--gp-ck-text)" }}>{session.orderTitle || "Payment"}</dd>
+          <dt>Amount</dt><dd style={{ color: "var(--gp-ck-text)" }}>{checkoutAmount(session.amount, session.currency)}</dd>
+          {methodChosen && (
+            <>
+              <dt>Gateway</dt><dd style={{ color: "var(--gp-ck-text)" }}>{selectedMethod.name}</dd>
+              <dt>Fees</dt><dd style={{ color: "var(--gp-ck-text)" }}>{feeLabel}</dd>
+            </>
+          )}
+        </dl>
+      )}
+
+      <div className="space-y-5 p-5 sm:p-6" style={{ background: "var(--gp-ck-bg)" }}>
         {session.productImageUrl && (
-          <div className="rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900">
+          <div className="overflow-hidden rounded-2xl border" style={{ borderColor: "var(--gp-ck-border)", background: "var(--gp-ck-surface)" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={session.productImageUrl}
-              alt={session.orderTitle || "Product"}
-              className="w-full max-h-48 object-cover"
-            />
+            <img src={session.productImageUrl} alt={session.orderTitle || "Product"} className="max-h-48 w-full object-cover" />
           </div>
         )}
 
         {(session.customFields?.length ?? 0) > 0 && (
           <div className="space-y-3">
-            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider font-mono">
-              Your details
-            </label>
+            <label className="block text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--gp-ck-muted)" }}>Your details</label>
             {session.customFields!.map((field) => (
               <Input
                 key={field.id}
                 label={`${field.label}${field.required ? " *" : ""}`}
                 type={field.type === "email" ? "email" : field.type === "phone" ? "tel" : "text"}
                 value={customFieldValues[field.id] || ""}
-                onChange={(e) =>
-                  setCustomFieldValues((prev) => ({ ...prev, [field.id]: e.target.value }))
-                }
+                onChange={(e) => setCustomFieldValues((prev) => ({ ...prev, [field.id]: e.target.value }))}
                 placeholder={field.label}
               />
             ))}
@@ -957,126 +871,72 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
         )}
 
         {errorMessage && (
-          <Alert variant="danger" title="Payment Error">
-            {errorMessage}
-          </Alert>
+          <Alert variant="danger" title="Payment Error">{errorMessage}</Alert>
         )}
 
         {!methodChosen && <>
-        {/* Category tabs — only show when more than one group has brand gateways */}
         {([mfsMethods, cryptoMethods, otherMethods].filter((g) => g.length > 0).length > 1) && (
-          <div className="flex flex-wrap items-center gap-1 rounded-xl bg-zinc-100 dark:bg-zinc-900 p-1 border border-zinc-200 dark:border-zinc-800">
+          <div className="flex flex-wrap gap-1 rounded-xl border p-1" style={{ borderColor: "var(--gp-ck-border)", background: "var(--gp-ck-surface)" }}>
             {mfsMethods.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setActiveTab("mfs")}
-                className={`flex-1 min-w-[120px] py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                  activeTab === "mfs"
-                    ? "bg-white text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100 shadow-xs"
-                    : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
-                }`}
-              >
-                <Smartphone className="w-3.5 h-3.5" />
-                <span>Mobile Banking ({mfsMethods.length})</span>
+              <button type="button" onClick={() => setActiveTab("mfs")} className="flex min-w-[110px] flex-1 items-center justify-center gap-2 rounded-lg py-2 text-xs font-semibold transition-all" style={activeTab === "mfs" ? { background: "var(--gp-ck-accent)", color: "#04110f" } : { color: "var(--gp-ck-muted)" }}>
+                <Smartphone className="h-3.5 w-3.5" /> MFS ({mfsMethods.length})
               </button>
             )}
             {cryptoMethods.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setActiveTab("crypto")}
-                className={`flex-1 min-w-[120px] py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                  activeTab === "crypto"
-                    ? "bg-white text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100 shadow-xs"
-                    : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
-                }`}
-              >
-                <Layers className="w-3.5 h-3.5" />
-                <span>Crypto ({cryptoMethods.length})</span>
+              <button type="button" onClick={() => setActiveTab("crypto")} className="flex min-w-[110px] flex-1 items-center justify-center gap-2 rounded-lg py-2 text-xs font-semibold transition-all" style={activeTab === "crypto" ? { background: "var(--gp-ck-accent)", color: "#04110f" } : { color: "var(--gp-ck-muted)" }}>
+                <Layers className="h-3.5 w-3.5" /> Crypto ({cryptoMethods.length})
               </button>
             )}
             {otherMethods.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setActiveTab("other")}
-                className={`flex-1 min-w-[120px] py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                  activeTab === "other"
-                    ? "bg-white text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100 shadow-xs"
-                    : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
-                }`}
-              >
-                <span>Other ({otherMethods.length})</span>
+              <button type="button" onClick={() => setActiveTab("other")} className="flex min-w-[110px] flex-1 items-center justify-center gap-2 rounded-lg py-2 text-xs font-semibold transition-all" style={activeTab === "other" ? { background: "var(--gp-ck-accent)", color: "#04110f" } : { color: "var(--gp-ck-muted)" }}>
+                Other ({otherMethods.length})
               </button>
             )}
           </div>
         )}
 
-        {/* Payment Rails Grid */}
         <div className="space-y-2">
-          <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider font-mono">
-            {activeTab === "mfs" ? "Mobile Banking" : activeTab === "crypto" ? "Crypto" : "Bank & International"}
-          </label>
-          <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--gp-ck-muted)" }}>
+            {locale === "bn" ? "পেমেন্ট পদ্ধতি বেছে নিন" : "Choose how to pay"}
+          </p>
+          <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
             {currentTabMethods.map((method) => {
-              const isSelected = Boolean(
-                methodChosen && selectedMethod &&
-                  ((method.gatewayId && selectedMethod.gatewayId === method.gatewayId) ||
-                    (!method.gatewayId &&
-                      selectedMethod.code === method.code &&
-                      !selectedMethod.gatewayId))
-              );
-
               const methodIconUrl = gatewayLogoPath(method.code);
-
               return (
                 <button
                   key={method.gatewayId || method.code}
                   type="button"
+                  className="gp-method-tile flex cursor-pointer flex-col justify-between"
                   onClick={() => {
                     setSelectedMethod(method);
                     setMethodChosen(true);
                     setTxidInput("");
                     setErrorMessage(null);
                   }}
-                  className={`p-3.5 rounded-2xl border text-left transition-all relative flex flex-col justify-between cursor-pointer ${
-                    isSelected
-                      ? "border-zinc-900 bg-zinc-50 dark:border-zinc-100 dark:bg-zinc-900 shadow-xs ring-1 ring-zinc-900 dark:ring-zinc-100"
-                      : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 hover:border-zinc-300 dark:hover:border-zinc-700"
-                  }`}
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={methodIconUrl}
-                        alt={method.name}
-                        className="h-10 w-14 rounded-lg bg-white p-1 object-contain shrink-0"
-                        onError={(e) => {
-                          (e.target as HTMLElement).style.display = "none";
-                        }}
-                      />
-                      <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 break-words">
-                        {method.name}
-                      </span>
-                    </div>
-                    {isSelected && (
-                      <Check className="w-3.5 h-3.5 text-zinc-900 dark:text-zinc-100 stroke-[3] shrink-0" />
-                    )}
+                  <div className="flex items-center gap-2.5">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={methodIconUrl}
+                      alt={method.name}
+                      className="h-11 w-14 shrink-0 rounded-xl bg-white object-contain p-1"
+                      onError={(e) => { (e.target as HTMLElement).style.display = "none"; }}
+                    />
+                    <span className="text-sm font-semibold" style={{ color: "var(--gp-ck-text)" }}>{method.name}</span>
                   </div>
-
-                  <div className="text-[11px] text-zinc-500 font-mono mt-3 flex items-center justify-between gap-2">
+                  <div className="mt-3 flex items-center justify-between font-mono text-[11px]" style={{ color: "var(--gp-ck-muted)" }}>
                     <span>{method.currency}</span>
-                    <span className="truncate text-right">
+                    <span>
                       {(() => {
                         const pct = Number(method.feePercentage || 0);
                         const fixed = Number(method.fixedFee || 0);
                         const bf = Number(session.brandFee || 0);
-                        if (pct <= 0 && fixed <= 0 && bf <= 0) return "0% Fee";
-                        if (isSelected) return feeLabel;
+                        if (pct <= 0 && fixed <= 0 && bf <= 0) return "No fee";
                         const bits: string[] = [];
                         if (pct > 0) bits.push(`${pct}%`);
                         if (fixed > 0) bits.push(`${fixed}`);
                         if (bf > 0) bits.push("fee");
-                        return bits.join("+") || "0% Fee";
+                        return bits.join("+");
                       })()}
                     </span>
                   </div>
@@ -1085,19 +945,28 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
             })}
           </div>
         </div>
-
         </>}
         {methodChosen && <>
-        <div className="flex items-center gap-3"><img src={gatewayLogoPath(selectedMethod.code)} alt="" className="h-9 w-9 object-contain" /><div><h2 className="text-sm font-semibold">{selectedMethod.name}</h2><p className="text-xs text-zinc-500">Follow the instructions, then submit payment evidence.</p></div></div>
-        {/* Payment Transfer & Verification Card */}
-        <div className="p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/40 space-y-5">
-          {/* Payable Amount Highlight with Copy Button */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800">
+        <div className="flex items-center justify-between gap-3">
+          <button type="button" onClick={() => { setMethodChosen(false); setErrorMessage(null); }} className="text-xs font-semibold" style={{ color: "var(--gp-ck-accent)" }}>
+            ← {locale === "bn" ? "পদ্ধতি" : "Methods"}
+          </button>
+          <div className="flex items-center gap-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={gatewayLogoPath(selectedMethod.code)} alt="" className="h-8 w-8 object-contain" />
+            <div className="text-right">
+              <h2 className="text-sm font-semibold" style={{ color: "var(--gp-ck-text)" }}>{selectedMethod.name}</h2>
+              <p className="text-[11px]" style={{ color: "var(--gp-ck-muted)" }}>{locale === "bn" ? "নির্দেশনা অনুসরণ করুন" : "Follow the steps below"}</p>
+            </div>
+          </div>
+        </div>
+        <div className="space-y-5 rounded-2xl border p-5" style={{ borderColor: "var(--gp-ck-border)", background: "var(--gp-ck-surface)" }}>
+          <div className="flex flex-col justify-between gap-3 rounded-xl border p-4 sm:flex-row sm:items-center" style={{ borderColor: "var(--gp-ck-border)", background: "var(--gp-ck-elevated)" }}>
             <div>
-              <span className="text-xs text-zinc-500 font-mono">
-                {activeTab === "crypto" ? "Exact USDT Amount" : "Exact BDT Amount"}
+              <span className="font-mono text-xs" style={{ color: "var(--gp-ck-muted)" }}>
+                {activeTab === "crypto" ? "Exact USDT amount" : "Exact amount to send"}
               </span>
-              <div className="text-2xl font-semibold tracking-tight tabular-nums text-zinc-900 dark:text-zinc-100">
+              <div className="text-2xl font-semibold tracking-tight tabular-nums" style={{ color: "var(--gp-ck-text)" }}>
                 {checkoutAmount(payableAmount, payableCurrency)}
               </div>
               {activeTab === "crypto" && session.exchangeRateToUsd != null && (
@@ -1281,7 +1150,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
               <div className="space-y-3">
                 <div className="rounded-xl border border-emerald-200/70 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-950/20 p-3 text-xs text-emerald-900 dark:text-emerald-200 leading-relaxed">
                   Pay the exact amount to the number above. Confirmation is automatic via the merchant&apos;s
-                  Companion SMS — you do not need to paste a TrxID.
+                  GressPay SMS listener — you do not need to paste a TrxID.
                 </div>
                 <div className="space-y-1.5">
                   <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
@@ -1342,31 +1211,37 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
               type="submit"
               variant="primary"
               size="lg"
-              className="w-full bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 font-semibold"
+              className="w-full font-semibold"
+              style={{ background: "var(--gp-ck-accent)", color: "#04110f" }}
               isLoading={isVerifying}
               rightIcon={<ArrowRight className="w-4 h-4" />}
             >
               {isVerifying
-                ? "Checking Settlement Ledger…"
+                ? "Verifying…"
                 : selectedMethod.code === "binance_pay"
-                  ? "Open Binance Pay Checkout"
+                  ? "Open Binance Pay"
                   : smsAuto
                     ? locale === "bn"
                       ? "পেমেন্ট করে অপেক্ষা করুন"
                       : "I have paid — wait for SMS"
-                    : `Pay ${checkoutAmount(payableAmount, payableCurrency)}`}
+                    : `Confirm ${checkoutAmount(payableAmount, payableCurrency)}`}
             </Button>
             {(selectedMethod.category === "mfs" ||
               ["bkash", "nagad", "rocket", "upay", "cellfin"].includes(selectedMethod.code)) && (
-              <p className="text-[11px] text-center text-zinc-500">
+              <p className="text-center text-[11px]" style={{ color: "var(--gp-ck-muted)" }}>
                 {smsAuto
-                  ? "After sending money, wait here — Companion SMS confirms payment automatically for this brand."
-                  : "After sending money, paste the TrxID above — we match it against companion SMS for this brand."}
+                  ? "After sending money, wait here — GressPay matches the payment SMS automatically."
+                  : "After sending money, paste the TrxID — we match it against the merchant SMS feed."}
               </p>
             )}
           </form>
         </div>
         </>}
+
+        <div className="flex items-center justify-center gap-2 pt-1 text-[10px] tracking-wide" style={{ color: "var(--gp-ck-muted)" }}>
+          <Lock className="h-3 w-3" style={{ color: "var(--gp-ck-accent)" }} />
+          <span>Non-custodial verification · Secured by GressPay</span>
+        </div>
       </div>
     </div>
   );

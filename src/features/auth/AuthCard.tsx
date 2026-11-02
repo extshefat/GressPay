@@ -69,6 +69,7 @@ export function AuthCard({ initialTab }: { initialTab: Tab }) {
     let cancelled = false;
     (async () => {
       try {
+        await api.hydrateSessionFromCookie();
         const me = await api.getMe();
         if (cancelled || !me?.user) return;
         const plan =

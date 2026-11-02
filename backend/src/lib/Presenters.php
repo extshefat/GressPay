@@ -291,12 +291,20 @@ final class GpPresenters
         $redirectUrl = null;
         if ($status === 'COMPLETED' && $returnUrl) {
             $sep = str_contains($returnUrl, '?') ? '&' : '?';
-            $redirectUrl = $returnUrl . $sep . http_build_query([
+            // Never append empty order_id= — it overwrites WooCommerce's order_id query param.
+            $qs = [
                 'session_id' => $row['session_id'],
-                'order_id' => (string) ($meta['orderId'] ?? ''),
                 'status' => 'completed',
-                'trx_id' => (string) ($row['trx_id'] ?? ''),
-            ]);
+            ];
+            $merchantOrderId = trim((string) ($meta['orderId'] ?? $meta['order_id'] ?? ''));
+            if ($merchantOrderId !== '') {
+                $qs['order_id'] = $merchantOrderId;
+            }
+            $trxId = trim((string) ($row['trx_id'] ?? ''));
+            if ($trxId !== '') {
+                $qs['trx_id'] = $trxId;
+            }
+            $redirectUrl = $returnUrl . $sep . http_build_query($qs);
         }
         return [
             'sessionId' => $row['session_id'],

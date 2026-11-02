@@ -29,15 +29,8 @@ export default function DashboardLayout({
     let isMounted = true;
 
     async function checkAuth() {
-      if (typeof window !== "undefined" && !api.hasToken()) {
-        if (isMounted) {
-          setIsLoading(false);
-          rememberTeamInvite();
-          router.replace("/login");
-        }
-        return;
-      }
-
+      // Trust the HttpOnly cookie via getMe — do not gate on the JS flag alone
+      // (missing gresspay_authed + valid cookie caused login↔dashboard loops).
       const timeoutId = setTimeout(() => {
         if (isMounted) {
           setIsLoading(false);
@@ -46,6 +39,7 @@ export default function DashboardLayout({
       }, 7000);
 
       try {
+        await api.hydrateSessionFromCookie();
         const data = await api.getMe();
         if (isMounted) {
           clearTimeout(timeoutId);
@@ -53,7 +47,7 @@ export default function DashboardLayout({
           setIsLoading(false);
           setAuthError(null);
         }
-      } catch (err: unknown) {
+      } catch {
         if (isMounted) {
           clearTimeout(timeoutId);
           api.clearToken();

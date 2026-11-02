@@ -46,7 +46,10 @@ class Prefs(context: Context) {
 
     var deviceToken: String
         get() = sp.getString(KEY_DEVICE_TOKEN, "") ?: ""
-        set(value) = sp.edit().putString(KEY_DEVICE_TOKEN, value.trim()).apply()
+        set(value) {
+            // commit() so pairing survives an immediate process kill
+            sp.edit().putString(KEY_DEVICE_TOKEN, value.trim()).commit()
+        }
 
     /** Explicit merchant opt-in required before any SMS matching starts. */
     var matchingEnabled: Boolean
@@ -157,13 +160,14 @@ class Prefs(context: Context) {
         sp.edit()
             .remove(KEY_DEVICE_ID)
             .remove(KEY_DEVICE_TOKEN)
+            .remove(KEY_API)
             .remove(KEY_BRAND_ID)
             .remove(KEY_BRAND_NAME)
             .putBoolean(KEY_MATCHING, false)
             .putBoolean(KEY_CONSENT, false)
             .putBoolean(KEY_ONBOARDING, false)
             .remove(KEY_LAST_ERROR)
-            .apply()
+            .commit()
     }
 
     companion object {
@@ -185,6 +189,7 @@ class Prefs(context: Context) {
         private const val KEY_FGS_STOPPED = "foreground_helper_stopped"
 
         private fun createEncrypted(context: Context): SharedPreferences {
+            val fallback = context.getSharedPreferences("gresspay_companion_secure_fb", Context.MODE_PRIVATE)
             return try {
                 val masterKey = MasterKey.Builder(context)
                     .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
@@ -196,8 +201,11 @@ class Prefs(context: Context) {
                     EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                     EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
                 )
-            } catch (e: Exception) {
-                // Recover if Android Keystore or EncryptedSharedPreferences corrupted on emulator or OS update
+            } catch (_: Exception) {
+                // Prefer existing plaintext fallback over wiping encrypted prefs (avoids losing gpdev_ keys).
+                if (fallback.contains(KEY_DEVICE_TOKEN) || fallback.contains(KEY_BASE)) {
+                    return fallback
+                }
                 try {
                     context.deleteSharedPreferences("gresspay_companion_secure")
                     val masterKey = MasterKey.Builder(context)
@@ -211,7 +219,7 @@ class Prefs(context: Context) {
                         EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
                     )
                 } catch (_: Exception) {
-                    context.getSharedPreferences("gresspay_companion_secure_fb", Context.MODE_PRIVATE)
+                    fallback
                 }
             }
         }

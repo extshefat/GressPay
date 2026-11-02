@@ -1,13 +1,13 @@
-/** Public Companion APK metadata (marketing + download page). */
+/** Public GressPay Android APK metadata (marketing + download page). */
 export const COMPANION_APK = {
   version: "1.2.2",
   versionLabel: "v1.2.2",
   /** Phone mock / showcase status chip (keep in sync with shipped APK). */
   mockStatusLabel: "Node active",
   androidRange: "Android 8.0–15",
-  href: "/download/gresspay-companion.apk",
-  fileName: "gresspay-companion.apk",
-  /** Bytes; matches public/download/gresspay-companion.apk on main. */
+  href: "/download/gresspay.apk",
+  fileName: "gresspay.apk",
+  /** Bytes; matches public/download/gresspay.apk on main. */
   sizeBytes: 11_508_179,
   sizeLabel: "11.0 MB",
   sha256:

@@ -316,7 +316,7 @@ export default function CompanionDevicesPage() {
             Refresh
           </Button>
           <a
-            href="/download/gresspay-companion.apk"
+            href="/download/gresspay.apk"
             className="inline-flex items-center gap-2 rounded-lg border border-zinc-900 bg-zinc-900 px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-zinc-800 dark:border-white dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-100"
           >
             <Download className="h-3.5 w-3.5" />
@@ -705,7 +705,7 @@ export default function CompanionDevicesPage() {
             )}
 
             <a
-              href="/download/gresspay-companion.apk"
+              href="/download/gresspay.apk"
               className="inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-xl text-xs font-semibold bg-zinc-900 text-white dark:bg-white dark:text-zinc-950"
             >
               <Download className="w-3.5 h-3.5" />

@@ -124,9 +124,46 @@ jobs:
         run: chmod +x gradlew && ./gradlew :app:testDebugUnitTest --stacktrace
       - name: Assemble debug
         run: ./gradlew :app:assembleDebug --stacktrace
-      - name: Upload companion APK
+      - name: Rename debug APK
+        run: |
+          set -euo pipefail
+          OUT="app/build/outputs/apk/debug"
+          SRC="$(ls "$OUT"/*.apk | head -n1)"
+          cp "$SRC" "$OUT/gresspay-debug.apk"
+      - name: Upload GressPay debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: gresspay-companion-debug
-          path: GressPay-App-Project/app/build/outputs/apk/debug/*.apk
+          name: gresspay-debug
+          path: GressPay-App-Project/app/build/outputs/apk/debug/gresspay-debug.apk
           if-no-files-found: warn
+      - name: Assemble release (when keystore secrets present)
+        env:
+          GRESSPAY_RELEASE_KEYSTORE_BASE64: ${{ secrets.GRESSPAY_RELEASE_KEYSTORE_BASE64 }}
+          GRESSPAY_RELEASE_STORE_PASSWORD: ${{ secrets.GRESSPAY_RELEASE_STORE_PASSWORD }}
+          GRESSPAY_RELEASE_KEY_ALIAS: ${{ secrets.GRESSPAY_RELEASE_KEY_ALIAS }}
+          GRESSPAY_RELEASE_KEY_PASSWORD: ${{ secrets.GRESSPAY_RELEASE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GRESSPAY_RELEASE_KEYSTORE_BASE64:-}" ]; then
+            echo "No GRESSPAY_RELEASE_KEYSTORE_BASE64 secret — skipping release APK (debug artifact still uploaded)."
+            echo "Set keystore + password secrets to publish a release-signed gresspay.apk with R8."
+            exit 0
+          fi
+          echo "$GRESSPAY_RELEASE_KEYSTORE_BASE64" | base64 -d > /tmp/gresspay-release.jks
+          export GRESSPAY_RELEASE_KEYSTORE=/tmp/gresspay-release.jks
+          ./gradlew :app:assembleRelease --stacktrace
+          OUT="app/build/outputs/apk/release"
+          SRC="$(ls "$OUT"/*.apk | head -n1)"
+          cp "$SRC" "$OUT/gresspay.apk"
+          mkdir -p ../public/download
+          cp "$OUT/gresspay.apk" ../public/download/gresspay.apk
+          SHA="$(sha256sum "$OUT/gresspay.apk" | awk '{print tolower($1)}')"
+          SIZE="$(stat -c%s "$OUT/gresspay.apk")"
+          echo "Release APK SHA-256=$SHA size=$SIZE"
+          echo "Update src/lib/marketing/companion-download.ts version/sha/size to match this artifact before shipping."
+      - name: Upload GressPay release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: gresspay-release
+          path: GressPay-App-Project/app/build/outputs/apk/release/gresspay.apk
+          if-no-files-found: ignore

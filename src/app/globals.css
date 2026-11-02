@@ -169,6 +169,107 @@ textarea:focus-visible {
   color: var(--accent-contrast);
 }
 
+/* Hosted checkout — unified canvas + theme tokens */
+.gp-checkout-shell {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(13, 148, 136, 0.14), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(15, 23, 42, 0.06), transparent 50%),
+    linear-gradient(180deg, #f4f7f6 0%, #eef2f1 45%, #f8faf9 100%);
+}
+.dark .gp-checkout-shell {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(45, 212, 191, 0.12), transparent 55%),
+    radial-gradient(ellipse 50% 35% at 0% 100%, rgba(20, 184, 166, 0.08), transparent 45%),
+    linear-gradient(180deg, #070a0c 0%, #0c1114 50%, #080a0c 100%);
+}
+
+.gp-theme-default {
+  --gp-ck-bg: #0c1114;
+  --gp-ck-surface: #12181c;
+  --gp-ck-elevated: #171e24;
+  --gp-ck-border: rgba(255, 255, 255, 0.08);
+  --gp-ck-text: #f4f7f6;
+  --gp-ck-muted: #9aa5ad;
+  --gp-ck-accent: #14b8a6;
+  --gp-ck-accent-soft: rgba(20, 184, 166, 0.14);
+  --gp-ck-hero: linear-gradient(145deg, #12181c 0%, #0e1519 55%, #101820 100%);
+  --gp-ck-radius: 1.35rem;
+  --gp-ck-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
+}
+
+.gp-theme-luxury {
+  --gp-ck-bg: #0a0a0b;
+  --gp-ck-surface: #141316;
+  --gp-ck-elevated: #1c1a1f;
+  --gp-ck-border: rgba(212, 175, 106, 0.22);
+  --gp-ck-text: #f7f1e8;
+  --gp-ck-muted: #b7a994;
+  --gp-ck-accent: #d4af6a;
+  --gp-ck-accent-soft: rgba(212, 175, 106, 0.16);
+  --gp-ck-hero: linear-gradient(150deg, #16131a 0%, #0d0c10 50%, #1a1612 100%);
+  --gp-ck-radius: 1.5rem;
+  --gp-ck-shadow: 0 28px 70px rgba(0, 0, 0, 0.45);
+}
+
+.gp-theme-minimal {
+  --gp-ck-bg: #ffffff;
+  --gp-ck-surface: #f7f8f8;
+  --gp-ck-elevated: #ffffff;
+  --gp-ck-border: #e4e7e6;
+  --gp-ck-text: #121417;
+  --gp-ck-muted: #667079;
+  --gp-ck-accent: #0f766e;
+  --gp-ck-accent-soft: rgba(15, 118, 110, 0.1);
+  --gp-ck-hero: linear-gradient(180deg, #ffffff 0%, #f4f7f6 100%);
+  --gp-ck-radius: 0.85rem;
+  --gp-ck-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+}
+
+.gp-checkout-card {
+  background: var(--gp-ck-bg);
+  color: var(--gp-ck-text);
+  border: 1px solid var(--gp-ck-border);
+  border-radius: var(--gp-ck-radius);
+  box-shadow: var(--gp-ck-shadow);
+}
+
+.gp-checkout-hero {
+  background: var(--gp-ck-hero);
+  border-bottom: 1px solid var(--gp-ck-border);
+}
+
+.gp-checkout-step {
+  @apply flex items-center gap-2 text-[11px] font-semibold tracking-wide;
+  color: var(--gp-ck-muted);
+}
+.gp-checkout-step[data-active="true"] {
+  color: var(--gp-ck-accent);
+}
+.gp-checkout-step-dot {
+  @apply flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold;
+  background: var(--gp-ck-accent-soft);
+  color: var(--gp-ck-accent);
+}
+.gp-checkout-step[data-active="true"] .gp-checkout-step-dot {
+  background: var(--gp-ck-accent);
+  color: #04110f;
+}
+
+.gp-method-tile {
+  border: 1px solid var(--gp-ck-border);
+  background: var(--gp-ck-surface);
+  @apply rounded-2xl p-3.5 text-left transition-all duration-200;
+}
+.gp-method-tile:hover {
+  border-color: color-mix(in srgb, var(--gp-ck-accent) 45%, var(--gp-ck-border));
+  transform: translateY(-1px);
+}
+.gp-method-tile[data-selected="true"] {
+  border-color: var(--gp-ck-accent);
+  background: var(--gp-ck-accent-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gp-ck-accent) 35%, transparent);
+}
+
 /* Print styling for invoices */
 @media print {
   body {

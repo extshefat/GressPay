@@ -92,7 +92,7 @@ export const CompanionShowcase: React.FC = () => {
                   </div>
                   <div>
                     <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
-                      GressPay Companion
+                      GressPay
                     </h4>
                     <span className="text-[10px] text-zinc-500 font-mono">{companionStatusLine()}</span>
                   </div>

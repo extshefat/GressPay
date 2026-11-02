@@ -54,10 +54,10 @@ const CHECKLIST = [
 
 const TOOLS = [
   {
-    title: `GressPay Companion ${COMPANION_APK.versionLabel}`,
+    title: `GressPay ${COMPANION_APK.versionLabel}`,
     description:
       "Android SMS verification app. Required for personal MFS (bKash/Nagad/Rocket/…) and for brands using SMS auto verification.",
-    href: "/download/gresspay-companion.apk",
+    href: COMPANION_APK.href,
     cta: "Download APK",
     icon: Smartphone,
   },

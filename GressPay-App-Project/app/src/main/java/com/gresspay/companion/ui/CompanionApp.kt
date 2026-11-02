@@ -440,7 +440,7 @@ private fun SetupScreen(
                 .padding(horizontal = 18.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text("Companion Setup & Key", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = GpDark)
+            Text("GressPay Setup & Key", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = GpDark)
 
             // Step 1: Device Key Binding Card
             Card(

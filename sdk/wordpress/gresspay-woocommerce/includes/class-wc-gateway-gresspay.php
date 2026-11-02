@@ -86,6 +86,7 @@ final class WC_Gateway_GressPay extends WC_Payment_Gateway
             $payload = [
                 'amount' => (float) $order->get_total(),
                 'currency' => $currency,
+                'order_id' => (string) $order->get_id(),
                 'order_title' => sprintf('Order #%s', $order->get_order_number()),
                 'email' => $order->get_billing_email(),
                 'mobile' => $order->get_billing_phone(),

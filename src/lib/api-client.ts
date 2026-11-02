@@ -98,17 +98,39 @@ class ApiClient {
   private setSessionFlag(active: boolean) {
     this.sessionActive = active;
     if (typeof window === "undefined") return;
+    // Always mirror in localStorage so new tabs match the HttpOnly cookie
+    // (cookie TTL is the real auth; rememberMe only changes cookie maxAge).
     if (active) {
-      if (this.rememberMe) {
-        localStorage.setItem(SESSION_FLAG, "1");
-        sessionStorage.removeItem(SESSION_FLAG);
-      } else {
-        sessionStorage.setItem(SESSION_FLAG, "1");
-        localStorage.removeItem(SESSION_FLAG);
-      }
+      localStorage.setItem(SESSION_FLAG, "1");
+      sessionStorage.removeItem(SESSION_FLAG);
     } else {
       localStorage.removeItem(SESSION_FLAG);
       sessionStorage.removeItem(SESSION_FLAG);
+    }
+  }
+
+  /**
+   * Sync client session flag from the HttpOnly cookie probe.
+   * Fixes dashboard↔login loops when the flag is missing but the cookie is valid.
+   */
+  async hydrateSessionFromCookie(): Promise<boolean> {
+    if (typeof window === "undefined") return this.sessionActive;
+    try {
+      const res = await fetch("/api/auth/session", {
+        method: "GET",
+        credentials: "same-origin",
+        headers: { [SESSION_CLIENT_HEADER]: SESSION_CLIENT_VALUE },
+      });
+      if (!res.ok) {
+        this.setSessionFlag(false);
+        return false;
+      }
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean };
+      const ok = Boolean(data?.ok);
+      this.setSessionFlag(ok);
+      return ok;
+    } catch {
+      return this.sessionActive;
     }
   }
 
@@ -245,7 +267,8 @@ class ApiClient {
         const message =
           errData?.error?.message || errData?.message || `API Error: ${res.status}`;
         if (res.status === 401) {
-          this.setSessionFlag(false);
+          // Clear cookie + flag together so login cannot bounce back into dashboard.
+          this.clearToken();
         }
         throw new Error(message);
       }

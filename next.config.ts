@@ -75,6 +75,11 @@ const nextConfig: NextConfig = {
         destination: "/download",
         permanent: true,
       },
+      {
+        source: "/download/gresspay-companion.apk",
+        destination: "/download/gresspay.apk",
+        permanent: true,
+      },
     ];
   },
 };

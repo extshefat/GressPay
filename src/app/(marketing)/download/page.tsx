@@ -15,9 +15,9 @@ import {
 import { COMPANION_APK } from "@/lib/marketing/companion-download";
 
 export const metadata: Metadata = {
-  title: "Download Companion APK — GressPay",
+  title: "Download GressPay APK",
   description:
-    "Install the GressPay Android Companion for SMS auto-match on bKash, Nagad, and other MFS wallets you configure.",
+    "Install the GressPay Android app for SMS auto-match on bKash, Nagad, and other MFS wallets you configure.",
 };
 
 export default function DownloadPage() {
@@ -26,10 +26,10 @@ export default function DownloadPage() {
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
         <div className="space-y-4 text-center sm:text-left">
           <Badge variant="emerald" dot>
-            Android Companion
+            Android app
           </Badge>
           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-100">
-            Download GressPay Companion
+            Download GressPay
           </h1>
           <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 leading-relaxed max-w-2xl">
             Pair a phone that receives your MFS payment SMS. When a customer pays your bKash, Nagad, Rocket, Upay, or
@@ -45,7 +45,7 @@ export default function DownloadPage() {
                 <Smartphone className="w-7 h-7" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">gresspay-companion.apk</h2>
+                <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">{COMPANION_APK.fileName}</h2>
                 <p className="text-xs text-zinc-500 font-mono mt-1">
                   {COMPANION_APK.versionLabel} · {COMPANION_APK.androidRange} · {COMPANION_APK.sizeLabel}
                 </p>
@@ -88,7 +88,7 @@ export default function DownloadPage() {
             <ShieldAlert className="w-5 h-5 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" />
             <p className="text-xs text-amber-900 dark:text-amber-200 leading-relaxed">
               Use a <strong>device</strong> key (<code className="font-mono">gpdev_…</code>) on Setup only. Do not paste
-              website keys (<code className="font-mono">gp_live_…</code>) into the Companion — those belong on your
+              website keys (<code className="font-mono">gp_live_…</code>) into GressPay — those belong on your
               server or storefront integration.
             </p>
           </Card>
@@ -112,7 +112,7 @@ export default function DownloadPage() {
           <Link href="/register" className="text-teal-700 dark:text-teal-400 hover:underline">
             Create an account
           </Link>{" "}
-          first, then register a companion device to get your <code className="font-mono text-[10px]">gpdev_</code> key.
+          first, then register a device to get your <code className="font-mono text-[10px]">gpdev_</code> key.
         </p>
       </div>
     </div>

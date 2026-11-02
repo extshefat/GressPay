@@ -41,4 +41,4 @@ $status = $gp->verifyPayment('chs_session_id_here');
 
 ## WordPress / WooCommerce
 
-A full plugin is not included in Wave A. Copy the create/verify pattern into your theme or a small custom plugin `README` stub.
+A starter gateway plugin ships at [`sdk/wordpress/gresspay-woocommerce`](../wordpress/gresspay-woocommerce) and as [`/download/gresspay-woocommerce.zip`](../../public/download/gresspay-woocommerce.zip) from the dashboard Apps page. It creates a hosted checkout with your brand `gp_live_…` key and verifies on return.

@@ -61,7 +61,7 @@ OTP / promo SMS are rejected by the companion parser and never uploaded.
 │   ├── tests/run.php           # Unit suite
 │   └── docs/                   # Rails notes
 ├── GressPay-App-Project/       # Android companion (Kotlin)
-├── public/download/            # gresspay-companion.apk
+├── public/download/            # gresspay.apk
 ├── deploy/                     # Nginx / Docker helpers
 ├── docker-compose.yml
 └── COOLIFY_DEPLOYMENT.md
@@ -87,7 +87,7 @@ Multi-tenant isolation is by `brand_id`. Provider credentials are encrypted at r
 | App / marketing | `https://gresspay.extxcheats.com` |
 | API base | `https://gresspay.extxcheats.com/api/v1` |
 | Hosted pay | `https://gresspay.extxcheats.com/pay/{sessionId}` |
-| Companion APK | `https://gresspay.extxcheats.com/download/gresspay-companion.apk` |
+| GressPay APK | `https://gresspay.extxcheats.com/download/gresspay.apk` |
 | Docs | `https://gresspay.extxcheats.com/developers` |
 | Pricing | `https://gresspay.extxcheats.com/fees` |
 
@@ -155,19 +155,22 @@ cd GressPay-App-Project
 ./gradlew :app:assembleDebug
 ```
 
-**Published download APK** (`public/download/gresspay-companion.apk`) must be a **release** build signed with your release keystore. Never copy a debug-signed APK there. See [`GressPay-App-Project/RELEASE.md`](GressPay-App-Project/RELEASE.md):
+**Published download APK** (`public/download/gresspay.apk`) must be a **release** build signed with your release keystore. Never copy a debug-signed APK there. See [`GressPay-App-Project/RELEASE.md`](GressPay-App-Project/RELEASE.md):
 
 ```bash
 # Requires GRESSPAY_RELEASE_KEYSTORE (+ passwords). assembleRelease fails without them.
-export GRESSPAY_RELEASE_KEYSTORE=/path/to/gresspay-companion-release.jks
+export GRESSPAY_RELEASE_KEYSTORE=/path/to/gresspay-release.jks
 export GRESSPAY_RELEASE_STORE_PASSWORD=…
 export GRESSPAY_RELEASE_KEY_PASSWORD=…
 ./gradlew :app:assembleRelease
-cp app/build/outputs/apk/release/app-release.apk ../public/download/gresspay-companion.apk
+cp app/build/outputs/apk/release/app-release.apk ../public/download/gresspay.apk
+# Then update src/lib/marketing/companion-download.ts (version, sizeBytes, sha256).
 ```
 
+GitHub Actions (`verify.yml`) uploads `gresspay-debug` always; with `GRESSPAY_RELEASE_KEYSTORE_BASE64` + password secrets it also builds release-signed `gresspay-release` (R8 on).
+
 Pair with a Device API key (`gpdev_…` from Dashboard → Devices) → opt-in → enable matching.  
-`READ_SMS` is requested only when you tap **Scan Inbox (24h)** in the Companion app.
+`READ_SMS` is requested only when you tap **Scan Inbox (24h)** in the GressPay app.
 
 ---
 

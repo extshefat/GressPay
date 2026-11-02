@@ -39,7 +39,7 @@ export default function ServicesPage() {
             <Zap className="w-5 h-5" />
           </div>
           <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
-            GressPay Companion APK
+            GressPay APK
           </h3>
           <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
             Lightweight Android background service running on your phone. Securely extracts amount and TrxID from official provider alerts with 1-second auto-reconciliation.
