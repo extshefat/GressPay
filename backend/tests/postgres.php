@@ -32,6 +32,7 @@ check($duplicate,'database rejects normalized duplicate evidence');
 $sessions = [GpIds::make('chs',6), GpIds::make('chs',6)];
 foreach ($sessions as $id) GpDb::exec('INSERT INTO gp_transactions (session_id,brand_id,source,amount,currency,ledger_mode,method_code,status,expires_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)', [$id,$brand,'api','100','BDT','live','bkash','pending',gmdate('Y-m-d\TH:i:s\Z',time()+1800),$now,$now]);
 $processes = [];
+check(CheckoutController::matchingSmsByAmount($brand,'100','bkash') === null,'ambiguous equal-amount sessions require TxID fallback');
 foreach ($sessions as $id) $processes[] = proc_open([PHP_BINARY,__FILE__,'claim',$id,(string)$sms['id']], [0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']], $pipes);
 foreach ($processes as $process) proc_close($process);
 $count = (int) GpDb::one("SELECT COUNT(*) AS c FROM gp_transactions WHERE brand_id = ? AND status = 'completed'",[$brand])['c'];

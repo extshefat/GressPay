@@ -1212,10 +1212,22 @@ final class CheckoutController
         ?string $gatewayId = null,
         ?string $expectedAccount = null
     ): ?array {
+        $pending = GpDb::all("SELECT * FROM gp_transactions WHERE brand_id = ? AND status IN ('pending','initiated') AND (trx_id IS NULL OR trx_id = '')", [$brandId]);
+        $eligible = 0;
+        $cat = GpCatalog::find($methodCode);
+        foreach ($pending as $session) {
+            if (GpCatalog::publicCode((string) ($session['method_code'] ?? '')) !== $methodCode
+                || (string) ($session['gateway_id'] ?? '') !== (string) ($gatewayId ?? '')
+                || (!empty($session['expires_at']) && strtotime($session['expires_at']) < time())) continue;
+            $amount = GpRatesEngine::convert($brandId, (string) $session['amount'], (string) $session['currency'], (string) ($cat['currency'] ?? 'BDT'));
+            if (GpMoney::sanitize($amount) === GpMoney::sanitize($payable)) $eligible++;
+        }
+        if ($eligible !== 1) return null;
         $candidates = GpDb::all(
             'SELECT * FROM gp_sms_data WHERE brand_id = ? AND status IN (?, ?) ORDER BY id DESC LIMIT 40',
             [$brandId, 'approved', 'unmatched']
         );
+        $matches = [];
         foreach ($candidates as $sms) {
             $trx = trim((string) ($sms['trx_id'] ?? ''));
             if ($trx === '') {
@@ -1231,10 +1243,10 @@ final class CheckoutController
                 $expectedAccount
             );
             if ($hit !== null) {
-                return $hit;
+                $matches[] = $hit;
             }
         }
-        return null;
+        return count($matches) === 1 ? $matches[0] : null;
     }
 
     /**

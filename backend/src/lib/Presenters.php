@@ -239,7 +239,7 @@ final class GpPresenters
         $meta = json_decode((string) ($row['metadata'] ?? '{}'), true) ?: [];
         $events = [['id' => 'created', 'title' => 'Checkout created', 'timestamp' => $row['created_at'], 'status' => 'completed']];
         if (!empty($row['trx_id'])) {
-            $events[] = ['id' => 'txid', 'title' => 'Transaction ID recorded', 'status' => 'completed',
+            $events[] = ['id' => 'txid', 'title' => 'Transaction ID recorded', 'timestamp' => $meta['submittedAt'] ?? null, 'status' => 'completed',
                 'description' => 'An ID is a claim; verification requires matching evidence.'];
         }
         $sms = empty($meta['smsId']) ? null : GpDb::one('SELECT received_at, device_id FROM gp_sms_data WHERE id = ? AND brand_id = ?', [$meta['smsId'], $row['brand_id']]);

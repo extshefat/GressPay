@@ -300,6 +300,10 @@ final class CompanionController
                     );
                     $gwAccount = $gwRow ? (string) ($gwRow['account'] ?? '') : null;
                 }
+                if (empty($pending['trx_id']) && CheckoutController::matchingSmsByAmount(
+                    (string) $pending['brand_id'], $payable, $methodCode,
+                    isset($pending['gateway_id']) ? (string) $pending['gateway_id'] : null, $gwAccount
+                ) === null) continue;
                 $sms = CheckoutController::matchingSms(
                     $pending['brand_id'],
                     $trxId,
