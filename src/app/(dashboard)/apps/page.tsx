@@ -45,7 +45,7 @@ const CHECKLIST = [
   {
     step: "4",
     title: "Test & go live",
-    body: "Create a test payment link, send a real SMS on Companion, and confirm the hosted /pay page shows your brand name and logo.",
+    body: "First complete a sandbox checkout and verify your webhook handler. Then run a separate small live payment with the updated Companion and confirm matching SMS evidence.",
     href: "/dashboard/payment-links",
     cta: "Payment Links",
     icon: CheckCircle2,
@@ -110,7 +110,7 @@ export default function AppsPluginsPage() {
         <div>
           <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Go-live checklist</h2>
           <p className="text-xs text-zinc-500 mt-0.5">
-            Personal MFS and SMS-auto brands need an active Companion device. Binance / USDT use API and on-chain
+            Live bKash/Nagad verification needs an active, wallet-bound Companion device. Binance / USDT use API and on-chain
             proofs instead.
           </p>
         </div>

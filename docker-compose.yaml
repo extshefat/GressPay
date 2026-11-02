@@ -16,6 +16,12 @@ services:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
       GRESSPAY_PHP_URL: ${GRESSPAY_PHP_URL:-http://php:8080}
       PORT: "3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
     ports:
       - "3000"
     restart: unless-stopped
@@ -26,6 +32,12 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1:8080/api/v1/health') === false ? 1 : 0);"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
     environment: &php_environment
       PORT: "8080"
       PHP_CLI_SERVER_WORKERS: "8"
