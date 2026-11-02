@@ -106,7 +106,9 @@ final class CheckoutController
             'UPDATE gp_transactions SET status = ?, metadata = ?, updated_at = ? WHERE session_id = ?',
             ['failed', json_encode($meta, JSON_UNESCAPED_SLASHES), GpIds::now(), $sessionId]
         );
-        GpPlatformBilling::onCheckoutCanceled($sessionId);
+        if (($row['source'] ?? '') === 'account-plan') {
+            GpPlatformBilling::onCheckoutCanceled($sessionId);
+        }
         GpJson::send([
             'ok' => true,
             'status' => 'CANCELED',
@@ -120,10 +122,14 @@ final class CheckoutController
     {
         $meta = self::decodeMeta($row);
         $fromMeta = trim((string) ($meta['cancelRedirect'] ?? $meta['cancelUrl'] ?? ''));
-        if ($fromMeta !== '' && (str_starts_with($fromMeta, '/') || filter_var($fromMeta, FILTER_VALIDATE_URL))) {
+        if (($row['source'] ?? '') === 'account-plan') {
+            return '/dashboard/my-payments?canceled=1';
+        }
+        $fromMeta = $fromMeta !== '' ? $fromMeta : trim((string) ($meta['returnUrl'] ?? ''));
+        if ($fromMeta !== '' && GpWebhook::validateDestination($fromMeta)['ok']) {
             return $fromMeta;
         }
-        return '/dashboard/my-payments?canceled=1';
+        return '';
     }
 
     private static function initPublic(GpRequest $req, string $linkId): never

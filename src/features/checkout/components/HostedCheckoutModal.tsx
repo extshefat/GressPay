@@ -203,9 +203,9 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
               } else if (res.status === "EXPIRED") {
                 setCheckoutStatus("EXPIRED");
               } else {
-                setSecondsLeft(5);
+                setStatusMessage("Confirming the payment window with the server. Retry status if this persists.");
               }
-            }).catch(() => setSecondsLeft(5)).finally(() => {
+            }).catch(() => setErrorMessage("Could not confirm server status. Reload status before attempting another payment.")).finally(() => {
               checkingExpiryRef.current = false;
             });
           }
@@ -249,10 +249,10 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
     try {
       const res = await api.cancelCheckout(session.sessionId);
       setCancelMessage(res.message || "Invoice canceled successfully.");
-      const target = res.redirectUrl || "/dashboard/my-payments?canceled=1";
+      const target = res.redirectUrl || "";
       setCancelRedirectUrl(target);
       setCheckoutStatus("FAILED");
-      const timer = setInterval(() => {
+      if (target) { const timer = setInterval(() => {
         setCancelRedirectSec((s) => {
           if (s <= 1) {
             clearInterval(timer);
@@ -261,7 +261,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
           }
           return s - 1;
         });
-      }, 1000);
+      }, 1000); }
     } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : "Could not cancel checkout.");
     } finally {
@@ -504,7 +504,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
   };
 
   // 1. EXPIRED STATE
-  if (cancelMessage && cancelRedirectUrl) {
+  if (cancelMessage) {
     return (
       <div className="w-full max-w-lg mx-auto bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-2xl p-8 text-center space-y-4">
         <div className="w-14 h-14 rounded-full bg-rose-100 dark:bg-rose-950/40 text-rose-600 flex items-center justify-center mx-auto">
@@ -512,9 +512,9 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
         </div>
         <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">Invoice Canceled</h2>
         <p className="text-xs text-zinc-500">{cancelMessage}</p>
-        <p className="text-[11px] font-mono text-zinc-400">
+        {cancelRedirectUrl && <p className="text-[11px] font-mono text-zinc-400">
           Redirecting in {cancelRedirectSec} seconds…
-        </p>
+        </p>}
         <div className="h-1.5 w-full rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
           <div
             className="h-full bg-rose-500 transition-all duration-1000"
@@ -555,6 +555,14 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
         </div>
       </div>
     );
+  }
+
+  if (secondsLeft === 0 && checkoutStatus !== "COMPLETED" && checkoutStatus !== "FAILED") {
+    return <div className="mx-auto max-w-lg space-y-4 rounded-2xl border border-zinc-300 bg-white p-8 text-center dark:border-zinc-700 dark:bg-zinc-950">
+      <h2 className="text-lg font-semibold">Confirming payment status</h2>
+      <p className="text-sm text-zinc-500">{errorMessage || statusMessage || "The server is checking whether this payment window has ended."}</p>
+      <Button variant="outline" onClick={() => window.location.reload()}>Retry status</Button>
+    </div>;
   }
 
   // 2. ACTIVE VERIFICATION POLLING STATE (Scenario B)
