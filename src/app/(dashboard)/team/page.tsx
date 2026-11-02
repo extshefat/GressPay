@@ -66,6 +66,8 @@ function TeamPageContent() {
   const [editing, setEditing] = useState<TeamMember | null>(null);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<TeamRole>("manager");
+  const [roleDefaults, setRoleDefaults] = useState<Partial<Record<TeamRole, TeamMember["permissions"]>>>({});
+  const [permissions, setPermissions] = useState<TeamMember["permissions"]>({});
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
@@ -87,6 +89,7 @@ function TeamPageContent() {
         return;
       }
       const [team, brandRes] = await Promise.all([api.listTeam(), api.listBrands()]);
+      setRoleDefaults(team.roleDefaults);
       setMembers(team.members);
       setStats(team.stats);
       setBrands(brandRes.brands.map((b) => ({ brandId: b.brandId, name: b.name })));
@@ -109,6 +112,8 @@ function TeamPageContent() {
       try {
         const res = await api.acceptTeamInvite(token);
         if (!cancelled) {
+          if (res.brandIds[0]) api.setBrandId(res.brandIds[0]);
+          window.history.replaceState(null, "", window.location.pathname);
           setAcceptNote(res.note || "Invite accepted. You now have access to the assigned brands.");
           await load();
         }
@@ -138,6 +143,7 @@ function TeamPageContent() {
     setEditing(null);
     setEmail("");
     setRole("manager");
+    setPermissions(roleDefaults.manager ?? {});
     setSelectedBrands(brands.map((b) => b.brandId));
     setInviteUrl(null);
     setCopied(false);
@@ -147,6 +153,7 @@ function TeamPageContent() {
   const openEdit = (m: TeamMember) => {
     setEditing(m);
     setEmail(m.email);
+    setPermissions(m.permissions);
     setRole(m.role === "support" ? "support" : "manager");
     setSelectedBrands(m.brandIds.length ? m.brandIds : []);
     setInviteUrl(null);
@@ -167,6 +174,7 @@ function TeamPageContent() {
       if (editing) {
         await api.updateTeamMember(editing.memberId, {
           role,
+          permissions,
           brandIds: selectedBrands,
         });
         setModalOpen(false);
@@ -184,6 +192,7 @@ function TeamPageContent() {
         }
         const res = await api.inviteTeamMember({
           email: email.trim(),
+          permissions,
           brandIds: selectedBrands,
           role,
         });
@@ -433,7 +442,7 @@ function TeamPageContent() {
                 <button
                   key={r}
                   type="button"
-                  onClick={() => setRole(r)}
+                  onClick={() => { setRole(r); setPermissions(roleDefaults[r] ?? {}); }}
                   className={`rounded-lg border px-3 py-1.5 text-xs font-semibold capitalize ${
                     role === r
                       ? "border-teal-700 bg-teal-50 text-teal-900 dark:border-teal-400 dark:bg-teal-950/40 dark:text-teal-200"
@@ -472,6 +481,26 @@ function TeamPageContent() {
             )}
           </div>
 
+          {!inviteUrl && <details className="rounded-lg border border-[var(--border-color)] p-3 text-xs">
+            <summary className="cursor-pointer font-semibold">Customize access for assigned brands</summary>
+            {Object.entries({
+              dashboard: ["view"], transactions: ["view", "edit"], gateways: ["view", "create", "edit", "delete"],
+              devices: ["view", "create", "edit", "delete"], invoices: ["view", "create"],
+              payment_links: ["view", "create", "edit"], webhooks: ["view", "edit"], brands: ["view"],
+            }).map(([module, actions]) => (
+              <fieldset key={module} className="mt-3 flex flex-wrap gap-3 border-t border-[var(--border-color)] pt-1">
+                <legend className="pr-2 font-semibold capitalize">{module.replace("_", " ")}</legend>
+                {actions.map((action) => <label key={action} className="flex gap-1">
+                  <input type="checkbox" checked={!!permissions[module]?.[action]} onChange={(e) => {
+                    const enabled = e.target.checked;
+                    setPermissions((prev) => ({ ...prev, [module]: { ...prev[module], [action]: enabled } }));
+                  }} /> {action}
+                </label>)}
+              </fieldset>
+            ))}
+          </details>}
+          {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+
           {inviteUrl ? (
             <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950/30">
               <p className="text-[11px] font-medium text-amber-900 dark:text-amber-200">
@@ -504,9 +533,10 @@ function TeamPageContent() {
                 variant="primary"
                 size="sm"
                 isLoading={saving}
+                disabled={selectedBrands.length === 0}
                 onClick={() => void submitModal()}
               >
-                {editing ? "Save changes" : "Send Invite"}
+                {editing ? "Save changes" : "Create invite link"}
               </Button>
             ) : null}
           </div>

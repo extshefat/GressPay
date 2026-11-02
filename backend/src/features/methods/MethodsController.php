@@ -6,6 +6,7 @@ final class MethodsController
     public static function handle(GpRequest $req): never
     {
         $actor = GpAuth::requireActor($req);
+        GpTeam::requireCan($actor, 'gateways', $req->method === 'GET' ? 'view' : 'edit');
         GpAuth::requireScope($actor, 'manage_methods');
         GpRateLimiter::guard('methods:' . $actor['brand_id'], 60, 60);
         $code = $req->part(1) !== null ? GpCatalog::publicCode($req->part(1)) : null;

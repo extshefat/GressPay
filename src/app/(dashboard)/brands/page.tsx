@@ -270,7 +270,7 @@ export default function BrandsPage() {
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !logoModalBrand) return;
-    if (!file.type.startsWith("image/")) {
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
       toastError("Please select a valid image file (PNG, JPEG, WebP).");
       return;
     }
@@ -293,6 +293,7 @@ export default function BrandsPage() {
         setUploadingLogo(false);
       }
     };
+    reader.onerror = () => { setUploadingLogo(false); toastError("Could not read this image."); };
     reader.readAsDataURL(file);
   };
 

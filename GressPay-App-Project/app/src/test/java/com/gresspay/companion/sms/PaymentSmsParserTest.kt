@@ -7,6 +7,13 @@ import org.junit.Test
 
 class PaymentSmsParserTest {
     @Test
+    fun rejectsUnconfirmedSenderAndFailedCredit() {
+        val body = "You have received Tk 500.00 from 01712345678. TrxID ABCDEF1234"
+        assertNull(PaymentSmsParser.parse("16262", body))
+        assertNull(PaymentSmsParser.parse("Nagad", "Failed: $body"))
+    }
+
+    @Test
     fun extractsPayerPhoneOnlyFromTrustedCreditReceipt() {
         val body = "You have received Tk 500.00 from 01712345678. TrxID ABCDEF1234"
         assertEquals("01712345678", PaymentSmsParser.parse("bKash", body)!!.payerPhone)
@@ -18,7 +25,7 @@ class PaymentSmsParserTest {
     fun parsesBkashCredit() {
         val body =
             "You have received Tk 500.00 from 017XXXXXXXX. Fee Tk 0.00. Balance Tk 1,200.00. TrxID 8N2K4M9P1Q Ref."
-        val p = PaymentSmsParser.parse("16247", body)
+        val p = PaymentSmsParser.parse("bKash", body)
         assertNotNull(p)
         assertEquals("bkash", p!!.senderKey)
         assertEquals("500.00", p.amount)
@@ -42,7 +49,7 @@ class PaymentSmsParserTest {
     fun parsesNagadCredit() {
         val body =
             "Cash In Tk 250.50 to your Nagad Account. TrxID AB12CD34EF successful."
-        val p = PaymentSmsParser.parse("16262", body)
+        val p = PaymentSmsParser.parse("Nagad", body)
         assertNotNull(p)
         assertEquals("nagad", p!!.senderKey)
         assertEquals("250.50", p.amount)
@@ -53,7 +60,7 @@ class PaymentSmsParserTest {
     fun parsesRocketCredit() {
         val body =
             "Tk.500.00 received from 019XXXXXXXX into your Rocket A/C. TxnId: 88471928 at 28-OCT-26."
-        val p = PaymentSmsParser.parse("16216", body)
+        val p = PaymentSmsParser.parse("Rocket", body)
         assertNotNull(p)
         assertEquals("rocket", p!!.senderKey)
         assertEquals("500.00", p.amount)
@@ -64,7 +71,7 @@ class PaymentSmsParserTest {
     fun parsesUpayCredit() {
         val body =
             "Received Tk 1200.00 from 016XXXXXXXX. TrxID: UP981247. Fee Tk 0.00."
-        val p = PaymentSmsParser.parse("16268", body)
+        val p = PaymentSmsParser.parse("upay", body)
         assertNotNull(p)
         assertEquals("upay", p!!.senderKey)
         assertEquals("1200.00", p.amount)
@@ -75,7 +82,7 @@ class PaymentSmsParserTest {
     fun parsesCellfinCredit() {
         val body =
             "Your Cellfin A/C has been credited with Tk 2,500.00 from 017XXXXXXXX. TrxID: CF84729104 at 28-10-2026."
-        val p = PaymentSmsParser.parse("16259", body)
+        val p = PaymentSmsParser.parse("CellFin", body)
         assertNotNull(p)
         assertEquals("cellfin", p!!.senderKey)
         assertEquals("2500.00", p.amount)
@@ -85,7 +92,7 @@ class PaymentSmsParserTest {
     @Test
     fun parsesAmountWithCommaThousands() {
         val body = "You have received Tk 1,250.00 from 017. TrxID COMMATHX99"
-        val p = PaymentSmsParser.parse("16247", body)
+        val p = PaymentSmsParser.parse("bKash", body)
         assertNotNull(p)
         assertEquals("1250.00", p!!.amount)
     }
@@ -94,32 +101,32 @@ class PaymentSmsParserTest {
     fun rejectsOutgoingBkashSend() {
         val body =
             "You have sent Tk 500.00 to 017XXXXXXXX. Fee Tk 5.00. TrxID OUTGOING99X Balance Tk 100."
-        assertNull(PaymentSmsParser.parse("16247", body))
+        assertNull(PaymentSmsParser.parse("bKash", body))
     }
 
     @Test
     fun rejectsPaidToDebit() {
         val body = "Paid to Merchant XYZ Tk 200.00. TrxID PAIDTO9912"
-        assertNull(PaymentSmsParser.parse("16247", body))
+        assertNull(PaymentSmsParser.parse("bKash", body))
     }
 
     @Test
     fun rejectsCashOut() {
         val body = "Cash Out Tk 1000.00 from your Nagad. TrxID CASHOUT88A"
-        assertNull(PaymentSmsParser.parse("16262", body))
+        assertNull(PaymentSmsParser.parse("Nagad", body))
     }
 
     @Test
     fun rejectsRefund() {
         val body = "Refund Tk 50.00 credited? TrxID REFUND1234 — refund processed to sender."
         // Debit/refund wording must not settle merchant cash-in
-        assertNull(PaymentSmsParser.parse("16247", body))
+        assertNull(PaymentSmsParser.parse("bKash", body))
     }
 
     @Test
     fun rejectsBarePaymentWithoutCredit() {
         val body = "Payment Tk 100.00 TrxID PAYONLY9912 from customer"
-        assertNull(PaymentSmsParser.parse("16247", body))
+        assertNull(PaymentSmsParser.parse("bKash", body))
     }
 
     @Test
@@ -131,36 +138,36 @@ class PaymentSmsParserTest {
     @Test
     fun rejectsMissingTrxLabel() {
         val body = "You have received Tk 100 from bKash. Have a nice day."
-        assertNull(PaymentSmsParser.parse("16247", body))
+        assertNull(PaymentSmsParser.parse("bKash", body))
     }
 
     @Test
     fun rejectsPromoSms() {
         val body = "Get 50% cashback on bKash payments this weekend!"
-        assertNull(PaymentSmsParser.parse("16247", body))
+        assertNull(PaymentSmsParser.parse("bKash", body))
     }
 
     @Test
     fun rejectsOtpSms() {
         val body = "Your bKash OTP is 482910. Do not share this code with anyone."
-        assertNull(PaymentSmsParser.parse("16247", body))
+        assertNull(PaymentSmsParser.parse("bKash", body))
     }
 
     @Test
     fun rejectsLoginPinSms() {
         val body = "Nagad login code 991122. One-time password valid for 5 minutes."
-        assertNull(PaymentSmsParser.parse("16262", body))
+        assertNull(PaymentSmsParser.parse("Nagad", body))
     }
 
     @Test
     fun rejectsMissingAmount() {
         val body = "You have received payment. TrxID NOAMOUNT1X"
-        assertNull(PaymentSmsParser.parse("16247", body))
+        assertNull(PaymentSmsParser.parse("bKash", body))
     }
 
     @Test
     fun rejectsMalformedShortTrx() {
         val body = "You have received Tk 10.00. TrxID AB12"
-        assertNull(PaymentSmsParser.parse("16247", body))
+        assertNull(PaymentSmsParser.parse("bKash", body))
     }
 }

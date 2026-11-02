@@ -10,6 +10,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { Alert } from "@/components/ui/alert";
 import { GressPayLogo } from "@/components/brand/GressPayLogo";
 import { ThemeToggle } from "@/lib/theme";
+import { afterSignIn } from "./team-invite";
 import { api } from "@/lib/api-client";
 import { ArrowRight, Mail, ShieldCheck, User } from "lucide-react";
 
@@ -75,7 +76,7 @@ export function AuthCard({ initialTab }: { initialTab: Tab }) {
           (typeof window !== "undefined"
             ? localStorage.getItem("gresspay_selected_plan")
             : null);
-        router.replace(homeFor(me.user, plan));
+        router.replace(afterSignIn(homeFor(me.user, plan)));
       } catch {
         /* not logged in */
       }
@@ -133,7 +134,7 @@ export function AuthCard({ initialTab }: { initialTab: Tab }) {
             rememberMe,
           })
         : await api.login(email.trim(), password, rememberMe);
-      router.push(homeFor(res.user, selectedPlan));
+      router.replace(afterSignIn(homeFor(res.user, selectedPlan)));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Sign-in failed.");
     } finally {

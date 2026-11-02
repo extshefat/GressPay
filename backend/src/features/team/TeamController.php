@@ -5,7 +5,7 @@ final class TeamController
 {
     public static function handle(GpRequest $req): never
     {
-        $actor = GpAuth::requireActor($req);
+        $actor = GpAuth::requireDashboardUser($req);
         $a = $req->part(1);
         $b = $req->part(2);
 
@@ -107,6 +107,7 @@ final class TeamController
                 'limit' => 100,
             ],
             'modules' => GpTeam::MODULES,
+            'roleDefaults' => ['manager' => GpTeam::defaultPermissions('manager'), 'support' => GpTeam::defaultPermissions('support')],
         ]);
     }
 
@@ -270,7 +271,7 @@ final class TeamController
         $now = GpIds::now();
         GpDb::exec(
             "UPDATE gp_team_members SET status = 'active', user_merchant_id = ?, updated_at = ? WHERE member_id = ?",
-            [$actor['merchant_id'], $now, $member['member_id']]
+            [$actor['staff_user_merchant_id'] ?? $actor['merchant_id'], $now, $member['member_id']]
         );
         GpDb::exec(
             'UPDATE gp_team_invites SET accepted_at = ? WHERE invite_id = ?',
@@ -327,7 +328,7 @@ final class TeamController
         $permissions = is_array($permsIn)
             ? GpTeam::normalizePermissions($permsIn, $role)
             : GpTeam::normalizePermissions(
-                json_decode((string) ($member['permissions_json'] ?? '{}'), true) ?: null,
+                $role === $member['role'] ? (json_decode((string) ($member['permissions_json'] ?? '{}'), true) ?: null) : null,
                 $role
             );
 

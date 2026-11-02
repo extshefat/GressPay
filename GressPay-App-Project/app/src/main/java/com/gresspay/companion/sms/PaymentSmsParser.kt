@@ -18,11 +18,13 @@ data class ParsedPaymentSms(
  */
 object PaymentSmsParser {
 
-    private val BKASH_SENDERS = setOf("16247", "bkash")
-    private val NAGAD_SENDERS = setOf("16167", "16262", "nagad")
-    private val ROCKET_SENDERS = setOf("16216", "rocket", "dbbl")
-    private val UPAY_SENDERS = setOf("16268", "upay", "ucb")
-    private val CELLFIN_SENDERS = setOf("16259", "cellfin", "ibbl")
+    private val BKASH_SENDERS = setOf("bkash")
+    private val NAGAD_SENDERS = setOf("nagad")
+    private val ROCKET_SENDERS = setOf("rocket")
+    private val UPAY_SENDERS = setOf("upay")
+    private val CELLFIN_SENDERS = setOf("cellfin")
+
+    private val PENDING_OR_FAILED = Regex("""\b(pending|failed|declined|unsuccessful|requested)\b""", RegexOption.IGNORE_CASE)
 
     private val OTP_NOISE = Pattern.compile(
         "(?i)\\b(otp|one[- ]?time\\s*(?:pass(?:word|code)?|pin)|verification\\s*code|login\\s*code|" +
@@ -70,6 +72,7 @@ object PaymentSmsParser {
     )
 
     fun parse(fromAddress: String, body: String): ParsedPaymentSms? {
+        if (PENDING_OR_FAILED.containsMatchIn(body)) return null
         if (isNoise(body)) return null
         if (isDebitOrOutgoing(body)) return null
         if (!isCreditReceipt(body)) return null

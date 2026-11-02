@@ -98,15 +98,32 @@ export default function WebhookSettingsPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Webhooks</h1>
+          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Webhooks & delivery</h1>
           <p className="mt-1 text-xs text-zinc-500">
-            HTTPS endpoint for signed <code className="font-mono">payment.completed</code> events on the active brand.
+            Recommended flow: create payment → buyer pays → signed webhook → server{" "}
+            <code className="font-mono">POST /payment/verify</code> before fulfilling the order.
           </p>
         </div>
         <Button size="sm" variant="outline" onClick={load} isLoading={loading} leftIcon={<RefreshCw className="h-3.5 w-3.5" />}>
           Refresh
         </Button>
       </div>
+
+      <Card className="border-zinc-200 p-5 dark:border-zinc-800">
+        <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Integration checklist</h2>
+        <ol className="mt-3 list-decimal space-y-1.5 pl-4 text-xs text-zinc-600 dark:text-zinc-400">
+          <li>
+            Create a checkout with your website API key (
+            <Link href="/dashboard/api-keys" className="font-semibold underline">
+              API keys & snippets
+            </Link>
+            ).
+          </li>
+          <li>Redirect the buyer to the returned hosted pay URL.</li>
+          <li>Receive <code className="font-mono">payment.completed</code> here with <code className="font-mono">X-GressPay-Signature</code>.</li>
+          <li>Always call <code className="font-mono">/payment/verify</code> server-side before marking the order paid.</li>
+        </ol>
+      </Card>
 
       {error && (
         <Alert variant="danger" title="Webhooks">
@@ -171,17 +188,17 @@ export default function WebhookSettingsPage() {
       </Card>
 
       <p className="text-xs text-zinc-500">
-        View delivery attempts on{" "}
+        Delivery log & retries:{" "}
         <Link href="/dashboard/payment-events" className="font-semibold text-zinc-800 underline dark:text-zinc-200">
           Payment events
         </Link>
-        . Website and device API keys live under{" "}
+        . Website API key + code snippets:{" "}
+        <Link href="/dashboard/api-keys" className="font-semibold underline">
+          API keys & snippets
+        </Link>
+        . Brand logo / brand key:{" "}
         <Link href="/dashboard/brands" className="font-semibold underline">
           Brands
-        </Link>{" "}
-        and{" "}
-        <Link href="/dashboard/devices" className="font-semibold underline">
-          Devices
         </Link>
         .
       </p>

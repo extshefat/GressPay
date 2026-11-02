@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { GpMark } from "@/components/brand/GpMark";
 import { User } from "@/lib/types/api";
+import { api } from "@/lib/api-client";
 
 const CORE_NAV = [
   { href: "/dashboard/overview", label: "Overview", icon: LayoutDashboard },
@@ -38,13 +39,13 @@ const CORE_NAV = [
   { href: "/dashboard/brands", label: "Brands", icon: Building2 },
   { href: "/dashboard/devices", label: "Devices", icon: Smartphone },
   { href: "/dashboard/apps", label: "Apps & Plugins", icon: Puzzle },
-  { href: "/dashboard/api-keys", label: "Webhooks & Integration", icon: Key },
-  { href: "/dashboard/team", label: "Team", icon: Users },
+  { href: "/dashboard/api-keys", label: "API keys & snippets", icon: Key },
+  { href: "/dashboard/team", label: "Team", icon: Users, ownerOnly: true },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
 const AUTOMATION_NAV = [
-  { href: "/dashboard/webhooks", label: "Webhooks", icon: Webhook },
+  { href: "/dashboard/webhooks", label: "Webhooks & delivery", icon: Webhook },
   { href: "/dashboard/payment-events", label: "Payment events", icon: Activity },
   { href: "/dashboard/notifications", label: "Notifications", icon: Bell },
   { href: "/dashboard/support", label: "Support", icon: LifeBuoy },
@@ -62,8 +63,27 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   user,
 }) => {
   const pathname = usePathname();
+  const [isWorkspaceOwner, setIsWorkspaceOwner] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    api
+      .getTeamMe()
+      .then((me) => {
+        if (alive) setIsWorkspaceOwner(Boolean(me.isWorkspaceOwner));
+      })
+      .catch(() => {
+        if (alive) setIsWorkspaceOwner(true);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const renderLink = (item: (typeof CORE_NAV)[0]) => {
+    if ("ownerOnly" in item && item.ownerOnly && !isWorkspaceOwner) {
+      return null;
+    }
     const isActive = pathname.startsWith(item.href) || pathname === item.href.replace("/dashboard", "");
     const Icon = item.icon;
     return (
@@ -92,7 +112,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
           </span>
           <div>
             <div className="text-[15px] font-bold tracking-tight text-white">GressPay</div>
-            <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-neutral-300/80">Merchant OS</div>
+            <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-neutral-300/80">Business OS</div>
           </div>
         </Link>
         {onClose && (

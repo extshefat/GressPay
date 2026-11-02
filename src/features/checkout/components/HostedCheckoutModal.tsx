@@ -393,7 +393,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
       }
 
       if (selectedMethod.code === "binance_pay") {
-        const order = await api.createBinancePayOrder(session.sessionId);
+        const order = await api.createBinancePayOrder(session.sessionId, selectedMethod.gatewayId);
         if (order.checkoutUrl) {
           window.open(order.checkoutUrl, "_blank", "noopener,noreferrer");
         }
@@ -487,15 +487,15 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
         `Open your crypto wallet (Trust Wallet, Binance, OKX, TronLink, etc.).`,
         `Select USDT and choose ONLY TRON (TRC-20) network.`,
         `Send exactly ${checkoutAmount(payableAmount, payableCurrency)} USDT to the address above.`,
-        `Copy the 64-character TRON Transaction Hash (TxID) and enter it below.`,
+        `Paste the 64-character TRON Transaction Hash below — GressPay confirms on-chain via TronGrid (not SMS).`,
       ];
     }
 
     if (code === "bybit_pay") {
       return [
         `Open the Bybit app and navigate to Bybit Pay / Internal Transfer.`,
-        `Transfer ${checkoutAmount(payableAmount, payableCurrency)} to Binance Pay UID: ${receiver}.`,
-        `Copy the Bybit Transfer / Order ID and paste it below.`,
+        `Transfer ${checkoutAmount(payableAmount, payableCurrency)} to Bybit Pay UID: ${receiver}.`,
+        `Copy the Bybit Transfer / Order ID and paste it below for manual review (provider verify when configured).`,
       ];
     }
 
@@ -724,7 +724,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
           No Payment Rails Available
         </h2>
         <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-          No live-ready gateways for this brand yet. The merchant must finish setup under View Gateways
+          No live-ready gateways for this brand yet. The business must finish setup under Payment Gateways
           (wallet number / Binance API keys / Companion device) and keep the rails enabled.
         </p>
       </div>
@@ -768,19 +768,16 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
 
   return (
     <div
-      className={`w-full max-w-2xl mx-auto bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-2xl overflow-hidden transition-all ${themeClass}`}
-      style={
-        theme === "luxury"
-          ? { boxShadow: "0 25px 50px -12px rgba(15, 23, 42, 0.35)" }
-          : theme === "minimal"
-            ? { borderRadius: "1rem" }
-            : undefined
-      }
+      className={`mx-auto w-full max-w-md overflow-hidden rounded-2xl border border-zinc-800 bg-[#0c0c0c] text-zinc-100 transition-all dark:border-zinc-800 sm:max-w-lg ${themeClass}`}
+      style={theme === "minimal" ? { borderRadius: "0.75rem" } : undefined}
     >
-      <div className="flex items-center justify-between border-b border-zinc-200 px-5 py-3 dark:border-zinc-800">
-        <button type="button" disabled={!methodChosen} onClick={() => { setMethodChosen(false); setErrorMessage(null); }} className="text-xs font-medium disabled:opacity-30">← Payment methods</button>
-        <span className="text-[10px] uppercase tracking-widest text-zinc-500">Secure checkout</span>
-        {!demoMode && <button type="button" aria-label="Cancel invoice" onClick={handleCancelCheckout} disabled={isCanceling} className="text-xl leading-none">×</button>}
+      <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
+        {methodChosen ? (
+          <button type="button" onClick={() => { setMethodChosen(false); setErrorMessage(null); }} className="text-sm font-semibold text-zinc-200">← {locale === "bn" ? "পেমেন্ট পদ্ধতি" : "Payment methods"}</button>
+        ) : (
+          <span className="flex items-center gap-2 text-sm font-semibold text-zinc-200"><Lock className="h-4 w-4 text-cyan-400" />{locale === "bn" ? "নিরাপদ চেকআউট" : "Secure checkout"}</span>
+        )}
+        {!demoMode && <button type="button" aria-label="Cancel invoice" onClick={handleCancelCheckout} disabled={isCanceling} className="text-xl leading-none text-zinc-400 hover:text-white">×</button>}
       </div>
       {/* Merchant Header */}
       <div
@@ -926,17 +923,6 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
         <dt className="text-zinc-500">Order amount</dt><dd>{checkoutAmount(session.amount, session.currency)}</dd>
         {methodChosen && <><dt className="text-zinc-500">Selected gateway</dt><dd>{selectedMethod.name}</dd><dt className="text-zinc-500">Fees</dt><dd>{feeLabel}</dd><dt className="font-semibold">Payable</dt><dd className="font-semibold">{checkoutAmount(payableAmount, payableCurrency)}</dd></>}
       </dl>}
-      {/* Security & Non-Custodial Strip */}
-      <div className="px-5 sm:px-6 py-2 bg-zinc-100/70 dark:bg-zinc-900/40 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between text-xs font-medium text-zinc-600 dark:text-zinc-400">
-        <div className="flex items-center gap-2">
-          <Lock className="w-3.5 h-3.5 text-zinc-900 dark:text-zinc-100" />
-          <span>Direct-to-Wallet · Non-Custodial Automated Verification</span>
-        </div>
-        <span className="hidden sm:inline font-mono text-[11px] text-zinc-400">
-          REF: {session.sessionId.slice(-8).toUpperCase()}
-        </span>
-      </div>
-
       {/* Main Body */}
       <div className="p-5 sm:p-6 space-y-6">
         {session.productImageUrl && (
@@ -1029,7 +1015,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
           <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider font-mono">
             {activeTab === "mfs" ? "Mobile Banking" : activeTab === "crypto" ? "Crypto" : "Bank & International"}
           </label>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
             {currentTabMethods.map((method) => {
               const isSelected = Boolean(
                 methodChosen && selectedMethod &&
@@ -1063,12 +1049,12 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
                       <img
                         src={methodIconUrl}
                         alt={method.name}
-                        className="w-10 h-10 object-contain shrink-0"
+                        className="h-10 w-14 rounded-lg bg-white p-1 object-contain shrink-0"
                         onError={(e) => {
                           (e.target as HTMLElement).style.display = "none";
                         }}
                       />
-                      <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 truncate">
+                      <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 break-words">
                         {method.name}
                       </span>
                     </div>
@@ -1100,7 +1086,6 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
           </div>
         </div>
 
-        <div className="rounded-xl bg-zinc-100 p-4 text-center font-semibold dark:bg-zinc-900">Choose a method to pay {checkoutAmount(session.amount, session.currency)}</div>
         </>}
         {methodChosen && <>
         <div className="flex items-center gap-3"><img src={gatewayLogoPath(selectedMethod.code)} alt="" className="h-9 w-9 object-contain" /><div><h2 className="text-sm font-semibold">{selectedMethod.name}</h2><p className="text-xs text-zinc-500">Follow the instructions, then submit payment evidence.</p></div></div>

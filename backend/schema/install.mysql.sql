@@ -247,7 +247,8 @@ CREATE TABLE IF NOT EXISTS gp_sms_data (
   status VARCHAR(16) NOT NULL DEFAULT 'approved',
   created_at VARCHAR(32) NOT NULL,
   updated_at VARCHAR(32) NOT NULL,
-  INDEX idx_gp_sms_brand_trx (brand_id, trx_id)
+  INDEX idx_gp_sms_brand_trx (brand_id, trx_id),
+  UNIQUE KEY uq_gp_sms_brand_trx (brand_id, trx_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS gp_webhook_log (

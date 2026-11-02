@@ -57,17 +57,15 @@ final class BinancePayClient
         string $nonce,
         string $body,
         string $signature,
-        string $secret
+        string $publicKey
     ): bool {
-        if ($timestamp === '' || $nonce === '' || $signature === '') {
+        if (!ctype_digit($timestamp) || abs(time() * 1000 - (int) $timestamp) > 300000 || $nonce === '') {
             return false;
         }
-        // Reject stale callbacks (>5 minutes).
-        if (abs(time() * 1000 - (int) $timestamp) > 300000) {
-            return false;
-        }
-        $expected = self::signPayload($timestamp, $nonce, $body, $secret);
-        return hash_equals($expected, strtoupper($signature));
+        $decoded = base64_decode($signature, true);
+        $key = openssl_pkey_get_public($publicKey);
+        return $decoded !== false && $key !== false
+            && openssl_verify($timestamp . "\n" . $nonce . "\n" . $body . "\n", $decoded, $key, OPENSSL_ALGO_SHA256) === 1;
     }
 
     /**
@@ -77,7 +75,7 @@ final class BinancePayClient
      */
     public static function request(array $creds, string $path, array $body): array
     {
-        $json = json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}';
+        $json = json_encode((object) $body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}';
         $timestamp = (string) (int) round(microtime(true) * 1000);
         $nonce = bin2hex(random_bytes(16));
         $sig = self::signPayload($timestamp, $nonce, $json, $creds['secret']);

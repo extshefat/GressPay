@@ -12,6 +12,18 @@ type ThemeContextValue = {
 };
 
 const ThemeContext = React.createContext<ThemeContextValue | null>(null);
+const THEME_KEY = "gresspay_theme";
+
+function readStoredTheme(): Theme {
+  if (typeof window === "undefined") return "dark";
+  try {
+    const stored = localStorage.getItem(THEME_KEY);
+    if (stored === "light" || stored === "dark") return stored;
+  } catch {
+    // ignore
+  }
+  return "dark";
+}
 
 function applyDomTheme(theme: Theme) {
   document.documentElement.classList.toggle("dark", theme === "dark");
@@ -19,17 +31,21 @@ function applyDomTheme(theme: Theme) {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = React.useState<Theme>("light");
+  const [theme, setThemeState] = React.useState<Theme>("dark");
 
   React.useEffect(() => {
-    const stored = (localStorage.getItem("gresspay_theme") as Theme | null) || "light";
-    setThemeState(stored);
-    applyDomTheme(stored);
+    const initial = readStoredTheme();
+    setThemeState(initial);
+    applyDomTheme(initial);
   }, []);
 
   const setTheme = (t: Theme) => {
     setThemeState(t);
-    localStorage.setItem("gresspay_theme", t);
+    try {
+      localStorage.setItem(THEME_KEY, t);
+    } catch {
+      // ignore
+    }
     applyDomTheme(t);
   };
 
@@ -60,7 +76,7 @@ export function ThemeToggle({ size = "md" }: { size?: "sm" | "md" }) {
       type="button"
       onClick={toggle}
       aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-      className={`${dim} inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800`}
+      className={`${dim} inline-flex items-center justify-center rounded-lg border border-[var(--border-color)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:bg-[var(--bg-muted)]`}
     >
       {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
     </button>

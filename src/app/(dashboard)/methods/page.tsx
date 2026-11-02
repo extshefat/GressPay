@@ -138,7 +138,7 @@ const ALL_METHOD_OPTIONS: MethodMeta[] = [
     label: "aamarPay",
     category: "mfs",
     currency: "BDT",
-    accountLabel: "aamarPay account number",
+    accountLabel: "aamarPay store ID",
     placeholder: "01XXXXXXXXX",
   },
   {
@@ -191,10 +191,10 @@ const ALL_METHOD_OPTIONS: MethodMeta[] = [
   },
   {
     code: "easypaisa",
-    label: "Easypaisa (Pakistan)",
+    label: "easypaisa (Pakistan)",
     category: "crypto",
     currency: "PKR",
-    accountLabel: "Easypaisa Mobile Account",
+    accountLabel: "easypaisa Mobile Account",
     placeholder: "03XXXXXXXXX",
   },
   {
@@ -1033,10 +1033,11 @@ export default function GatewaysPage() {
                 <button
                   key={g.code}
                   type="button"
+                  disabled={["IN", "PK", "NP"].includes(g.country)}
                   onClick={() => pickCuratedGateway(g)}
                   className="group relative flex min-h-[136px] flex-col items-center rounded-2xl border border-zinc-200 bg-white p-3.5 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-teal-700/30 hover:shadow-lg dark:border-[#2a3a47] dark:bg-[#0b1620] dark:hover:border-teal-300/30"
                 >
-                  <div className="relative mb-2.5 flex h-12 w-12 items-center justify-center rounded-xl bg-white dark:bg-zinc-800 p-2 shadow-xs border border-zinc-200/80 dark:border-zinc-700/80 group-hover:scale-105 transition-transform">
+                  <div className="relative mb-2.5 flex h-12 w-12 items-center justify-center rounded-xl bg-white p-2 shadow-xs border border-zinc-200/80 dark:border-zinc-700/80 group-hover:scale-105 transition-transform">
                     <Image
                       src={g.logo || gatewayLogoPath(g.code)}
                       alt={g.name}
@@ -1115,7 +1116,7 @@ export default function GatewaysPage() {
             {/* Sleek Selected Rail Card */}
             <div className="flex flex-col items-start justify-between gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-3.5 dark:border-[#2a3a47] dark:bg-[#0b1620]/70 sm:flex-row sm:items-center">
               <div className="flex min-w-0 items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-white dark:bg-zinc-800 p-2 shadow-xs border border-zinc-200 dark:border-zinc-700 flex items-center justify-center shrink-0">
+                <div className="w-12 h-12 rounded-xl bg-white p-2 shadow-xs border border-zinc-200 dark:border-zinc-700 flex items-center justify-center shrink-0">
                   <Image
                     src={gatewayLogoPath(formMethod)}
                     alt={formName || formMethod}

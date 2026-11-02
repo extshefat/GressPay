@@ -43,9 +43,9 @@ export function InteractiveGlobe({ className = "" }: { className?: string }) {
 
     const nodes: NodePoint[] = [
       { name: "Dhaka", lat: 23.8103, lon: 90.4125, isPrimary: true },
-      { name: "Singapore", lat: 1.3521, lon: 103.8198 },
-      { name: "Dubai", lat: 25.2048, lon: 55.2708 },
-      { name: "London", lat: 51.5074, lon: -0.1278 },
+      { name: "Kathmandu", lat: 27.7172, lon: 85.3240 },
+      { name: "Karachi", lat: 24.8607, lon: 67.0011 },
+      { name: "Delhi", lat: 28.6139, lon: 77.2090 },
     ];
     const arcs = [
       { from: 0, to: 1 },
@@ -231,7 +231,7 @@ export function InteractiveGlobe({ className = "" }: { className?: string }) {
         return;
       }
       if (!reducedMotion) {
-        rotationAngle = (rotationAngle + 0.12) % 360;
+        rotationAngle = (rotationAngle + 0.035) % 360;
         pulsePhase = (pulsePhase + 0.04) % (Math.PI * 2);
       }
       drawFrame();
@@ -277,7 +277,7 @@ export function InteractiveGlobe({ className = "" }: { className?: string }) {
         />
       )}
       <p className="mt-2 text-center text-[11px] font-mono text-zinc-500 dark:text-zinc-400">
-        Supported rails worldwide · Dhaka-first MFS automation
+        Asia · Automated message verify
       </p>
     </div>
   );

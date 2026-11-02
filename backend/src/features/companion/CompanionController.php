@@ -146,7 +146,7 @@ final class CompanionController
             $device = self::authenticateActiveDevice($req);
             self::touchLastSeen($device);
 
-            $sender = GpCatalog::publicCode((string) $req->input('sender_key', $req->input('senderKey', 'bkash')));
+            $sender = GpCatalog::publicCode((string) $req->input('sender_key', $req->input('senderKey', '')));
             if (!in_array($sender, ['bkash', 'nagad', 'rocket', 'upay', 'cellfin'], true)) {
                 GpJson::error('UNSUPPORTED_RAIL', 'Companion SMS matching supports bKash, Nagad, Rocket, Upay, and Cellfin.');
             }
@@ -287,14 +287,7 @@ final class CompanionController
                     continue;
                 }
                 $cat = GpCatalog::find($methodCode);
-                $payable = $cat
-                    ? GpRatesEngine::convert(
-                        $pending['brand_id'],
-                        (string) $pending['amount'],
-                        (string) $pending['currency'],
-                        (string) $cat['currency']
-                    )
-                    : (string) $pending['amount'];
+                $payable = CheckoutController::submittedAmount($pending, (string) ($cat['currency'] ?? $pending['currency']));
                 $gwAccount = null;
                 if (!empty($pending['gateway_id'])) {
                     $gwRow = GpDb::one(

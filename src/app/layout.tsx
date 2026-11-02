@@ -34,11 +34,14 @@ export default function RootLayout({
               (function() {
                 try {
                   var theme = localStorage.getItem('gresspay_theme');
-                  var isDark = theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                  // Product default is dark; only light when explicitly stored.
+                  var isDark = theme !== 'light';
                   if (isDark) {
                     document.documentElement.classList.add('dark');
+                    document.documentElement.style.colorScheme = 'dark';
                   } else {
                     document.documentElement.classList.remove('dark');
+                    document.documentElement.style.colorScheme = 'light';
                   }
                 } catch (e) {}
               })();

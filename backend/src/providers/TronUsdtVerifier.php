@@ -25,7 +25,7 @@ final class TronUsdtVerifier
      *   txid?:string
      * }
      */
-    public static function verify(string $txid, string $expectedTo, string $expectedAmountHuman): array
+    public static function verify(string $txid, string $expectedTo, string $expectedAmountHuman, int $openedAt = 0): array
     {
         $txid = strtolower(trim($txid));
         if (!preg_match('/^[a-f0-9]{64}$/', $txid)) {
@@ -40,28 +40,17 @@ final class TronUsdtVerifier
         $expectedContract = self::normalizeBase58(GpConfig::usdtTrc20Contract());
         $expectedMicro = self::toMicroUnits($expectedAmountHuman);
 
-        // Primary: TronGrid events API (Base58 contract + to).
-        $events = self::fetchGet('/v1/transactions/' . $txid . '/events');
-        $transfer = self::parseEventsUsdt($events, $expectedContract);
-
-        $info = self::fetchJson('/wallet/gettransactioninfobyid', ['value' => $txid]);
-        if ($info === null && $transfer === null) {
-            return ['ok' => false, 'error' => 'provider_unreachable'];
+        $info = self::fetchJson('/walletsolidity/gettransactioninfobyid', ['value' => $txid]);
+        if (empty($info['id']) || strtolower((string) $info['id']) !== $txid || empty($info['blockNumber'])) {
+            return ['ok' => false, 'pending' => true, 'error' => 'awaiting_confirmed_receipt'];
         }
-
-        if ($info !== null) {
-            if (empty($info['id']) && empty($info['txid']) && empty($info['blockNumber']) && $transfer === null) {
-                return ['ok' => false, 'pending' => true, 'error' => 'tx_not_found'];
-            }
-            $receipt = $info['receipt'] ?? [];
-            $result = strtoupper((string) ($receipt['result'] ?? $info['result'] ?? 'SUCCESS'));
-            if ($result !== '' && $result !== 'SUCCESS' && $result !== 'SUCCESSFUL') {
-                return ['ok' => false, 'error' => 'tx_failed'];
-            }
-            if ($transfer === null) {
-                $transfer = self::parseUsdtTransferLogs($info, $expectedContract);
-            }
+        if (empty($info['blockTimeStamp']) || intdiv((int) $info['blockTimeStamp'], 1000) < $openedAt) {
+            return ['ok' => false, 'error' => 'transfer_outside_checkout'];
         }
+        if (($info['result'] ?? '') === 'FAILED' || ($info['receipt']['result'] ?? '') !== 'SUCCESS') {
+            return ['ok' => false, 'error' => 'tx_failed'];
+        }
+        $transfer = self::parseUsdtTransferLogs($info, $expectedContract, $expectedTo, $expectedMicro);
 
         if ($transfer === null) {
             return ['ok' => false, 'pending' => true, 'error' => 'not_usdt_transfer'];
@@ -147,10 +136,10 @@ final class TronUsdtVerifier
         }
         // Already Base58 TRON address
         if (preg_match('/^T[1-9A-HJ-NP-Za-km-z]{33}$/', $addr)) {
-            return $addr;
+            return self::base58ToHex21($addr) !== '' ? $addr : '';
         }
         // Hex 20-byte (or 21-byte with 41 prefix)
-        $hex = strtolower(ltrim($addr, '0x'));
+        $hex = strtolower(preg_replace('/^0x/i', '', $addr) ?? '');
         if (strlen($hex) === 40) {
             return self::hex20ToBase58($hex);
         }
@@ -222,7 +211,7 @@ final class TronUsdtVerifier
      * @param array<string,mixed> $info
      * @return array{to:string,amount_micro:string,contract:string,block?:int}|null
      */
-    private static function parseUsdtTransferLogs(array $info, string $expectedContractBase58): ?array
+    private static function parseUsdtTransferLogs(array $info, string $expectedContractBase58, string $expectedTo, string $expectedMicro): ?array
     {
         $logs = $info['log'] ?? [];
         if (!is_array($logs)) {
@@ -254,71 +243,27 @@ final class TronUsdtVerifier
             if ($t0 !== $topic) {
                 continue;
             }
-            $toHex = substr(strtolower(ltrim((string) $topics[2], '0x')), -40);
+            $toHex = substr(strtolower((string) $topics[2]), -40);
             $toB58 = self::hex20ToBase58($toHex);
             if ($toB58 === '') {
                 continue;
             }
-            $data = ltrim((string) ($log['data'] ?? '0'), '0x');
-            if ($data === '') {
-                $data = '0';
-            }
-            if (!function_exists('gmp_init')) {
+            $data = preg_replace('/^0x/i', '', (string) ($log['data'] ?? ''));
+            if ($toB58 !== $expectedTo || !preg_match('/^[a-f0-9]{64}$/iD', $data) || !function_exists('bcmul')) {
                 continue;
             }
-            $raw = gmp_strval(gmp_init($data, 16), 10);
+            $raw = '0';
+            foreach (str_split($data) as $digit) {
+                $raw = bcadd(bcmul($raw, '16', 0), (string) hexdec($digit), 0);
+            }
+            if (bccomp($raw, $expectedMicro, 0) !== 0) {
+                continue;
+            }
             return [
                 'to' => $toB58,
                 'amount_micro' => $raw,
                 'contract' => $expectedContractBase58,
                 'block' => (int) ($info['blockNumber'] ?? 0),
-            ];
-        }
-        return null;
-    }
-
-    /** @param array<string,mixed>|null $events */
-    private static function parseEventsUsdt(?array $events, string $expectedContractBase58): ?array
-    {
-        if ($events === null) {
-            return null;
-        }
-        $data = $events['data'] ?? $events;
-        if (!is_array($data)) {
-            return null;
-        }
-        foreach ($data as $ev) {
-            if (!is_array($ev)) {
-                continue;
-            }
-            $name = (string) ($ev['event_name'] ?? $ev['eventName'] ?? '');
-            if (strcasecmp($name, 'Transfer') !== 0) {
-                continue;
-            }
-            $contract = self::normalizeBase58((string) ($ev['contract_address'] ?? $ev['contractAddress'] ?? ''));
-            if ($contract === '' || $contract !== $expectedContractBase58) {
-                continue;
-            }
-            $result = $ev['result'] ?? [];
-            if (!is_array($result)) {
-                continue;
-            }
-            $to = self::normalizeBase58((string) ($result['to'] ?? $result['1'] ?? ''));
-            $value = (string) ($result['value'] ?? $result['2'] ?? '');
-            if ($to === '' || $value === '') {
-                continue;
-            }
-            // Events usually give integer smallest units
-            if (str_contains($value, '.')) {
-                $micro = self::toMicroUnits($value);
-            } else {
-                $micro = preg_replace('/\D/', '', $value) ?: '0';
-            }
-            return [
-                'to' => $to,
-                'amount_micro' => $micro,
-                'contract' => $contract,
-                'block' => (int) ($ev['block_number'] ?? $ev['blockNumber'] ?? 0),
             ];
         }
         return null;

@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Select } from "@/components/ui/select";
 import { Toggle } from "@/components/ui/toggle";
-import { Badge } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
@@ -18,14 +17,12 @@ import {
   RefreshCw,
   Building2,
   Globe,
-  Trash2,
-  Image as ImageIcon,
   Bell,
   Send,
 } from "lucide-react";
 import Link from "next/link";
 
-type SettingsTab = "branding" | "alerts" | "general" | "binance";
+type SettingsTab = "branding" | "alerts" | "general";
 
 export default function SettingsPage() {
   const { success, error: toastError } = useToast();
@@ -33,7 +30,6 @@ export default function SettingsPage() {
 
   const [businessName, setBusinessName] = useState("");
   const [brandName, setBrandName] = useState("");
-  const [brandLogoUrl, setBrandLogoUrl] = useState("");
   const [supportContact, setSupportContact] = useState("");
   const [receiptFooter, setReceiptFooter] = useState("");
   const [webhookUrl, setWebhookUrl] = useState("");
@@ -46,21 +42,9 @@ export default function SettingsPage() {
   const [discordWebhookUrl, setDiscordWebhookUrl] = useState("");
   const [testingAlert, setTestingAlert] = useState(false);
 
-  const [binanceConfigured, setBinanceConfigured] = useState(false);
-  const [binanceLiveReady, setBinanceLiveReady] = useState(false);
-  const [apiKey, setApiKey] = useState("");
-  const [secret, setSecret] = useState("");
-  const [certificateSn, setCertificateSn] = useState("");
-
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [savingBinance, setSavingBinance] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [activeBrandId, setActiveBrandId] = useState("");
-  const [logoUploaded, setLogoUploaded] = useState(false);
-  const [r2Configured, setR2Configured] = useState(false);
-  const [logoUploading, setLogoUploading] = useState(false);
-
   const loadSettings = async () => {
     setIsLoading(true);
     setErrorMessage(null);
@@ -68,11 +52,7 @@ export default function SettingsPage() {
       const data = await api.getSettings();
       setSettings(data);
       setBusinessName(data.businessName || "");
-      setBrandName(data.brandName || data.businessName || "");
-      setBrandLogoUrl(data.brandLogoUrl || "");
-      setActiveBrandId(data.brandId || "");
-      setLogoUploaded(Boolean(data.logoUploaded));
-      setR2Configured(Boolean(data.r2Configured));
+      setBrandName(data.businessName || data.brandName || "");
       setSupportContact(data.supportContact || "");
       setReceiptFooter(data.receiptFooter || "");
       setWebhookUrl(data.webhookUrl || "");
@@ -81,14 +61,6 @@ export default function SettingsPage() {
       setTelegramChatId(data.telegramChatId || "");
       setDiscordWebhookUrl(data.discordWebhookUrl || "");
       setTelegramBotToken("");
-      setBinanceConfigured(Boolean(data.binancePayConfigured));
-      try {
-        const bp = await api.getBinancePayStatus();
-        setBinanceConfigured(bp.configured);
-        setBinanceLiveReady(bp.liveReady);
-      } catch {
-        /* optional */
-      }
     } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : "Failed to load settings.");
     } finally {
@@ -106,9 +78,8 @@ export default function SettingsPage() {
     setErrorMessage(null);
     try {
       await api.updateSettings({
-        businessName: brandName || businessName,
+        businessName: brandName,
         brandName,
-        brandLogoUrl,
         supportContact,
         receiptFooter,
       });
@@ -175,50 +146,10 @@ export default function SettingsPage() {
     }
   };
 
-  const saveBinance = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!apiKey.trim() || !secret.trim() || !certificateSn.trim()) {
-      setErrorMessage("Binance Pay API key, secret, and certificate serial are all required.");
-      return;
-    }
-    setSavingBinance(true);
-    setErrorMessage(null);
-    try {
-      const res = await api.saveBinancePayCredentials({ apiKey, secret, certificateSn });
-      setApiKey("");
-      setSecret("");
-      setCertificateSn("");
-      setBinanceConfigured(res.configured);
-      setBinanceLiveReady(res.liveReady);
-      success("Binance Pay credentials stored securely.", "Binance Pay Active");
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to save Binance credentials.";
-      setErrorMessage(msg);
-      toastError(msg, "Credentials Error");
-    } finally {
-      setSavingBinance(false);
-    }
-  };
-
-  const clearBinance = async () => {
-    setSavingBinance(true);
-    try {
-      const res = await api.clearBinancePayCredentials();
-      setBinanceConfigured(res.configured);
-      setBinanceLiveReady(res.liveReady);
-      success("Binance Pay credentials removed.", "Credentials Cleared");
-    } catch (err: unknown) {
-      toastError(err instanceof Error ? err.message : "Failed to clear credentials.", "Error");
-    } finally {
-      setSavingBinance(false);
-    }
-  };
-
   const tabs: { id: SettingsTab; label: string }[] = [
     { id: "branding", label: "Checkout Branding" },
     { id: "alerts", label: "Instant Alerts" },
     { id: "general", label: "General" },
-    { id: "binance", label: "Binance Pay" },
   ];
 
   return (
@@ -229,7 +160,7 @@ export default function SettingsPage() {
             Account settings
           </h1>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-            Branding, instant alerts, webhooks, and provider credentials.
+            Storefront text and alerts here. Checkout logos live on Brands. Webhook delivery lives under Webhooks.
           </p>
         </div>
         <Button
@@ -277,100 +208,10 @@ export default function SettingsPage() {
               leftIcon={<Building2 className="w-4 h-4" />}
               required
             />
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Brand logo upload</p>
-              <p className="text-[11px] text-zinc-500">
-                Upload a logo for the active brand. It appears on the public payment page with the brand name.
-              </p>
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                disabled={!activeBrandId || !r2Configured || logoUploading}
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  e.target.value = "";
-                  if (!file || !activeBrandId) return;
-                  if (!r2Configured) {
-                    toastError("Logo upload unavailable — platform storage is not configured.", "Upload");
-                    return;
-                  }
-                  if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
-                    toastError("Only PNG, JPEG, or WebP images are allowed.", "Upload");
-                    return;
-                  }
-                  if (file.size > 2 * 1024 * 1024) {
-                    toastError("Logo must be 2MB or smaller.", "Upload");
-                    return;
-                  }
-                  setLogoUploading(true);
-                  try {
-                    const intent = await api.brandLogoUploadIntent(activeBrandId, file.type, file.size);
-                    const put = await fetch(intent.uploadUrl, {
-                      method: "PUT",
-                      headers: { "Content-Type": file.type },
-                      body: file,
-                    });
-                    if (!put.ok) throw new Error(`Upload HTTP ${put.status}`);
-                    const done = await api.brandLogoUploadComplete(activeBrandId, intent.objectKey);
-                    if (done.previewUrl) setBrandLogoUrl(done.previewUrl);
-                    setLogoUploaded(true);
-                    success("Brand logo uploaded.", "Saved");
-                    await loadSettings();
-                  } catch (err: unknown) {
-                    toastError(err instanceof Error ? err.message : "Logo upload failed.", "Upload Failed");
-                  } finally {
-                    setLogoUploading(false);
-                  }
-                }}
-                className="text-xs block w-full text-zinc-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-zinc-900 file:text-white dark:file:bg-white dark:file:text-zinc-950"
-              />
-              {!r2Configured && (
-                <p className="text-[11px] text-amber-600 dark:text-amber-400">
-                  File upload needs platform R2 storage. You can still paste an HTTPS logo URL below.
-                </p>
-              )}
-              {logoUploaded && activeBrandId && (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  leftIcon={<Trash2 className="w-3.5 h-3.5" />}
-                  onClick={async () => {
-                    try {
-                      await api.deleteBrandLogo(activeBrandId);
-                      setLogoUploaded(false);
-                      success("Uploaded logo removed.", "Saved");
-                      await loadSettings();
-                    } catch (err: unknown) {
-                      toastError(err instanceof Error ? err.message : "Could not remove logo.", "Error");
-                    }
-                  }}
-                >
-                  Remove uploaded logo
-                </Button>
-              )}
-            </div>
-            <Input
-              label="Brand Logo URL (HTTPS fallback)"
-              value={brandLogoUrl}
-              onChange={(e) => setBrandLogoUrl(e.target.value)}
-              leftIcon={<ImageIcon className="w-4 h-4" />}
-              placeholder="https://cdn.example.com/logo.png"
-            />
-            {brandLogoUrl && (
-              <div className="flex items-center gap-3 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={brandLogoUrl}
-                  alt="Brand logo preview"
-                  className="w-12 h-12 rounded-xl object-contain bg-white border border-zinc-200"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = "none";
-                  }}
-                />
-                <span className="text-xs text-zinc-500">Live logo preview</span>
-              </div>
-            )}
+            <Link href="/dashboard/brands" className="block rounded-xl border border-zinc-300 p-4 text-sm font-semibold dark:border-zinc-700">
+              Choose a checkout logo in Brands →
+              <span className="mt-1 block text-xs font-normal text-zinc-500">Select the business whose logo should appear on its payment page.</span>
+            </Link>
             <Input
               label="Support WhatsApp / Telegram Link"
               value={supportContact}
@@ -461,15 +302,27 @@ export default function SettingsPage() {
                 ]}
               />
             </div>
-            <Input
-              label="Default Webhook Destination URL"
-              type="url"
-              placeholder="https://yourstore.com/api/webhooks/gresspay"
-              value={webhookUrl}
-              onChange={(e) => setWebhookUrl(e.target.value)}
-              leftIcon={<Globe className="w-4 h-4" />}
-              helperText="Every settled transaction fires an HTTP POST with X-GressPay-Signature."
-            />
+            <div className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+              <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">Default webhook URL</p>
+              <p className="mt-1 text-[11px] text-zinc-500">
+                Edit destination URL, rotate HMAC secret, and send test pings from{" "}
+                <Link href="/dashboard/webhooks" className="font-semibold underline">
+                  Webhooks & delivery
+                </Link>
+                . Current value below is a convenience mirror.
+              </p>
+              <div className="mt-3">
+                <Input
+                  label="Default Webhook Destination URL"
+                  type="url"
+                  placeholder="https://yourstore.com/api/webhooks/gresspay"
+                  value={webhookUrl}
+                  onChange={(e) => setWebhookUrl(e.target.value)}
+                  leftIcon={<Globe className="w-4 h-4" />}
+                  helperText="Settled payments POST with X-GressPay-Signature (HMAC-SHA256)."
+                />
+              </div>
+            </div>
             <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 flex items-center justify-between">
               <div className="space-y-0.5">
                 <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
@@ -489,19 +342,23 @@ export default function SettingsPage() {
           </form>
 
           <div className="mt-8 border-t border-zinc-200 pt-6 dark:border-zinc-800">
-            <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">API keys</h3>
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Where credentials live</h3>
             <p className="mt-1 text-[11px] text-zinc-500">
-              Copy your live brand website key from{" "}
+              Website API keys and code snippets:{" "}
+              <Link href="/dashboard/api-keys" className="font-semibold underline">
+                API keys & snippets
+              </Link>
+              . Per-brand logo and brand key:{" "}
               <Link href="/dashboard/brands" className="font-semibold underline">
                 Brands
               </Link>
-              . Companion device keys live under{" "}
+              . Companion pairing:{" "}
               <Link href="/dashboard/devices" className="font-semibold underline">
                 Devices
               </Link>
-              . Webhook HMAC secrets are under{" "}
-              <Link href="/dashboard/api-keys" className="font-semibold underline">
-                Webhooks & Integration
+              . Webhook URL, secret, and delivery log:{" "}
+              <Link href="/dashboard/webhooks" className="font-semibold underline">
+                Webhooks & delivery
               </Link>
               .
             </p>
@@ -509,39 +366,6 @@ export default function SettingsPage() {
         </Card>
       )}
 
-      {tab === "binance" && (
-        <Card id="binance-pay" className="p-6 bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
-              Binance Pay API credentials
-            </h3>
-            <Badge variant={binanceLiveReady ? "emerald" : "amber"} size="sm" dot>
-              {binanceLiveReady ? "Live-ready" : binanceConfigured ? "Stored" : "Not configured"}
-            </Badge>
-          </div>
-          <form onSubmit={saveBinance} className="space-y-4">
-            <Input label="Binance API Key" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
-            <PasswordInput label="Binance Secret Key" value={secret} onChange={(e) => setSecret(e.target.value)} />
-            <Input
-              label="Certificate serial number"
-              value={certificateSn}
-              onChange={(e) => setCertificateSn(e.target.value)}
-            />
-            <div className="flex items-center justify-between pt-2">
-              {binanceConfigured ? (
-                <Button type="button" variant="danger" size="sm" onClick={clearBinance} disabled={savingBinance} leftIcon={<Trash2 className="w-3.5 h-3.5" />}>
-                  Clear Credentials
-                </Button>
-              ) : (
-                <span />
-              )}
-              <Button type="submit" variant="primary" size="sm" isLoading={savingBinance} leftIcon={<Save className="w-3.5 h-3.5" />}>
-                Store Encrypted Credentials
-              </Button>
-            </div>
-          </form>
-        </Card>
-      )}
     </div>
   );
 }

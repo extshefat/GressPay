@@ -17,7 +17,6 @@ import { formatCurrency, formatDate } from "@/lib/formatters";
 import {
   RefreshCw,
   ArrowRight,
-  Link2,
   DollarSign,
   Activity,
   ShieldCheck,
@@ -88,7 +87,7 @@ export default function OverviewPage() {
   return (
     <div className="dashboard-page">
       <DashboardPageHeader
-        eyebrow="Merchant workspace"
+        eyebrow="Business OS"
         title="Overview"
         icon={<Activity className="h-5 w-5" />}
         badge={
@@ -103,7 +102,6 @@ export default function OverviewPage() {
           </>
         }
         actions={
-          <>
           <Button
             variant="outline"
             size="sm"
@@ -113,12 +111,6 @@ export default function OverviewPage() {
           >
             Refresh
           </Button>
-          <Link href="/dashboard/payment-links">
-            <Button size="sm" variant="primary" leftIcon={<Link2 className="w-3.5 h-3.5" />}>
-              Create Link
-            </Button>
-          </Link>
-          </>
         }
       />
 

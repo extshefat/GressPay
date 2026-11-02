@@ -5,7 +5,10 @@ final class MerchantController
 {
     public static function handle(GpRequest $req): never
     {
-        $actor = GpAuth::requireActor($req);
+        $actor = GpAuth::requireDashboardUser($req);
+        if (!empty($actor['team_member_id'])) {
+            GpJson::error('FORBIDDEN', 'Account settings require workspace owner access.', 403);
+        }
         $a = $req->part(1);
         $b = $req->part(2);
 
@@ -173,8 +176,7 @@ final class MerchantController
 
         $logoKey = trim((string) ($brand['logo_object_key'] ?? ''));
         $logoUrl = trim((string) ($brand['logo_url'] ?? ''));
-        $merchantLogo = trim((string) ($merchant['brand_logo_url'] ?? ''));
-        $resolvedLogo = $logoUrl !== '' ? $logoUrl : $merchantLogo;
+        $resolvedLogo = $logoUrl;
         if ($logoKey !== '' && R2Client::isConfigured()) {
             try {
                 $resolvedLogo = R2Client::presignGet($logoKey, min(3600, GpConfig::r2PresignTtl()));
@@ -186,9 +188,9 @@ final class MerchantController
         GpJson::send([
             'businessName' => $brand['name'] ?? '',
             'brandId' => $brand['brand_id'] ?? ($actor['brand_id'] ?? ''),
-            'brandName' => $merchant['brand_name'] ?? ($brand['name'] ?? ''),
+            'brandName' => $brand['name'] ?? '',
             'brandLogoUrl' => $resolvedLogo,
-            'logoConfigured' => $logoKey !== '' || $logoUrl !== '' || $merchantLogo !== '',
+            'logoConfigured' => $logoKey !== '' || $logoUrl !== '',
             'logoUploaded' => $logoKey !== '',
             'r2Configured' => R2Client::isConfigured(),
             'supportContact' => $merchant['support_contact'] ?? '',
@@ -248,7 +250,7 @@ final class MerchantController
         }
 
         $brandName = trim((string) $req->input('brandName', $req->input('brand_name', $merchant['brand_name'] ?? $name)));
-        $brandLogo = trim((string) $req->input('brandLogoUrl', $req->input('brand_logo_url', $merchant['brand_logo_url'] ?? '')));
+        $brandLogo = trim((string) $req->input('brandLogoUrl', $req->input('brand_logo_url', '')));
         $support = trim((string) $req->input('supportContact', $req->input('support_contact', $merchant['support_contact'] ?? '')));
         $receiptFooter = trim((string) $req->input('receiptFooter', $req->input('receipt_footer', $merchant['receipt_footer'] ?? '')));
         $telegramChatId = trim((string) $req->input('telegramChatId', $req->input('telegram_chat_id', $merchant['telegram_chat_id'] ?? '')));
@@ -282,10 +284,9 @@ final class MerchantController
             ]
         );
         GpDb::exec(
-            'UPDATE gp_merchants SET brand_name = ?, brand_logo_url = ?, support_contact = ?, receipt_footer = ?, telegram_bot_token = ?, telegram_chat_id = ?, discord_webhook_url = ?, updated_at = ? WHERE merchant_id = ?',
+            'UPDATE gp_merchants SET brand_name = ?, support_contact = ?, receipt_footer = ?, telegram_bot_token = ?, telegram_chat_id = ?, discord_webhook_url = ?, updated_at = ? WHERE merchant_id = ?',
             [
                 $brandName !== '' ? $brandName : null,
-                $brandLogo !== '' ? $brandLogo : null,
                 $support !== '' ? $support : null,
                 $receiptFooter !== '' ? $receiptFooter : null,
                 $telegramToken,

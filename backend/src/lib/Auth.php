@@ -178,7 +178,7 @@ final class GpAuth
         $actor = self::requireActor($req);
         $email = strtolower(trim((string) ($actor['email'] ?? '')));
         $isAdmin = GpConfig::isAdmin($email) || (($actor['role'] ?? '') === 'admin');
-        if (!$isAdmin) {
+        if (($actor['auth'] ?? '') !== 'jwt' || !$isAdmin) {
             GpJson::error('FORBIDDEN', 'Administrator privileges required for this action.', 403);
         }
         $actor['is_admin'] = true;
@@ -191,6 +191,15 @@ final class GpAuth
         $actor = self::resolveActor($req);
         if ($actor === null) {
             GpJson::error('UNAUTHORIZED', 'Bearer JWT or X-GressPay-Key required.', 401);
+        }
+        return $actor;
+    }
+
+    public static function requireDashboardUser(GpRequest $req): array
+    {
+        $actor = self::requireActor($req);
+        if (($actor['auth'] ?? '') !== 'jwt') {
+            GpJson::error('FORBIDDEN', 'Sign in to manage the workspace.', 403);
         }
         return $actor;
     }

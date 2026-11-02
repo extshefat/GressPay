@@ -37,17 +37,25 @@ Complete in order. **Do not deploy from this checklist automatically** — use C
 - [ ] Health check OK
 - [ ] Web loads without DEMO banner (`NEXT_PUBLIC_DATA_SOURCE=live`)
 
-## E. Merchant configuration (dashboard)
+## E. Business configuration (dashboard)
 
-- [ ] Create merchant account
-- [ ] Settings: business name, webhook HTTPS URL, crypto opt-in when ready
-- [ ] Gateways: add one or more bKash/Nagad/USDT instances; upload QR if R2 configured
-- [ ] Settings: Binance Pay Merchant credentials → encrypted; form cleared
+- [ ] Create business account
+- [ ] Settings: business name, alerts; webhook URL under **Webhooks & delivery**
+- [ ] Gateways: add bKash/Nagad/USDT instances; Binance Pay credentials on **Payment Gateways** only
+- [ ] Brands: upload checkout logo per brand
 - [ ] Confirm checkout shows correct gateway destination + QR; scanning QR ≠ paid
 - [ ] Companion device registered; revoke tested
-- [ ] Companion release APK sends original SMS timestamp; old APKs cannot verify live payments
+- [ ] Companion release APK (`app_name` GressPay) sends original SMS timestamp
 - [ ] Webhook worker runs continuously; failed delivery retries and history checked
-- [ ] Test payment link shows **this** merchant’s destination
+- [ ] Test payment link shows **this** brand’s destination
+
+## E2. Release finishing gates (2026-11 polish)
+
+- [ ] Dark header uses theme tokens (no white sticky bar flash)
+- [ ] Business OS wording; admin badge BUSINESS; Team nav owner-only
+- [ ] Homepage: Automated message verify for Asia; Live vs Preview rails
+- [ ] SMS unique index present after migrate; `bdMobileWalletCodes` = core MFS only
+- [ ] CI verify.yml green after push (do not run PHP/Gradle on laptop)
 
 ## F. Enable crypto (optional)
 

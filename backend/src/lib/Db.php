@@ -125,23 +125,25 @@ final class GpDb
                 // column already exists
             }
         }
-        // Helpful indexes for TxID / SMS idempotency lookups (non-unique; uniqueness enforced in app + markPaid lock).
+        // TxID / SMS lookups + normalized uniqueness so concurrent SMS cannot rewrite evidence.
         $indexes = self::$driver === 'mysql'
             ? [
                 'CREATE INDEX idx_gp_txn_brand_trx ON gp_transactions (brand_id, trx_id)',
                 'CREATE INDEX idx_gp_txn_status ON gp_transactions (status)',
                 'CREATE INDEX idx_gp_sms_brand_trx ON gp_sms_data (brand_id, trx_id, status)',
+                'CREATE UNIQUE INDEX uq_gp_sms_brand_trx ON gp_sms_data (brand_id, trx_id)',
             ]
             : [
                 'CREATE INDEX IF NOT EXISTS idx_gp_txn_brand_trx ON gp_transactions (brand_id, trx_id)',
                 'CREATE INDEX IF NOT EXISTS idx_gp_txn_status ON gp_transactions (status)',
                 'CREATE INDEX IF NOT EXISTS idx_gp_sms_brand_trx ON gp_sms_data (brand_id, trx_id, status)',
+                'CREATE UNIQUE INDEX IF NOT EXISTS uq_gp_sms_brand_trx_lower ON gp_sms_data (brand_id, lower(trx_id))',
             ];
         foreach ($indexes as $sql) {
             try {
                 self::pdo()->exec($sql);
             } catch (PDOException $e) {
-                // index already exists (MySQL)
+                // index already exists or legacy duplicate rows block unique create
             }
         }
         $devices = self::$driver === 'mysql'

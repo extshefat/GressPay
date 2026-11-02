@@ -6,6 +6,7 @@ final class WebhooksController
     public static function handle(GpRequest $req): never
     {
         $actor = GpAuth::requireActor($req);
+        GpTeam::requireCan($actor, 'webhooks', $req->method === 'GET' ? 'view' : 'edit');
         $p1 = $req->part(1);
         $p2 = $req->part(2);
         $p3 = $req->part(3);
@@ -37,7 +38,7 @@ final class WebhooksController
         }
         $payload = [
             'eventId' => 'evt_test_' . bin2hex(random_bytes(4)),
-            'event' => 'payment.completed',
+            'event' => 'webhook.test',
             'transactionId' => 'tx_test_ping',
             'paymentLinkId' => null,
             'orderTitle' => 'GressPay webhook test',
@@ -47,10 +48,10 @@ final class WebhooksController
             'paidCurrency' => 'USD',
             'paymentMethod' => 'bkash',
             'txid' => 'TESTPING',
-            'status' => 'COMPLETED',
+            'status' => 'TEST',
             'timestamp' => GpIds::now(),
         ];
-        $code = GpWebhook::dispatch($brand, $url, $payload, 'payment.completed');
+        $code = GpWebhook::dispatch($brand, $url, $payload, 'webhook.test');
         GpJson::send([
             'ok' => $code >= 200 && $code < 300,
             'httpCode' => $code,

@@ -5,7 +5,7 @@ final class BrandsController
 {
     public static function handle(GpRequest $req): never
     {
-        $actor = GpAuth::requireActor($req);
+        $actor = GpAuth::requireDashboardUser($req);
         $id = $req->part(1);
         $action = $req->part(2);
 
@@ -30,7 +30,8 @@ final class BrandsController
                 'SELECT * FROM gp_brands WHERE brand_id = ? AND merchant_id = ?',
                 [$id, $actor['merchant_id']]
             );
-            if ($brand === null) {
+            GpTeam::requireCan($actor, 'brands', $req->method === 'GET' ? 'view' : 'edit');
+            if ($brand === null || !GpTeam::actorCanAccessBrand($actor, $brand)) {
                 GpJson::error('NOT_FOUND', 'Brand not found.', 404);
             }
             if ($sub === 'upload-intent' && $req->method === 'POST') {
@@ -364,7 +365,7 @@ final class BrandsController
                 GpJson::error('INVALID_URL', 'logoUrl must be an HTTPS URL or data:image upload.', 400);
             }
             GpDb::exec(
-                'UPDATE gp_brands SET logo_url = ?, updated_at = ? WHERE brand_id = ?',
+                'UPDATE gp_brands SET logo_url = ?, logo_object_key = NULL, logo_mime = NULL, updated_at = ? WHERE brand_id = ?',
                 [$logoUrl !== '' ? $logoUrl : null, GpIds::now(), $brandId]
             );
         }
@@ -465,7 +466,7 @@ final class BrandsController
         $oldKey = trim((string) ($brand['logo_object_key'] ?? ''));
         $mime = strtolower((string) ($head['contentType'] ?? 'image/png'));
         GpDb::exec(
-            'UPDATE gp_brands SET logo_object_key = ?, logo_mime = ?, updated_at = ? WHERE brand_id = ?',
+            'UPDATE gp_brands SET logo_object_key = ?, logo_mime = ?, logo_url = NULL, updated_at = ? WHERE brand_id = ?',
             [$objectKey, $mime, GpIds::now(), $brand['brand_id']]
         );
         if ($oldKey !== '' && $oldKey !== $objectKey) {
@@ -476,13 +477,6 @@ final class BrandsController
             $preview = R2Client::presignGet($objectKey, min(3600, GpConfig::r2PresignTtl()));
         } catch (Throwable $e) {
             $preview = null;
-        }
-        // Keep merchant fallback URL in sync when a preview URL is available.
-        if (is_string($preview) && $preview !== '') {
-            GpDb::exec(
-                'UPDATE gp_merchants SET brand_logo_url = ?, updated_at = ? WHERE merchant_id = ?',
-                [$preview, GpIds::now(), $actor['merchant_id']]
-            );
         }
         GpJson::send([
             'ok' => true,
@@ -502,10 +496,6 @@ final class BrandsController
             'UPDATE gp_brands SET logo_object_key = NULL, logo_mime = NULL, logo_url = NULL, updated_at = ? WHERE brand_id = ?',
             [$now, $brand['brand_id']]
         );
-        GpDb::exec(
-            'UPDATE gp_merchants SET brand_logo_url = NULL, updated_at = ? WHERE merchant_id = ?',
-            [$now, $actor['merchant_id']]
-        );
         if ($key !== '' && R2Client::isConfigured()) {
             R2Client::deleteObject($key);
         }
@@ -524,14 +514,22 @@ final class BrandsController
             }
             $dataUrl = $logoUrl;
         }
+        if (str_starts_with($dataUrl, 'data:')) {
+            if (strlen($dataUrl) > 2800000 || !preg_match('#^data:(image/(?:png|jpeg|webp));base64,(.+)$#sD', $dataUrl, $parts)) {
+                GpJson::error('INVALID_LOGO', 'Choose a PNG, JPEG or WebP image under 2 MB.', 400);
+            }
+            $bytes = base64_decode($parts[2], true);
+            $image = $bytes !== false && strlen($bytes) <= 2097152 ? @getimagesizefromstring($bytes) : false;
+            if (!$image || $image['mime'] !== $parts[1]) {
+                GpJson::error('INVALID_LOGO', 'Invalid logo image.', 400);
+            }
+        } elseif (!filter_var($dataUrl, FILTER_VALIDATE_URL) || !str_starts_with($dataUrl, 'https://')) {
+            GpJson::error('INVALID_LOGO', 'Enter an HTTPS image URL.', 400);
+        }
         $now = GpIds::now();
         GpDb::exec(
-            'UPDATE gp_brands SET logo_url = ?, updated_at = ? WHERE brand_id = ?',
+            'UPDATE gp_brands SET logo_url = ?, logo_object_key = NULL, logo_mime = NULL, updated_at = ? WHERE brand_id = ?',
             [$dataUrl, $now, $brand['brand_id']]
-        );
-        GpDb::exec(
-            'UPDATE gp_merchants SET brand_logo_url = ?, updated_at = ? WHERE merchant_id = ?',
-            [$dataUrl, $now, $actor['merchant_id']]
         );
         GpJson::send(['ok' => true, 'brandId' => $brand['brand_id'], 'logoUrl' => $dataUrl]);
     }

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { rememberTeamInvite } from "@/features/auth/team-invite";
 import { api } from "@/lib/api-client";
 import { User } from "@/lib/types/api";
 import { DashboardSidebar } from "@/features/dashboard/components/DashboardSidebar";
@@ -31,6 +32,7 @@ export default function DashboardLayout({
       if (typeof window !== "undefined" && !api.hasToken()) {
         if (isMounted) {
           setIsLoading(false);
+          rememberTeamInvite();
           router.replace("/login");
         }
         return;
@@ -56,6 +58,7 @@ export default function DashboardLayout({
           clearTimeout(timeoutId);
           api.clearToken();
           setIsLoading(false);
+          rememberTeamInvite();
           router.replace("/login");
         }
       }

@@ -66,16 +66,14 @@ $sig = BinancePayClient::signPayload($ts, $nonce, $body, $secret);
 $payload = $ts . "\n" . $nonce . "\n" . $body . "\n";
 $expected = strtoupper(hash_hmac('sha512', $payload, $secret));
 assert_true($sig === $expected, 'Binance Pay HMAC-SHA512 signature matches');
-assert_true(
-    BinancePayClient::verifyCallbackSignature((string) (int) round(microtime(true) * 1000), $nonce, $body, $sig, $secret) === false
-    || true,
-    'Callback verifier callable'
-);
-// Fresh timestamp should verify
 $ts2 = (string) (int) round(microtime(true) * 1000);
-$sig2 = BinancePayClient::signPayload($ts2, $nonce, $body, $secret);
-assert_true(BinancePayClient::verifyCallbackSignature($ts2, $nonce, $body, $sig2, $secret), 'Fresh callback signature verifies');
-assert_true(!BinancePayClient::verifyCallbackSignature('1000', $nonce, $body, $sig2, $secret), 'Stale callback rejected');
+$key = openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]);
+$publicKey = openssl_pkey_get_details($key)['key'];
+openssl_sign($ts2 . "\n" . $nonce . "\n" . $body . "\n", $signed, $key, OPENSSL_ALGO_SHA256);
+$sig2 = base64_encode($signed);
+assert_true(BinancePayClient::verifyCallbackSignature($ts2, $nonce, $body, $sig2, $publicKey), 'Binance RSA callback verifies');
+assert_true(!BinancePayClient::verifyCallbackSignature($ts2, $nonce, $body . ' ', $sig2, $publicKey), 'Modified callback rejected');
+assert_true(!BinancePayClient::verifyCallbackSignature('1000', $nonce, $body, $sig2, $publicKey), 'Stale callback rejected');
 
 // —— Catalog release scope ——
 $codes = array_map(static fn ($m) => $m['code'], GpCatalog::releaseMethods());
@@ -997,14 +995,11 @@ $limited = GpAuth::parseScopes('["read_transactions","verify_payment"]');
 assert_true($limited === ['read_transactions', 'verify_payment'], 'Valid limited scopes preserved');
 
 $scopeActorKey = ['auth' => 'api_key', 'scopes' => ['read_transactions']];
-$scopeDenied = false;
-try {
-    GpAuth::requireScope($scopeActorKey, 'manage_methods');
-} catch (Throwable $e) {
-    $scopeDenied = true;
-}
-// requireScope calls GpJson::error which exits — in CLI tests it may throw or exit.
-// Prefer direct scope membership check for unit assertion:
+$scopeScript = 'require ' . var_export($root . '/src/lib/Json.php', true) . '; require '
+    . var_export($root . '/src/lib/Auth.php', true) . '; GpAuth::requireScope('
+    . var_export($scopeActorKey, true) . ', "manage_methods");';
+exec(escapeshellarg(PHP_BINARY) . ' -r ' . escapeshellarg($scopeScript), $scopeOutput);
+assert_true((json_decode(implode('', $scopeOutput), true)['error']['code'] ?? '') === 'FORBIDDEN', 'Limited key cannot manage methods');
 assert_true(!in_array('manage_methods', $scopeActorKey['scopes'], true), 'Limited API key lacks manage_methods');
 $jwtActor = ['auth' => 'jwt', 'scopes' => GpAuth::allScopes()];
 assert_true(in_array('manage_methods', $jwtActor['scopes'], true), 'JWT actor retains manage_methods');

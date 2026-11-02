@@ -661,70 +661,17 @@ export default function AdminPage() {
             </div>
           </div>
 
-          <Card className="space-y-4 border-emerald-200/70 p-5 dark:border-emerald-900/50">
-            <div>
-              <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Account plan billing brand</h3>
-              <p className="text-xs text-zinc-500 mt-1">
-                My Payments checkout uses gateways on this brand (platform-owner wallets). Pick a brand that already has live receiving gateways under View Gateways.
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-2 items-end">
-              <div className="flex-1 w-full space-y-1.5">
-                <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                  Billing brand
-                </label>
-                <select
-                  value={billingBrandId}
-                  onChange={(e) => setBillingBrandId(e.target.value)}
-                  className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3.5 text-sm text-zinc-900 shadow-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/10 dark:border-[#2a3a47] dark:bg-[#0b1620] dark:text-zinc-100 dark:focus:border-teal-400"
-                >
-                  <option value="">Select brand (brd_…)</option>
-                  {billingBrandOptions.map((b) => (
-                    <option key={b.brandId} value={b.brandId}>
-                      {b.name} — {b.brandId} ({b.liveGatewayCount} live gateway
-                      {b.liveGatewayCount === 1 ? "" : "s"})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <Button
-                size="sm"
-                variant="primary"
-                className="self-end"
-                isLoading={savingBillingBrand}
-                disabled={!billingBrandId.trim()}
-                onClick={async () => {
-                  setSavingBillingBrand(true);
-                  setErrorMessage(null);
-                  try {
-                    await api.setAdminBillingBrand(billingBrandId.trim());
-                    setSuccessMessage("Billing brand saved. Plan upgrades will use this brand's gateways.");
-                    await loadData();
-                  } catch (err: unknown) {
-                    setErrorMessage(err instanceof Error ? err.message : "Failed to save billing brand.");
-                  } finally {
-                    setSavingBillingBrand(false);
-                  }
-                }}
-              >
-                Save billing brand
-              </Button>
-            </div>
-            {billingBrandName && (
-              <p className="text-[11px] text-zinc-500">
-                Current: <span className="font-semibold">{billingBrandName}</span>
-                {" · "}
-                <span className="font-mono">{billingBrandId}</span>
-                {" · "}
-                {billingLiveGatewayCount} usable gateway{billingLiveGatewayCount === 1 ? "" : "s"}
-              </p>
-            )}
-            {billingBrandId && billingLiveGatewayCount < 1 && (
-              <p className="text-[11px] text-amber-600 dark:text-amber-400">
-                This brand has no active receiving gateways yet. Add wallets under that brand&apos;s View Gateways before merchants can pay.
-              </p>
-            )}
-          </Card>
+          <p className="text-xs text-zinc-500">
+            Platform billing brand (plan upgrade wallets) is managed under{" "}
+            <button
+              type="button"
+              className="font-semibold underline"
+              onClick={() => setActiveTab("pricing")}
+            >
+              Pricing &amp; Plans
+            </button>
+            .
+          </p>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {gateways.map((gw) => {
@@ -812,7 +759,7 @@ export default function AdminPage() {
                 Accounts, roles & SaaS subscriptions
               </h2>
               <p className="text-xs text-zinc-500">
-                Promote account holders to Super Admin, assign subscription tiers, modify credit balances, and activate or suspend accounts.
+                Promote business accounts to Super Admin, assign subscription tiers, modify credit balances, and activate or suspend (ban) login.
               </p>
             </div>
           </div>
@@ -907,7 +854,7 @@ export default function AdminPage() {
                                 : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-300 dark:border-zinc-700 hover:bg-zinc-200"
                             }`}
                           >
-                            {isAdmin ? "SUPER ADMIN" : "MERCHANT"}
+                            {isAdmin ? "SUPER ADMIN" : "BUSINESS"}
                           </button>
                         </td>
 
@@ -967,13 +914,18 @@ export default function AdminPage() {
                           <button
                             type="button"
                             onClick={() => handleStatusToggle(m)}
+                            title={
+                              m.status === "active"
+                                ? "Click to suspend (ban login)"
+                                : "Click to restore access"
+                            }
                             className={`cursor-pointer px-2 py-0.5 text-[10px] font-mono uppercase font-bold rounded border transition-colors ${
                               m.status === "active"
                                 ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800"
                                 : "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-300 dark:border-red-800"
                             }`}
                           >
-                            {m.status.toUpperCase()}
+                            {m.status === "active" ? "ACTIVE" : "SUSPENDED / BAN"}
                           </button>
                         </td>
 
@@ -1027,7 +979,7 @@ export default function AdminPage() {
                 Platform-Wide Transactions
               </h2>
               <p className="text-xs text-zinc-500">
-                Real-time transaction feed across all accounts. Provides one-click manual approval for edge cases.
+                Real-time transaction feed across all accounts. Review submitted references for manual payment methods.
               </p>
             </div>
           </div>
@@ -1078,7 +1030,7 @@ export default function AdminPage() {
                   </tr>
                 ) : (
                   filteredTransactions.map((tx) => {
-                    const isPending = tx.status === "pending" || tx.status === "initiated";
+                    const isPending = tx.status === "pending" && tx.trxId && tx.methodCode && !["bkash", "nagad", "rocket", "upay", "cellfin", "usdt_trc20", "binance_pay"].includes(tx.methodCode);
                     return (
                       <tr key={tx.sessionId} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30 transition-colors">
                         <td className="py-3 px-4">
@@ -1132,7 +1084,7 @@ export default function AdminPage() {
                               onClick={() => {
                                 setResolvingTx(tx);
                                 setResolveTrxId(tx.trxId || "");
-                                setResolveNote("Manual verification approved by Super Admin");
+                                setResolveNote("");
                                 setResolveModalOpen(true);
                               }}
                             >
@@ -1339,7 +1291,7 @@ export default function AdminPage() {
                 Account plan billing brand
               </h3>
               <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
-                Merchants pay SaaS plans through this brand&apos;s live gateways (My Payments → checkout). Pick a brand
+                Businesses pay for subscriptions through this brand&apos;s live gateways (My Payments → checkout). Pick a brand
                 that already has receiving wallets under View Gateways. Brand ID is also shown on the Brands page.
               </p>
             </div>
@@ -1875,7 +1827,7 @@ export default function AdminPage() {
               </label>
               <Input
                 value={resolveTrxId}
-                onChange={(e) => setResolveTrxId(e.target.value)}
+                readOnly
                 placeholder="e.g. BL92KJ19Z or manual reference"
                 required
               />
@@ -2040,7 +1992,7 @@ export default function AdminPage() {
                   onChange={(e) => setPlanDefIsFree(e.target.checked)}
                   className="rounded border-zinc-300 text-zinc-900 focus:ring-0"
                 />
-                <span>Free Plan (No charge to merchant)</span>
+                <span>Free plan</span>
               </label>
 
               {editingPlanDef && (

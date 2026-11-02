@@ -150,11 +150,6 @@ export default function InvoicesPage() {
             icon={<FileText className="w-6 h-6 text-zinc-400" />}
             title="No invoices created yet"
             description="Send professional invoices to your customers with direct bKash, Nagad, Binance Pay, or USDT checkout."
-            action={
-              <Button size="sm" variant="primary" onClick={() => setIsModalOpen(true)}>
-                Create First Invoice
-              </Button>
-            }
           />
         ) : (
           <div className="divide-y divide-zinc-100 dark:divide-zinc-900">

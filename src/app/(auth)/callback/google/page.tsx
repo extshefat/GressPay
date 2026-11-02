@@ -3,6 +3,7 @@
 import React, { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { afterSignIn } from "@/features/auth/team-invite";
 import { api } from "@/lib/api-client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -55,7 +56,7 @@ function GoogleCallbackContent() {
           setStatus("success");
           const admin = res.user?.role === "admin" || Boolean(res.user?.isAdmin);
           setTimeout(() => {
-            router.push(admin ? "/admin" : "/overview");
+            router.replace(afterSignIn(admin ? "/admin" : "/overview"));
           }, 600);
         }
       } catch (err: unknown) {

@@ -6,7 +6,7 @@ import { api } from "@/lib/api-client";
 import { User } from "@/lib/types/api";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/lib/theme";
-import { LogOut, Plus, Menu, Building2, ChevronDown, Check, Sliders } from "lucide-react";
+import { LogOut, Menu, Building2, ChevronDown, Check, Sliders } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Dropdown } from "@/components/ui/dropdown";
@@ -70,13 +70,13 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user, onMenuCl
   const activeBrand = brands.find((b) => b.brandId === activeBrandId) || brands[0];
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-zinc-200/80 bg-white/85 px-4 backdrop-blur-xl transition-colors dark:border-[#373737] dark:bg-[#101010]/88 sm:px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-[var(--border-color)] bg-[var(--bg-surface)] px-4 backdrop-blur-xl transition-colors sm:px-6">
       <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
         {onMenuClick && (
           <button
             type="button"
             onClick={onMenuClick}
-            className="lg:hidden p-2 -ml-1 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-700/40"
+            className="lg:hidden p-2 -ml-1 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-700/40"
             aria-label="Open navigation"
           >
             <Menu className="w-5 h-5" />
@@ -93,7 +93,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user, onMenuCl
             trigger={
               <button
                 type="button"
-                className="flex min-h-9 items-center gap-2 rounded-xl border border-zinc-200 bg-white px-2.5 text-xs font-semibold text-zinc-800 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-700/30 dark:border-[#414141] dark:bg-[#1c1c1c] dark:text-zinc-200 dark:hover:bg-[#242424] sm:px-3"
+                className="flex min-h-9 items-center gap-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] px-2.5 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--bg-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-700/30 sm:px-3"
               >
                 <Building2 className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                 <span className="truncate max-w-[110px] sm:max-w-[150px]">
@@ -138,28 +138,22 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user, onMenuCl
       <div className="flex items-center gap-2 sm:gap-3">
         <ThemeToggle size="sm" />
 
-        <Link href="/dashboard/payment-links" className="hidden sm:block">
-          <Button size="sm" variant="primary" leftIcon={<Plus className="w-3.5 h-3.5" />}>
-            Create Link
-          </Button>
-        </Link>
-
-        <div className="flex items-center gap-2.5 pl-2 sm:pl-3 border-l border-zinc-200 dark:border-zinc-800">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-neutral-700/15 bg-neutral-700/10 text-xs font-bold text-neutral-800 dark:border-neutral-300/15 dark:bg-neutral-300/10 dark:text-neutral-300">
+        <div className="flex items-center gap-2.5 border-l border-[var(--border-color)] pl-2 sm:pl-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border-color)] bg-[var(--bg-muted)] text-xs font-bold text-[var(--text-primary)]">
             {user?.name ? user.name.slice(0, 2).toUpperCase() : "GP"}
           </div>
           <div className="hidden md:block text-left min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 truncate max-w-[10rem]">
-                {user?.businessName || user?.name || "Your account"}
+              <span className="max-w-[10rem] truncate text-xs font-semibold text-[var(--text-primary)]">
+                {user?.name || user?.businessName || "Your account"}
               </span>
               {(user?.role === "admin" || user?.isAdmin || (user as { is_admin?: boolean })?.is_admin) && (
-                <span className="text-[9px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded">
+                <span className="rounded bg-[var(--text-primary)] px-1.5 py-0.5 text-[9px] font-mono font-bold uppercase tracking-wider text-[var(--bg-page)]">
                   Admin
                 </span>
               )}
             </div>
-            <div className="text-[10px] text-zinc-500 font-mono truncate max-w-[12rem]">{user?.email || ""}</div>
+            <div className="max-w-[12rem] truncate font-mono text-[10px] text-[var(--text-muted)]">{user?.email || ""}</div>
           </div>
 
           <button
@@ -167,7 +161,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user, onMenuCl
             onClick={handleLogout}
             title="Log out"
             aria-label="Log out"
-            className="ml-1 p-1.5 rounded-lg text-zinc-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-700/40"
+            className="ml-1 cursor-pointer rounded-lg p-1.5 text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-muted)] hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-700/40"
           >
             <LogOut className="w-4 h-4" />
           </button>

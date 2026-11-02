@@ -193,6 +193,9 @@ final class CheckoutController
         if ($brandRow === null) {
             GpJson::error('NOT_FOUND', 'Brand not found.', 404);
         }
+        if (!GpDb::one('SELECT merchant_id FROM gp_merchants WHERE merchant_id = ? AND status = ?', [$brandRow['merchant_id'], 'active'])) {
+            GpJson::error('ACCOUNT_INACTIVE', 'This business cannot accept new payments.', 403);
+        }
         if (strtolower((string) ($brandRow['brand_status'] ?? 'active')) === 'inactive') {
             GpJson::error('BRAND_INACTIVE', 'This brand is inactive and cannot accept new checkouts.', 403);
         }
@@ -427,6 +430,28 @@ final class CheckoutController
         return $picked;
     }
 
+    /** Use the submitted server quote when reconciling a delayed receipt. */
+    public static function submittedAmount(array $row, string $currency): string
+    {
+        $meta = self::decodeMeta($row);
+        if (isset($meta['quotedPayable']) && ($meta['quotedCurrency'] ?? '') === $currency) {
+            return (string) $meta['quotedPayable'];
+        }
+        return GpRatesEngine::convert($row['brand_id'], (string) $row['amount'], $row['currency'], $currency);
+    }
+
+    public static function checkoutQuote(array $row, string $method, string $gatewayId): string
+    {
+        $meta = self::decodeMeta($row);
+        $choices = self::enabledMethods($row['brand_id'], (string) $row['amount'], $row['currency'], $meta['shuffledGatewayIds'] ?? null);
+        foreach ($choices as $choice) {
+            if ($choice['code'] === $method && ($gatewayId === '' || ($choice['gatewayId'] ?? '') === $gatewayId)) {
+                return GpMoney::sanitize((string) $choice['payableAmount']);
+            }
+        }
+        GpJson::error('GATEWAY_UNAVAILABLE', 'This payment method is unavailable for this checkout.', 409);
+    }
+
     /** @param list<string>|null $allowedGatewayIds @return list<array<string,mixed>> */
     public static function enabledMethods(
         string $brandId,
@@ -495,9 +520,8 @@ final class CheckoutController
                 }
                 // Amount limits
                 if ($amount !== null && $amount !== '') {
-                    $amt = GpMoney::sanitize($amount);
+                    $amt = GpRatesEngine::convert($brandId, $amount, $currency ?? (string) $cat['currency'], (string) $cat['currency']);
                     if ($gw['min_amount'] !== null && $gw['min_amount'] !== ''
-                        && !GpMoney::withinTolerance($amt, (string) $gw['min_amount'], '999999999', 8)
                         && function_exists('bccomp') && bccomp($amt, GpMoney::sanitize((string) $gw['min_amount']), 8) < 0) {
                         continue;
                     }
@@ -640,12 +664,7 @@ final class CheckoutController
         if ($cat === null) {
             return $row;
         }
-        $payable = GpRatesEngine::convert(
-            (string) $row['brand_id'],
-            (string) $row['amount'],
-            (string) $row['currency'],
-            (string) $cat['currency']
-        );
+        $payable = self::submittedAmount($row, (string) $cat['currency']);
         $gwAccount = null;
         if (!empty($row['gateway_id'])) {
             $g = GpDb::one(
@@ -892,12 +911,7 @@ final class CheckoutController
             GpJson::error('PAYER_PHONE_REQUIRED', 'Enter the phone number used to send this payment.', 400);
         }
 
-        $payable = GpRatesEngine::convert(
-            $row['brand_id'],
-            (string) $row['amount'],
-            (string) $row['currency'],
-            (string) $cat['currency']
-        );
+        $payable = self::checkoutQuote($row, $methodCode, (string) $gatewayId);
         $payableNum = (float) $payable;
         if ($payableNum < (float) $cat['minAmount'] || $payableNum > (float) $cat['maxAmount']) {
             GpJson::error(
@@ -912,6 +926,8 @@ final class CheckoutController
         $meta['confirmationState'] = 'verifying';
         $meta['submittedAt'] = $now;
         $meta['submittedMethod'] = $methodCode;
+        $meta['quotedPayable'] = $payable;
+        $meta['quotedCurrency'] = (string) $cat['currency'];
         $meta['submitted_trx_id'] = $trxId;
         if (!empty($senderNumber)) {
             $meta['sender_number'] = $senderNumber;
@@ -942,7 +958,7 @@ final class CheckoutController
                 GpJson::error('DUPLICATE_TRX', 'This chain transaction hash is already used.');
             }
 
-            $verified = TronUsdtVerifier::verify($trxId, $recv, $payable);
+            $verified = TronUsdtVerifier::verify($trxId, $recv, $payable, (int) strtotime($row['created_at']));
             GpDb::exec(
                 'UPDATE gp_transactions SET trx_id = ?, chain_tx_hash = ?, method_code = ?, status = ?, metadata = ?, updated_at = ?
                  WHERE session_id = ? AND status IN (?, ?)',
@@ -1222,7 +1238,7 @@ final class CheckoutController
             if (GpCatalog::publicCode((string) ($session['method_code'] ?? '')) !== $methodCode
                 || (string) ($session['gateway_id'] ?? '') !== (string) ($gatewayId ?? '')
                 || (!empty($session['expires_at']) && strtotime($session['expires_at']) < time())) continue;
-            $amount = GpRatesEngine::convert($brandId, (string) $session['amount'], (string) $session['currency'], (string) ($cat['currency'] ?? 'BDT'));
+            $amount = self::submittedAmount($session, (string) ($cat['currency'] ?? 'BDT'));
             if (GpMoney::sanitize($amount) === GpMoney::sanitize($payable)) $eligible++;
         }
         if ($eligible !== 1) return null;
@@ -1270,6 +1286,14 @@ final class CheckoutController
         string $evidence = 'matched',
         array $evidenceExtra = []
     ): array {
+        if (($row['ledger_mode'] ?? 'live') === 'live') {
+            $requiresSms = in_array($methodCode, ['bkash', 'nagad', 'rocket', 'upay', 'cellfin'], true);
+            if (($requiresSms && ($sms === null || $evidence !== 'matched'))
+                || ($methodCode === 'binance_pay' && $evidence !== 'provider_confirmed')
+                || ($methodCode === 'usdt_trc20' && $evidence !== 'on_chain')) {
+                GpJson::error('EVIDENCE_REQUIRED', 'This payment requires verified receipt, provider or blockchain evidence.', 409);
+            }
+        }
         if ($sms !== null && strtolower((string) ($row['ledger_mode'] ?? 'live')) === 'live') {
             $brand = GpDb::one('SELECT verification_mode FROM gp_brands WHERE brand_id = ?', [$row['brand_id']]);
             if (GpConfig::get('GRESSPAY_SMS_AUTO_ALLOWED', '0') === '1' && ($brand['verification_mode'] ?? '') === 'sms_auto') {

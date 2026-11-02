@@ -158,11 +158,6 @@ export default function PaymentLinksPage() {
           icon={<Link2 className="w-6 h-6 text-zinc-400" />}
           title="No payment links created yet"
           description="Create a hosted link. Customers pay the destination you configured. The session is paid only after server-side evidence."
-          action={
-            <Button size="sm" variant="primary" onClick={() => setIsModalOpen(true)}>
-              Create First Link
-            </Button>
-          }
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">

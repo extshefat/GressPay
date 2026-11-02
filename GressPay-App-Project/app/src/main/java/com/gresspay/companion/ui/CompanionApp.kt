@@ -171,7 +171,7 @@ private fun WelcomeScreen(onStart: () -> Unit, onTerms: () -> Unit, onPrivacy: (
         }
         Spacer(Modifier.height(28.dp))
         Text(
-            "GressPay Companion",
+            "GressPay",
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             color = GpDark,
@@ -262,7 +262,7 @@ private fun SmsEducationScreen(onBack: () -> Unit, onGrant: () -> Unit) {
             Text("SMS Permission & Consent", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = GpDark)
             Spacer(Modifier.height(8.dp))
             Text(
-                "GressPay Companion acts as a non-custodial listener on this device. It needs SMS access to automatically detect customer payment receipts.",
+                "GressPay acts as a non-custodial listener on this device. It needs SMS access to automatically detect customer payment receipts.",
                 color = GpGrayText,
                 fontSize = 13.sp,
                 lineHeight = 19.sp,
@@ -275,7 +275,7 @@ private fun SmsEducationScreen(onBack: () -> Unit, onGrant: () -> Unit) {
                 border = androidx.compose.foundation.BorderStroke(1.dp, GpBorder),
             ) {
                 Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    eduRow("Targeted Receipt Filtering", "Only alerts from 16247 (bKash), 16167 (Nagad), 16216 (Rocket), Upay, and Cellfin are parsed.")
+                    eduRow("Targeted Receipt Filtering", "Only incoming credit receipts from recognized bKash, Nagad, Rocket, upay and CellFin sender names are parsed.")
                     eduRow("Privacy Guaranteed", "Personal chats, contacts, OTPs, and private messages are strictly ignored and never uploaded.")
                     eduRow("TLS Encrypted Transit", "Only sender, amount, and TrxID are sent over TLS to your authenticated GressPay gateway.")
                     eduRow("Merchant Full Control", "You can pause matching or disconnect this device anytime from this app or your dashboard.")
@@ -745,7 +745,7 @@ private fun HomeScreen(
                     }
                     Spacer(Modifier.width(10.dp))
                     Column {
-                        Text("GressPay Companion", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = GpDark)
+                        Text("GressPay", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = GpDark)
                         Text(
                             if (state.brandName.isNotBlank()) state.brandName else "MFS Listener",
                             fontSize = 11.sp,

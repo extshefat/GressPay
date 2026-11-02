@@ -22,3 +22,7 @@ Trademarks belong to their respective owners; used here for payment-rail identif
 | bybit_pay | `bybit_pay.png` | https://commons.wikimedia.org/wiki/File:Bybit-logo_(cropped).png → https://upload.wikimedia.org/wikipedia/commons/0/0f/Bybit-logo_%28cropped%29.png |
 
 Fetched: 2026-10-31 (UTC). PNGs normalized to 512×512 RGBA with transparent padding for library cards.
+
+Release refresh (2026-11-02). iPay uses the [Bangladesh wallet mark](https://www.ipay.com.bd/iPay-logo.png). aamarPay uses its published wordmark listed above.
+
+Release polish (2026-11-02 finish): library maps use `tap.png`, `usdt_trc20.png`, `binance_pay.png`, `bybit_pay.png`. `easypaisa.svg` is a brand-color wordmark stand-in (official Wikimedia fetch rate-limited); replace with https://commons.wikimedia.org/wiki/File:Easypaisa_Digital_Bank_logo.png when CDN allows. SMS-auto catalog codes limited to bKash/Nagad/Rocket/Upay/Cellfin.

@@ -676,14 +676,14 @@ class ApiClient {
     return this.request(`/api/v1/gateways/${id}/qr/preview`);
   }
 
-  async createBinancePayOrder(sessionId: string): Promise<{
+  async createBinancePayOrder(sessionId: string, gatewayId?: string | null): Promise<{
     checkoutUrl?: string;
     merchantTradeNo?: string;
     status?: string;
     liveReady?: boolean;
     message?: string;
   }> {
-        return this.request(`/api/v1/checkout/${sessionId}/binance/create`, { method: "POST", body: "{}" });
+        return this.request(`/api/v1/checkout/${sessionId}/binance/create`, { method: "POST", body: JSON.stringify({ gatewayId }) });
   }
 
   async getExchangeRates(): Promise<ExchangeRatesResponse> {
@@ -1274,6 +1274,7 @@ class ApiClient {
     }>;
     stats: { total: number; active: number; invited: number; limit: number };
     modules: string[];
+    roleDefaults: Record<"manager" | "support", Record<string, Record<string, boolean>>>;
   }> {
     return this.request("/api/v1/team");
   }

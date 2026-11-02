@@ -1,5 +1,4 @@
 import { GlobeHero } from "@/features/marketing/components/GlobeHero";
-import { LiveTicker } from "@/features/marketing/components/LiveTicker";
 import { CountryCoverage } from "@/features/marketing/components/CountryCoverage";
 import { HowItWorks } from "@/features/marketing/components/HowItWorks";
 import { AboutSection } from "@/features/marketing/components/AboutSection";
@@ -15,7 +14,6 @@ export default function HomePage() {
   return (
     <>
       <GlobeHero />
-      <LiveTicker />
       <CountryCoverage />
       <HowItWorks />
       <AboutSection />

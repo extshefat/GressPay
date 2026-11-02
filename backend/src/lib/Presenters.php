@@ -425,7 +425,7 @@ final class GpPresenters
             'customFields' => $customFields,
             'merchantName' => $brand['name'] ?? 'GressPay Merchant',
             'merchantLogo' => self::merchantLogoForBrand($brand),
-            'merchantVerified' => true,
+            'merchantVerified' => false,
             'websiteUrl' => trim((string) ($brand['website_url'] ?? '')) ?: null,
             'supportMobile' => trim((string) ($brand['support_mobile'] ?? '')) ?: null,
             'supportWhatsapp' => trim((string) ($brand['support_whatsapp'] ?? '')) ?: null,
@@ -517,15 +517,6 @@ final class GpPresenters
             $brandUrl = trim((string) ($brand['logo_url'] ?? ''));
             if ($brandUrl !== '' && (str_starts_with(strtolower($brandUrl), 'https://') || str_starts_with(strtolower($brandUrl), 'http://') || str_starts_with(strtolower($brandUrl), 'data:image/'))) {
                 return $brandUrl;
-            }
-            $merchantId = (string) ($brand['merchant_id'] ?? '');
-            if ($merchantId === '') {
-                return null;
-            }
-            $m = GpDb::one('SELECT brand_logo_url FROM gp_merchants WHERE merchant_id = ?', [$merchantId]);
-            $logo = trim((string) ($m['brand_logo_url'] ?? ''));
-            if ($logo !== '' && (str_starts_with(strtolower($logo), 'https://') || str_starts_with(strtolower($logo), 'http://') || str_starts_with(strtolower($logo), 'data:image/'))) {
-                return $logo;
             }
             return null;
         } catch (Throwable $e) {

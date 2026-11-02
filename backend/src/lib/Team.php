@@ -128,7 +128,10 @@ final class GpTeam
     {
         $merchantId = (string) ($actor['merchant_id'] ?? '');
         $ownerId = (string) ($brand['merchant_id'] ?? '');
-        if ($merchantId !== '' && $merchantId === $ownerId) {
+        if (($actor['auth'] ?? '') === 'api_key') {
+            return $merchantId === $ownerId && ($actor['brand_id'] ?? '') === $brand['brand_id'];
+        }
+        if (empty($actor['team_member_id']) && $merchantId !== '' && $merchantId === $ownerId) {
             return true;
         }
         $workspace = (string) ($actor['workspace_merchant_id'] ?? '');

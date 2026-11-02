@@ -109,7 +109,7 @@ final class TransactionsController
             if (strtolower((string) $row['status']) !== 'pending') {
                 GpJson::error('INVALID_STATE', 'Only pending transactions with a submitted TxID can be confirmed.', 409);
             }
-            $trxId = trim((string) ($req->input('trxId', $req->input('trx_id', $row['trx_id'] ?? '')))); if ($trxId === '') { $trxId = 'MANUAL_' . strtoupper(bin2hex(random_bytes(4))); }
+            $trxId = trim((string) ($row['trx_id'] ?? ''));
             $methodCode = GpCatalog::publicCode((string) ($row['method_code'] ?? ''));
             if ($trxId === '' || $methodCode === '') {
                 GpJson::error('MISSING_EVIDENCE', 'Buyer must submit a TxID before merchant confirmation.');
@@ -123,10 +123,10 @@ final class TransactionsController
                     400
                 );
             }
-            if (in_array($methodCode, ['bkash', 'nagad'], true) && strtolower((string) $row['ledger_mode']) === 'live') {
+            if (in_array($methodCode, ['bkash', 'nagad', 'rocket', 'upay', 'cellfin'], true) && strtolower((string) $row['ledger_mode']) === 'live') {
                 GpJson::error(
                     'SMS_EVIDENCE_REQUIRED',
-                    'Live bKash and Nagad payments require matching companion SMS evidence. Manual review does not verify payment.',
+                    'Live mobile wallet payments require matching companion SMS evidence. Manual review does not verify payment.',
                     409
                 );
             }
@@ -139,12 +139,7 @@ final class TransactionsController
                 'SELECT * FROM gp_methods WHERE brand_id = ? AND (code = ? OR code = ?) ORDER BY id DESC',
                 [$row['brand_id'], $methodCode, GpCatalog::slug($methodCode)]
             ) ?? ['options' => '{}', 'code' => $methodCode];
-            $payable = GpRatesEngine::convert(
-                $row['brand_id'],
-                (string) $row['amount'],
-                (string) $row['currency'],
-                (string) $cat['currency']
-            );
+            $payable = CheckoutController::submittedAmount($row, (string) $cat['currency']);
 
             // Stamp audit fields into metadata before markPaid.
             $meta = [];

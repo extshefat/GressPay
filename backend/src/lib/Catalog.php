@@ -42,20 +42,22 @@ final class GpCatalog
             self::row('upi_qr', 'upi-qr-personal', 'UPI QR', 'IN', 'INR', 'international', 'manual', true, true, 0.0, 10, 100000),
             self::row('phonepe', 'phonepe-intent', 'PhonePe', 'IN', 'INR', 'international', 'manual', true, true, 0.0, 10, 100000),
             self::row('paytm', 'paytm-personal', 'Paytm', 'IN', 'INR', 'international', 'manual', true, true, 0.0, 10, 100000),
-            self::row('easypaisa', 'easypaisa-personal', 'Easypaisa', 'PK', 'PKR', 'international', 'manual', true, true, 0.0, 10, 100000),
+            self::row('easypaisa', 'easypaisa-personal', 'easypaisa', 'PK', 'PKR', 'international', 'manual', true, true, 0.0, 10, 100000),
             self::row('jazzcash', 'jazzcash-personal', 'JazzCash', 'PK', 'PKR', 'international', 'manual', true, true, 0.0, 10, 100000),
             self::row('esewa', 'esewa-personal', 'eSewa', 'NP', 'NPR', 'international', 'manual', true, true, 0.0, 10, 100000),
             self::row('khalti', 'khalti-personal', 'Khalti', 'NP', 'NPR', 'international', 'manual', true, true, 0.0, 10, 100000),
         ];
     }
 
-    /** @return list<string> */
+    /**
+     * Rails that companion SMS automation can settle (exact sender allowlist in APK).
+     * Aggregators / QR / regional rails stay manual — not in this list.
+     *
+     * @return list<string>
+     */
     public static function bdMobileWalletCodes(): array
     {
-        return [
-            'bkash', 'nagad', 'rocket', 'upay', 'cellfin',
-            'bangla_qr', 'bangla_qr_v2', 'pathaopay', 'mcash', 'ok_wallet', 'tap', 'aamar_pay',
-        ];
+        return ['bkash', 'nagad', 'rocket', 'upay', 'cellfin'];
     }
 
     /**

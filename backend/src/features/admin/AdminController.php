@@ -456,7 +456,7 @@ final class AdminController
 
     private static function resolveTransaction(array $actor, string $id, GpRequest $req): never
     {
-        $tx = GpDb::one('SELECT * FROM gp_transactions WHERE session_id = ? OR id = ?', [$id, $id]);
+        $tx = GpDb::one('SELECT * FROM gp_transactions WHERE session_id = ? OR id = ?', [$id, ctype_digit($id) ? (int) $id : -1]);
         if (!$tx) {
             GpJson::error('NOT_FOUND', 'Transaction not found.', 404);
         }
@@ -464,13 +464,15 @@ final class AdminController
             GpJson::error('ALREADY_COMPLETED', 'Transaction is already marked completed.', 400);
         }
 
-        $trxId = trim((string) $req->input('trx_id', $req->input('trxId', $tx['trx_id'] ?? '')));
-        if ($trxId === '') {
-            $trxId = 'MANUAL_' . strtoupper(bin2hex(random_bytes(4)));
-        }
-
-        $methodCode = GpCatalog::publicCode((string) ($tx['method_code'] ?: 'bkash'));
+        $trxId = trim((string) ($tx['trx_id'] ?? ''));
+        $methodCode = GpCatalog::publicCode((string) ($tx['method_code'] ?? ''));
         $cat = GpCatalog::find($methodCode);
+        if ($tx['status'] !== 'pending' || $trxId === '' || ($cat['type'] ?? '') !== 'manual') {
+            GpJson::error('EVIDENCE_REQUIRED', 'Only a submitted manual payment can be reviewed here.', 409);
+        }
+        if (strlen(trim((string) $req->input('note', ''))) < 8) {
+            GpJson::error('REASON_REQUIRED', 'Record how you verified this payment.', 400);
+        }
         $localCurrency = $cat ? (string) $cat['currency'] : (string) $tx['currency'];
         $methodRow = GpDb::one(
             'SELECT * FROM gp_methods WHERE brand_id = ? AND (code = ? OR code = ?) ORDER BY id DESC',
@@ -644,6 +646,9 @@ final class AdminController
             GpJson::error('NOT_FOUND', 'Merchant not found.', 404);
         }
 
+        if ($status === 'suspended' && $merchantId === $actor['merchant_id']) {
+            GpJson::error('SELF_SUSPENSION', 'You cannot suspend your own administrator account.', 409);
+        }
         GpDb::exec('UPDATE gp_merchants SET status = ?, updated_at = ? WHERE merchant_id = ?', [$status, GpIds::now(), $merchantId]);
 
         self::logAudit($actor['email'], 'merchant', $merchantId, 'status_change', [

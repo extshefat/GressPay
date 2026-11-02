@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">GressPay Companion</string>
-    <string name="notification_channel_name">Payment Verification Node</string>
+    <string name="app_name">GressPay</string>
+    <string name="notification_channel_name">GressPay verification</string>
     <string name="notification_channel_desc">Maintains high-priority listening for payment receipt SMS.</string>
-    <string name="notification_title">GressPay Verification Node Active</string>
-    <string name="notification_text">Automated listener active for bKash, Nagad, Rocket, Upay, and Cellfin receipts.</string>
+    <string name="notification_title">GressPay is listening</string>
+    <string name="notification_text">Matching bKash, Nagad, Rocket, Upay, and Cellfin payment receipts.</string>
     <string name="consent_title">Non-Custodial Privacy &amp; Consent</string>
-    <string name="consent_body">With your consent, GressPay Companion monitors incoming payment confirmation SMS for bKash, Nagad, Rocket, Upay, and Cellfin. It parses sender rail, amount, and TrxID — personal messages and full inbox data are never uploaded or stored. Data is delivered securely over TLS to your GressPay platform to automate order settlements.</string>
+    <string name="consent_body">With your consent, GressPay monitors incoming payment confirmation SMS for bKash, Nagad, Rocket, Upay, and Cellfin. It parses sender rail, amount, and TrxID — personal messages and full inbox data are never uploaded or stored. Data is delivered securely over TLS to your GressPay platform to automate order settlements.</string>
     <string name="privacy_stop_hint">Toggle off matching or clear credentials at any time to immediately suspend automated sync.</string>
 </resources>

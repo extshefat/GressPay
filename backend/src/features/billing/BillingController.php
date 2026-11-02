@@ -5,7 +5,10 @@ final class BillingController
 {
     public static function handle(GpRequest $req): never
     {
-        $actor = GpAuth::requireActor($req);
+        $actor = GpAuth::requireDashboardUser($req);
+        if (!empty($actor['team_member_id'])) {
+            GpJson::error('FORBIDDEN', 'Billing requires workspace owner access.', 403);
+        }
         $merchantId = trim((string) ($actor['merchant_id'] ?? ''));
         if ($merchantId === '') {
             GpJson::error('UNAUTHORIZED', 'Account context required.', 401);
@@ -14,7 +17,6 @@ final class BillingController
         $action = $req->part(1) ?? '';
         $sub = $req->part(2) ?? '';
         if ($req->method === 'GET' && $action === 'credits') {
-            if (!empty($actor['team_member_id'])) GpJson::error('FORBIDDEN', 'Only the account owner can view billing balances.', 403);
             $history = GpDb::all('SELECT delta, balance_after, reason, created_at FROM gp_credit_transactions WHERE merchant_id = ? ORDER BY id DESC LIMIT 100', [$merchantId]);
             $subscription = GpDb::one("SELECT plan_id, credits_remaining, credits_used, expires_at FROM gp_subscriptions WHERE merchant_id = ? AND status = 'active' ORDER BY id DESC LIMIT 1", [$merchantId]);
             GpJson::send(['balance' => (int) ($history[0]['balance_after'] ?? $subscription['credits_remaining'] ?? 0), 'subscription' => $subscription, 'history' => $history]);

@@ -11,7 +11,7 @@ final class BinancePayController
             GpJson::error('NOT_FOUND', 'Checkout session not found.', 404);
         }
         $raw = strtolower((string) $row['status']);
-        if (in_array($raw, ['completed', 'failed', 'expired', 'refunded'], true)) {
+        if (!in_array($raw, ['initiated', 'pending'], true) || (!empty($row['expires_at']) && strtotime($row['expires_at']) < time())) {
             GpJson::error('SESSION_CLOSED', 'Session is closed.', 409);
         }
 
@@ -33,12 +33,7 @@ final class BinancePayController
             GpJson::error('PROVIDER_NOT_READY', 'Binance Pay credentials not configured.', 503);
         }
 
-        $payable = GpRatesEngine::convert(
-            $row['brand_id'],
-            (string) $row['amount'],
-            (string) $row['currency'],
-            'USDT'
-        );
+        $payable = CheckoutController::checkoutQuote($row, 'binance_pay', trim((string) $req->input('gatewayId', '')));
 
         $existing = GpDb::one(
             'SELECT * FROM gp_provider_orders WHERE session_id = ? AND provider = ?',
@@ -162,21 +157,21 @@ final class BinancePayController
         }
 
         self::auditReconcile($actor['brand_id'], $sessionId, $actor['merchant_id'], 'merchant');
-        self::reconcileInternal($sessionId);
+        GpJson::send(self::queryPaymentStatus($sessionId));
     }
 
     /**
      * Query Binance and complete only on exact PAID + amount + currency + tradeNo.
      * Used by merchant reconcile and signed callbacks only.
      */
-    public static function reconcileInternal(string $sessionId): never
+    private static function queryPaymentStatus(string $sessionId): array
     {
         $row = GpDb::one('SELECT * FROM gp_transactions WHERE session_id = ?', [$sessionId]);
         if ($row === null) {
             GpJson::error('NOT_FOUND', 'Checkout session not found.', 404);
         }
         if (strtolower((string) $row['status']) === 'completed') {
-            GpJson::send(GpPresenters::checkoutStatus($row));
+            return GpPresenters::checkoutStatus($row);
         }
 
         $order = GpDb::one(
@@ -195,12 +190,12 @@ final class BinancePayController
 
         $q = BinancePayClient::queryOrder($creds, (string) $order['merchant_trade_no']);
         if (empty($q['ok'])) {
-            GpJson::send([
+            return [
                 'sessionId' => $sessionId,
                 'status' => 'PENDING',
                 'confirmationState' => 'submitted',
                 'message' => 'Provider query inconclusive; not marking failed or paid.',
-            ]);
+            ];
         }
 
         $data = $q['data']['data'] ?? $q['data'] ?? [];
@@ -214,7 +209,7 @@ final class BinancePayController
             GpJson::error('PROVIDER_MISMATCH', 'merchantTradeNo mismatch or missing.', 409);
         }
         if ($status !== 'PAID') {
-            GpJson::send(GpPresenters::checkoutStatus($row));
+            return GpPresenters::checkoutStatus($row);
         }
         if ($currency === '') {
             GpJson::error('PROVIDER_MISMATCH', 'Provider currency missing.', 409);
@@ -256,14 +251,14 @@ final class BinancePayController
             'UPDATE gp_provider_orders SET status = ?, updated_at = ? WHERE id = ?',
             ['paid', GpIds::now(), $order['id']]
         );
-        GpJson::send(GpPresenters::checkoutStatus($paid));
+        return GpPresenters::checkoutStatus($paid);
     }
 
     /** @deprecated Use reconcileForMerchant or reconcileInternal */
     public static function reconcile(string $sessionId): never
     {
         // Public callers must not hit this — CheckoutController routes merchant path only.
-        self::reconcileInternal($sessionId);
+        GpJson::send(self::queryPaymentStatus($sessionId));
     }
 
     public static function callback(GpRequest $req): never
@@ -279,34 +274,17 @@ final class BinancePayController
             GpJson::error('INVALID_SIGNATURE', 'Nonce required.', 401);
         }
 
-        // Replay protection: nonce unique per provider callback.
-        $seen = GpDb::one('SELECT id FROM gp_binance_callback_nonces WHERE nonce = ?', [$nonce]);
-        if ($seen) {
-            GpJson::error('REPLAY', 'Callback nonce already processed.', 409);
-        }
-
         $decoded = json_decode($raw, true);
         if (!is_array($decoded)) {
             GpJson::error('INVALID_BODY', 'Invalid callback body.', 400);
         }
 
-        $tradeNo = (string) ($decoded['merchantTradeNo'] ?? $decoded['bizId'] ?? '');
-        $order = null;
-        if ($tradeNo !== '') {
-            $order = GpDb::one('SELECT * FROM gp_provider_orders WHERE merchant_trade_no = ? AND provider = ?', [
-                $tradeNo,
-                'binance_pay',
-            ]);
+        $details = $decoded['data'] ?? [];
+        if (is_string($details)) {
+            $details = json_decode($details, true);
         }
-        if ($order === null) {
-            $tradeNo = (string) ($decoded['data']['merchantTradeNo'] ?? '');
-            if ($tradeNo !== '') {
-                $order = GpDb::one('SELECT * FROM gp_provider_orders WHERE merchant_trade_no = ? AND provider = ?', [
-                    $tradeNo,
-                    'binance_pay',
-                ]);
-            }
-        }
+        $tradeNo = is_array($details) ? (string) ($details['merchantTradeNo'] ?? '') : '';
+        $order = GpDb::one('SELECT * FROM gp_provider_orders WHERE merchant_trade_no = ? AND provider = ?', [$tradeNo, 'binance_pay']);
         if ($order === null) {
             GpJson::error('NOT_FOUND', 'Unknown merchantTradeNo.', 404);
         }
@@ -316,29 +294,26 @@ final class BinancePayController
         if ($creds === null) {
             GpJson::error('PROVIDER_NOT_READY', 'Credentials missing.', 503);
         }
-        if ($sn === '' || $sn !== $creds['certificateSn']) {
-            GpJson::error('INVALID_SIGNATURE', 'Certificate SN mismatch.', 401);
+        $certs = BinancePayClient::request($creds, '/binancepay/openapi/certificates', []);
+        if (!$certs['ok']) {
+            GpJson::error('PROVIDER_UNAVAILABLE', 'Could not retrieve Binance signing certificates.', 503);
         }
-        // Outbound Merchant API calls use HMAC-SHA512. Official webhook examples
-        // sign with Binance's RSA certificate instead. This build still checks the
-        // merchant HMAC, so a real RSA callback is rejected here and does not
-        // mark the session paid. Completion still requires a successful order query.
-        if (!BinancePayClient::verifyCallbackSignature($timestamp, $nonce, $raw, $signature, $creds['secret'])) {
+        $verified = false;
+        foreach ($certs['data']['data'] ?? [] as $cert) {
+            if ($sn !== '' && ($cert['certSerial'] ?? '') === $sn) {
+                $verified = BinancePayClient::verifyCallbackSignature($timestamp, $nonce, $raw, $signature, (string) ($cert['certPublic'] ?? ''));
+                break;
+            }
+        }
+        if (!$verified) {
             GpJson::error('INVALID_SIGNATURE', 'Callback signature rejected.', 401);
         }
-
-        try {
-            GpDb::exec(
-                'INSERT INTO gp_binance_callback_nonces (nonce, merchant_trade_no, brand_id, created_at) VALUES (?, ?, ?, ?)',
-                [$nonce, (string) $order['merchant_trade_no'], $order['brand_id'], GpIds::now()]
-            );
-        } catch (Throwable $e) {
-            GpJson::error('REPLAY', 'Callback nonce already processed.', 409);
+        // Provider retries are safe: markPaid uses an atomic pending-to-completed transition.
+        $result = self::queryPaymentStatus((string) $order['session_id']);
+        if (($decoded['bizStatus'] ?? '') === 'PAY_SUCCESS' && strtoupper((string) $result['status']) !== 'COMPLETED') {
+            GpJson::send(['returnCode' => 'FAIL', 'returnMessage' => 'Order is awaiting confirmation.'], 503);
         }
-
-        self::auditReconcile((string) $order['brand_id'], (string) $order['session_id'], null, 'callback');
-        // Callback is a signal only — always query provider before completing.
-        self::reconcileInternal((string) $order['session_id']);
+        GpJson::send(['returnCode' => 'SUCCESS', 'returnMessage' => null]);
     }
 
     private static function auditReconcile(string $brandId, string $sessionId, ?string $merchantId, string $source): void

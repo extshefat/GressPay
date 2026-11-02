@@ -247,6 +247,7 @@ CREATE TABLE IF NOT EXISTS gp_sms_data (
   updated_at VARCHAR(32) NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_gp_sms_brand_trx ON gp_sms_data (brand_id, trx_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_gp_sms_brand_trx_lower ON gp_sms_data (brand_id, lower(trx_id));
 
 CREATE TABLE IF NOT EXISTS gp_webhook_log (
   id SERIAL PRIMARY KEY,
