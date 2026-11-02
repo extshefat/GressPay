@@ -34,7 +34,7 @@ class SmsUploadWorker(
 
         return try {
             val api = CompanionApi(base)
-            val res = api.postPaymentSms(token, brandId, senderKey, amount, trx, number, idem, receivedAtMs)
+            val res = api.postPaymentSms(token, brandId, senderKey, amount, trx, number, idem, receivedAtMs, inputData.getString(KEY_PAYER_PHONE).orEmpty())
             if (res.ok) {
                 prefs.lastSyncAt = System.currentTimeMillis()
                 prefs.lastError = ""
@@ -90,6 +90,7 @@ class SmsUploadWorker(
         const val KEY_AMOUNT = "amount"
         const val KEY_TRX = "trx_id"
         const val KEY_NUMBER = "number"
+        const val KEY_PAYER_PHONE = "payer_phone"
         const val KEY_RECEIVED_AT = "received_at_ms"
         const val KEY_IDEM = "idempotency_key"
 

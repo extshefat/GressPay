@@ -1034,7 +1034,7 @@ export default function GatewaysPage() {
                   key={g.code}
                   type="button"
                   onClick={() => pickCuratedGateway(g)}
-                  className="group relative flex min-h-[156px] flex-col items-center rounded-2xl border border-zinc-200 bg-white p-3.5 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-teal-700/30 hover:shadow-lg dark:border-[#2a3a47] dark:bg-[#0b1620] dark:hover:border-teal-300/30"
+                  className="group relative flex min-h-[136px] flex-col items-center rounded-2xl border border-zinc-200 bg-white p-3.5 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-teal-700/30 hover:shadow-lg dark:border-[#2a3a47] dark:bg-[#0b1620] dark:hover:border-teal-300/30"
                 >
                   <div className="relative mb-2.5 flex h-12 w-12 items-center justify-center rounded-xl bg-white dark:bg-zinc-800 p-2 shadow-xs border border-zinc-200/80 dark:border-zinc-700/80 group-hover:scale-105 transition-transform">
                     <Image
@@ -1049,7 +1049,7 @@ export default function GatewaysPage() {
                   <div className="mt-1 flex items-center gap-1 font-mono text-[10px] uppercase text-zinc-500 dark:text-zinc-400">
                     <span className="rounded bg-zinc-100 dark:bg-zinc-800 px-1 py-0.2 text-[9px] text-zinc-600 dark:text-zinc-300">{g.country}</span>
                     <span>·</span>
-                    <span>{g.currency}</span>
+                    <span>{g.currency}</span>{["IN", "PK", "NP"].includes(g.country) && <span className="text-[9px]"> · Planned adapter</span>}
                   </div>
                   <div className="mt-2">
                     <span className={`rounded-full px-2 py-0.5 text-[8px] font-semibold tracking-wide uppercase ${
@@ -1058,7 +1058,7 @@ export default function GatewaysPage() {
                       g.type === "provider" ? "bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/30" :
                       "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700"
                     }`}>
-                      {g.type === "automation" ? "SMS Auto" :
+                      {g.type === "automation" ? "SMS Receipt Match" :
                        g.type === "onchain" ? "On-Chain" :
                        g.type === "provider" ? "Direct API" : "Manual"}
                     </span>

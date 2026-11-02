@@ -689,8 +689,8 @@ export default function BrandsPage() {
                     : "border-zinc-200 dark:border-zinc-800"
                 }`}
               >
-                <div className="font-bold text-zinc-900 dark:text-zinc-100">Verify using Phone / SMS</div>
-                <p className="mt-1 text-zinc-500">Customer pays; Companion SMS auto-settles without requiring TrxID entry.</p>
+                <div className="font-bold text-zinc-900 dark:text-zinc-100">Verify using payer phone + SMS</div>
+                <p className="mt-1 text-zinc-500">Customer enters the paying phone number. A trusted receipt must match phone, wallet, amount and time. Requires operator activation; missing or ambiguous evidence stays pending.</p>
               </button>
             </div>
           </div>

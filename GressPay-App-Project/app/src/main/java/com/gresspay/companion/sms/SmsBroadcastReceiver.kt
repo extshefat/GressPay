@@ -38,6 +38,7 @@ class SmsBroadcastReceiver : BroadcastReceiver() {
             SmsUploadWorker.KEY_AMOUNT to parsed.amount,
             SmsUploadWorker.KEY_TRX to parsed.trxId,
             SmsUploadWorker.KEY_NUMBER to parsed.fromNumber,
+            SmsUploadWorker.KEY_PAYER_PHONE to parsed.payerPhone,
             SmsUploadWorker.KEY_RECEIVED_AT to messages[0].timestampMillis,
             SmsUploadWorker.KEY_IDEM to idem
         )

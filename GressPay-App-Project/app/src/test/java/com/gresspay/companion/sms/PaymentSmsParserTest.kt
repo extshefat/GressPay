@@ -6,6 +6,13 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class PaymentSmsParserTest {
+    @Test
+    fun extractsPayerPhoneOnlyFromTrustedCreditReceipt() {
+        val body = "You have received Tk 500.00 from 01712345678. TrxID ABCDEF1234"
+        assertEquals("01712345678", PaymentSmsParser.parse("bKash", body)!!.payerPhone)
+        assertNull(PaymentSmsParser.parse("unknown", body))
+        assertEquals("", PaymentSmsParser.parse("bKash", body.replace("01712345678", "017XXXX5678"))!!.payerPhone)
+    }
 
     @Test
     fun parsesBkashCredit() {

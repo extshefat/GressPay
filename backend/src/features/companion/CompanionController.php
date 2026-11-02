@@ -183,6 +183,8 @@ final class CompanionController
             // A retry may be delivered after checkout has claimed this SMS.
             // Return success for the same evidence, but reject key reuse with changed data.
             $smsNumber = self::resolveSmsWalletNumber($device, (string) $req->input('number', ''), $sender);
+            $payerPhone = preg_replace('/\D+/', '', (string) $req->input('payer_phone', '')) ?: '';
+            $payerPhone = preg_match('/^(?:880|0)?1[3-9][0-9]{8}$/', $payerPhone) ? '0' . substr($payerPhone, -10) : null;
             if ($idem !== '') {
                 $prior = GpDb::one(
                     'SELECT * FROM gp_sms_data WHERE brand_id = ? AND idempotency_key = ?',
@@ -231,14 +233,15 @@ final class CompanionController
             } else {
                 try {
                     GpDb::exec(
-                        'INSERT INTO gp_sms_data (brand_id, sender_key, amount, trx_id, received_at, number, status, device_id, idempotency_key, created_at, updated_at)
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                        'INSERT INTO gp_sms_data (brand_id, sender_key, amount, trx_id, received_at, payer_phone, number, status, device_id, idempotency_key, created_at, updated_at)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                         [
                             $device['brand_id'],
                             $sender,
                             $amount,
                             $trxId,
                             $receivedAt,
+                            $payerPhone,
                             $smsNumber,
                             'approved',
                             $device['device_id'],

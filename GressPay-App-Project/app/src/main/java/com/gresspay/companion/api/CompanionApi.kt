@@ -184,7 +184,8 @@ class CompanionApi(
         trxId: String,
         number: String,
         idempotencyKey: String,
-        receivedAtMs: Long
+        receivedAtMs: Long,
+        payerPhone: String
     ): SmsPostResult {
         val url = "$baseUrl/api/v1/companion/sms"
         val payload = JSONObject()
@@ -194,6 +195,7 @@ class CompanionApi(
             .put("number", number)
             .put("idempotency_key", idempotencyKey)
             .put("received_at_ms", receivedAtMs)
+            .put("payer_phone", payerPhone)
             .toString()
         val builder = Request.Builder()
             .url(url)

@@ -73,6 +73,7 @@ object InboxScanner {
             SmsUploadWorker.KEY_AMOUNT to parsed.amount,
             SmsUploadWorker.KEY_TRX to parsed.trxId,
             SmsUploadWorker.KEY_NUMBER to parsed.fromNumber,
+            SmsUploadWorker.KEY_PAYER_PHONE to parsed.payerPhone,
             SmsUploadWorker.KEY_RECEIVED_AT to receivedAtMs,
             SmsUploadWorker.KEY_IDEM to idem
         )

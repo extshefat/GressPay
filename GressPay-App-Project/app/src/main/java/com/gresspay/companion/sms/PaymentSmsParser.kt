@@ -7,7 +7,8 @@ data class ParsedPaymentSms(
     val senderKey: String,
     val amount: String,
     val trxId: String,
-    val fromNumber: String
+    val fromNumber: String,
+    val payerPhone: String = ""
 )
 
 /**
@@ -81,7 +82,8 @@ object PaymentSmsParser {
             senderKey = senderKey,
             amount = amount,
             trxId = trx,
-            fromNumber = fromAddress.filter { it.isDigit() || it == '+' }.ifBlank { fromAddress }
+            fromNumber = fromAddress.filter { it.isDigit() || it == '+' }.ifBlank { fromAddress },
+            payerPhone = Regex("(?i)\\bfrom\\s+(\\+?8801[3-9][0-9]{8}|01[3-9][0-9]{8})(?![0-9])").find(body)?.groupValues?.get(1)?.filter { it.isDigit() }?.takeLast(10)?.let { "0$it" } ?: ""
         )
     }
 

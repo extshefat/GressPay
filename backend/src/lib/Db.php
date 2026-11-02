@@ -222,6 +222,7 @@ final class GpDb
             'ALTER TABLE gp_devices ADD COLUMN token_sealed TEXT',
             'ALTER TABLE gp_devices ADD COLUMN bound_gateway_id VARCHAR(32)',
             'ALTER TABLE gp_sms_data ADD COLUMN received_at VARCHAR(32)',
+            'ALTER TABLE gp_sms_data ADD COLUMN payer_phone VARCHAR(24)',
             'ALTER TABLE gp_gateways ADD COLUMN gateway_fee DECIMAL(20,8)',
             'ALTER TABLE gp_gateways ADD COLUMN gateway_fee_type VARCHAR(16) NOT NULL DEFAULT \'percentage\'',
             'ALTER TABLE gp_gateways ADD COLUMN exchange_rate DECIMAL(20,8)',

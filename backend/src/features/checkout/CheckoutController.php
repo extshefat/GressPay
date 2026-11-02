@@ -888,6 +888,9 @@ final class CheckoutController
         }
 
         $senderNumber = trim((string) $req->input('sender_number', $req->input('senderNumber', '')));
+        if ($smsAuto && !preg_match('/^(?:\+?880|0)1[3-9][0-9]{8}$/', $senderNumber)) {
+            GpJson::error('PAYER_PHONE_REQUIRED', 'Enter the phone number used to send this payment.', 400);
+        }
 
         $payable = GpRatesEngine::convert(
             $row['brand_id'],
@@ -1268,6 +1271,13 @@ final class CheckoutController
         array $evidenceExtra = []
     ): array {
         if ($sms !== null && strtolower((string) ($row['ledger_mode'] ?? 'live')) === 'live') {
+            $brand = GpDb::one('SELECT verification_mode FROM gp_brands WHERE brand_id = ?', [$row['brand_id']]);
+            if (GpConfig::get('GRESSPAY_SMS_AUTO_ALLOWED', '0') === '1' && ($brand['verification_mode'] ?? '') === 'sms_auto') {
+                $phoneMeta = self::decodeMeta($row);
+                $expectedPhone = preg_replace('/\D+/', '', (string) ($phoneMeta['sender_number'] ?? '')) ?: '';
+                $evidencePhone = preg_replace('/\D+/', '', (string) ($sms['payer_phone'] ?? '')) ?: '';
+                if ($expectedPhone === '' || $evidencePhone === '' || substr($expectedPhone, -10) !== substr($evidencePhone, -10)) return $row;
+            }
             $received = strtotime((string) ($sms['received_at'] ?? ''));
             $opened = strtotime((string) ($row['created_at'] ?? ''));
             $expires = strtotime((string) ($row['expires_at'] ?? ''));

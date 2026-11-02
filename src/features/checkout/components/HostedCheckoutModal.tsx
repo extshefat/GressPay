@@ -898,7 +898,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
             </button>
           </div>
           <div className="text-3xl font-semibold tracking-tight tabular-nums text-zinc-900 dark:text-zinc-100">
-            {formatCurrency(payableAmount, payableCurrency)}
+            {methodChosen ? formatCurrency(payableAmount, payableCurrency) : formatCurrency(session.amount, session.currency)}
           </div>
           <div className="flex items-center gap-1.5 text-[11px] font-mono text-zinc-500 mt-0.5">
             <Clock className="w-3.5 h-3.5 text-zinc-400" />
@@ -1024,7 +1024,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
         {/* Payment Rails Grid */}
         <div className="space-y-2">
           <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wider font-mono">
-            Select Payment Method
+            {activeTab === "mfs" ? "Mobile Banking" : activeTab === "crypto" ? "Crypto" : "Bank & International"}
           </label>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {currentTabMethods.map((method) => {
@@ -1297,13 +1297,13 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
                 </div>
                 <div className="space-y-1.5">
                   <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                    Your Mobile Number (Optional)
+                    Phone number used for payment
                   </label>
                   <Input
                     placeholder="e.g. 01XXXXXXXXX"
                     value={senderNumber}
                     onChange={(e) => setSenderNumber(e.target.value.trim())}
-                    className="font-mono text-xs"
+                    required type="tel" className="font-mono text-xs"
                   />
                 </div>
                 <details className="text-xs text-zinc-500">
