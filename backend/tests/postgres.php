@@ -51,6 +51,7 @@ $expired['expires_at'] = gmdate('Y-m-d\TH:i:s\Z',time()-4000);
 check(CheckoutController::markPaid($expired,$delayedTrx,'bkash',$method,'100','BDT',$late)['status'] === 'pending','receipt outside payment window cannot settle expired checkout');
 echo "PostgreSQL integration checks completed\n";
 putenv('GRESSPAY_SMS_AUTO_ALLOWED=1'); $_ENV['GRESSPAY_SMS_AUTO_ALLOWED'] = '1';
+GpConfig::load();
 GpDb::exec('UPDATE gp_brands SET verification_mode = ? WHERE brand_id = ?', ['sms_auto',$brand]);
 $phoneId = GpIds::make('chs',6); $phoneTrx = 'PG'.strtoupper(bin2hex(random_bytes(5)));
 GpDb::exec('INSERT INTO gp_transactions (session_id,brand_id,source,amount,currency,ledger_mode,method_code,status,metadata,expires_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',[$phoneId,$brand,'api','100','BDT','live','bkash','pending',json_encode(['sender_number'=>'01712345678']),gmdate('Y-m-d\TH:i:s\Z',time()+600),$now,$now]);
