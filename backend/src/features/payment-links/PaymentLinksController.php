@@ -3,6 +3,14 @@ declare(strict_types=1);
 
 final class PaymentLinksController
 {
+    public static function publicPage(GpRequest $req): never
+    {
+        if ($req->method !== 'GET') GpJson::error('METHOD_NOT_ALLOWED', 'Read-only endpoint.', 405);
+        $row = GpDb::one("SELECT l.link_id, l.title, l.description, l.amount, l.currency, l.product_image_url, b.name AS brand_name FROM gp_payment_links l INNER JOIN gp_brands b ON b.brand_id = l.brand_id WHERE l.link_id = ? AND l.status = 'active' AND (b.brand_status IS NULL OR b.brand_status = 'active')", [(string) $req->part(1)]);
+        if ($row === null) GpJson::error('NOT_FOUND', 'This page is not available.', 404);
+        GpJson::send(['page' => $row]);
+    }
+
     public static function handle(GpRequest $req): never
     {
         $actor = GpAuth::requireActor($req);

@@ -33,6 +33,7 @@ final class GpRouter
             'checkout' => CheckoutController::handle($req),
             'payment' => PaymentController::handle($req),
             'payment-links' => PaymentLinksController::handle($req),
+            'storefront' => PaymentLinksController::publicPage($req),
             'invoices' => InvoicesController::handle($req),
             'transactions' => TransactionsController::handle($req),
             'methods' => MethodsController::handle($req),

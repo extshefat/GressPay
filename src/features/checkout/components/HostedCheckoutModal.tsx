@@ -111,6 +111,8 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
     }
   }, [activeTab, mfsMethods, cryptoMethods, otherMethods, selectedMethod]);
 
+  const [methodChosen, setMethodChosen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [txidInput, setTxidInput] = useState<string>("");
   const [senderNumber, setSenderNumber] = useState<string>("");
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>(() => {
@@ -772,6 +774,11 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
             : undefined
       }
     >
+      <div className="flex items-center justify-between border-b border-zinc-200 px-5 py-3 dark:border-zinc-800">
+        <button type="button" disabled={!methodChosen} onClick={() => { setMethodChosen(false); setErrorMessage(null); }} className="text-xs font-medium disabled:opacity-30">← Payment methods</button>
+        <span className="text-[10px] uppercase tracking-widest text-zinc-500">Secure checkout</span>
+        {!demoMode && <button type="button" aria-label="Cancel invoice" onClick={handleCancelCheckout} disabled={isCanceling} className="text-xl leading-none">×</button>}
+      </div>
       {/* Merchant Header */}
       <div
         className={`p-5 sm:p-6 border-b border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
@@ -825,6 +832,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
                 <Copy className="inline w-3 h-3 ml-1 text-zinc-400" />
               )}
             </p>
+            <button type="button" onClick={() => setDetailsOpen(!detailsOpen)} aria-expanded={detailsOpen} className="mt-2 rounded-full border border-zinc-300 px-3 py-1 text-[11px] dark:border-zinc-700">{detailsOpen ? "Hide details" : "View details"}</button>
             {(whatsappHref || telHref || mailHref || tgHref || session.websiteUrl) && (
               <div className="flex flex-wrap items-center gap-1.5 mt-2">
                 {whatsappHref && (
@@ -909,6 +917,12 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
         </div>
       </div>
 
+      {detailsOpen && <dl className="grid grid-cols-2 gap-3 border-b border-zinc-200 px-6 py-4 text-xs dark:border-zinc-800">
+        <dt className="text-zinc-500">Invoice</dt><dd className="break-all font-mono">{session.sessionId}</dd>
+        <dt className="text-zinc-500">Order</dt><dd>{session.orderTitle || "Payment"}</dd>
+        <dt className="text-zinc-500">Order amount</dt><dd>{formatCurrency(session.amount, session.currency)}</dd>
+        {methodChosen && <><dt className="text-zinc-500">Selected gateway</dt><dd>{selectedMethod.name}</dd><dt className="text-zinc-500">Fees</dt><dd>{feeLabel}</dd><dt className="font-semibold">Payable</dt><dd className="font-semibold">{formatCurrency(payableAmount, payableCurrency)}</dd></>}
+      </dl>}
       {/* Security & Non-Custodial Strip */}
       <div className="px-5 sm:px-6 py-2 bg-zinc-100/70 dark:bg-zinc-900/40 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between text-xs font-medium text-zinc-600 dark:text-zinc-400">
         <div className="flex items-center gap-2">
@@ -959,6 +973,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
           </Alert>
         )}
 
+        {!methodChosen && <>
         {/* Category tabs — only show when more than one group has brand gateways */}
         {([mfsMethods, cryptoMethods, otherMethods].filter((g) => g.length > 0).length > 1) && (
           <div className="flex flex-wrap items-center gap-1 rounded-xl bg-zinc-100 dark:bg-zinc-900 p-1 border border-zinc-200 dark:border-zinc-800">
@@ -1029,6 +1044,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
                   type="button"
                   onClick={() => {
                     setSelectedMethod(method);
+                    setMethodChosen(true);
                     setTxidInput("");
                     setErrorMessage(null);
                   }}
@@ -1044,7 +1060,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
                       <img
                         src={methodIconUrl}
                         alt={method.name}
-                        className="w-5 h-5 object-contain shrink-0"
+                        className="w-10 h-10 object-contain shrink-0"
                         onError={(e) => {
                           (e.target as HTMLElement).style.display = "none";
                         }}
@@ -1081,6 +1097,10 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
           </div>
         </div>
 
+        <div className="rounded-xl bg-zinc-100 p-4 text-center font-semibold dark:bg-zinc-900">Choose a method to pay {formatCurrency(session.amount, session.currency)}</div>
+        </>}
+        {methodChosen && <>
+        <div className="flex items-center gap-3"><img src={gatewayLogoPath(selectedMethod.code)} alt="" className="h-9 w-9 object-contain" /><div><h2 className="text-sm font-semibold">{selectedMethod.name}</h2><p className="text-xs text-zinc-500">Follow the instructions, then submit payment evidence.</p></div></div>
         {/* Payment Transfer & Verification Card */}
         <div className="p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/40 space-y-5">
           {/* Payable Amount Highlight with Copy Button */}
@@ -1358,6 +1378,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
             )}
           </form>
         </div>
+        </>}
       </div>
     </div>
   );

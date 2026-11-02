@@ -591,6 +591,10 @@ class ApiClient {
     return this.request("/api/v1/billing/payments");
   }
 
+  async getCreditBalance(): Promise<{ balance: number; subscription: { plan_id: string; expires_at?: string } | null; history: Array<{ delta: number; balance_after: number; reason: string; created_at: string }> }> {
+    return this.request('/api/v1/billing/credits');
+  }
+
   async getBillingPlans(): Promise<{
     plans: { planId: string; code: string; name: string; priceBdt: string; billingCycle: string }[];
     billingBrandConfigured: boolean;
