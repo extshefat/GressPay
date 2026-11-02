@@ -1,5 +1,24 @@
 node_modules
 .next
+.git
+.github
+.cursor
+.vscode
+*.md
+!README.md
 backend/storage/*.sqlite
 backend/.env
-.git
+backend/tests
+.env
+.env.*
+!.env.example
+GressPay-App-Project
+docs
+agent-transcripts
+# Keep only the published APK name in the image; drop legacy duplicate
+public/download/gresspay-companion.apk
+**/*.apk.debug
+**/app/build
+**/.gradle
+**/node_modules
+**/.next
