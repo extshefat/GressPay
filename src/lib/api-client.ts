@@ -514,6 +514,10 @@ class ApiClient {
     });
   }
 
+  async updatePaymentLink(id: string, payload: Partial<PaymentLink>): Promise<{ link: PaymentLink }> {
+    return this.request(`/api/v1/payment-links/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(payload) });
+  }
+
   async getInvoices(): Promise<{ invoices: Invoice[] }> {
         return this.request<{ invoices: Invoice[] }>("/api/v1/invoices");
   }

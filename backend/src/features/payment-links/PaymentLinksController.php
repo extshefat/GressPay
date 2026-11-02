@@ -17,6 +17,21 @@ final class PaymentLinksController
         $brand = GpDb::one('SELECT * FROM gp_brands WHERE brand_id = ?', [$actor['brand_id']]);
         $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$actor['merchant_id']]);
         $id = $req->part(1);
+        if ($req->method === 'PUT' && $id !== null) {
+            GpAuth::requireScope($actor, 'manage_links');
+            GpTeam::requireCan($actor, 'payment_links', 'edit');
+            $row = GpDb::one('SELECT * FROM gp_payment_links WHERE link_id = ? AND brand_id = ?', [$id, $actor['brand_id']]);
+            if ($row === null) GpJson::error('NOT_FOUND', 'Page not found.', 404);
+            $title = trim((string) $req->input('title', $row['title']));
+            $description = trim((string) $req->input('description', $row['description']));
+            $amount = GpMoney::sanitize((string) $req->input('amount', $row['amount']));
+            $image = trim((string) $req->input('productImageUrl', $row['product_image_url'] ?? ''));
+            $status = (string) $req->input('status', $req->input('isActive', null) === null ? $row['status'] : ($req->input('isActive') ? 'active' : 'inactive'));
+            if ($title === '' || strlen($title) > 160 || strlen($description) > 5000 || (float) $amount <= 0 || !in_array($status, ['active','inactive'], true)) GpJson::error('VALIDATION', 'Check title, description, price and publication status.', 400);
+            if ($image !== '' && (!filter_var($image, FILTER_VALIDATE_URL) || !str_starts_with($image, 'https://'))) GpJson::error('INVALID_URL', 'Use an HTTPS product image URL.', 400);
+            GpDb::exec('UPDATE gp_payment_links SET title = ?, description = ?, amount = ?, product_image_url = ?, status = ?, updated_at = ? WHERE link_id = ? AND brand_id = ?', [$title,$description,$amount,$image !== '' ? $image : null,$status,GpIds::now(),$id,$actor['brand_id']]);
+            GpJson::send(['link' => self::present(GpDb::one('SELECT * FROM gp_payment_links WHERE link_id = ? AND brand_id = ?', [$id,$actor['brand_id']]), $brand, $merchant)]);
+        }
 
         if ($req->method === 'GET' && $id === null) {
             GpTeam::requireCan($actor, 'payment_links', 'view');
