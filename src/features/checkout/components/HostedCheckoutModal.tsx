@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import QRCode from "qrcode";
-import { PaymentMethod, CheckoutSession, TransactionStatus } from "@/lib/types/api";
+import { PaymentMethod, CheckoutSession, TransactionStatus, Currency } from "@/lib/types/api";
 import { formatCurrency } from "@/lib/formatters";
 import { api } from "@/lib/api-client";
 import { foldTxid } from "@/lib/method-theme";
@@ -136,6 +136,9 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
   const [isCanceling, setIsCanceling] = useState(false);
   const [generatedQr, setGeneratedQr] = useState<string | null>(null);
   const [locale, setLocale] = useState<"en" | "bn">("en");
+  const checkoutAmount = (amount: number, currency: Currency) => locale === "en"
+    ? `${amount.toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: currency === "USDT" ? 4 : 2})} ${currency}`
+    : formatCurrency(amount, currency);
 
   const [secondsLeft, setSecondsLeft] = useState<number>(() => {
     if (!session.expiresAt) return 15 * 60;
@@ -474,7 +477,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
       return [
         `Open your ${methodName} App${ussd}.`,
         `Choose "${action}" option.`,
-        `Enter the copied recipient number (${receiver}) and the exact amount (${formatCurrency(payableAmount, payableCurrency)}).`,
+        `Enter the copied recipient number (${receiver}) and the exact amount (${checkoutAmount(payableAmount, payableCurrency)}).`,
         `Copy the Transaction ID (TrxID) from your confirmation SMS and paste it below.`,
       ];
     }
@@ -483,7 +486,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
       return [
         `Open your crypto wallet (Trust Wallet, Binance, OKX, TronLink, etc.).`,
         `Select USDT and choose ONLY TRON (TRC-20) network.`,
-        `Send exactly ${formatCurrency(payableAmount, payableCurrency)} USDT to the address above.`,
+        `Send exactly ${checkoutAmount(payableAmount, payableCurrency)} USDT to the address above.`,
         `Copy the 64-character TRON Transaction Hash (TxID) and enter it below.`,
       ];
     }
@@ -491,13 +494,13 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
     if (code === "bybit_pay") {
       return [
         `Open the Bybit app and navigate to Bybit Pay / Internal Transfer.`,
-        `Transfer ${formatCurrency(payableAmount, payableCurrency)} to Binance Pay UID: ${receiver}.`,
+        `Transfer ${checkoutAmount(payableAmount, payableCurrency)} to Binance Pay UID: ${receiver}.`,
         `Copy the Bybit Transfer / Order ID and paste it below.`,
       ];
     }
 
     return [
-      `Send ${formatCurrency(payableAmount, payableCurrency)} to ${receiver}.`,
+      `Send ${checkoutAmount(payableAmount, payableCurrency)} to ${receiver}.`,
       `Save your payment receipt or Transaction ID.`,
       `Enter the Transaction ID below to verify your payment.`,
     ];
@@ -653,7 +656,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
             Payment Successful!
           </span>
           <h2 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight pt-1">
-            {formatCurrency(payableAmount, payableCurrency)}
+            {checkoutAmount(payableAmount, payableCurrency)}
           </h2>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
             Successfully credited to{" "}
@@ -809,7 +812,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
               >
                 {session.merchantName}
               </span>
-              <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+              {session.merchantVerified && <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />}
             </div>
             <p
               className={`text-xs truncate mt-0.5 ${
@@ -880,14 +883,14 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
           </div>
         </div>
 
-        <div className="text-right flex sm:flex-col items-center sm:items-end justify-between border-t sm:border-t-0 pt-3 sm:pt-0 border-zinc-200 dark:border-zinc-800 gap-2">
+        <div className="grid grid-cols-2 items-center gap-3 border-t border-zinc-200 pt-3 text-right dark:border-zinc-800 sm:flex sm:flex-col sm:items-end sm:border-t-0 sm:pt-0">
           <div className="flex rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden text-[10px] font-bold">
             <button
               type="button"
               onClick={() => setLocale("bn")}
               className={`px-2 py-1 ${locale === "bn" ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950" : "text-zinc-500"}`}
             >
-              বাংলা
+              BN
             </button>
             <button
               type="button"
@@ -897,10 +900,10 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
               Eng
             </button>
           </div>
-          <div className="text-3xl font-semibold tracking-tight tabular-nums text-zinc-900 dark:text-zinc-100">
-            {methodChosen ? formatCurrency(payableAmount, payableCurrency) : formatCurrency(session.amount, session.currency)}
+          <div className="text-2xl font-semibold tracking-tight tabular-nums text-zinc-900 dark:text-zinc-100">
+            {methodChosen ? checkoutAmount(payableAmount, payableCurrency) : checkoutAmount(session.amount, session.currency)}
           </div>
-          <div className="flex items-center gap-1.5 text-[11px] font-mono text-zinc-500 mt-0.5">
+          <div className="col-span-2 flex items-center justify-end gap-1.5 text-[11px] font-mono text-zinc-500 mt-0.5">
             <Clock className="w-3.5 h-3.5 text-zinc-400" />
             <span>Expires in {timeFormatted}</span>
           </div>
@@ -920,8 +923,8 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
       {detailsOpen && <dl className="grid grid-cols-2 gap-3 border-b border-zinc-200 px-6 py-4 text-xs dark:border-zinc-800">
         <dt className="text-zinc-500">Invoice</dt><dd className="break-all font-mono">{session.sessionId}</dd>
         <dt className="text-zinc-500">Order</dt><dd>{session.orderTitle || "Payment"}</dd>
-        <dt className="text-zinc-500">Order amount</dt><dd>{formatCurrency(session.amount, session.currency)}</dd>
-        {methodChosen && <><dt className="text-zinc-500">Selected gateway</dt><dd>{selectedMethod.name}</dd><dt className="text-zinc-500">Fees</dt><dd>{feeLabel}</dd><dt className="font-semibold">Payable</dt><dd className="font-semibold">{formatCurrency(payableAmount, payableCurrency)}</dd></>}
+        <dt className="text-zinc-500">Order amount</dt><dd>{checkoutAmount(session.amount, session.currency)}</dd>
+        {methodChosen && <><dt className="text-zinc-500">Selected gateway</dt><dd>{selectedMethod.name}</dd><dt className="text-zinc-500">Fees</dt><dd>{feeLabel}</dd><dt className="font-semibold">Payable</dt><dd className="font-semibold">{checkoutAmount(payableAmount, payableCurrency)}</dd></>}
       </dl>}
       {/* Security & Non-Custodial Strip */}
       <div className="px-5 sm:px-6 py-2 bg-zinc-100/70 dark:bg-zinc-900/40 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between text-xs font-medium text-zinc-600 dark:text-zinc-400">
@@ -1029,7 +1032,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {currentTabMethods.map((method) => {
               const isSelected = Boolean(
-                selectedMethod &&
+                methodChosen && selectedMethod &&
                   ((method.gatewayId && selectedMethod.gatewayId === method.gatewayId) ||
                     (!method.gatewayId &&
                       selectedMethod.code === method.code &&
@@ -1097,7 +1100,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
           </div>
         </div>
 
-        <div className="rounded-xl bg-zinc-100 p-4 text-center font-semibold dark:bg-zinc-900">Choose a method to pay {formatCurrency(session.amount, session.currency)}</div>
+        <div className="rounded-xl bg-zinc-100 p-4 text-center font-semibold dark:bg-zinc-900">Choose a method to pay {checkoutAmount(session.amount, session.currency)}</div>
         </>}
         {methodChosen && <>
         <div className="flex items-center gap-3"><img src={gatewayLogoPath(selectedMethod.code)} alt="" className="h-9 w-9 object-contain" /><div><h2 className="text-sm font-semibold">{selectedMethod.name}</h2><p className="text-xs text-zinc-500">Follow the instructions, then submit payment evidence.</p></div></div>
@@ -1109,8 +1112,8 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
               <span className="text-xs text-zinc-500 font-mono">
                 {activeTab === "crypto" ? "Exact USDT Amount" : "Exact BDT Amount"}
               </span>
-              <div className="text-3xl font-semibold tracking-tight tabular-nums text-zinc-900 dark:text-zinc-100">
-                {formatCurrency(payableAmount, payableCurrency)}
+              <div className="text-2xl font-semibold tracking-tight tabular-nums text-zinc-900 dark:text-zinc-100">
+                {checkoutAmount(payableAmount, payableCurrency)}
               </div>
               {activeTab === "crypto" && session.exchangeRateToUsd != null && (
                 <span className="inline-flex mt-1 text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
@@ -1366,7 +1369,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
                     ? locale === "bn"
                       ? "পেমেন্ট করে অপেক্ষা করুন"
                       : "I have paid — wait for SMS"
-                    : `Pay ${formatCurrency(payableAmount, payableCurrency)}`}
+                    : `Pay ${checkoutAmount(payableAmount, payableCurrency)}`}
             </Button>
             {(selectedMethod.category === "mfs" ||
               ["bkash", "nagad", "rocket", "upay", "cellfin"].includes(selectedMethod.code)) && (
