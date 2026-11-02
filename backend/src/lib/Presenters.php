@@ -209,6 +209,7 @@ final class GpPresenters
 
         return [
             'id' => $row['session_id'],
+            'timeline' => self::paymentTimeline($row),
             'invoiceId' => $source === 'invoice' ? $sourceId : null,
             'paymentLinkId' => $source === 'payment-link' ? $sourceId : null,
             'merchantId' => $merchant['merchant_id'] ?? ($brand['merchant_id'] ?? ''),
@@ -231,6 +232,31 @@ final class GpPresenters
             'createdAt' => $row['created_at'],
             'completedAt' => $status === 'COMPLETED' ? ($row['updated_at'] ?? null) : null,
         ];
+    }
+
+    public static function paymentTimeline(array $row): array
+    {
+        $meta = json_decode((string) ($row['metadata'] ?? '{}'), true) ?: [];
+        $events = [['id' => 'created', 'title' => 'Checkout created', 'timestamp' => $row['created_at'], 'status' => 'completed']];
+        if (!empty($row['trx_id'])) {
+            $events[] = ['id' => 'txid', 'title' => 'Transaction ID recorded', 'status' => 'completed',
+                'description' => 'An ID is a claim; verification requires matching evidence.'];
+        }
+        $sms = empty($meta['smsId']) ? null : GpDb::one('SELECT received_at, device_id FROM gp_sms_data WHERE id = ? AND brand_id = ?', [$meta['smsId'], $row['brand_id']]);
+        if ($sms) {
+            $events[] = ['id' => 'sms', 'title' => 'Companion SMS matched', 'timestamp' => $sms['received_at'], 'status' => 'completed'];
+            $device = GpDb::one('SELECT last_seen_at FROM gp_devices WHERE device_id = ? AND brand_id = ?', [$sms['device_id'], $row['brand_id']]);
+            if (!empty($device['last_seen_at'])) $events[] = ['id' => 'device', 'title' => 'Matched device last sync', 'timestamp' => $device['last_seen_at'], 'status' => 'completed'];
+        }
+        if (!empty($row['verified_at'])) $events[] = ['id' => 'verified', 'title' => 'Payment decision recorded', 'timestamp' => $row['verified_at'], 'status' => 'completed', 'description' => (string) ($row['evidence_type'] ?? '')];
+        $delivery = GpDb::one('SELECT status, http_code, updated_at FROM gp_webhook_deliveries WHERE session_id = ? AND brand_id = ? ORDER BY id DESC LIMIT 1', [$row['session_id'], $row['brand_id']]);
+        if ($delivery) $events[] = ['id' => 'webhook', 'title' => 'Latest webhook attempt', 'timestamp' => $delivery['updated_at'], 'status' => $delivery['status'] === 'completed' ? 'completed' : 'pending', 'description' => 'HTTP ' . (int) $delivery['http_code'] . '; ' . $delivery['status']];
+        $events[] = ['id' => 'next', 'title' => 'Next action', 'status' => 'current', 'description' => match ((string) $row['status']) {
+            'completed' => 'Verify payment status on your server before fulfilling the order. Check webhook delivery if your order has not updated.',
+            'expired', 'failed' => 'Keep late receipts for reconciliation. Create a new checkout only after reviewing any payment already sent.',
+            default => empty($row['trx_id']) ? 'Ask the buyer for the payment TxID and confirm the paired device is online.' : 'Check the bound device and receiving wallet. Await matching SMS evidence; do not fulfill yet.',
+        }];
+        return $events;
     }
 
     public static function checkoutStatus(array $row): array

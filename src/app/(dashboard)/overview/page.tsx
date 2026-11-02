@@ -132,14 +132,7 @@ export default function OverviewPage() {
         <h2 className="text-sm font-semibold">Set up your first verified payment</h2>
         <p className="mt-1 text-xs text-zinc-500">Follow these steps in order. A submitted TxID stays pending until the paired phone supplies matching payment evidence.</p>
         <ol className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
-          {[
-            ["1. Create your brand", "/dashboard/brands"],
-            ["2. Add a receiving wallet", "/dashboard/methods"],
-            ["3. Pair and bind your phone", "/dashboard/devices"],
-            ["4. Create a website API key", "/dashboard/api-keys"],
-            ["5. Create a test checkout", "/dashboard/payment-links"],
-            ["6. Check signed webhook delivery", "/dashboard/webhooks"],
-          ].map(([label, href]) => <li key={href}><Link className="underline underline-offset-4" href={href}>{label}</Link></li>)}
+          {(metrics?.setupSteps || []).map((step, index) => <li key={step.href} className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"><Link className="underline underline-offset-4" href={step.href}>{index + 1}. {step.label}</Link><p className="mt-1 text-xs text-zinc-500">{step.complete ? "Complete" : index === metrics?.setupSteps?.findIndex((item) => !item.complete) ? "Next action" : "To do"}</p></li>)}
         </ol>
       </Card>
 

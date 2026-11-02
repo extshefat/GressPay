@@ -6,6 +6,36 @@ on:
   pull_request:
 
 jobs:
+  postgres:
+    name: PostgreSQL reconciliation
+    runs-on: ubuntu-latest
+    container: php:8.2-cli-alpine
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: gresspay_test
+          POSTGRES_USER: gresspay
+          POSTGRES_PASSWORD: ci-only-test-password
+        options: >-
+          --health-cmd "pg_isready -U gresspay -d gresspay_test"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      APP_ENV: development
+      DB_DRIVER: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: gresspay_test
+      DB_USER: gresspay
+      DB_PASS: ci-only-test-password
+      JWT_SECRET: ci-test-jwt-secret-at-least-32-characters
+      APP_ENCRYPTION_KEY: ci-test-encryption-key-at-least-32-characters
+      GRESSPAY_SMS_AUTO_ALLOWED: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - run: apk add --no-cache postgresql-dev $PHPIZE_DEPS && docker-php-ext-install pdo_pgsql bcmath
+      - run: php backend/tests/postgres.php
+
   web:
     name: Next.js tsc + live build
     runs-on: ubuntu-latest

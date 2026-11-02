@@ -171,6 +171,7 @@ export type ConfirmationState =
   | "completed";
 
 export interface Transaction {
+  timeline?: Array<{ id: string; title: string; timestamp?: string; description?: string; status: 'completed' | 'current' | 'pending' | 'failed' }>;
   id: string;
   invoiceId?: string;
   paymentLinkId?: string;
@@ -366,6 +367,7 @@ export interface ApiCredentials {
 }
 
 export interface DashboardMetrics {
+  setupSteps?: Array<{ label: string; href: string; complete: boolean }>;
   totalRevenueUsd: number;
   totalRevenueBdt: number;
   todayRevenueBdt?: number;

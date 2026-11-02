@@ -190,55 +190,7 @@ function TransactionsContent() {
   };
 
   const getTimelineEvents = (tx: Transaction): TimelineEvent[] => {
-    const events: TimelineEvent[] = [
-      {
-        id: "created",
-        title: "Session Initialized",
-        timestamp: formatDate(tx.createdAt),
-        description: `Customer initiated checkout for ${formatCurrency(tx.amount, tx.currency)}.`,
-        status: "completed",
-      },
-    ];
-
-    if (tx.txid) {
-      events.push({
-        id: "evidence",
-        title: "TxID Submitted",
-        timestamp: formatDate(tx.updatedAt || tx.createdAt),
-        description: `Customer claimed payment using TxID ${tx.txid}.`,
-        status: "completed",
-      });
-    }
-
-    if (tx.status === "COMPLETED") {
-      events.push({
-        id: "settled",
-        title: "Settled & Verified",
-        timestamp: formatDate(tx.completedAt || tx.updatedAt || tx.createdAt),
-        description:
-          tx.confirmationState === "merchant_confirmed"
-            ? `Manually confirmed from dashboard: "${tx.confirmationReason || "Verified"}"`
-            : "Direct-to-wallet SMS or on-chain transaction auto-verified.",
-        status: "completed",
-      });
-    } else if (tx.status === "FAILED") {
-      events.push({
-        id: "failed",
-        title: "Rejected / Expired",
-        timestamp: formatDate(tx.updatedAt || tx.createdAt),
-        description: "Transaction was marked failed or rejected during account review.",
-        status: "failed",
-      });
-    } else {
-      events.push({
-        id: "awaiting",
-        title: "Awaiting Verification",
-        timestamp: "Now",
-        description: "Listening for Android Companion SMS match or manual confirmation from your dashboard.",
-        status: "current",
-      });
-    }
-
+    const events: TimelineEvent[] = (tx.timeline || []).map((event) => ({ ...event, timestamp: event.timestamp ? formatDate(event.timestamp) : undefined }));
     return events;
   };
 
