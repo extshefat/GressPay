@@ -23,7 +23,8 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     },
     ref
   ) => {
-    const inputId = id || props.name || React.useId();
+    const generatedId = React.useId();
+    const inputId = id || props.name || generatedId;
 
     return (
       <div className="space-y-1.5 w-full text-left">
@@ -50,12 +51,12 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             disabled={disabled}
             aria-invalid={Boolean(error)}
             aria-describedby={error ? `${inputId}-error` : helperText ? `${inputId}-helper` : undefined}
-            className={`flex h-11 w-full rounded-xl border bg-white dark:bg-[#0b1620] px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 shadow-[0_1px_2px_rgba(16,24,40,0.03)] outline-none transition placeholder:text-zinc-400 dark:placeholder:text-zinc-600 focus:border-teal-600 dark:focus:border-teal-400 focus:ring-2 focus:ring-teal-600/10 dark:focus:ring-teal-400/10 disabled:cursor-not-allowed disabled:opacity-50 ${
+            className={`flex h-11 w-full rounded-xl border bg-white dark:bg-[#161616] px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 shadow-[0_1px_2px_rgba(16,24,40,0.03)] outline-none transition placeholder:text-zinc-400 dark:placeholder:text-zinc-600 focus:border-neutral-600 dark:focus:border-neutral-400 focus:ring-2 focus:ring-neutral-600/10 dark:focus:ring-neutral-400/10 disabled:cursor-not-allowed disabled:opacity-50 ${
               leftIcon ? "pl-9" : ""
             } ${rightIcon ? "pr-9" : ""} ${
               error
                 ? "border-red-500 focus:border-red-500 focus:ring-red-500/20 dark:border-red-600"
-                : "border-zinc-200 dark:border-[#2a3a47]"
+                : "border-zinc-200 dark:border-[#414141]"
             } ${className}`}
             {...props}
           />

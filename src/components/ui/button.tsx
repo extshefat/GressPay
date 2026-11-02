@@ -20,7 +20,7 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const baseStyles =
-    "inline-flex items-center justify-center font-semibold transition-all duration-150 select-none disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer focus:outline-none focus:ring-2 focus:ring-teal-700/25 rounded-xl active:scale-[0.98]";
+    "inline-flex items-center justify-center font-semibold transition-all duration-150 select-none disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer focus:outline-none focus:ring-2 focus:ring-neutral-700/25 rounded-xl active:scale-[0.98]";
 
   const sizeStyles = {
     sm: "text-xs min-h-9 px-3.5 py-2 gap-1.5",
@@ -30,11 +30,11 @@ export const Button: React.FC<ButtonProps> = ({
 
   const variantStyles = {
     primary:
-      "bg-teal-700 text-white hover:bg-teal-800 dark:bg-teal-400 dark:text-teal-950 dark:hover:bg-teal-300 shadow-[0_1px_2px_rgba(8,127,115,0.2),0_4px_12px_rgba(8,127,115,0.14)]",
+      "bg-neutral-950 text-white hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-950 dark:hover:bg-neutral-300 shadow-[0_1px_2px_rgba(0,0,0,0.2),0_4px_12px_rgba(0,0,0,0.14)]",
     secondary:
-      "bg-white text-zinc-800 hover:bg-zinc-50 dark:bg-[#172532] dark:text-zinc-100 dark:hover:bg-[#1d2d3b] border border-zinc-200 dark:border-[#2a3a47] shadow-sm",
+      "bg-white text-zinc-800 hover:bg-zinc-50 dark:bg-[#242424] dark:text-zinc-100 dark:hover:bg-[#303030] border border-zinc-200 dark:border-[#414141] shadow-sm",
     outline:
-      "bg-white/70 text-zinc-800 dark:bg-transparent dark:text-zinc-100 border border-zinc-300 dark:border-[#2a3a47] hover:bg-zinc-50 dark:hover:bg-[#172532]",
+      "bg-white/70 text-zinc-800 dark:bg-transparent dark:text-zinc-100 border border-zinc-300 dark:border-[#414141] hover:bg-zinc-50 dark:hover:bg-[#242424]",
     ghost:
       "bg-transparent text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800/60",
     danger: "bg-rose-600 text-white hover:bg-rose-700 shadow-[0_4px_12px_rgba(225,29,72,0.16)]",

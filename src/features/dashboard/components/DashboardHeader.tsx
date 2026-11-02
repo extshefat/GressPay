@@ -70,13 +70,13 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user, onMenuCl
   const activeBrand = brands.find((b) => b.brandId === activeBrandId) || brands[0];
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-zinc-200/80 bg-white/85 px-4 backdrop-blur-xl transition-colors dark:border-[#21313f] dark:bg-[#071018]/88 sm:px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-zinc-200/80 bg-white/85 px-4 backdrop-blur-xl transition-colors dark:border-[#373737] dark:bg-[#101010]/88 sm:px-6">
       <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
         {onMenuClick && (
           <button
             type="button"
             onClick={onMenuClick}
-            className="lg:hidden p-2 -ml-1 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700/40"
+            className="lg:hidden p-2 -ml-1 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-700/40"
             aria-label="Open navigation"
           >
             <Menu className="w-5 h-5" />
@@ -93,7 +93,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user, onMenuCl
             trigger={
               <button
                 type="button"
-                className="flex min-h-9 items-center gap-2 rounded-xl border border-zinc-200 bg-white px-2.5 text-xs font-semibold text-zinc-800 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700/30 dark:border-[#2a3a47] dark:bg-[#0f1b26] dark:text-zinc-200 dark:hover:bg-[#172532] sm:px-3"
+                className="flex min-h-9 items-center gap-2 rounded-xl border border-zinc-200 bg-white px-2.5 text-xs font-semibold text-zinc-800 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-700/30 dark:border-[#414141] dark:bg-[#1c1c1c] dark:text-zinc-200 dark:hover:bg-[#242424] sm:px-3"
               >
                 <Building2 className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                 <span className="truncate max-w-[110px] sm:max-w-[150px]">
@@ -109,7 +109,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user, onMenuCl
                   <div className="flex items-center justify-between w-full gap-2">
                     <span className="truncate font-medium">{b.name}</span>
                     {b.brandId === activeBrandId && (
-                      <Check className="w-3.5 h-3.5 text-teal-700 dark:text-teal-400 shrink-0" />
+                      <Check className="w-3.5 h-3.5 text-neutral-700 dark:text-neutral-400 shrink-0" />
                     )}
                   </div>
                 ),
@@ -145,7 +145,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user, onMenuCl
         </Link>
 
         <div className="flex items-center gap-2.5 pl-2 sm:pl-3 border-l border-zinc-200 dark:border-zinc-800">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-teal-700/15 bg-teal-700/10 text-xs font-bold text-teal-800 dark:border-teal-300/15 dark:bg-teal-300/10 dark:text-teal-300">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-neutral-700/15 bg-neutral-700/10 text-xs font-bold text-neutral-800 dark:border-neutral-300/15 dark:bg-neutral-300/10 dark:text-neutral-300">
             {user?.name ? user.name.slice(0, 2).toUpperCase() : "GP"}
           </div>
           <div className="hidden md:block text-left min-w-0">
@@ -167,7 +167,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user, onMenuCl
             onClick={handleLogout}
             title="Log out"
             aria-label="Log out"
-            className="ml-1 p-1.5 rounded-lg text-zinc-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700/40"
+            className="ml-1 p-1.5 rounded-lg text-zinc-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-700/40"
           >
             <LogOut className="w-4 h-4" />
           </button>

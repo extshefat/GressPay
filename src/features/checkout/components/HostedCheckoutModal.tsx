@@ -883,7 +883,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
               Eng
             </button>
           </div>
-          <div className="text-2xl font-bold font-mono text-zinc-900 dark:text-zinc-100">
+          <div className="text-3xl font-semibold tracking-tight tabular-nums text-zinc-900 dark:text-zinc-100">
             {formatCurrency(payableAmount, payableCurrency)}
           </div>
           <div className="flex items-center gap-1.5 text-[11px] font-mono text-zinc-500 mt-0.5">
@@ -1083,12 +1083,12 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
               <span className="text-xs text-zinc-500 font-mono">
                 {activeTab === "crypto" ? "Exact USDT Amount" : "Exact BDT Amount"}
               </span>
-              <div className="text-2xl font-bold font-mono text-zinc-900 dark:text-zinc-100">
+              <div className="text-3xl font-semibold tracking-tight tabular-nums text-zinc-900 dark:text-zinc-100">
                 {formatCurrency(payableAmount, payableCurrency)}
               </div>
               {activeTab === "crypto" && session.exchangeRateToUsd != null && (
                 <span className="inline-flex mt-1 text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
-                  Live rate badge · order {session.currency}
+                  Order currency · {session.currency}
                 </span>
               )}
             </div>

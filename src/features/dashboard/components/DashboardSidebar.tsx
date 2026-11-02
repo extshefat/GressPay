@@ -69,13 +69,13 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
         key={item.href}
         href={item.href}
         onClick={onClose}
-        className={`group flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300/40 ${
+        className={`group flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-300/40 ${
           isActive
-            ? "bg-teal-400 text-[#06241f] shadow-[0_5px_18px_rgba(45,212,191,0.16)]"
+            ? "bg-neutral-400 text-[#111111] shadow-[0_5px_18px_rgba(0,0,0,0.16)]"
             : "text-slate-400 hover:bg-white/[0.06] hover:text-white"
         }`}
       >
-        <Icon className={`h-4 w-4 ${isActive ? "text-[#06241f]" : "text-slate-500 transition-colors group-hover:text-slate-200"}`} />
+        <Icon className={`h-4 w-4 ${isActive ? "text-[#111111]" : "text-slate-500 transition-colors group-hover:text-slate-200"}`} />
         <span>{item.label}</span>
       </Link>
     );
@@ -90,7 +90,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
           </span>
           <div>
             <div className="text-[15px] font-bold tracking-tight text-white">GressPay</div>
-            <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-teal-300/80">Merchant OS</div>
+            <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-neutral-300/80">Merchant OS</div>
           </div>
         </Link>
         {onClose && (
@@ -125,7 +125,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               onClick={onClose}
               className={`flex min-h-10 items-center justify-between rounded-xl px-3 py-2 text-[13px] font-semibold transition-all ${
                 pathname.startsWith("/admin") || pathname.startsWith("/dashboard/admin")
-                  ? "bg-teal-400 text-[#06241f] shadow-[0_5px_18px_rgba(45,212,191,0.16)]"
+                  ? "bg-neutral-400 text-[#111111] shadow-[0_5px_18px_rgba(0,0,0,0.16)]"
                   : "text-slate-300 hover:bg-white/[0.06] hover:text-white"
               }`}
             >
@@ -145,7 +145,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
         <Link
           href="/developers"
           onClick={onClose}
-          className="block rounded-xl border border-white/[0.08] bg-white/[0.04] p-3 text-xs transition hover:border-teal-300/25 hover:bg-white/[0.07]"
+          className="block rounded-xl border border-white/[0.08] bg-white/[0.04] p-3 text-xs transition hover:border-neutral-300/25 hover:bg-white/[0.07]"
         >
           <div className="font-semibold text-white">Developer documentation</div>
           <div className="mt-0.5 text-[11px] text-slate-400">REST APIs, SDKs and webhooks</div>
@@ -156,7 +156,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
 
   return (
     <>
-      <aside className="hidden min-h-screen w-[17rem] shrink-0 flex-col border-r border-white/[0.06] bg-[#0b1723] lg:flex">
+      <aside className="hidden min-h-screen w-[17rem] shrink-0 flex-col border-r border-white/[0.06] bg-[#171717] lg:flex">
         {nav}
       </aside>
 
@@ -173,7 +173,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
           aria-label="Close sidebar overlay"
         />
         <aside
-          className={`absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col border-r border-white/[0.06] bg-[#0b1723] shadow-2xl transition-transform duration-200 ease-out ${
+          className={`absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col border-r border-white/[0.06] bg-[#171717] shadow-2xl transition-transform duration-200 ease-out ${
             mobileOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
