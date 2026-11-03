@@ -90,13 +90,13 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
         key={item.href}
         href={item.href}
         onClick={onClose}
-        className={`group flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-300/40 ${
+        className={`group flex min-h-10 items-center gap-3 rounded-md border-l-2 px-3 py-2 text-[13px] font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-300/40 ${
           isActive
-            ? "bg-neutral-400 text-[#111111] shadow-[0_5px_18px_rgba(0,0,0,0.16)]"
-            : "text-slate-400 hover:bg-white/[0.06] hover:text-white"
+            ? "border-teal-400 bg-white/[0.09] text-white"
+            : "border-transparent text-slate-400 hover:bg-white/[0.05] hover:text-white"
         }`}
       >
-        <Icon className={`h-4 w-4 ${isActive ? "text-[#111111]" : "text-slate-500 transition-colors group-hover:text-slate-200"}`} />
+        <Icon className={`h-4 w-4 ${isActive ? "text-teal-300" : "text-slate-500 transition-colors group-hover:text-slate-200"}`} />
         <span>{item.label}</span>
       </Link>
     );
@@ -106,7 +106,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
     <>
       <div className="flex items-center justify-between gap-2 border-b border-white/[0.08] px-5 py-5">
         <Link href="/" className="flex items-center gap-2.5" onClick={onClose}>
-          <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/[0.07] ring-1 ring-white/[0.08]">
+          <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/[0.07] ring-1 ring-white/[0.08]">
             <GpMark inverse />
           </span>
           <div>
@@ -144,10 +144,10 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
             <Link
               href="/dashboard/admin"
               onClick={onClose}
-              className={`flex min-h-10 items-center justify-between rounded-xl px-3 py-2 text-[13px] font-semibold transition-all ${
+              className={`flex min-h-10 items-center justify-between rounded-md border-l-2 px-3 py-2 text-[13px] font-semibold transition-all ${
                 pathname.startsWith("/admin") || pathname.startsWith("/dashboard/admin")
-                  ? "bg-neutral-400 text-[#111111] shadow-[0_5px_18px_rgba(0,0,0,0.16)]"
-                  : "text-slate-300 hover:bg-white/[0.06] hover:text-white"
+                  ? "border-amber-400 bg-white/[0.09] text-white"
+                  : "border-transparent text-slate-300 hover:bg-white/[0.06] hover:text-white"
               }`}
             >
               <div className="flex items-center gap-3">
@@ -166,7 +166,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
         <Link
           href="/developers"
           onClick={onClose}
-          className="block rounded-xl border border-white/[0.08] bg-white/[0.04] p-3 text-xs transition hover:border-neutral-300/25 hover:bg-white/[0.07]"
+          className="block rounded-lg border border-white/[0.08] bg-white/[0.04] p-3 text-xs transition hover:border-neutral-300/25 hover:bg-white/[0.07]"
         >
           <div className="font-semibold text-white">Developer documentation</div>
           <div className="mt-0.5 text-[11px] text-slate-400">REST APIs, SDKs and webhooks</div>
@@ -177,7 +177,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
 
   return (
     <>
-      <aside className="hidden min-h-screen w-[17rem] shrink-0 flex-col border-r border-white/[0.06] bg-[#171717] lg:flex">
+      <aside className="hidden min-h-screen w-[17rem] shrink-0 flex-col border-r border-white/[0.07] bg-[#070b10] lg:flex">
         {nav}
       </aside>
 
@@ -194,7 +194,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
           aria-label="Close sidebar overlay"
         />
         <aside
-          className={`absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col border-r border-white/[0.06] bg-[#171717] shadow-2xl transition-transform duration-200 ease-out ${
+          className={`absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col border-r border-white/[0.06] bg-[#070b10] shadow-2xl transition-transform duration-200 ease-out ${
             mobileOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >

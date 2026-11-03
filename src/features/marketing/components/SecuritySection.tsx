@@ -43,13 +43,13 @@ export const SecuritySection: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto space-y-3 mb-16">
           <Badge variant="emerald" dot>
-            Enterprise Security
+            Payment integrity
           </Badge>
           <h2 className="text-3xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-100 tracking-tight">
-            Financial-Grade Architecture Built for Trust
+            Evidence first. Confirmation second.
           </h2>
           <p className="text-zinc-600 dark:text-zinc-400 text-sm sm:text-base leading-relaxed">
-            Payment integrity is non-negotiable. GressPay applies rigorous cryptographic verification, isolated ledgers, and zero-trust device management.
+            A checkout button never marks an order paid. GressPay waits for verified provider, device or blockchain evidence and keeps every brand ledger isolated.
           </p>
         </div>
 
@@ -57,9 +57,9 @@ export const SecuritySection: React.FC = () => {
           {features.map((item, idx) => (
             <div
               key={idx}
-              className="p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all space-y-3"
+              className="space-y-3 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-6 transition-all hover:-translate-y-0.5 hover:shadow-lg"
             >
-              <div className="p-2.5 rounded-xl bg-white dark:bg-zinc-800 w-fit border border-zinc-200/80 dark:border-zinc-700 shadow-2xs">
+              <div className="w-fit rounded-lg border border-[var(--border-color)] bg-[var(--bg-page)] p-2.5">
                 {item.icon}
               </div>
               <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">

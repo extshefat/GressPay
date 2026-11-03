@@ -40,18 +40,18 @@ export function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-zinc-200/80 bg-white/80 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/80">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+    <header className="sticky top-0 z-40 border-b border-[var(--border-color)] bg-[color-mix(in_srgb,var(--bg-page)_88%,transparent)] backdrop-blur-xl">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-5 sm:px-8">
         <Link href="/" className="flex items-center">
           <GressPayLogo size="sm" />
         </Link>
 
-        <nav className="hidden md:flex items-center gap-6 text-sm text-zinc-600 dark:text-zinc-300">
+        <nav className="hidden items-center gap-7 text-[13px] font-medium text-[var(--text-secondary)] md:flex">
           {LINKS.map((l) => (
             <Link
               key={l.href}
               href={l.href}
-              className={pathname === l.href ? "text-teal-700 dark:text-teal-400 font-medium" : "hover:text-zinc-900 dark:hover:text-white"}
+              className={pathname === l.href ? "text-teal-700 dark:text-teal-400" : "transition hover:text-[var(--text-primary)]"}
             >
               {l.label}
             </Link>
@@ -89,7 +89,7 @@ export function Navbar() {
 
         <button
           type="button"
-          className="md:hidden p-2 rounded-lg text-zinc-600 dark:text-zinc-300"
+          className="rounded-md p-2 text-[var(--text-secondary)] md:hidden"
           onClick={() => setOpen((v) => !v)}
           aria-label="Menu"
         >
@@ -98,7 +98,7 @@ export function Navbar() {
       </div>
 
       {open && (
-        <div className="md:hidden border-t border-zinc-200 dark:border-zinc-800 px-4 py-4 space-y-3 bg-white dark:bg-zinc-950">
+        <div className="space-y-3 border-t border-[var(--border-color)] bg-[var(--bg-card)] px-5 py-4 md:hidden">
           {LINKS.map((l) => (
             <Link key={l.href} href={l.href} className="block text-sm" onClick={() => setOpen(false)}>
               {l.label}

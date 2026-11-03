@@ -15,9 +15,9 @@ export function PricingSection({ showTitle = true }: { showTitle?: boolean }) {
       .catch(() => { if (!controller.signal.aborted) setStatus("Prices could not be loaded."); });
     return () => controller.abort();
   }, [attempt]);
-  return <section id="pricing" className="border-y border-[var(--border-color)] py-14">
+  return <section id="pricing" className="border-y border-[var(--border-color)] bg-[var(--bg-page)] py-16 sm:py-24">
     <div className="mx-auto max-w-7xl px-5 sm:px-8">
-      {showTitle && <div className="mb-8"><p className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">Subscriptions</p><h2 className="mt-3 text-4xl font-semibold tracking-tight">A plan for every storefront.</h2><p className="mt-3 text-[var(--text-secondary)]">Compare website limits and the price for each billing period.</p></div>}
+      {showTitle && <div className="mb-10 max-w-3xl"><p className="gp-section-label">Plans & billing</p><h2 className="gp-rule-title mt-3 text-4xl font-semibold sm:text-5xl">Scale by storefront, not by surprise fees.</h2><p className="mt-4 text-[var(--text-secondary)]">Every plan publishes the same verified checkout. Move up only when you need more websites, devices or completed orders.</p></div>}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {[{code:"trial", name:"Trial", priceBdt:"0", billingCycle:"trial", websiteLimit:1, deviceLimit:1, checkoutLimit:50}, ...plans].map((plan,i) =>
           <article key={plan.code} className="gp-plan-card" style={{borderTopColor:["#7590b9","#397cdc","#8660ca","#cd8830"][i % 4]}}>
@@ -30,7 +30,7 @@ export function PricingSection({ showTitle = true }: { showTitle?: boolean }) {
               {plan.deviceLimit > 0 && <li>{plan.deviceLimit} paired {plan.deviceLimit===1 ? "phone" : "phones"}</li>}
               <li>Payment links and server verification</li>
             </ul>
-            <Link href={plan.code==="trial" ? "/register" : "/register?plan="+encodeURIComponent(plan.code)} className="mt-auto block rounded border border-[var(--border-color)] p-3 text-center text-sm font-semibold">Choose {plan.name} →</Link>
+            <Link href={plan.code==="trial" ? "/register" : "/register?plan="+encodeURIComponent(plan.code)} className="mt-auto block rounded-md border border-[var(--border-color)] bg-[var(--bg-page)] p-3 text-center text-sm font-semibold transition hover:border-[var(--text-primary)]">Choose {plan.name} →</Link>
           </article>)}
       </div>
       {status && <p role="status" className="mt-4 text-sm">{status} {status.startsWith("Prices") && <button className="underline" onClick={()=>setAttempt(attempt+1)}>Retry</button>}</p>}

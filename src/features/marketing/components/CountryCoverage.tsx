@@ -24,27 +24,27 @@ const groups = [
 
 export function CountryCoverage() {
   return (
-    <section aria-labelledby="coverage-title" className="border-y border-[var(--border-color)] bg-[var(--bg-surface)] py-14 sm:py-20">
+    <section aria-labelledby="coverage-title" className="border-y border-[var(--border-color)] bg-[var(--bg-surface)] py-16 sm:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <p className="mb-2 text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">
+        <p className="gp-section-label mb-3">
           Payment methods
         </p>
-        <h2 id="coverage-title" className="text-3xl font-bold tracking-tight sm:text-4xl">
-          Where you can accept payments
+        <h2 id="coverage-title" className="gp-rule-title max-w-2xl text-3xl font-semibold sm:text-5xl">
+          One checkout. The rails your customers already use.
         </h2>
         <p className="mt-3 max-w-2xl text-sm text-[var(--text-secondary)]">
           Choose a method to match how your customers pay. Availability depends on the receiving accounts you connect.
         </p>
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
+        <div className="mt-10 grid gap-px overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--border-color)] md:grid-cols-3">
           {groups.map((group) => (
             <article
               key={group.label}
-              className="flex flex-col rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] p-6"
+              className="flex min-h-[22rem] flex-col bg-[var(--bg-card)] p-6 sm:p-7"
             >
               <div className="flex items-center justify-between gap-2">
                 <h3 className="text-lg font-semibold">{group.label}</h3>
                 <span
-                  className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                  className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
                     group.status === "live"
                       ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                       : "bg-amber-500/15 text-amber-700 dark:text-amber-400"
@@ -60,7 +60,7 @@ export function CountryCoverage() {
                 {group.codes.map((code) => (
                   <li
                     key={code}
-                    className="inline-flex items-center gap-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-page)] px-2 py-1.5 text-xs font-medium"
+                    className="inline-flex items-center gap-2 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-page)] px-2 py-1.5 text-xs font-medium"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img

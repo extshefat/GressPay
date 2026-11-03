@@ -70,7 +70,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user, onMenuCl
   const activeBrand = brands.find((b) => b.brandId === activeBrandId) || brands[0];
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-[var(--border-color)] bg-[var(--bg-surface)] px-4 backdrop-blur-xl transition-colors sm:px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-[var(--border-color)] bg-[color-mix(in_srgb,var(--bg-card)_92%,transparent)] px-4 backdrop-blur-xl transition-colors sm:px-6">
       <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
         {onMenuClick && (
           <button
@@ -93,7 +93,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user, onMenuCl
             trigger={
               <button
                 type="button"
-                className="flex min-h-9 items-center gap-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] px-2.5 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--bg-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-700/30 sm:px-3"
+                className="flex min-h-9 items-center gap-2 rounded-md border border-[var(--border-color)] bg-[var(--bg-card)] px-2.5 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--bg-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-700/30 sm:px-3"
               >
                 <Building2 className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                 <span className="truncate max-w-[110px] sm:max-w-[150px]">
@@ -139,7 +139,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user, onMenuCl
         <ThemeToggle size="sm" />
 
         <div className="flex items-center gap-2.5 border-l border-[var(--border-color)] pl-2 sm:pl-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border-color)] bg-[var(--bg-muted)] text-xs font-bold text-[var(--text-primary)]">
+          <div className="flex h-9 w-9 items-center justify-center rounded-md border border-[var(--border-color)] bg-[var(--bg-muted)] text-xs font-bold text-[var(--text-primary)]">
             {user?.name ? user.name.slice(0, 2).toUpperCase() : "GP"}
           </div>
           <div className="hidden md:block text-left min-w-0">

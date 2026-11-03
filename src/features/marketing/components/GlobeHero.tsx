@@ -2,46 +2,80 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Check, Radio, ShieldCheck } from "lucide-react";
+import { gatewayLogoPath } from "@/lib/gateway-library";
 
 const InteractiveGlobe = dynamic(
   () => import("../3d/InteractiveGlobe").then((module) => module.InteractiveGlobe),
   { ssr: false, loading: () => <div aria-hidden className="h-64 sm:h-80" /> }
 );
 
+const wallets = ["bkash", "nagad", "rocket", "upay"];
+
 export function GlobeHero() {
   return (
-    <section className="border-b border-[var(--border-color)] bg-[var(--bg-page)] py-12 sm:py-16 lg:py-20">
-      <div className="mx-auto grid max-w-7xl items-center gap-10 px-5 sm:px-8 lg:grid-cols-[1.03fr_1fr] lg:gap-16">
-        <div>
-          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[.13em] text-[var(--text-secondary)]">
-            <span aria-hidden className="h-px w-8 bg-teal-600" /> Payment verification · South Asia
-          </p>
-          <h1 className="mt-5 max-w-[12ch] text-[clamp(2.8rem,5.2vw,4.8rem)] font-semibold leading-[1.04] tracking-[-.055em] text-[var(--text-primary)]">
-            Know when your customer has paid.
+    <section className="gp-marketing-grid relative overflow-hidden border-b border-[var(--border-color)] bg-[var(--bg-page)]">
+      <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-7xl items-center gap-12 px-5 py-14 sm:px-8 lg:grid-cols-[1.02fr_.98fr] lg:py-20">
+        <div className="relative z-10">
+          <p className="gp-eyebrow">Automated payment verification</p>
+          <h1 className="gp-rule-title mt-6 max-w-[11ch] text-[clamp(3rem,6.2vw,5.6rem)] font-semibold text-[var(--text-primary)]">
+            Payments matched. Orders moving.
           </h1>
-          <p className="mt-5 max-w-[32rem] text-base leading-relaxed text-[var(--text-secondary)]">
-            Share one checkout link. Customers pay into your wallet, and GressPay matches the payment receipt to their order.
+          <p className="mt-6 max-w-[35rem] text-base leading-7 text-[var(--text-secondary)] sm:text-lg">
+            One branded checkout for local wallets, crypto and regional rails. GressPay verifies the payment evidence before your store fulfils the order.
           </p>
-          <div className="mt-7 flex flex-wrap items-center gap-3 text-sm font-semibold">
-            <Link href="/register" className="inline-flex min-h-12 items-center gap-3 rounded-xl bg-[var(--text-primary)] px-5 text-[var(--bg-page)]">
-              Create an account <ArrowRight size={16} />
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <Link href="/register" className="inline-flex min-h-12 items-center justify-center gap-3 rounded-lg bg-[#101b28] px-6 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(16,27,40,.18)] dark:bg-white dark:text-[#101b28]">
+              Start with GressPay <ArrowRight size={16} />
             </Link>
-            <Link href="/checkout-preview" className="inline-flex min-h-12 items-center rounded-xl border border-[var(--border-color)] px-5 text-[var(--text-primary)]">Try the checkout</Link>
+            <Link href="/checkout-preview" className="inline-flex min-h-12 items-center justify-center rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] px-6 text-sm font-semibold text-[var(--text-primary)]">
+              Explore live checkout
+            </Link>
+          </div>
+          <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-xs font-medium text-[var(--text-muted)]">
+            <span className="inline-flex items-center gap-2"><Check size={14} className="text-teal-600" /> Non-custodial</span>
+            <span className="inline-flex items-center gap-2"><ShieldCheck size={14} className="text-teal-600" /> Server verified</span>
+            <span className="inline-flex items-center gap-2"><Radio size={14} className="text-teal-600" /> Signed webhooks</span>
           </div>
         </div>
-        <figure className="relative overflow-hidden border-y border-[var(--border-color)] bg-[var(--bg-page)]">
-          <div className="flex justify-between px-6 pt-5 text-[11px] font-semibold uppercase tracking-[.12em] text-[var(--text-muted)]">
-            <span>Regional coverage</span><span>23.81° N · 90.41° E</span>
+
+        <div className="relative mx-auto w-full max-w-[36rem] lg:mx-0">
+          <div aria-hidden className="absolute -inset-12 bg-[radial-gradient(circle,rgba(13,148,136,.14),transparent_65%)]" />
+          <div className="gp-hero-panel relative">
+            <div className="flex items-center justify-between border-b border-[var(--border-color)] px-4 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-[var(--text-muted)] sm:px-5">
+              <span className="flex items-center gap-2"><i className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,.12)]" /> Live verification</span>
+              <span>GP-2026-150</span>
+            </div>
+            <div className="grid sm:grid-cols-[1.08fr_.92fr]">
+              <div className="border-b border-[var(--border-color)] p-5 sm:border-b-0 sm:border-r sm:p-6">
+                <p className="gp-section-label">Checkout total</p>
+                <p className="mt-2 text-4xl font-semibold tracking-[-.04em]">৳1,250.00</p>
+                <p className="mt-1 text-xs text-[var(--text-muted)]">Your Store · Order #150</p>
+                <div className="mt-6 grid grid-cols-2 gap-2">
+                  {wallets.map((code, index) => (
+                    <div key={code} className={`relative flex min-h-16 items-center justify-center rounded-md border bg-white p-2 ${index === 0 ? "border-teal-500 ring-2 ring-teal-500/10" : "border-slate-200"}`}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={gatewayLogoPath(code)} alt={code} className="h-8 w-20 object-contain" />
+                      {index === 0 && <i className="absolute right-2 top-2 h-2 w-2 rounded-full bg-teal-500" />}
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 rounded-md bg-[#101b28] px-4 py-3 text-center text-xs font-bold text-white">Continue with bKash</div>
+              </div>
+              <div className="relative min-h-[20rem] overflow-hidden bg-[#09131f] text-white">
+                <div className="absolute inset-x-0 top-0 z-10 flex justify-between p-5 text-[10px] uppercase tracking-widest text-slate-400"><span>South Asia</span><span>Live</span></div>
+                <div className="flex h-full min-h-[20rem] items-center justify-center translate-y-5 scale-[.78] sm:translate-y-4 sm:scale-[.88]"><InteractiveGlobe /></div>
+                <div className="absolute inset-x-4 bottom-4 rounded-md border border-white/10 bg-black/35 p-3 backdrop-blur">
+                  <p className="text-[10px] uppercase tracking-widest text-slate-400">Verification signal</p>
+                  <div className="mt-1 flex items-center justify-between"><strong className="text-sm">Receipt matched</strong><span className="text-xs text-emerald-400">+ webhook</span></div>
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="flex justify-center" style={{backgroundImage: "radial-gradient(var(--border-color) 1px, transparent 1px)", backgroundSize: "16px 16px"}}>
-            <InteractiveGlobe />
+          <div className="relative z-10 mx-4 -mt-px flex flex-wrap items-center justify-between gap-3 border border-[var(--border-color)] bg-[var(--bg-card)] px-4 py-3 text-[11px] text-[var(--text-muted)] sm:mx-8">
+            <span>Live now · Bangladesh wallets + crypto</span><span>Regional rails · staged rollout</span>
           </div>
-          <figcaption className="flex flex-wrap gap-x-6 gap-y-2 border-t border-[var(--border-color)] px-6 py-4 text-xs text-[var(--text-secondary)]">
-            <span className="flex items-center gap-2"><i className="h-2 w-2 rounded-full bg-teal-600" />Bangladesh wallets</span>
-            <span>Planned · India, Pakistan, Nepal</span>
-          </figcaption>
-        </figure>
+        </div>
       </div>
     </section>
   );
