@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import QRCode from "qrcode";
 import { PaymentMethod, CheckoutSession, TransactionStatus, Currency } from "@/lib/types/api";
-import { formatCurrency } from "@/lib/formatters";
 import { api } from "@/lib/api-client";
 import { foldTxid } from "@/lib/method-theme";
 import { gatewayLogoPath } from "@/lib/gateway-library";
@@ -19,8 +18,7 @@ import {
   AlertCircle,
   CheckCircle2,
   Lock,
-  Smartphone,
-  Layers,
+  ChevronDown,
   RefreshCw,
 } from "lucide-react";
 
@@ -30,7 +28,7 @@ export interface HostedCheckoutModalProps {
   demoMode?: boolean;
 }
 
-type TabCategory = "mfs" | "crypto" | "other";
+
 
 const MFS_CODES = new Set([
   "bkash",
@@ -84,36 +82,14 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
     return methods.filter((m) => !claimed.has(m.gatewayId || m.code));
   }, [methods, mfsMethods, cryptoMethods]);
 
-  const initialTab: TabCategory =
-    mfsMethods.length > 0 ? "mfs" : cryptoMethods.length > 0 ? "crypto" : "other";
-  const [activeTab, setActiveTab] = useState<TabCategory>(initialTab);
-
-  const currentTabMethods =
-    activeTab === "mfs" ? mfsMethods : activeTab === "crypto" ? cryptoMethods : otherMethods;
-  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | undefined>(() => {
-    return (
-      (initialTab === "mfs"
-        ? mfsMethods[0]
-        : initialTab === "crypto"
-          ? cryptoMethods[0]
-          : otherMethods[0]) || methods[0]
-    );
-  });
-
-  // When activeTab changes, auto-select first method in that tab if not matching
-  useEffect(() => {
-    const pool =
-      activeTab === "mfs" ? mfsMethods : activeTab === "crypto" ? cryptoMethods : otherMethods;
-    if (pool.length === 0) return;
-    const key = (m: PaymentMethod) => m.gatewayId || m.code;
-    if (!selectedMethod || !pool.some((m) => key(m) === key(selectedMethod))) {
-      setSelectedMethod(pool[0]);
-    }
-  }, [activeTab, mfsMethods, cryptoMethods, otherMethods, selectedMethod]);
-
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | undefined>(() =>
+    methods.find(m => m.gatewayId === session.submittedGateway && !!session.submittedGateway) ??
+    methods.find(m => m.code === session.submittedMethod) ?? methods[0]
+  );
+  const isCrypto = !!selectedMethod && cryptoMethods.includes(selectedMethod);
   const [methodChosen, setMethodChosen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [txidInput, setTxidInput] = useState<string>("");
+  const [txidInput, setTxidInput] = useState<string>(session.submittedTxid || "");
   const [senderNumber, setSenderNumber] = useState<string>("");
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {};
@@ -124,8 +100,9 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
   });
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const [checkoutStatus, setCheckoutStatus] = useState<TransactionStatus>("PENDING");
-  const [isPollingVerification, setIsPollingVerification] = useState(false);
+  const [checkoutStatus, setCheckoutStatus] = useState<TransactionStatus>(session.paymentStatus ?? "PENDING");
+  const [providerUrl, setProviderUrl] = useState<string | null>(null);
+  const [isPollingVerification, setIsPollingVerification] = useState(!!session.awaitingEvidence);
   const [pollingSeconds, setPollingSeconds] = useState<number>(0);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -134,11 +111,14 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
   const [cancelRedirectUrl, setCancelRedirectUrl] = useState<string | null>(null);
   const [cancelMessage, setCancelMessage] = useState<string | null>(null);
   const [isCanceling, setIsCanceling] = useState(false);
-  const [generatedQr, setGeneratedQr] = useState<string | null>(null);
+  const [walletQr, setWalletQr] = useState<{destination: string; url: string} | null>(null);
+  const generatedQr = walletQr && walletQr.destination === selectedMethod?.depositAddressOrNumber ? walletQr.url : null;
   const [locale, setLocale] = useState<"en" | "bn">("en");
-  const checkoutAmount = (amount: number, currency: Currency) => locale === "en"
-    ? `${amount.toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: currency === "USDT" ? 4 : 2})} ${currency}`
-    : formatCurrency(amount, currency);
+  const checkoutAmount = (amount: number, currency: Currency) =>
+    amount.toLocaleString(locale === "bn" ? "bn-BD" : "en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: currency === "USDT" ? 6 : 2,
+    }) + " " + currency;
 
   const [secondsLeft, setSecondsLeft] = useState<number>(() => {
     if (!session.expiresAt) return 15 * 60;
@@ -162,7 +142,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
       const code = selectedMethod?.code?.toLowerCase() || "";
       const isCrypto = ["usdt_trc20", "binance_pay", "bybit_pay"].includes(code);
       if (!dest || !isCrypto) {
-        setGeneratedQr(null);
+        setWalletQr(null);
         return;
       }
       try {
@@ -172,9 +152,9 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
           color: { dark: "#09090b", light: "#ffffff" },
           errorCorrectionLevel: "M",
         });
-        if (!cancelled) setGeneratedQr(dataUrl);
+        if (!cancelled) setWalletQr({ destination: dest, url: dataUrl });
       } catch {
-        if (!cancelled) setGeneratedQr(null);
+        if (!cancelled) setWalletQr(null);
       }
     }
     buildQr();
@@ -188,7 +168,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
     if (
       checkoutStatus === "COMPLETED" ||
       checkoutStatus === "EXPIRED" ||
-      checkoutStatus === "FAILED"
+      checkoutStatus === "FAILED" || checkoutStatus === "REFUNDED"
     ) {
       return;
     }
@@ -205,8 +185,8 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
               if (res.status === "COMPLETED") {
                 setCheckoutStatus("COMPLETED");
                 handleSuccessfulRedirect(res.redirectUrl || res.returnUrl || session.returnUrl);
-              } else if (res.status === "EXPIRED") {
-                setCheckoutStatus("EXPIRED");
+              } else if (res.status !== "PENDING") {
+                setCheckoutStatus(res.status);
               } else {
                 setStatusMessage("Confirming the payment window with the server. Retry status if this persists.");
               }
@@ -239,9 +219,11 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
   const timeFormatted = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 
   const copyToClipboard = (text: string, key: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedKey(key);
-    setTimeout(() => setCopiedKey(null), 2500);
+    if (!navigator.clipboard) { setErrorMessage("Select and copy the value manually."); return; }
+    void navigator.clipboard.writeText(text).then(() => {
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(null), 2500);
+    }).catch(() => setErrorMessage("Select and copy the value manually."));
   };
 
   const handleCancelCheckout = async () => {
@@ -308,7 +290,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
           return;
         }
 
-        if (res.status === "FAILED" || res.status === "EXPIRED") {
+        if (res.status !== "PENDING") {
           if (pollingRef.current) clearInterval(pollingRef.current);
           setIsPollingVerification(false);
           setIsVerifying(false);
@@ -325,11 +307,17 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
         setIsPollingVerification(false);
         setIsVerifying(false);
         setErrorMessage(
-          "Verification is taking longer than usual. If your money was deducted, our Android companion APK will reconcile it automatically."
+          "Payment is still pending. If you have already paid, keep your reference and contact the seller before sending money again."
         );
       }
     }, 3000);
   };
+
+  useEffect(() => {
+    if (session.awaitingEvidence && session.paymentStatus === "PENDING") startStatusPolling();
+    // The initial session is immutable. User submissions start polling directly.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.sessionId]);
 
   const handleSuccessfulRedirect = (targetUrl?: string | null) => {
     const finalUrl =
@@ -359,7 +347,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
 
     if (
       selectedMethod.code !== "binance_pay" &&
-      !selectedMethod.depositAddressOrNumber
+      !demoMode && !selectedMethod.depositAddressOrNumber
     ) {
       setErrorMessage("Receiving account has not been configured for this method.");
       return;
@@ -395,6 +383,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
       if (selectedMethod.code === "binance_pay") {
         const order = await api.createBinancePayOrder(session.sessionId, selectedMethod.gatewayId);
         if (order.checkoutUrl) {
+          setProviderUrl(order.checkoutUrl);
           window.open(order.checkoutUrl, "_blank", "noopener,noreferrer");
         }
         setStatusMessage(
@@ -422,11 +411,14 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
         handleSuccessfulRedirect(
           res.redirectUrl || res.returnUrl || session.successRedirectUrl || session.returnUrl
         );
+      } else if (res.status !== "PENDING") {
+        setIsVerifying(false);
+        setCheckoutStatus(res.status);
       } else {
         setStatusMessage(
           smsAuto && !cleanTrx
             ? "Waiting for Companion SMS confirmation… Please keep this page open."
-            : "Verifying your Transaction ID automatically... Please wait"
+            : "Waiting for payment confirmation"
         );
         setIsVerifying(false);
         startStatusPolling();
@@ -441,9 +433,13 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
 
   // Step-by-Step English Instructions Generator based on Method Code
   const getInstructions = (method: PaymentMethod) => {
+    if (demoMode) return locale === "bn"
+      ? ["নমুনা TrxID বোতামে চাপুন।", "ডেমো রসিদ দেখতে পেমেন্ট নিশ্চিত করুন।"]
+      : ["Use the sample transaction ID below.", "Confirm the sample payment to view your receipt."];
     const code = method.code.toLowerCase();
     const receiver = method.depositAddressOrNumber || "the number above";
     const accountType = String(method.accountType ?? "personal").toLowerCase();
+    if (method.instructions && !MFS_CODES.has(code) && !CRYPTO_CODES.has(code)) return [method.instructions];
     const isAgent = accountType === "agent";
     const isPayment = accountType === "payment";
     const isBusiness = accountType === "merchant";
@@ -453,40 +449,30 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
         ? "Payment"
         : isBusiness
           ? "Business payment"
-          : "Send Money / Cash In";
+          : "Send Money";
 
-    let ussd = "";
-    let methodName = method.name || "Mobile Banking";
-    if (code === "bkash") {
-      ussd = " or dial *247#";
-      methodName = "bKash";
-    } else if (code === "nagad") {
-      ussd = " or dial *167#";
-      methodName = "Nagad";
-    } else if (code === "rocket") {
-      ussd = " or dial *322#";
-      methodName = "Rocket";
-    } else if (code === "upay") {
-      ussd = " or dial *268#";
-      methodName = "Upay";
-    } else if (code === "cellfin") {
-      methodName = "Cellfin";
-    }
-
-    if (["bkash", "nagad", "rocket", "upay", "cellfin"].includes(code)) {
+    const walletNames: Record<string, string> = { bkash: "bKash", nagad: "Nagad", rocket: "Rocket", upay: "upay", cellfin: "CellFin" };
+    const methodName = walletNames[code];
+    if (methodName) {
+      if (locale === "bn") return [
+        methodName + " অ্যাপে " + action + " বেছে নিন।",
+        receiver + " নম্বরে " + checkoutAmount(payableAmount, payableCurrency) + " পাঠান।",
+        method.requiresTxidInput ? "রসিদ থেকে TrxID লিখুন।" : "যে নম্বর থেকে টাকা পাঠিয়েছেন সেটি লিখুন।",
+      ];
       return [
-        `Open your ${methodName} App${ussd}.`,
+        `Open your ${methodName} app.`,
         `Choose "${action}" option.`,
         `Enter the copied recipient number (${receiver}) and the exact amount (${checkoutAmount(payableAmount, payableCurrency)}).`,
-        `Copy the Transaction ID (TrxID) from your confirmation SMS and paste it below.`,
+        method.requiresTxidInput ? "Copy the transaction ID from your receipt and enter it below." : "Enter your paying phone number and wait for confirmation.",
       ];
     }
 
     if (code === "usdt_trc20") {
+      if (locale === "bn") return ["ওয়ালেটে USDT এবং TRON (TRC-20) নেটওয়ার্ক বেছে নিন।", "উপরের ঠিকানায় দেখানো পরিমাণ পাঠান।", "TRON লেনদেনের ৬৪ অক্ষরের হ্যাশ লিখুন।"];
       return [
         `Open your crypto wallet (Trust Wallet, Binance, OKX, TronLink, etc.).`,
         `Select USDT and choose ONLY TRON (TRC-20) network.`,
-        `Send exactly ${checkoutAmount(payableAmount, payableCurrency)} USDT to the address above.`,
+        `Send exactly ${checkoutAmount(payableAmount, payableCurrency)} to the address above.`,
         `Paste the 64-character TRON Transaction Hash below — GressPay confirms on-chain via TronGrid (not SMS).`,
       ];
     }
@@ -528,6 +514,15 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
     );
   }
 
+  if (checkoutStatus === "FAILED" || checkoutStatus === "REFUNDED") {
+    return <section className="mx-auto max-w-lg space-y-3 rounded-2xl border bg-[var(--bg-card)] p-8 text-center">
+      <h2 className="text-xl font-semibold">{checkoutStatus === "FAILED" ? "Payment unsuccessful" : "Payment refunded"}</h2>
+      <p className="text-sm text-[var(--text-secondary)]">Contact {session.merchantName} with your order reference before sending another payment.</p>
+      <p className="break-all font-mono text-xs">{session.sessionId}</p>
+      {session.returnUrl && <a className="inline-block underline" href={session.returnUrl}>Return to seller</a>}
+    </section>;
+  }
+
   if (checkoutStatus === "EXPIRED") {
     return (
       <div className="w-full max-w-lg mx-auto bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-xl p-8 text-center space-y-4">
@@ -560,7 +555,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
     );
   }
 
-  if (secondsLeft === 0 && checkoutStatus !== "COMPLETED" && checkoutStatus !== "FAILED") {
+  if (secondsLeft === 0 && checkoutStatus !== "COMPLETED") {
     return <div className="mx-auto max-w-lg space-y-4 rounded-2xl border border-zinc-300 bg-white p-8 text-center dark:border-zinc-700 dark:bg-zinc-950">
       <h2 className="text-lg font-semibold">Confirming payment status</h2>
       <p className="text-sm text-zinc-500">{errorMessage || statusMessage || "The server is checking whether this payment window has ended."}</p>
@@ -582,16 +577,18 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
         <div className="space-y-1">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-            Auto-Verifying Payment
+            Payment submitted
           </span>
           <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 pt-2">
-            Verifying your Transaction ID automatically... Please wait
+            Waiting for payment confirmation
           </h2>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed max-w-sm mx-auto">
             {statusMessage ||
               "Your Transaction ID is registered. The merchant GressPay app is listening for incoming carrier SMS to auto-verify your payment."}
           </p>
         </div>
+
+        {providerUrl && <a className="inline-block rounded-lg border px-4 py-2 text-sm font-semibold" href={providerUrl} target="_blank" rel="noopener noreferrer">Continue to Binance Pay ↗</a>}
 
         <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-left font-mono text-xs space-y-2.5">
           <div className="flex justify-between items-center text-zinc-500">
@@ -643,14 +640,18 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
 
   // 3. COMPLETED STATE
   if (checkoutStatus === "COMPLETED") {
-    const returnTarget = session.returnUrl;
+    const restored = session.paymentStatus === "COMPLETED";
+    const receiptMethod = restored
+      ? (methods.find(m => session.submittedGateway && m.gatewayId === session.submittedGateway) ?? methods.find(m => m.code === session.submittedMethod))?.name || session.submittedMethod
+      : selectedMethod?.name;
+    const returnTarget = session.successRedirectUrl || session.returnUrl;
     const doneTheme = session.checkoutTheme || "default";
     const doneThemeClass =
       doneTheme === "luxury" ? "gp-theme-luxury" : doneTheme === "minimal" ? "gp-theme-minimal" : "gp-theme-default";
 
     return (
       <div className={`gp-checkout-card mx-auto w-full max-w-lg overflow-hidden p-8 text-center space-y-5 ${doneThemeClass}`}>
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl" style={{ background: "var(--gp-ck-accent)", color: "#04110f" }}>
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl" style={{ background: "var(--gp-ck-accent)", color: "var(--gp-ck-on-accent, #04110f)" }}>
           <CheckCircle2 className="h-9 w-9 stroke-[2.5]" />
         </div>
         {session.merchantLogo ? (
@@ -659,13 +660,13 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
         ) : null}
         <div className="space-y-1">
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--gp-ck-accent)" }}>
-            Payment successful
+            {demoMode ? "Sample payment successful" : "Payment successful"}
           </p>
           <h2 className="pt-1 text-3xl font-bold tracking-tight" style={{ color: "var(--gp-ck-text)" }}>
-            {checkoutAmount(payableAmount, payableCurrency)}
+            {restored ? checkoutAmount(session.settledAmount ?? session.amount, session.settledCurrency ?? session.currency) : checkoutAmount(payableAmount, payableCurrency)}
           </h2>
           <p className="text-xs" style={{ color: "var(--gp-ck-muted)" }}>
-            Settled to <span className="font-semibold" style={{ color: "var(--gp-ck-text)" }}>{session.merchantName}</span>
+            {demoMode ? "Demo receipt for " : "Settled to "}<span className="font-semibold" style={{ color: "var(--gp-ck-text)" }}>{session.merchantName}</span>
           </p>
         </div>
         <div className="space-y-2 rounded-2xl border p-4 text-left font-mono text-xs" style={{ borderColor: "var(--gp-ck-border)", background: "var(--gp-ck-surface)" }}>
@@ -675,10 +676,10 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
           </div>
           <div className="flex items-center justify-between" style={{ color: "var(--gp-ck-muted)" }}>
             <span>Method</span>
-            <span style={{ color: "var(--gp-ck-text)" }}>{selectedMethod?.name || "—"}</span>
+            <span style={{ color: "var(--gp-ck-text)" }}>{receiptMethod || "—"}</span>
           </div>
         </div>
-        {returnTarget && redirectCountdown > 0 ? (
+        {!restored && returnTarget && redirectCountdown > 0 ? (
           <p className="font-mono text-xs" style={{ color: "var(--gp-ck-muted)" }}>
             Returning in <span className="font-bold" style={{ color: "var(--gp-ck-text)" }}>{redirectCountdown}s</span>…
           </p>
@@ -687,7 +688,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
           variant="primary"
           size="lg"
           className="w-full font-semibold"
-          style={{ background: "var(--gp-ck-accent)", color: "#04110f" }}
+          style={{ background: "var(--gp-ck-accent)", color: "var(--gp-ck-on-accent, #04110f)" }}
           onClick={() => {
             if (returnTarget) window.location.href = returnTarget;
             else if (window.opener) window.close();
@@ -707,11 +708,10 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
       <div className="w-full max-w-lg mx-auto bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-xl p-8 text-center space-y-3">
         <AlertCircle className="w-8 h-8 text-zinc-400 mx-auto" />
         <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
-          No Payment Rails Available
+          No payment methods available
         </h2>
         <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-          No live-ready gateways for this brand yet. The business must finish setup under Payment Gateways
-          (wallet number / Binance API keys / Companion device) and keep the rails enabled.
+          Contact the seller to request another way to pay.
         </p>
       </div>
     );
@@ -753,80 +753,45 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
     : null;
 
   return (
-    <div className={`gp-checkout-card mx-auto w-full max-w-md overflow-hidden transition-all sm:max-w-lg ${themeClass}`}>
-      {/* Merchant-first hero */}
-      <div className="gp-checkout-hero relative px-5 pb-5 pt-5 sm:px-6 sm:pt-6">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-[11px] font-semibold" style={{ color: "var(--gp-ck-muted)" }}>
-            <Lock className="h-3.5 w-3.5" style={{ color: "var(--gp-ck-accent)" }} />
-            {locale === "bn" ? "নিরাপদ পেমেন্ট" : "Secure payment"}
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex overflow-hidden rounded-lg border text-[10px] font-bold" style={{ borderColor: "var(--gp-ck-border)" }}>
-              <button type="button" onClick={() => setLocale("bn")} className="px-2 py-1" style={locale === "bn" ? { background: "var(--gp-ck-accent)", color: "#04110f" } : { color: "var(--gp-ck-muted)" }}>BN</button>
-              <button type="button" onClick={() => setLocale("en")} className="px-2 py-1" style={locale === "en" ? { background: "var(--gp-ck-accent)", color: "#04110f" } : { color: "var(--gp-ck-muted)" }}>EN</button>
-            </div>
-            {!demoMode && (
-              <button type="button" aria-label="Cancel" onClick={handleCancelCheckout} disabled={isCanceling} className="text-lg leading-none opacity-60 hover:opacity-100" style={{ color: "var(--gp-ck-muted)" }}>×</button>
-            )}
+    <div className={`gp-checkout-card gp-checkout-layout mx-auto w-full overflow-hidden ${themeClass}`}>
+      <aside className="gp-order-summary">
+        <div className="flex items-center justify-between gap-3">
+          <p className="gp-kicker">{locale === "bn" ? "অর্ডারের সারাংশ" : "Order summary"}</p>
+          <div className="gp-language" aria-label="Language">
+            {(["en", "bn"] as const).map((lang) => (
+              <button key={lang} type="button" lang={lang} aria-pressed={locale === lang} onClick={() => setLocale(lang)}>
+                {lang === "en" ? "EN" : "বাংলা"}
+              </button>
+            ))}
           </div>
         </div>
-
-        <div className="flex flex-col items-center text-center">
+        <div className="mt-5 flex items-center gap-3 sm:mt-8">
           {session.merchantLogo ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={session.merchantLogo} alt={session.merchantName} className="mb-3 h-16 w-16 rounded-2xl object-contain bg-white p-1.5 shadow-md" />
+            <img src={session.merchantLogo} alt="" className="gp-brand-mark bg-white object-contain p-1" />
           ) : (
-            <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-2xl text-lg font-bold shadow-md" style={{ background: "var(--gp-ck-accent)", color: "#04110f" }}>
-              {session.merchantName ? session.merchantName.slice(0, 2).toUpperCase() : "GP"}
-            </div>
+            <span aria-hidden className="gp-brand-mark gp-monogram">{session.merchantName?.slice(0, 2).toUpperCase() || "GP"}</span>
           )}
-          <div className="flex items-center justify-center gap-1.5">
-            <h1 className="text-lg font-bold tracking-tight sm:text-xl" style={{ color: "var(--gp-ck-text)" }}>{session.merchantName}</h1>
-            {session.merchantVerified && <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-400" />}
+          <div className="min-w-0">
+            <p className="text-xs text-[var(--gp-ck-muted)]">{locale === "bn" ? "পেমেন্ট গ্রহণকারী" : "Paying to"}</p>
+            <h1 className="flex items-center gap-1.5 break-words text-base font-semibold">
+              {session.merchantName}{session.merchantVerified && <ShieldCheck aria-label="Verified business" className="h-4 w-4 shrink-0 text-[var(--gp-ck-accent)]" />}
+            </h1>
           </div>
-          {session.orderTitle && (
-            <p className="mt-1 max-w-sm text-xs" style={{ color: "var(--gp-ck-muted)" }}>{session.orderTitle}</p>
-          )}
-          <p className="mt-4 text-3xl font-bold tracking-tight tabular-nums sm:text-4xl" style={{ color: "var(--gp-ck-text)" }}>
+        </div>
+        <div className="gp-order-total">
+          <p className="text-xs font-semibold text-[var(--gp-ck-muted)]">{locale === "bn" ? "প্রদেয় পরিমাণ" : "Total due"}</p>
+          <p className="mt-1 break-words text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl">
             {methodChosen ? checkoutAmount(payableAmount, payableCurrency) : checkoutAmount(session.amount, session.currency)}
           </p>
-          <div className="mt-2 flex items-center gap-1.5 font-mono text-[11px]" style={{ color: "var(--gp-ck-muted)" }}>
-            <Clock className="h-3.5 w-3.5" />
-            <span>{locale === "bn" ? "মেয়াদ" : "Expires"} {timeFormatted}</span>
-          </div>
-          <button type="button" onClick={() => setDetailsOpen(!detailsOpen)} aria-expanded={detailsOpen} className="mt-3 text-[11px] font-semibold underline-offset-2 hover:underline" style={{ color: "var(--gp-ck-accent)" }}>
-            {detailsOpen ? (locale === "bn" ? "বিবরণ লুকান" : "Hide details") : (locale === "bn" ? "বিবরণ দেখুন" : "View details")}
+          {session.orderTitle && <p className="mt-1 break-words text-sm text-[var(--gp-ck-muted)]">{session.orderTitle}</p>}
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+          <span className="inline-flex items-center gap-1.5 text-[var(--gp-ck-muted)]"><Clock size={14} />{locale === "bn" ? "বাকি" : "Time left"} <b className="tabular-nums">{timeFormatted}</b></span>
+          <button type="button" onClick={() => setDetailsOpen(!detailsOpen)} aria-expanded={detailsOpen} className="inline-flex items-center gap-1 py-2 font-semibold">
+            {locale === "bn" ? "বিবরণ" : "Details"} <ChevronDown size={14} className={detailsOpen ? "rotate-180" : ""}/>
           </button>
-          {(whatsappHref || telHref || mailHref || tgHref || session.websiteUrl) && (
-            <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5">
-              {whatsappHref && <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="rounded-lg px-2 py-1 text-[10px] font-semibold" style={{ background: "var(--gp-ck-accent-soft)", color: "var(--gp-ck-accent)" }}>WhatsApp</a>}
-              {telHref && <a href={telHref} className="rounded-lg px-2 py-1 text-[10px] font-semibold" style={{ background: "var(--gp-ck-surface)", color: "var(--gp-ck-muted)" }}>Call</a>}
-              {mailHref && <a href={mailHref} className="rounded-lg px-2 py-1 text-[10px] font-semibold" style={{ background: "var(--gp-ck-surface)", color: "var(--gp-ck-muted)" }}>Email</a>}
-              {tgHref && <a href={tgHref} target="_blank" rel="noopener noreferrer" className="rounded-lg px-2 py-1 text-[10px] font-semibold" style={{ background: "var(--gp-ck-surface)", color: "var(--gp-ck-muted)" }}>Telegram</a>}
-              {session.websiteUrl && <a href={session.websiteUrl} target="_blank" rel="noopener noreferrer" className="rounded-lg px-2 py-1 text-[10px] font-semibold" style={{ background: "var(--gp-ck-surface)", color: "var(--gp-ck-muted)" }}>Website</a>}
-            </div>
-          )}
         </div>
-
-        <div className="mt-5 flex items-center justify-center gap-4">
-          <div className="gp-checkout-step" data-active={!methodChosen}>
-            <span className="gp-checkout-step-dot">1</span>
-            {locale === "bn" ? "পদ্ধতি" : "Method"}
-          </div>
-          <div className="h-px w-6" style={{ background: "var(--gp-ck-border)" }} />
-          <div className="gp-checkout-step" data-active={methodChosen && checkoutStatus !== "COMPLETED"}>
-            <span className="gp-checkout-step-dot">2</span>
-            {locale === "bn" ? "পেমেন্ট" : "Pay"}
-          </div>
-          <div className="h-px w-6" style={{ background: "var(--gp-ck-border)" }} />
-          <div className="gp-checkout-step" data-active={false}>
-            <span className="gp-checkout-step-dot">3</span>
-            {locale === "bn" ? "নিশ্চিত" : "Confirm"}
-          </div>
-        </div>
-      </div>
-
       {detailsOpen && (
         <dl className="grid grid-cols-2 gap-3 border-b px-6 py-4 text-xs" style={{ borderColor: "var(--gp-ck-border)", color: "var(--gp-ck-muted)" }}>
           <dt>Invoice</dt>
@@ -846,7 +811,23 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
         </dl>
       )}
 
-      <div className="space-y-5 p-5 sm:p-6" style={{ background: "var(--gp-ck-bg)" }}>
+          {(whatsappHref || telHref || mailHref || tgHref || session.websiteUrl) && (
+            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+              {whatsappHref && <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="rounded-lg px-2 py-1 text-[10px] font-semibold" style={{ background: "var(--gp-ck-accent-soft)", color: "var(--gp-ck-accent)" }}>WhatsApp</a>}
+              {telHref && <a href={telHref} className="rounded-lg px-2 py-1 text-[10px] font-semibold" style={{ background: "var(--gp-ck-surface)", color: "var(--gp-ck-muted)" }}>Call</a>}
+              {mailHref && <a href={mailHref} className="rounded-lg px-2 py-1 text-[10px] font-semibold" style={{ background: "var(--gp-ck-surface)", color: "var(--gp-ck-muted)" }}>Email</a>}
+              {tgHref && <a href={tgHref} target="_blank" rel="noopener noreferrer" className="rounded-lg px-2 py-1 text-[10px] font-semibold" style={{ background: "var(--gp-ck-surface)", color: "var(--gp-ck-muted)" }}>Telegram</a>}
+              {session.websiteUrl && <a href={session.websiteUrl} target="_blank" rel="noopener noreferrer" className="rounded-lg px-2 py-1 text-[10px] font-semibold" style={{ background: "var(--gp-ck-surface)", color: "var(--gp-ck-muted)" }}>Website</a>}
+            </div>
+          )}
+        {!demoMode && <button type="button" onClick={handleCancelCheckout} disabled={isCanceling} className="mt-3 text-xs text-[var(--gp-ck-muted)] underline underline-offset-4">{locale === "bn" ? "চেকআউট বাতিল করুন" : "Cancel checkout"}</button>}
+      </aside>
+      <div className="gp-payment-panel space-y-5">
+        <header>
+          <p className="gp-kicker">{methodChosen ? "02" : "01"} / 02</p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight">{methodChosen ? (locale === "bn" ? selectedMethod.name + " দিয়ে পেমেন্ট" : "Pay with " + selectedMethod.name) : (locale === "bn" ? "পেমেন্ট পদ্ধতি বেছে নিন" : "Choose a payment method")}</h2>
+          {!methodChosen && <p className="mt-1 text-sm text-[var(--gp-ck-muted)]">{locale === "bn" ? "প্রতিটি পদ্ধতির পাশে মোট প্রদেয় পরিমাণ দেখানো হয়েছে।" : "Each method shows the total you’ll pay."}</p>}
+        </header>
         {session.productImageUrl && (
           <div className="overflow-hidden rounded-2xl border" style={{ borderColor: "var(--gp-ck-border)", background: "var(--gp-ck-surface)" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -874,102 +855,41 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
           <Alert variant="danger" title="Payment Error">{errorMessage}</Alert>
         )}
 
-        {!methodChosen && <>
-        {([mfsMethods, cryptoMethods, otherMethods].filter((g) => g.length > 0).length > 1) && (
-          <div className="flex flex-wrap gap-1 rounded-xl border p-1" style={{ borderColor: "var(--gp-ck-border)", background: "var(--gp-ck-surface)" }}>
-            {mfsMethods.length > 0 && (
-              <button type="button" onClick={() => setActiveTab("mfs")} className="flex min-w-[110px] flex-1 items-center justify-center gap-2 rounded-lg py-2 text-xs font-semibold transition-all" style={activeTab === "mfs" ? { background: "var(--gp-ck-accent)", color: "#04110f" } : { color: "var(--gp-ck-muted)" }}>
-                <Smartphone className="h-3.5 w-3.5" /> MFS ({mfsMethods.length})
-              </button>
-            )}
-            {cryptoMethods.length > 0 && (
-              <button type="button" onClick={() => setActiveTab("crypto")} className="flex min-w-[110px] flex-1 items-center justify-center gap-2 rounded-lg py-2 text-xs font-semibold transition-all" style={activeTab === "crypto" ? { background: "var(--gp-ck-accent)", color: "#04110f" } : { color: "var(--gp-ck-muted)" }}>
-                <Layers className="h-3.5 w-3.5" /> Crypto ({cryptoMethods.length})
-              </button>
-            )}
-            {otherMethods.length > 0 && (
-              <button type="button" onClick={() => setActiveTab("other")} className="flex min-w-[110px] flex-1 items-center justify-center gap-2 rounded-lg py-2 text-xs font-semibold transition-all" style={activeTab === "other" ? { background: "var(--gp-ck-accent)", color: "#04110f" } : { color: "var(--gp-ck-muted)" }}>
-                Other ({otherMethods.length})
-              </button>
-            )}
-          </div>
-        )}
-
-        <div className="space-y-2">
-          <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--gp-ck-muted)" }}>
-            {locale === "bn" ? "পেমেন্ট পদ্ধতি বেছে নিন" : "Choose how to pay"}
-          </p>
-          <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
-            {currentTabMethods.map((method) => {
-              const methodIconUrl = gatewayLogoPath(method.code);
-              return (
-                <button
-                  key={method.gatewayId || method.code}
-                  type="button"
-                  className="gp-method-tile flex cursor-pointer flex-col justify-between"
-                  onClick={() => {
-                    setSelectedMethod(method);
-                    setMethodChosen(true);
-                    setTxidInput("");
-                    setErrorMessage(null);
-                  }}
-                >
-                  <div className="flex items-center gap-2.5">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={methodIconUrl}
-                      alt={method.name}
-                      className="h-11 w-14 shrink-0 rounded-xl bg-white object-contain p-1"
-                      onError={(e) => { (e.target as HTMLElement).style.display = "none"; }}
-                    />
-                    <span className="text-sm font-semibold" style={{ color: "var(--gp-ck-text)" }}>{method.name}</span>
-                  </div>
-                  <div className="mt-3 flex items-center justify-between font-mono text-[11px]" style={{ color: "var(--gp-ck-muted)" }}>
-                    <span>{method.currency}</span>
-                    <span>
-                      {(() => {
-                        const pct = Number(method.feePercentage || 0);
-                        const fixed = Number(method.fixedFee || 0);
-                        const bf = Number(session.brandFee || 0);
-                        if (pct <= 0 && fixed <= 0 && bf <= 0) return "No fee";
-                        const bits: string[] = [];
-                        if (pct > 0) bits.push(`${pct}%`);
-                        if (fixed > 0) bits.push(`${fixed}`);
-                        if (bf > 0) bits.push("fee");
-                        return bits.join("+");
-                      })()}
-                    </span>
-                  </div>
+        {!methodChosen && [
+          {label: locale === "bn" ? "মোবাইল ব্যাংকিং" : "Mobile banking", pool: mfsMethods},
+          {label: locale === "bn" ? "ক্রিপ্টো" : "Crypto", pool: cryptoMethods},
+          {label: locale === "bn" ? "অন্যান্য" : "Other methods", pool: otherMethods},
+        ].filter(group => group.pool.length > 0).map(group => (
+          <section key={group.label}>
+            <h3 className="gp-kicker mb-2">{group.label}</h3>
+            <div className="gp-method-list">
+              {group.pool.map(method => (
+                <button className="gp-method-row" type="button" key={method.gatewayId || method.code}
+                  onClick={() => { setSelectedMethod(method); setMethodChosen(true); setTxidInput(""); setSenderNumber(""); setErrorMessage(null); }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={gatewayLogoPath(method.code)} alt="" width="48" height="32" />
+                  <span className="min-w-0 flex-1 break-words text-left font-semibold">{method.name}</span>
+                  <span className="text-xs tabular-nums text-[var(--gp-ck-muted)]">{checkoutAmount(method.payableAmount ?? session.amount, method.payableCurrency ?? method.currency)}</span>
+                  <ArrowRight size={15} aria-hidden />
                 </button>
-              );
-            })}
-          </div>
-        </div>
-        </>}
-        {methodChosen && <>
-        <div className="flex items-center justify-between gap-3">
-          <button type="button" onClick={() => { setMethodChosen(false); setErrorMessage(null); }} className="text-xs font-semibold" style={{ color: "var(--gp-ck-accent)" }}>
-            ← {locale === "bn" ? "পদ্ধতি" : "Methods"}
-          </button>
-          <div className="flex items-center gap-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={gatewayLogoPath(selectedMethod.code)} alt="" className="h-8 w-8 object-contain" />
-            <div className="text-right">
-              <h2 className="text-sm font-semibold" style={{ color: "var(--gp-ck-text)" }}>{selectedMethod.name}</h2>
-              <p className="text-[11px]" style={{ color: "var(--gp-ck-muted)" }}>{locale === "bn" ? "নির্দেশনা অনুসরণ করুন" : "Follow the steps below"}</p>
+              ))}
             </div>
-          </div>
-        </div>
+          </section>
+        ))}
+        {methodChosen && <>
+        <button type="button" onClick={() => { setMethodChosen(false); setErrorMessage(null); }} className="text-sm font-semibold text-[var(--gp-ck-accent)]">
+          ← {locale === "bn" ? "অন্য পদ্ধতি বেছে নিন" : "Change payment method"}
+        </button>
         <div className="space-y-5 rounded-2xl border p-5" style={{ borderColor: "var(--gp-ck-border)", background: "var(--gp-ck-surface)" }}>
           <div className="flex flex-col justify-between gap-3 rounded-xl border p-4 sm:flex-row sm:items-center" style={{ borderColor: "var(--gp-ck-border)", background: "var(--gp-ck-elevated)" }}>
             <div>
               <span className="font-mono text-xs" style={{ color: "var(--gp-ck-muted)" }}>
-                {activeTab === "crypto" ? "Exact USDT amount" : "Exact amount to send"}
+                {locale === "bn" ? "পাঠানোর পরিমাণ" : "Exact amount to send"}
               </span>
               <div className="text-2xl font-semibold tracking-tight tabular-nums" style={{ color: "var(--gp-ck-text)" }}>
                 {checkoutAmount(payableAmount, payableCurrency)}
               </div>
-              {activeTab === "crypto" && session.exchangeRateToUsd != null && (
+              {isCrypto && session.exchangeRateToUsd != null && (
                 <span className="inline-flex mt-1 text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
                   Order currency · {session.currency}
                 </span>
@@ -995,21 +915,21 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
                 )
               }
             >
-              {copiedKey === "amount" ? "Amount Copied!" : "Copy Amount"}
+              {copiedKey === "amount" ? "Amount Copied!" : (locale === "bn" ? "পরিমাণ কপি করুন" : "Copy amount")}
             </Button>
           </div>
 
           {/* Receiving Destination Account / Wallet */}
-          {selectedMethod.depositAddressOrNumber ? (
+          {selectedMethod.code !== "binance_pay" && (selectedMethod.depositAddressOrNumber ? (
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                <label className="text-xs font-semibold text-[var(--gp-ck-text)]">
                   {selectedMethod.accountLabel ||
-                    (activeTab === "crypto"
+                    (isCrypto
                       ? "Receiving wallet address"
                       : "Receiving wallet number")}
                 </label>
-                <span className="text-[11px] font-mono text-zinc-500">
+                <span className="text-[11px] font-mono text-[var(--gp-ck-muted)]">
                   {selectedMethod.code === "usdt_trc20"
                     ? "TRC-20 Network Only"
                     : (() => {
@@ -1018,8 +938,8 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
                         ).toLowerCase();
                         if (t === "agent") return "Cash Out only";
                         if (t === "payment") return "Payment only";
-                        if (t === "merchant") return "API key + secret";
-                        return "Send Money / Cash In";
+                        if (t === "merchant") return "Merchant payment";
+                        return "Send Money";
                       })()}
                 </span>
               </div>
@@ -1047,7 +967,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
                 >
                   {copiedKey === "wallet"
                     ? "Copied!"
-                    : activeTab === "crypto"
+                    : isCrypto
                     ? "Copy Address / UID"
                     : "Copy Number"}
                 </Button>
@@ -1055,15 +975,15 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
             </div>
           ) : (
             <div className="p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 text-xs text-zinc-600 dark:text-zinc-300">
-              Receiving destination wallet is configured by the seller for this checkout.
+              {demoMode ? "Practice checkout. Use the sample reference below." : "No receiving account is available for this method."}
             </div>
-          )}
+          ))}
 
           {/* Crypto QR (generated) or merchant static QR */}
-          {(generatedQr || selectedMethod.qrImageUrl) && (
+          {selectedMethod.code !== "binance_pay" && (generatedQr || selectedMethod.qrImageUrl) && (
             <div className="space-y-2 text-center pt-1">
-              <label className="block text-xs font-mono text-zinc-500">
-                {activeTab === "crypto"
+              <label className="block text-xs font-mono text-[var(--gp-ck-muted)]">
+                {isCrypto
                   ? "Scan Wallet Address / UID QR"
                   : "Scan deposit QR code"}
               </label>
@@ -1077,26 +997,26 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
           )}
 
           {/* Numbered Step-by-Step Instructions */}
-          <div className="space-y-2 pt-1 border-t border-zinc-200/60 dark:border-zinc-800">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 font-mono">
-              Step-by-Step Payment Instructions
+          {selectedMethod.code !== "binance_pay" && <div className="space-y-2 pt-1 border-t border-zinc-200/60 dark:border-zinc-800">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--gp-ck-muted)] font-mono">
+              {locale === "bn" ? "যেভাবে পেমেন্ট করবেন" : "Payment instructions"}
             </span>
-            <ol className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed space-y-1.5 list-decimal pl-4">
+            <ol className="text-xs text-[var(--gp-ck-muted)] leading-relaxed space-y-1.5 list-decimal pl-4">
               {instructions.map((step, i) => (
                 <li key={i}>{step}</li>
               ))}
             </ol>
-          </div>
+          </div>}
 
           {/* Verification Form */}
           <form onSubmit={handleVerifyPayment} className="space-y-4 pt-2">
             {selectedMethod.code === "binance_pay" ? (
-              <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+              <p className="text-xs text-[var(--gp-ck-muted)] leading-relaxed">
                 Clicking below initiates Binance Pay checkout. You will complete payment via Binance app, and this window will verify automatically.
               </p>
             ) : selectedMethod.code === "usdt_trc20" || selectedMethod.code === "bybit_pay" ? (
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                <label className="block text-xs font-semibold text-[var(--gp-ck-text)]">
                   {selectedMethod.code === "usdt_trc20"
                     ? "Transaction Hash (TxID)"
                     : "Transaction Hash (TxID) / Bybit Order ID"}
@@ -1115,10 +1035,10 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
             ) : selectedMethod.requiresTxidInput ? (
               <div className="space-y-3">
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                    Carrier Transaction ID (TrxID)
+                  <label htmlFor="checkout-txid" className="block text-xs font-semibold text-[var(--gp-ck-text)]">
+                    {locale === "bn" ? "লেনদেনের আইডি (TrxID)" : "Transaction ID (TrxID)"}
                   </label>
-                  <Input
+                  <Input id="checkout-txid"
                     placeholder={
                       selectedMethod.code === "bkash"
                         ? "e.g. BKH9948271"
@@ -1135,10 +1055,10 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                    Your Mobile Number (Optional)
+                  <label htmlFor="checkout-payer" className="block text-xs font-semibold text-[var(--gp-ck-text)]">
+                    {locale === "bn" ? "আপনার মোবাইল নম্বর (ঐচ্ছিক)" : "Your mobile number (optional)"}
                   </label>
-                  <Input
+                  <Input id="checkout-payer"
                     placeholder="e.g. 01XXXXXXXXX"
                     value={senderNumber}
                     onChange={(e) => setSenderNumber(e.target.value.trim())}
@@ -1153,17 +1073,17 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
                   GressPay SMS listener — you do not need to paste a TrxID.
                 </div>
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                    Phone number used for payment
+                  <label htmlFor="checkout-payer" className="block text-xs font-semibold text-[var(--gp-ck-text)]">
+                    {locale === "bn" ? "যে নম্বর থেকে পেমেন্ট করেছেন" : "Phone number used for payment"}
                   </label>
-                  <Input
+                  <Input id="checkout-payer"
                     placeholder="e.g. 01XXXXXXXXX"
                     value={senderNumber}
                     onChange={(e) => setSenderNumber(e.target.value.trim())}
                     required type="tel" className="font-mono text-xs"
                   />
                 </div>
-                <details className="text-xs text-zinc-500">
+                <details className="text-xs text-[var(--gp-ck-muted)]">
                   <summary className="cursor-pointer font-semibold text-zinc-600 dark:text-zinc-300">
                     Advanced: enter TrxID manually
                   </summary>
@@ -1197,12 +1117,12 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
                   );
                 }}
               >
-                Use One-Click Sample TrxID
+                {locale === "bn" ? "নমুনা TrxID ব্যবহার করুন" : "Use sample transaction ID"}
               </Button>
             )}
 
             {statusMessage && (
-              <p className="text-xs text-zinc-700 dark:text-zinc-300 font-medium">
+              <p className="text-xs text-[var(--gp-ck-text)] font-medium">
                 {statusMessage}
               </p>
             )}
@@ -1212,7 +1132,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
               variant="primary"
               size="lg"
               className="w-full font-semibold"
-              style={{ background: "var(--gp-ck-accent)", color: "#04110f" }}
+              style={{ background: "var(--gp-ck-accent)", color: "var(--gp-ck-on-accent, #04110f)" }}
               isLoading={isVerifying}
               rightIcon={<ArrowRight className="w-4 h-4" />}
             >
@@ -1224,7 +1144,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
                     ? locale === "bn"
                       ? "পেমেন্ট করে অপেক্ষা করুন"
                       : "I have paid — wait for SMS"
-                    : `Confirm ${checkoutAmount(payableAmount, payableCurrency)}`}
+                    : locale === "bn" ? "পেমেন্ট যাচাই করুন" : "Verify payment"}
             </Button>
             {(selectedMethod.category === "mfs" ||
               ["bkash", "nagad", "rocket", "upay", "cellfin"].includes(selectedMethod.code)) && (
@@ -1240,7 +1160,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
 
         <div className="flex items-center justify-center gap-2 pt-1 text-[10px] tracking-wide" style={{ color: "var(--gp-ck-muted)" }}>
           <Lock className="h-3 w-3" style={{ color: "var(--gp-ck-accent)" }} />
-          <span>Non-custodial verification · Secured by GressPay</span>
+          <span>Checkout by GressPay</span>
         </div>
       </div>
     </div>

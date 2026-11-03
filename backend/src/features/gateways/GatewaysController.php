@@ -187,7 +187,7 @@ final class GatewaysController
                 $methodCode,
                 $displayName,
                 self::accountType($req, 'personal', $methodCode),
-                $account !== '' ? $account : null,
+                GpDb::storedWalletValue($methodCode, 'account', $account !== '' ? $account : null),
                 strtoupper((string) $req->input('currency', $cat['currency'] ?? 'BDT')),
                 strtoupper((string) $req->input('country', $cat['country'] ?? 'BD')),
                 trim((string) $req->input('instructions', '')) ?: null,
@@ -276,7 +276,7 @@ final class GatewaysController
             [
                 $displayName,
                 self::accountType($req, (string) ($gw['account_type'] ?? 'personal'), $methodCode),
-                $account !== '' ? $account : null,
+                GpDb::storedWalletValue($methodCode, 'account', $account !== '' ? $account : null),
                 strtoupper((string) $req->input('currency', $gw['currency'] ?? 'BDT')),
                 strtoupper((string) $req->input('country', $gw['country'] ?? 'BD')),
                 trim((string) $req->input('instructions', $gw['instructions'] ?? '')) ?: null,
@@ -981,7 +981,7 @@ final class GatewaysController
                 $prev[$secretKey . '_sealed'] = GpCrypto::seal(trim($secret));
                 unset($prev[$secretKey]);
             }
-            $json = json_encode($prev, JSON_UNESCAPED_SLASHES);
+            $json = GpDb::storedWalletValue($methodCode, 'options', json_encode($prev, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
             $now = GpIds::now();
             if ($existing) {
                 GpDb::exec(
@@ -1081,7 +1081,7 @@ final class GatewaysController
             $prev['custom_rate_bdt'] = $rate;
         }
         unset($prev['api_key'], $prev['api_secret']);
-        $json = json_encode($prev, JSON_UNESCAPED_SLASHES);
+        $json = GpDb::storedWalletValue($methodCode, 'options', json_encode($prev, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
         $now = GpIds::now();
         if ($existing) {
             GpDb::exec(
@@ -1155,7 +1155,7 @@ final class GatewaysController
         if ($exchangeRate !== null && $exchangeRate !== '' && (float) $exchangeRate > 0) {
             $prev['custom_rate_bdt'] = (float) $exchangeRate;
         }
-        $json = json_encode($prev, JSON_UNESCAPED_SLASHES);
+        $json = GpDb::storedWalletValue($methodCode, 'options', json_encode($prev, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
         $now = GpIds::now();
         if ($existing) {
             GpDb::exec(
@@ -1197,7 +1197,7 @@ final class GatewaysController
             $opts['account'] = $acc;
             $opts['depositAddressOrNumber'] = $acc;
         }
-        $json = json_encode($opts, JSON_UNESCAPED_SLASHES);
+        $json = GpDb::storedWalletValue($methodCode, 'options', json_encode($opts, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
         $now = GpIds::now();
         if ($existing) {
             GpDb::exec(

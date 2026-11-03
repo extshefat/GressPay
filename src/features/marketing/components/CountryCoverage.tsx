@@ -3,20 +3,20 @@ import { gatewayLogoPath, GATEWAY_SHORT_LABELS } from "@/lib/gateway-library";
 
 const groups = [
   {
-    label: "Bangladesh · Live",
+    label: "Bangladesh wallets",
     detail: "Companion SMS matches TrxID + amount on wallets you configure.",
     status: "live" as const,
-    codes: ["bkash", "nagad", "rocket", "upay", "cellfin", "ipay", "aamar_pay"],
+    codes: ["bkash", "nagad", "rocket", "upay", "cellfin"],
   },
   {
-    label: "Crypto · Live",
+    label: "Crypto payments",
     detail: "USDT TRC-20 confirms on TronGrid. Binance Pay settles via merchant order API.",
     status: "live" as const,
-    codes: ["usdt_trc20", "binance_pay", "bybit_pay"],
+    codes: ["usdt_trc20", "binance_pay"],
   },
   {
-    label: "Asia · Preview",
-    detail: "India UPI, Pakistan easypaisa, Nepal eSewa — catalog ready; live auto-verify planned.",
+    label: "Regional catalog",
+    detail: "Explore UPI in India, easypaisa in Pakistan and eSewa in Nepal. Automatic verification is planned.",
     status: "preview" as const,
     codes: ["upi_qr", "phonepe", "paytm", "easypaisa", "jazzcash", "esewa", "khalti"],
   },
@@ -27,13 +27,13 @@ export function CountryCoverage() {
     <section aria-labelledby="coverage-title" className="border-y border-[var(--border-color)] bg-[var(--bg-surface)] py-14 sm:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <p className="mb-2 text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">
-          Supported rails
+          Payment methods
         </p>
         <h2 id="coverage-title" className="text-3xl font-bold tracking-tight sm:text-4xl">
-          Automated message verify for Asia
+          Where you can accept payments
         </h2>
         <p className="mt-3 max-w-2xl text-sm text-[var(--text-secondary)]">
-          Live rails settle only with server-side evidence. Preview rails appear in the gateway library for upcoming countries.
+          Choose a method to match how your customers pay. Availability depends on the receiving accounts you connect.
         </p>
         <div className="mt-8 grid gap-4 md:grid-cols-3">
           {groups.map((group) => (

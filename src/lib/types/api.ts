@@ -262,6 +262,13 @@ export interface Invoice {
 }
 
 export interface CheckoutSession {
+  paymentStatus?: TransactionStatus;
+  submittedMethod?: string | null;
+  submittedGateway?: string | null;
+  submittedTxid?: string | null;
+  awaitingEvidence?: boolean;
+  settledAmount?: number | null;
+  settledCurrency?: Currency | null;
   sessionId: string;
   linkId: string;
   payUrl?: string;

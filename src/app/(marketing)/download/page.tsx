@@ -67,6 +67,10 @@ export default function DownloadPage() {
         </Card>
 
         <div className="space-y-4">
+          <p className="rounded-xl border p-4 text-sm leading-relaxed">
+            <strong>Moving from v1.2.2?</strong> Let queued receipts finish syncing on your phone first.
+            Then uninstall the old app, install v1.3.0 and pair the phone again in Devices. The new release uses a different signing certificate.
+          </p>
           <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
             <KeyRound className="w-4 h-4 text-teal-600" />
             Setup on the phone

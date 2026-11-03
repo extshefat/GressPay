@@ -57,6 +57,7 @@ export function InteractiveGlobe({ className = "" }: { className?: string }) {
       speed: 0.004 + i * 0.001,
     }));
 
+    const landPoints: Array<{ lat: number; lon: number }> = [];
     const mask = new Image();
     mask.src = "/brand/earth-land.png";
     mask.onload = () => {
@@ -67,6 +68,10 @@ export function InteractiveGlobe({ className = "" }: { className?: string }) {
       if (!sctx) return;
       sctx.drawImage(mask, 0, 0);
       land = sctx.getImageData(0, 0, scratch.width, scratch.height);
+      for (let lat = -84; lat < 85; lat += 2) {
+        const step = 2 / Math.cos(lat * Math.PI / 180);
+        for (let lon = -180; lon < 180; lon += step) if (isLand(lat, lon)) landPoints.push({ lat, lon });
+      }
       drawFrame();
     };
 
@@ -91,7 +96,8 @@ export function InteractiveGlobe({ className = "" }: { className?: string }) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
     resize();
-    window.addEventListener("resize", resize);
+    const resizeObserver = new ResizeObserver(() => { resize(); drawFrame(); });
+    if (canvas.parentElement) resizeObserver.observe(canvas.parentElement);
 
     const project = (lat: number, lon: number, rot: number, radius: number, cx: number, cy: number) => {
       const lambda = ((lon + rot) * Math.PI) / 180;
@@ -133,22 +139,12 @@ export function InteractiveGlobe({ className = "" }: { className?: string }) {
       ctx.arc(cx, cy, radius, 0, Math.PI * 2);
       ctx.clip();
 
-      const pixel = radius < 150 ? 3 : 2;
-      const landColor = isDark ? "#4d8a68" : "#1f6b4a";
-      ctx.fillStyle = landColor;
-      for (let sy = -radius; sy <= radius; sy += pixel) {
-        const rowWidth = Math.sqrt(Math.max(0, radius * radius - sy * sy));
-        for (let sx = -rowWidth; sx <= rowWidth; sx += pixel) {
-          const sz = Math.sqrt(Math.max(0, radius * radius - sx * sx - sy * sy));
-          const phi = Math.asin(Math.max(-1, Math.min(1, -sy / radius)));
-          const lambda = Math.atan2(sx, sz);
-          const lat = (phi * 180) / Math.PI;
-          const lon = (lambda * 180) / Math.PI - rotationAngle;
-          if (!isLand(lat, lon)) continue;
-          const light = 0.62 + (sz / radius) * 0.38;
-          ctx.globalAlpha = light;
-          ctx.fillRect(cx + sx, cy + sy, pixel, pixel);
-        }
+      ctx.fillStyle = isDark ? "#56927b" : "#39725d";
+      for (const point of landPoints) {
+        const pt = project(point.lat, point.lon, rotationAngle, radius, cx, cy);
+        if (pt.z <= 0) continue;
+        ctx.globalAlpha = .55 + .45 * pt.z / radius;
+        ctx.fillRect(pt.x, pt.y, 2, 2);
       }
       ctx.globalAlpha = 1;
 
@@ -218,9 +214,7 @@ export function InteractiveGlobe({ className = "" }: { className?: string }) {
           ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
           ctx.fillStyle = isDark ? "#e4e4e7" : "#3f3f46";
           ctx.fill();
-          ctx.font = "10px ui-sans-serif, system-ui, sans-serif";
-          ctx.fillStyle = isDark ? "rgba(244,244,245,0.86)" : "rgba(24,24,27,0.8)";
-          ctx.fillText(node.name, pt.x + 6, pt.y + 3);
+
         }
       });
     };
@@ -260,12 +254,13 @@ export function InteractiveGlobe({ className = "" }: { className?: string }) {
       if (animationFrameId) cancelAnimationFrame(animationFrameId);
       observer.disconnect();
       themeObserver.disconnect();
-      window.removeEventListener("resize", resize);
+      resizeObserver.disconnect();
+      mask.onload = null;
     };
   }, [reducedMotion]);
 
   return (
-    <div className={`relative flex h-[420px] w-full max-w-[520px] flex-col items-center justify-center ${className}`}>
+    <div className={`relative flex h-64 sm:h-80 w-full max-w-[520px] flex-col items-center justify-center ${className}`}>
       {canvasReady ? (
         <canvas ref={canvasRef} className="h-full w-full" role="img" aria-label="Illustrated Earth centered on Dhaka" />
       ) : (
@@ -276,9 +271,7 @@ export function InteractiveGlobe({ className = "" }: { className?: string }) {
           className="h-64 w-64 rounded-full object-cover"
         />
       )}
-      <p className="mt-2 text-center text-[11px] font-mono text-zinc-500 dark:text-zinc-400">
-        Asia · Automated message verify
-      </p>
+
     </div>
   );
 }

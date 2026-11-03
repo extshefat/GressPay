@@ -41,7 +41,7 @@ export const HowItWorks: React.FC = () => {
             Workflow
           </Badge>
           <h2 className="text-3xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-100 tracking-tight">
-            How to go live in minutes
+            From checkout link to confirmed order
           </h2>
           <p className="text-zinc-600 dark:text-zinc-400 text-sm sm:text-base leading-relaxed">
             You keep the wallets. We confirm payment with evidence your server can trust.
@@ -76,11 +76,7 @@ export const HowItWorks: React.FC = () => {
                   {step.desc}
                 </p>
               </div>
-              <div className="mt-6 pt-4 border-t border-zinc-100 dark:border-zinc-900">
-                <span className="text-[11px] font-mono text-zinc-700 dark:text-zinc-300 font-medium">
-                  Step {step.num} →
-                </span>
-              </div>
+
             </div>
           ))}
         </div>

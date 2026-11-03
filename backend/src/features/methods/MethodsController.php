@@ -157,6 +157,7 @@ final class MethodsController
                 GpJson::error('DESTINATION_REQUIRED', 'Save a receiving number/address before enabling this rail.', 400);
             }
 
+            $json = GpDb::storedWalletValue($code, 'options', $json);
             if ($existing) {
                 GpDb::exec(
                     'UPDATE gp_methods SET status = ?, options = ?, updated_at = ? WHERE brand_id = ? AND code = ?',

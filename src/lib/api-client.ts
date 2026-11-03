@@ -206,7 +206,7 @@ class ApiClient {
     return this.sessionActive || Boolean(this.token);
   }
 
-  clearToken() {
+  async clearToken() {
     this.token = null;
     this.rememberMe = false;
     this.setSessionFlag(false);
@@ -215,7 +215,7 @@ class ApiClient {
       sessionStorage.removeItem("gresspay_jwt");
       localStorage.removeItem("gresspay_remember");
       this.clearLegacyJwtCookie();
-      void fetch("/api/auth/session", {
+      await fetch("/api/auth/session", {
         method: "DELETE",
         credentials: "same-origin",
         headers: { [SESSION_CLIENT_HEADER]: SESSION_CLIENT_VALUE },
@@ -266,11 +266,11 @@ class ApiClient {
         const errData = await res.json().catch(() => ({}));
         const message =
           errData?.error?.message || errData?.message || `API Error: ${res.status}`;
-        if (res.status === 401) {
+        if (res.status === 401 && endpoint === "/api/v1/me" && this.sessionActive) {
           // Clear cookie + flag together so login cannot bounce back into dashboard.
-          this.clearToken();
+          await this.clearToken();
         }
-        throw new Error(message);
+        throw Object.assign(new Error(message), { status: res.status });
       }
 
       return res.json();

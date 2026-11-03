@@ -20,7 +20,7 @@ function homeFor(
   user: { role?: string; isAdmin?: boolean } | undefined,
   plan?: string | null
 ) {
-  const base = user?.role === "admin" || user?.isAdmin ? "/admin" : "/overview";
+  const base = user?.role === "admin" || user?.isAdmin ? "/dashboard/admin" : "/dashboard/overview";
   if (plan && plan !== "starter") {
     return `${base}?upgrade=${encodeURIComponent(plan)}`;
   }
@@ -69,7 +69,7 @@ export function AuthCard({ initialTab }: { initialTab: Tab }) {
     let cancelled = false;
     (async () => {
       try {
-        await api.hydrateSessionFromCookie();
+        if (!await api.hydrateSessionFromCookie() || cancelled) return;
         const me = await api.getMe();
         if (cancelled || !me?.user) return;
         const plan =
@@ -158,7 +158,7 @@ export function AuthCard({ initialTab }: { initialTab: Tab }) {
             {tab === "signup" ? "Create your account" : "Welcome back"}
           </h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Merchant dashboard for wallets you configure — non-custodial verification.
+            Access your brands, payment links and receipts.
           </p>
           {planParam && (
             <p className="text-[11px] font-mono text-teal-800 dark:text-teal-300">

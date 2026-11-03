@@ -28,7 +28,11 @@ export default function CheckoutPage() {
       setError(null);
       try {
         const data = await api.initCheckout(linkId);
-        if (alive) setSession(data);
+        if (alive) {
+          setSession(data);
+          // Refreshes and shared receipts must reopen the same transaction.
+          if (data.sessionId !== linkId) window.history.replaceState(window.history.state, "", "/pay/" + encodeURIComponent(data.sessionId));
+        }
       } catch (err: unknown) {
         if (alive) {
           setError(err instanceof Error ? err.message : "Could not start checkout session.");
@@ -74,7 +78,7 @@ export default function CheckoutPage() {
         </div>
       )}
 
-      {!loading && !error && session && <HostedCheckoutModal session={session} />}
+      {!loading && !error && session && <HostedCheckoutModal key={session.sessionId} session={session} />}
     </div>
   );
 }

@@ -1004,5 +1004,19 @@ assert_true(!in_array('manage_methods', $scopeActorKey['scopes'], true), 'Limite
 $jwtActor = ['auth' => 'jwt', 'scopes' => GpAuth::allScopes()];
 assert_true(in_array('manage_methods', $jwtActor['scopes'], true), 'JWT actor retains manage_methods');
 
+// Upgrading a database with legacy USDT accounts must preserve checkout destinations.
+GpDb::boot();
+$walletQuery = GpDb::pdo()->prepare("SELECT account FROM gp_gateways WHERE brand_id = ? AND method_code = 'usdt_trc20'");
+$walletQuery->execute([$brandId]);
+$stored = $walletQuery->fetchColumn();
+assert_true(is_string($stored) && str_starts_with($stored, 'gpw1:v1:') && !str_contains($stored, $recvA), 'USDT gateway is encrypted at rest');
+$optionsQuery = GpDb::pdo()->prepare("SELECT options FROM gp_methods WHERE brand_id = ? AND code = 'usdt_trc20'");
+$optionsQuery->execute([$brandId]);
+assert_true(str_starts_with((string) $optionsQuery->fetchColumn(), 'gpw1:v1:'), 'Legacy USDT method profile is sealed');
+assert_true(GpDb::one("SELECT account FROM gp_gateways WHERE brand_id = ? AND method_code = 'usdt_trc20'", [$brandId])['account'] === $recvA, 'Checkout reads the original receiving address');
+GpDb::boot();
+$walletQuery->execute([$brandId]);
+assert_true($walletQuery->fetchColumn() === $stored, 'Repeated boot preserves the sealed wallet');
+
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

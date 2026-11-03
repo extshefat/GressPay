@@ -33,8 +33,8 @@ export function Navbar() {
     };
   }, [pathname]);
 
-  const logout = () => {
-    api.clearToken();
+  const logout = async () => {
+    await api.clearToken();
     setAuthed(false);
     router.push("/");
   };

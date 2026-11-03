@@ -42,7 +42,7 @@ final class GpMethodReadiness
             $reasons[] = 'Method is not enabled by the merchant.';
         }
 
-        if (in_array($code, ['bkash', 'nagad'], true)) {
+        if (in_array($code, GpCatalog::bdMobileWalletCodes(), true)) {
             if ($account === '') {
                 $liveReady = false;
                 $reasons[] = 'Receiving wallet number not configured.';
@@ -51,9 +51,7 @@ final class GpMethodReadiness
                 'liveReady' => $liveReady,
                 'reasons' => $reasons,
                 'integrationType' => 'personal_sms_match',
-                'label' => $code === 'bkash'
-                    ? 'bKash personal number + SMS companion match'
-                    : 'Nagad personal number + SMS companion match',
+                'label' => (string) $catalog['title'],
             ];
         }
 

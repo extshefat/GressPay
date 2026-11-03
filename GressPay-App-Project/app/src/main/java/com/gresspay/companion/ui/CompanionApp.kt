@@ -7,6 +7,9 @@ import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import com.gresspay.companion.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -151,6 +154,15 @@ fun CompanionApp(prefs: Prefs) {
 }
 
 @Composable
+private fun GressPayMark(modifier: Modifier) {
+    Image(
+        painter = painterResource(R.drawable.ic_launcher_foreground),
+        contentDescription = null,
+        modifier = modifier.background(Color(0xFF171717), RoundedCornerShape(22)),
+    )
+}
+
+@Composable
 private fun WelcomeScreen(onStart: () -> Unit, onTerms: () -> Unit, onPrivacy: () -> Unit) {
     Column(
         modifier = Modifier
@@ -160,15 +172,7 @@ private fun WelcomeScreen(onStart: () -> Unit, onTerms: () -> Unit, onPrivacy: (
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Box(
-            modifier = Modifier
-                .size(76.dp)
-                .background(Color(0xFFEFF6FF), RoundedCornerShape(20.dp))
-                .border(1.dp, Color(0xFFDBEAFE), RoundedCornerShape(20.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text("GP", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, color = GpBlue)
-        }
+        GressPayMark(Modifier.size(76.dp))
         Spacer(Modifier.height(28.dp))
         Text(
             "GressPay",
@@ -179,7 +183,7 @@ private fun WelcomeScreen(onStart: () -> Unit, onTerms: () -> Unit, onPrivacy: (
         )
         Spacer(Modifier.height(10.dp))
         Text(
-            "Automated payment verification node for Bangladeshi merchants. Intercepts and matches incoming bKash, Nagad, Rocket, Upay, and Cellfin payment receipts in real time.",
+            "Pair this phone with your business to match incoming payment messages to customer orders.",
             textAlign = TextAlign.Center,
             color = GpGrayText,
             fontSize = 14.sp,
@@ -735,14 +739,7 @@ private fun HomeScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .background(Color(0xFFEFF6FF), RoundedCornerShape(10.dp)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text("GP", fontWeight = FontWeight.ExtraBold, color = GpBlue, fontSize = 14.sp)
-                    }
+                    GressPayMark(Modifier.size(36.dp))
                     Spacer(Modifier.width(10.dp))
                     Column {
                         Text("GressPay", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = GpDark)

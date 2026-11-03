@@ -24,7 +24,7 @@ export const GpMark: React.FC<GpMarkProps> = ({ size = "md", className = "", inv
   }
   return (
     <span className="inline-flex shrink-0" aria-hidden>
-      <img src="/brand/gresspay-mark-color.png" alt="" className={`${box} dark:hidden`} />
+      <img src="/brand/gresspay-mark-white.png" alt="" className={`${box} brightness-0 dark:hidden`} />
       <img src="/brand/gresspay-mark-white.png" alt="" className={`${box} hidden dark:block`} />
     </span>
   );

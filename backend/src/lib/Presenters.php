@@ -422,6 +422,13 @@ final class GpPresenters
         }
         return [
             'status' => true,
+            'paymentStatus' => self::status((string) $txn['status']),
+            'submittedMethod' => $txn['method_code'] ?? null,
+            'submittedGateway' => $txn['gateway_id'] ?? null,
+            'submittedTxid' => $txn['trx_id'] ?? null,
+            'awaitingEvidence' => strtolower((string) $txn['status']) === 'pending',
+            'settledAmount' => isset($txn['verified_amount']) ? self::num($txn['verified_amount']) : null,
+            'settledCurrency' => $txn['verified_currency'] ?? null,
             'sessionId' => $txn['session_id'],
             'session_id' => $txn['session_id'],
             'linkId' => $link['link_id'] ?? $txn['session_id'],

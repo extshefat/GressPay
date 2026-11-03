@@ -47,10 +47,14 @@ export default function DashboardLayout({
           setIsLoading(false);
           setAuthError(null);
         }
-      } catch {
+      } catch (error) {
         if (isMounted) {
           clearTimeout(timeoutId);
-          api.clearToken();
+          if ((error as { status?: number })?.status !== 401) {
+            setAuthError("Could not reach your account. Please retry.");
+            setIsLoading(false);
+            return;
+          }
           setIsLoading(false);
           rememberTeamInvite();
           router.replace("/login");
@@ -111,8 +115,8 @@ export default function DashboardLayout({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => {
-              api.clearToken();
+            onClick={async () => {
+              await api.clearToken();
               router.push("/login");
             }}
           >

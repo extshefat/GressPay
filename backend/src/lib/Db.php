@@ -884,6 +884,18 @@ final class GpDb
 
         self::backfillGatewaysFromMethods();
 
+        // Seal legacy receiving destinations without overwriting concurrent edits.
+        foreach (self::all("SELECT id, account FROM gp_gateways WHERE method_code = 'usdt_trc20' AND account <> '' AND account NOT LIKE 'gpw1:%'") as $row) {
+            self::exec('UPDATE gp_gateways SET account = ? WHERE id = ? AND account = ?', [
+                self::storedWalletValue('usdt_trc20', 'account', $row['account']), $row['id'], $row['account'],
+            ]);
+        }
+        foreach (self::all("SELECT id, options FROM gp_methods WHERE code = 'usdt_trc20' AND options <> '' AND options <> '{}' AND options NOT LIKE 'gpw1:%'") as $row) {
+            self::exec('UPDATE gp_methods SET options = ? WHERE id = ? AND options = ?', [
+                self::storedWalletValue('usdt_trc20', 'options', $row['options']), $row['id'], $row['options'],
+            ]);
+        }
+
         // Preserve existing webhook keys while sealing legacy plaintext rows.
         // The compare-and-swap prevents a concurrent rotation from being overwritten.
         $legacyWebhookSecrets = self::all(
@@ -1251,7 +1263,7 @@ final class GpDb
                         $code,
                         $name,
                         'personal',
-                        $account !== '' ? $account : null,
+                        self::storedWalletValue($code, 'account', $account !== '' ? $account : null),
                         $currency,
                         $country,
                         null,
@@ -1270,12 +1282,35 @@ final class GpDb
         }
     }
 
+    public static function storedWalletValue(string $code, string $field, ?string $value): ?string
+    {
+        if ($code !== 'usdt_trc20' || $value === null || $value === '') {
+            return $value;
+        }
+        return 'gpw1:' . GpCrypto::seal($value, 'gresspay/wallet/' . $field);
+    }
+
+    /** Callers read the same account and options fields for legacy and encrypted rows. */
+    private static function openWalletFields(array $row): array
+    {
+        foreach (['account', 'options'] as $field) {
+            if (isset($row[$field]) && str_starts_with((string) $row[$field], 'gpw1:v1:')) {
+                $plain = GpCrypto::open(substr($row[$field], 5), 'gresspay/wallet/' . $field);
+                if ($plain === null) {
+                    throw new RuntimeException('Could not open the configured wallet.');
+                }
+                $row[$field] = $plain;
+            }
+        }
+        return $row;
+    }
+
     public static function one(string $sql, array $params = []): ?array
     {
         $stmt = self::pdo()->prepare($sql);
         $stmt->execute($params);
         $row = $stmt->fetch();
-        return $row === false ? null : $row;
+        return $row === false ? null : self::openWalletFields($row);
     }
 
     /** @return array<int,array<string,mixed>> */
@@ -1283,7 +1318,7 @@ final class GpDb
     {
         $stmt = self::pdo()->prepare($sql);
         $stmt->execute($params);
-        return $stmt->fetchAll();
+        return array_map([self::class, 'openWalletFields'], $stmt->fetchAll());
     }
 
     public static function exec(string $sql, array $params = []): int

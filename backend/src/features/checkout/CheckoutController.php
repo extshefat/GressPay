@@ -959,6 +959,7 @@ final class CheckoutController
             }
 
             $verified = TronUsdtVerifier::verify($trxId, $recv, $payable, (int) strtotime($row['created_at']));
+            unset($verified['to']); // The receipt hash identifies the transfer without duplicating the receiving address.
             GpDb::exec(
                 'UPDATE gp_transactions SET trx_id = ?, chain_tx_hash = ?, method_code = ?, status = ?, metadata = ?, updated_at = ?
                  WHERE session_id = ? AND status IN (?, ?)',

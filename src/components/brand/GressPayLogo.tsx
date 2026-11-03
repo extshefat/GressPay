@@ -41,11 +41,11 @@ export function GressPayLogo({
     return (
       <span className={`inline-flex shrink-0 ${className}`}>
         <img
-          src="/brand/gresspay-mark-color.png"
+          src="/brand/gresspay-mark-white.png"
           alt="GressPay"
           width={dim}
           height={dim}
-          className="object-contain dark:hidden"
+          className="object-contain brightness-0 dark:hidden"
         />
         <img
           src="/brand/gresspay-mark-white.png"
@@ -68,22 +68,12 @@ export function GressPayLogo({
     );
   }
 
-  if (variant === "color") {
-    return (
-      <img
-        src="/brand/gresspay-lockup-color.png"
-        alt="GressPay"
-        className={`${h} w-auto object-contain ${className}`}
-      />
-    );
-  }
-
   return (
     <span className={`inline-flex items-center ${className}`}>
       <img
-        src="/brand/gresspay-lockup-color.png"
+        src="/brand/gresspay-lockup-white.png"
         alt="GressPay"
-        className={`${h} w-auto object-contain dark:hidden`}
+        className={`${h} w-auto object-contain brightness-0 dark:hidden`}
       />
       <img
         src="/brand/gresspay-lockup-white.png"

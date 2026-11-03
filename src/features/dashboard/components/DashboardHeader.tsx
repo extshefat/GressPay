@@ -62,9 +62,9 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user, onMenuCl
     }
   };
 
-  const handleLogout = () => {
-    api.clearToken();
-    router.push("/login");
+  const handleLogout = async () => {
+    await api.clearToken();
+    router.replace("/login");
   };
 
   const activeBrand = brands.find((b) => b.brandId === activeBrandId) || brands[0];
