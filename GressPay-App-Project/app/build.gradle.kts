@@ -12,8 +12,8 @@ android {
         applicationId = "com.gresspay.companion"
         minSdk = 26
         targetSdk = 35
-        versionCode = 8
-        versionName = "1.3.0"
+        versionCode = 9
+        versionName = "1.3.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "API_BASE", "\"https://gresspay.extxcheats.com\"")
     }
@@ -32,7 +32,7 @@ android {
 
     buildTypes {
         release {
-            // Do NOT throw here — this block is evaluated during project configuration
+            // Do NOT throw here â€” this block is evaluated during project configuration
             // and would break assembleDebug / CI when no keystore is present.
             val hasReleaseKeystore = System.getenv("GRESSPAY_RELEASE_KEYSTORE")?.isNotBlank() == true
             isMinifyEnabled = hasReleaseKeystore

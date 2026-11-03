@@ -268,12 +268,34 @@ textarea:focus-visible {
 .gp-method-row:focus-visible { outline: 2px solid var(--gp-ck-accent); outline-offset: -2px; }
 .gp-method-row img { width: 3rem; height: 2rem; flex: none; object-fit: contain; border-radius: .4rem; background: white; padding: .2rem; }
 .gp-method-row svg { flex: none; color: var(--gp-ck-accent); }
-@media (min-width: 768px) {
-  .gp-checkout-layout { display: grid; grid-template-columns: minmax(0, .82fr) minmax(0, 1.18fr); }
-  .gp-order-summary { padding: 2rem; border-bottom: 0; border-right: 1px solid var(--gp-ck-border); }
-  .gp-order-total { padding: 2rem 0; }
-  .gp-payment-panel { padding: 2rem; }
+/* The default hosted receipt has its own palette, independent of dashboard mode. */
+.gp-checkout-layout.gp-theme-default {
+  --gp-ck-bg:#fff; --gp-ck-text:#192332; --gp-ck-muted:#526476; --gp-ck-surface:#f7f9fc;
+  --gp-ck-elevated:#eaf0f7; --gp-ck-border:#d9e1eb; --gp-ck-accent:#124a75;
+  --gp-ck-on-accent:#fff; --gp-ck-accent-soft:#e9f4fc;
+  --gp-ck-hero:linear-gradient(140deg,#f5faff,#fff);
 }
+/* A single receipt-sized checkout on every screen. */
+.gp-checkout-layout { max-width: 30rem; }
+.gp-order-summary { padding: 1rem 1.25rem; }
+.gp-store-line { display:flex; gap:.8rem; align-items:center; margin-top:.7rem; }
+.gp-order-total { padding:.65rem 0; margin-bottom:.15rem; }
+.gp-order-total p:nth-child(2) { font-size:1.65rem; }
+.gp-payment-panel { padding:1rem 1.25rem 1.25rem; }
+.gp-method-list { display:grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap:.6rem; background:none; border:none; overflow:visible; }
+.gp-method-row { position:relative; min-width:0; display:flex; flex-direction:column; align-items:center; gap:.25rem; border-radius:.75rem; border:1px solid var(--gp-ck-border); background:var(--gp-ck-surface); padding:1rem .35rem .65rem; }
+.gp-method-row img { width:4.1rem; height:2.35rem; }
+.gp-method-row span { text-align:center; }
+.gp-account-type { text-transform:uppercase; font-size:.54rem; letter-spacing:.04em; font-weight:700; position:absolute; right:.4rem; top:-.38rem; border-radius:1rem; padding:.04rem .35rem; background:var(--gp-ck-text); color:var(--gp-ck-bg); }
+.gp-rail-heading { font-size:.78rem; font-weight:650; background:var(--gp-ck-elevated); border-radius:.5rem; padding:.45rem .75rem; margin-bottom:.8rem; }
+.gp-provider-heading { padding:1rem; border-radius:.9rem; background:color-mix(in srgb,var(--provider) 63%,#111827); color:white; }
+.gp-provider-heading .gp-kicker { color:white; }
+.gp-payment-panel button[type="button"]:not(.gp-method-row):not(:disabled) { color:var(--gp-ck-text); }
+.gp-payment-panel button[type="button"].border { border-color:var(--gp-ck-border); background:var(--gp-ck-elevated); }
+
+.gp-cancel-dialog { width:min(90vw,24rem); margin:auto; border-radius:1rem; padding:1.5rem; background:var(--gp-ck-bg); color:var(--gp-ck-text); border:1px solid var(--gp-ck-border); }
+.gp-cancel-dialog::backdrop { background:rgb(0 0 0 / .65); }
+
 
 
 /* Print styling for invoices */

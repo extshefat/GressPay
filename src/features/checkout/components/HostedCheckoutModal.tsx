@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import QRCode from "qrcode";
 import { PaymentMethod, CheckoutSession, TransactionStatus, Currency } from "@/lib/types/api";
 import { api } from "@/lib/api-client";
-import { foldTxid } from "@/lib/method-theme";
+import { foldTxid, railTheme } from "@/lib/method-theme";
 import { gatewayLogoPath } from "@/lib/gateway-library";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -87,7 +87,12 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
     methods.find(m => m.code === session.submittedMethod) ?? methods[0]
   );
   const isCrypto = !!selectedMethod && cryptoMethods.includes(selectedMethod);
+  const paymentHeading = useRef<HTMLHeadingElement>(null);
   const [methodChosen, setMethodChosen] = useState(false);
+  useEffect(() => {
+    if (methodChosen) paymentHeading.current?.focus();
+  }, [methodChosen]);
+  const cancelDialog = useRef<HTMLDialogElement>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [txidInput, setTxidInput] = useState<string>(session.submittedTxid || "");
   const [senderNumber, setSenderNumber] = useState<string>("");
@@ -172,33 +177,30 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
     ) {
       return;
     }
-    const interval = setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev <= 1) {
-          if (demoMode) {
-            setCheckoutStatus("EXPIRED");
-            return 0;
-          }
-          if (!checkingExpiryRef.current) {
-            checkingExpiryRef.current = true;
-            void api.getCheckoutStatus(session.sessionId).then((res) => {
-              if (res.status === "COMPLETED") {
-                setCheckoutStatus("COMPLETED");
-                handleSuccessfulRedirect(res.redirectUrl || res.returnUrl || session.returnUrl);
-              } else if (res.status !== "PENDING") {
-                setCheckoutStatus(res.status);
-              } else {
-                setStatusMessage("Confirming the payment window with the server. Retry status if this persists.");
-              }
-            }).catch(() => setErrorMessage("Could not confirm server status. Reload status before attempting another payment."));
-          }
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [checkoutStatus, demoMode, session.sessionId, session.returnUrl]);
+    const deadline = Date.parse(session.expiresAt);
+    let active = true;
+    let nextCheck = 0;
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      setSecondsLeft(remaining);
+      if (remaining > 0) return;
+      if (demoMode) { setCheckoutStatus("EXPIRED"); return; }
+      if (checkingExpiryRef.current || Date.now() < nextCheck) return;
+      checkingExpiryRef.current = true;
+      nextCheck = Date.now() + 5000;
+      void api.getCheckoutStatus(session.sessionId).then(res => {
+        if (!active) return;
+        setCheckoutStatus(res.status);
+        if (res.status === "COMPLETED") handleSuccessfulRedirect(res.redirectUrl || res.returnUrl || session.returnUrl);
+      }).catch(() => {
+        if (active) setErrorMessage("Checking the final payment status. Keep this page open.");
+      }).finally(() => { checkingExpiryRef.current = false; });
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+    document.addEventListener("visibilitychange", tick);
+    return () => { active = false; clearInterval(interval); document.removeEventListener("visibilitychange", tick); };
+  }, [checkoutStatus, demoMode, session.sessionId, session.returnUrl, session.expiresAt]);
 
   useEffect(() => {
     if (checkoutStatus !== "EXPIRED" || !session.returnUrl) return;
@@ -228,7 +230,6 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
 
   const handleCancelCheckout = async () => {
     if (demoMode || isCanceling) return;
-    if (!window.confirm(locale === "bn" ? "ইনভয়েস বাতিল করবেন?" : "Cancel this invoice?")) return;
     setIsCanceling(true);
     setErrorMessage(null);
     try {
@@ -754,6 +755,14 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
 
   return (
     <div className={`gp-checkout-card gp-checkout-layout mx-auto w-full overflow-hidden ${themeClass}`}>
+      <dialog ref={cancelDialog} aria-labelledby="cancel-heading" className="gp-cancel-dialog">
+        <h2 id="cancel-heading" className="text-xl font-semibold">{locale === "bn" ? "চেকআউট বাতিল করবেন?" : "Cancel this checkout?"}</h2>
+        <p className="my-4 text-sm">{locale === "bn" ? "এই অর্ডারের পেমেন্ট উইন্ডো বন্ধ হবে।" : "This closes the payment window for this order."}</p>
+        <div className="flex justify-end gap-3">
+          <button autoFocus onClick={() => cancelDialog.current?.close()}>{locale === "bn" ? "ফিরে যান" : "Go back"}</button>
+          <button className="rounded-lg bg-red-700 px-4 py-2 text-white" onClick={() => { cancelDialog.current?.close(); void handleCancelCheckout(); }}>{locale === "bn" ? "বাতিল করুন" : "Yes, cancel"}</button>
+        </div>
+      </dialog>
       <aside className="gp-order-summary">
         <div className="flex items-center justify-between gap-3">
           <p className="gp-kicker">{locale === "bn" ? "অর্ডারের সারাংশ" : "Order summary"}</p>
@@ -765,7 +774,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
             ))}
           </div>
         </div>
-        <div className="mt-5 flex items-center gap-3 sm:mt-8">
+        <div className="gp-store-line">
           {session.merchantLogo ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={session.merchantLogo} alt="" className="gp-brand-mark bg-white object-contain p-1" />
@@ -820,12 +829,13 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
               {session.websiteUrl && <a href={session.websiteUrl} target="_blank" rel="noopener noreferrer" className="rounded-lg px-2 py-1 text-[10px] font-semibold" style={{ background: "var(--gp-ck-surface)", color: "var(--gp-ck-muted)" }}>Website</a>}
             </div>
           )}
-        {!demoMode && <button type="button" onClick={handleCancelCheckout} disabled={isCanceling} className="mt-3 text-xs text-[var(--gp-ck-muted)] underline underline-offset-4">{locale === "bn" ? "চেকআউট বাতিল করুন" : "Cancel checkout"}</button>}
+        {!demoMode && <button type="button" onClick={() => cancelDialog.current?.showModal()} disabled={isCanceling} className="mt-3 text-xs text-[var(--gp-ck-muted)] underline underline-offset-4">{locale === "bn" ? "চেকআউট বাতিল করুন" : "Cancel checkout"}</button>}
       </aside>
       <div className="gp-payment-panel space-y-5">
-        <header>
+        <header className={methodChosen ? "gp-provider-heading" : ""} style={methodChosen ? { "--provider": railTheme(selectedMethod).primary } as React.CSSProperties : undefined}>
+          {methodChosen && <img src={gatewayLogoPath(selectedMethod.code)} alt="" className="float-right ml-2 h-11 w-16 rounded-lg bg-white object-contain p-1" />}
           <p className="gp-kicker">{methodChosen ? "02" : "01"} / 02</p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight">{methodChosen ? (locale === "bn" ? selectedMethod.name + " দিয়ে পেমেন্ট" : "Pay with " + selectedMethod.name) : (locale === "bn" ? "পেমেন্ট পদ্ধতি বেছে নিন" : "Choose a payment method")}</h2>
+          <h2 ref={paymentHeading} tabIndex={-1} className="mt-2 text-2xl font-semibold tracking-tight">{methodChosen ? (locale === "bn" ? selectedMethod.name + " দিয়ে পেমেন্ট" : "Pay with " + selectedMethod.name) : (locale === "bn" ? "পেমেন্ট পদ্ধতি বেছে নিন" : "Choose a payment method")}</h2>
           {!methodChosen && <p className="mt-1 text-sm text-[var(--gp-ck-muted)]">{locale === "bn" ? "প্রতিটি পদ্ধতির পাশে মোট প্রদেয় পরিমাণ দেখানো হয়েছে।" : "Each method shows the total you’ll pay."}</p>}
         </header>
         {session.productImageUrl && (
@@ -861,7 +871,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
           {label: locale === "bn" ? "অন্যান্য" : "Other methods", pool: otherMethods},
         ].filter(group => group.pool.length > 0).map(group => (
           <section key={group.label}>
-            <h3 className="gp-kicker mb-2">{group.label}</h3>
+            <h3 className="gp-rail-heading">{group.label}</h3>
             <div className="gp-method-list">
               {group.pool.map(method => (
                 <button className="gp-method-row" type="button" key={method.gatewayId || method.code}
@@ -870,7 +880,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
                   <img src={gatewayLogoPath(method.code)} alt="" width="48" height="32" />
                   <span className="min-w-0 flex-1 break-words text-left font-semibold">{method.name}</span>
                   <span className="text-xs tabular-nums text-[var(--gp-ck-muted)]">{checkoutAmount(method.payableAmount ?? session.amount, method.payableCurrency ?? method.currency)}</span>
-                  <ArrowRight size={15} aria-hidden />
+                  {method.accountType && <small className="gp-account-type">{method.accountType}</small>}
                 </button>
               ))}
             </div>
@@ -881,6 +891,23 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
           ← {locale === "bn" ? "অন্য পদ্ধতি বেছে নিন" : "Change payment method"}
         </button>
         <div className="space-y-5 rounded-2xl border p-5" style={{ borderColor: "var(--gp-ck-border)", background: "var(--gp-ck-surface)" }}>
+          {/* Crypto QR (generated) or merchant static QR */}
+          {selectedMethod.code !== "binance_pay" && (generatedQr || selectedMethod.qrImageUrl) && (
+            <div className="space-y-2 text-center pt-1">
+              <label className="block text-xs font-mono text-[var(--gp-ck-muted)]">
+                {isCrypto
+                  ? "Scan Wallet Address / UID QR"
+                  : "Scan deposit QR code"}
+              </label>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={generatedQr || selectedMethod.qrImageUrl || ""}
+                alt="Payment QR"
+                className="w-52 h-52 max-w-full object-contain mx-auto rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white p-2 shadow-xs"
+              />
+            </div>
+          )}
+
           <div className="flex flex-col justify-between gap-3 rounded-xl border p-4 sm:flex-row sm:items-center" style={{ borderColor: "var(--gp-ck-border)", background: "var(--gp-ck-elevated)" }}>
             <div>
               <span className="font-mono text-xs" style={{ color: "var(--gp-ck-muted)" }}>
@@ -974,27 +1001,10 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
               </div>
             </div>
           ) : (
-            <div className="p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 text-xs text-zinc-600 dark:text-zinc-300">
+            <div className="rounded-xl border border-[var(--gp-ck-border)] bg-[var(--gp-ck-elevated)] p-3 text-xs text-[var(--gp-ck-text)]">
               {demoMode ? "Practice checkout. Use the sample reference below." : "No receiving account is available for this method."}
             </div>
           ))}
-
-          {/* Crypto QR (generated) or merchant static QR */}
-          {selectedMethod.code !== "binance_pay" && (generatedQr || selectedMethod.qrImageUrl) && (
-            <div className="space-y-2 text-center pt-1">
-              <label className="block text-xs font-mono text-[var(--gp-ck-muted)]">
-                {isCrypto
-                  ? "Scan Wallet Address / UID QR"
-                  : "Scan deposit QR code"}
-              </label>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={generatedQr || selectedMethod.qrImageUrl || ""}
-                alt="Payment QR"
-                className="w-44 h-44 object-contain mx-auto rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white p-2 shadow-xs"
-              />
-            </div>
-          )}
 
           {/* Numbered Step-by-Step Instructions */}
           {selectedMethod.code !== "binance_pay" && <div className="space-y-2 pt-1 border-t border-zinc-200/60 dark:border-zinc-800">

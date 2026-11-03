@@ -14,8 +14,17 @@ final class GpWebhookWorker
     {
         $pollSeconds = max(1, min(60, $pollSeconds));
         fwrite(STDOUT, "[WebhookWorker] started poll={$pollSeconds}s\n");
+        $nextExpirySweep = 0;
         while (true) {
             try {
+                if (time() >= $nextExpirySweep) {
+                    $now = gmdate('Y-m-d\TH:i:s\Z');
+                    GpDb::exec(
+                        "UPDATE gp_transactions SET status = 'expired', updated_at = ? WHERE currency = 'BDT' AND status IN ('initiated','pending') AND expires_at IS NOT NULL AND expires_at <> '' AND expires_at <= ?",
+                        [GpIds::now(), $now]
+                    );
+                    $nextExpirySweep = time() + 30;
+                }
                 $claimed = GpWebhook::claimDueQueue(10);
                 foreach ($claimed as $row) {
                     try {

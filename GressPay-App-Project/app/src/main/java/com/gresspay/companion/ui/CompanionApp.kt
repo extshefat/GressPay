@@ -13,6 +13,8 @@ import com.gresspay.companion.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -107,7 +109,7 @@ fun CompanionApp(prefs: Prefs) {
     val start = if (prefs.deviceToken.isNotBlank() || prefs.onboardingComplete) "home" else "welcome"
 
     MaterialTheme {
-        NavHost(navController = nav, startDestination = start) {
+        NavHost(navController = nav, startDestination = start, modifier = Modifier.background(GpPageBg).safeDrawingPadding()) {
             composable("welcome") {
                 WelcomeScreen(
                     onStart = { nav.navigate("sms") },
@@ -221,19 +223,23 @@ private fun WelcomeScreen(onStart: () -> Unit, onTerms: () -> Unit, onPrivacy: (
 
 @Composable
 private fun SmsEducationScreen(onBack: () -> Unit, onGrant: () -> Unit) {
-    var agreed by remember { mutableStateOf(false) }
+    var agreed by rememberSaveable { mutableStateOf(false) }
+    var needsSettings by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
-    val prefs = remember { Prefs(context) }
-    val actions = remember { CompanionActions(context, prefs) }
-
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { result ->
-        val smsOk = result[Manifest.permission.RECEIVE_SMS] == true ||
-            ContextCompat.checkSelfPermission(context, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED
-        if (smsOk) {
-            actions.acceptConsent()
-            onGrant()
+    val actions = remember { CompanionActions(context, Prefs(context)) }
+    val smsPermissions = remember { arrayOf(Manifest.permission.RECEIVE_SMS, Manifest.permission.READ_SMS) }
+    fun granted() = smsPermissions.all { ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED }
+    fun proceed() {
+        actions.acceptConsent()
+        onGrant()
+    }
+    val settingsLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        if (agreed && granted()) proceed()
+    }
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        if (granted()) proceed() else {
+            needsSettings = true
+            settingsLauncher.launch(actions.openAppSettings().apply { flags = flags and Intent.FLAG_ACTIVITY_NEW_TASK.inv() })
         }
     }
 
@@ -266,7 +272,7 @@ private fun SmsEducationScreen(onBack: () -> Unit, onGrant: () -> Unit) {
             Text("SMS Permission & Consent", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = GpDark)
             Spacer(Modifier.height(8.dp))
             Text(
-                "GressPay acts as a non-custodial listener on this device. It needs SMS access to automatically detect customer payment receipts.",
+                "Allow SMS access to receive new payment messages and read payment receipts. If Android opens App info, choose Permissions → SMS → Allow, then return here.",
                 color = GpGrayText,
                 fontSize = 13.sp,
                 lineHeight = 19.sp,
@@ -308,14 +314,11 @@ private fun SmsEducationScreen(onBack: () -> Unit, onGrant: () -> Unit) {
             Spacer(Modifier.height(24.dp))
             Button(
                 onClick = {
-                    val perms = mutableListOf(
-                        Manifest.permission.RECEIVE_SMS,
-                        Manifest.permission.READ_SMS,
-                    )
-                    if (Build.VERSION.SDK_INT >= 33) {
-                        perms += Manifest.permission.POST_NOTIFICATIONS
+                    when {
+                        granted() -> proceed()
+                        needsSettings -> settingsLauncher.launch(actions.openAppSettings().apply { flags = flags and Intent.FLAG_ACTIVITY_NEW_TASK.inv() })
+                        else -> permissionLauncher.launch(smsPermissions)
                     }
-                    permissionLauncher.launch(perms.toTypedArray())
                 },
                 enabled = agreed,
                 modifier = Modifier
@@ -324,7 +327,7 @@ private fun SmsEducationScreen(onBack: () -> Unit, onGrant: () -> Unit) {
                 colors = ButtonDefaults.buttonColors(containerColor = GpBlue),
                 shape = RoundedCornerShape(12.dp),
             ) {
-                Text("GRANT PERMISSION & CONTINUE", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(if (needsSettings) "OPEN SMS PERMISSION SETTINGS" else "GRANT PERMISSION & CONTINUE", fontWeight = FontWeight.Bold, fontSize = 14.sp)
             }
             Spacer(Modifier.height(12.dp))
             Text(
@@ -384,7 +387,10 @@ private fun SetupScreen(
 
     val permLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { refresh() }
+    ) { grants ->
+        refresh()
+        if (grants.values.any { !it }) context.startActivity(actions.openAppSettings())
+    }
 
     if (showUnpairDialog) {
         AlertDialog(
@@ -723,7 +729,10 @@ private fun HomeScreen(
 
     val permLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { refresh() }
+    ) { grants ->
+        refresh()
+        if (grants.values.any { !it }) context.startActivity(actions.openAppSettings())
+    }
 
     Scaffold(
         containerColor = GpPageBg,

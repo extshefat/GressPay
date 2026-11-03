@@ -74,7 +74,7 @@ function EndpointBadge({ method, path }: { method: string; path: string }) {
       <span className={`rounded-md px-2 py-0.5 text-[11px] font-bold uppercase ${color}`}>
         {method}
       </span>
-      <code className="text-zinc-800 dark:text-zinc-200">{path}</code>
+      <code className="min-w-0 break-all text-zinc-800 dark:text-zinc-200">{path}</code>
     </div>
   );
 }
@@ -146,7 +146,7 @@ export default function DevelopersPage() {
       </div>
 
       <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-12">
-        <aside className="sticky top-20 space-y-1 rounded-2xl border border-zinc-200 bg-white p-3 text-xs font-medium dark:border-zinc-800 dark:bg-zinc-950 lg:col-span-3">
+        <aside className="lg:sticky lg:top-20 space-y-1 rounded-2xl border border-zinc-200 bg-white p-3 text-xs font-medium dark:border-zinc-800 dark:bg-zinc-950 lg:col-span-3">
           <span className="block px-3 py-1 font-mono text-[10px] uppercase text-zinc-400">
             On this page
           </span>
@@ -166,7 +166,7 @@ export default function DevelopersPage() {
           ))}
         </aside>
 
-        <div className="space-y-16 lg:col-span-9">
+        <div className="min-w-0 space-y-16 [overflow-wrap:anywhere] lg:col-span-9">
           <section id="base" className="space-y-4">
             <div className="flex items-center gap-2">
               <BookOpen className="h-5 w-5 text-zinc-900 dark:text-zinc-100" />
