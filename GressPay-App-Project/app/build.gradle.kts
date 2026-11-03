@@ -12,8 +12,8 @@ android {
         applicationId = "com.gresspay.companion"
         minSdk = 26
         targetSdk = 35
-        versionCode = 9
-        versionName = "1.3.1"
+        versionCode = 10
+        versionName = "1.3.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "API_BASE", "\"https://gresspay.extxcheats.com\"")
     }

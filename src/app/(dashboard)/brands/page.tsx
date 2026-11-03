@@ -339,7 +339,7 @@ export default function BrandsPage() {
         </Alert>
       )}
 
-      <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xs dark:border-zinc-800 dark:bg-zinc-950">
+      <div className="overflow-x-auto rounded-md border border-zinc-200 bg-white shadow-xs dark:border-zinc-800 dark:bg-zinc-950">
         <table className="min-w-full text-left text-xs">
           <thead className="border-b border-zinc-200 bg-zinc-50 font-mono text-[10px] uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
             <tr>
@@ -470,7 +470,7 @@ export default function BrandsPage() {
                       </button>
                     </div>
                     {menuOpen === b.brandId && (
-                      <div className="absolute right-4 top-10 z-20 min-w-[200px] rounded-xl border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900 text-left">
+                      <Modal open onClose={() => setMenuOpen(null)} title={b.name + " · Brand actions"}>
                         <button
                           type="button"
                           className="flex items-center gap-2 w-full px-3 py-2 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200"
@@ -525,7 +525,7 @@ export default function BrandsPage() {
                         >
                           Webhooks & integration
                         </Link>
-                      </div>
+                      </Modal>
                     )}
                   </td>
                 </tr>

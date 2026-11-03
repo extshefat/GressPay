@@ -102,10 +102,11 @@ final class CheckoutController
         $meta = self::decodeMeta($row);
         $meta['canceledAt'] = GpIds::now();
         $meta['confirmationState'] = 'canceled';
-        GpDb::exec(
-            'UPDATE gp_transactions SET status = ?, metadata = ?, updated_at = ? WHERE session_id = ?',
+        $changed = GpDb::exec(
+            "UPDATE gp_transactions SET status = ?, metadata = ?, updated_at = ? WHERE session_id = ? AND status IN ('initiated','pending')",
             ['failed', json_encode($meta, JSON_UNESCAPED_SLASHES), GpIds::now(), $sessionId]
         );
+        if (!$changed) GpJson::error('SESSION_CLOSED', 'The payment status changed. Check the current status before continuing.', 409);
         if (($row['source'] ?? '') === 'account-plan') {
             GpPlatformBilling::onCheckoutCanceled($sessionId);
         }
@@ -129,7 +130,7 @@ final class CheckoutController
         if ($fromMeta !== '' && GpWebhook::validateDestination($fromMeta)['ok']) {
             return $fromMeta;
         }
-        return '';
+        return '/';
     }
 
     private static function initPublic(GpRequest $req, string $linkId): never
@@ -240,7 +241,9 @@ final class CheckoutController
             GpJson::error('INVALID_ORDER_ID', 'order_id must be at most 80 letters, numbers, dots, underscores, colons or dashes.', 400);
         }
         if ($fixed && $link !== null) {
+            $cancelUrl = ''; // Public link visitors cannot choose the redirect destination.
             $linkRedirect = trim((string) ($link['success_redirect_url'] ?? ''));
+            if ($linkRedirect === '') $returnUrl = '';
             if ($linkRedirect !== '') {
                 if ($returnUrl !== '' && $returnUrl !== $linkRedirect) {
                     GpJson::error('RETURN_LOCKED', 'Success redirect URL is fixed for this payment link.', 400);

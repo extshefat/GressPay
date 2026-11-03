@@ -356,7 +356,7 @@ final class MerchantController
     private static function listSupportTickets(array $actor): never
     {
         $rows = GpDb::all(
-            'SELECT ticket_id, subject, status, contact_email, created_at, updated_at
+            'SELECT ticket_id, message, reply, subject, status, contact_email, created_at, updated_at
              FROM gp_support_tickets
              WHERE merchant_id = ?
              ORDER BY id DESC
@@ -367,6 +367,8 @@ final class MerchantController
         foreach ($rows as $r) {
             $out[] = [
                 'ticketId' => (string) ($r['ticket_id'] ?? ''),
+                'message' => (string) $r['message'],
+                'reply' => (string) ($r['reply'] ?? ''),
                 'subject' => (string) ($r['subject'] ?? ''),
                 'status' => (string) ($r['status'] ?? 'open'),
                 'contactEmail' => (string) ($r['contact_email'] ?? ''),

@@ -29,7 +29,7 @@ export default function MyPaymentsPage() {
 function MyPaymentsContent() {
   const searchParams = useSearchParams();
   const [payments, setPayments] = useState<AccountPlanPayment[]>([]);
-  const [plans, setPlans] = useState<{ code: string; name: string; priceBdt: string }[]>([]);
+  const [plans, setPlans] = useState<{ code: string; name: string; priceBdt: string; billingCycle: string }[]>([]);
   const [billingReady, setBillingReady] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +50,7 @@ function MyPaymentsContent() {
       setPlans(
         (planRes.plans || []).map((p) => ({
           code: p.code,
+          billingCycle: p.billingCycle,
           name: p.name,
           priceBdt: p.priceBdt,
         }))
@@ -93,7 +94,7 @@ function MyPaymentsContent() {
       <div className="flex flex-col gap-3 border-b border-zinc-200 pb-4 dark:border-zinc-800 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-            My Payments
+            Plans & billing
           </h1>
           <p className="mt-1 text-xs text-zinc-500">
             GressPay plan upgrades for your account — paid via platform owner gateways (not your brand checkout rails).
@@ -111,7 +112,7 @@ function MyPaymentsContent() {
       )}
       {paidBanner && (
         <Alert variant="success" title="Thank you">
-          Payment received — your plan, credits, and expiry are activated automatically. Refresh Overview if the new plan is not visible yet.
+          Payment received — your subscription and renewal date have been updated. Refresh Overview if the new plan is not visible yet.
         </Alert>
       )}
 
@@ -140,8 +141,9 @@ function MyPaymentsContent() {
                 className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-left transition hover:border-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-white"
               >
                 <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{p.name}</div>
+                {searchParams.get("plan") === p.code && <span className="text-xs font-semibold">Your selection</span>}
                 <div className="mt-1 font-mono text-[11px] text-emerald-600 dark:text-emerald-400">
-                  ৳{p.priceBdt} / month
+                  ৳{p.priceBdt} / {p.billingCycle}
                 </div>
               </button>
             ))}

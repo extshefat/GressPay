@@ -112,7 +112,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [redirectCountdown, setRedirectCountdown] = useState<number>(4);
-  const [cancelRedirectSec, setCancelRedirectSec] = useState(2);
+  const [cancelRedirectSec, setCancelRedirectSec] = useState(3);
   const [cancelRedirectUrl, setCancelRedirectUrl] = useState<string | null>(null);
   const [cancelMessage, setCancelMessage] = useState<string | null>(null);
   const [isCanceling, setIsCanceling] = useState(false);
@@ -228,6 +228,14 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
     }).catch(() => setErrorMessage("Select and copy the value manually."));
   };
 
+  useEffect(() => {
+    if (!cancelRedirectUrl) return;
+    const end = Date.now() + 3000;
+    const timer = window.setInterval(() => setCancelRedirectSec(Math.max(0, Math.ceil((end - Date.now()) / 1000))), 250);
+    const redirect = window.setTimeout(() => window.location.replace(cancelRedirectUrl), 3000);
+    return () => { window.clearInterval(timer); window.clearTimeout(redirect); };
+  }, [cancelRedirectUrl]);
+
   const handleCancelCheckout = async () => {
     if (demoMode || isCanceling) return;
     setIsCanceling(true);
@@ -235,19 +243,9 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
     try {
       const res = await api.cancelCheckout(session.sessionId);
       setCancelMessage(res.message || "Invoice canceled successfully.");
-      const target = res.redirectUrl || "";
+      const target = res.redirectUrl || "/";
       setCancelRedirectUrl(target);
       setCheckoutStatus("FAILED");
-      if (target) { const timer = setInterval(() => {
-        setCancelRedirectSec((s) => {
-          if (s <= 1) {
-            clearInterval(timer);
-            window.location.href = target;
-            return 0;
-          }
-          return s - 1;
-        });
-      }, 1000); }
     } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : "Could not cancel checkout.");
     } finally {
@@ -496,19 +494,20 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
   // 1. EXPIRED STATE
   if (cancelMessage) {
     return (
-      <div className="w-full max-w-lg mx-auto bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-2xl p-8 text-center space-y-4">
+      <div className="gp-canceled w-full max-w-lg mx-auto bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-2xl p-8 text-center space-y-4">
         <div className="w-14 h-14 rounded-full bg-rose-100 dark:bg-rose-950/40 text-rose-600 flex items-center justify-center mx-auto">
           <AlertCircle className="w-8 h-8" />
         </div>
-        <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">Invoice Canceled</h2>
+        <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">Checkout canceled</h2>
         <p className="text-xs text-zinc-500">{cancelMessage}</p>
+        {cancelRedirectUrl && <a href={cancelRedirectUrl} className="inline-block py-2 text-sm font-semibold underline">Return now</a>}
         {cancelRedirectUrl && <p className="text-[11px] font-mono text-zinc-400">
           Redirecting in {cancelRedirectSec} seconds…
         </p>}
         <div className="h-1.5 w-full rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
           <div
-            className="h-full bg-rose-500 transition-all duration-1000"
-            style={{ width: `${Math.max(0, (cancelRedirectSec / 2) * 100)}%` }}
+            className="gp-redirect-meter h-full bg-rose-500"
+            style={{ width: `${Math.max(0, (cancelRedirectSec / 3) * 100)}%` }}
           />
         </div>
       </div>
@@ -764,17 +763,15 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
         </div>
       </dialog>
       <aside className="gp-order-summary">
-        <div className="flex items-center justify-between gap-3">
-          <p className="gp-kicker">{locale === "bn" ? "অর্ডারের সারাংশ" : "Order summary"}</p>
+        <nav className="gp-checkout-nav" aria-label="Checkout controls">
+          <button aria-label="Change payment method" disabled={!methodChosen} onClick={() => { setMethodChosen(false); setErrorMessage(null); }}>←</button>
+          <span className="gp-kicker">GressPay Checkout</span>
           <div className="gp-language" aria-label="Language">
-            {(["en", "bn"] as const).map((lang) => (
-              <button key={lang} type="button" lang={lang} aria-pressed={locale === lang} onClick={() => setLocale(lang)}>
-                {lang === "en" ? "EN" : "বাংলা"}
-              </button>
-            ))}
+            {(["en","bn"] as const).map(lang => <button key={lang} aria-pressed={locale === lang} onClick={() => setLocale(lang)}>{lang === "en" ? "EN" : "বাংলা"}</button>)}
           </div>
-        </div>
-        <div className="gp-store-line">
+          {!demoMode && <button aria-label="Cancel checkout" disabled={isCanceling} onClick={() => cancelDialog.current?.showModal()}>×</button>}
+        </nav>
+        <div className="gp-store-line gp-centered-store">
           {session.merchantLogo ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={session.merchantLogo} alt="" className="gp-brand-mark bg-white object-contain p-1" />
@@ -788,7 +785,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
             </h1>
           </div>
         </div>
-        <div className="gp-order-total">
+        <div className="gp-order-total gp-compact-total">
           <p className="text-xs font-semibold text-[var(--gp-ck-muted)]">{locale === "bn" ? "প্রদেয় পরিমাণ" : "Total due"}</p>
           <p className="mt-1 break-words text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl">
             {methodChosen ? checkoutAmount(payableAmount, payableCurrency) : checkoutAmount(session.amount, session.currency)}
@@ -829,7 +826,6 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
               {session.websiteUrl && <a href={session.websiteUrl} target="_blank" rel="noopener noreferrer" className="rounded-lg px-2 py-1 text-[10px] font-semibold" style={{ background: "var(--gp-ck-surface)", color: "var(--gp-ck-muted)" }}>Website</a>}
             </div>
           )}
-        {!demoMode && <button type="button" onClick={() => cancelDialog.current?.showModal()} disabled={isCanceling} className="mt-3 text-xs text-[var(--gp-ck-muted)] underline underline-offset-4">{locale === "bn" ? "চেকআউট বাতিল করুন" : "Cancel checkout"}</button>}
       </aside>
       <div className="gp-payment-panel space-y-5">
         <header className={methodChosen ? "gp-provider-heading" : ""} style={methodChosen ? { "--provider": railTheme(selectedMethod).primary } as React.CSSProperties : undefined}>

@@ -746,6 +746,7 @@ final class GpDb
                 updated_at TEXT NOT NULL
               )";
         self::execDdl($supportTickets);
+        self::execDdl("ALTER TABLE gp_support_tickets ADD COLUMN reply TEXT NULL");
 
         $adminAuditTable = self::$driver === 'mysql'
             ? "CREATE TABLE IF NOT EXISTS gp_admin_audit_logs (

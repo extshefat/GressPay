@@ -5,6 +5,7 @@ final class BillingController
 {
     public static function handle(GpRequest $req): never
     {
+        if ($req->method === 'GET' && $req->part(1) === 'catalog') self::listPurchasablePlans(true);
         $actor = GpAuth::requireDashboardUser($req);
         if (!empty($actor['team_member_id'])) {
             GpJson::error('FORBIDDEN', 'Billing requires workspace owner access.', 403);
@@ -38,10 +39,10 @@ final class BillingController
         GpJson::error('NOT_FOUND', 'Unknown billing route.', 404);
     }
 
-    private static function listPurchasablePlans(): never
+    private static function listPurchasablePlans(bool $public = false): never
     {
         $rows = GpDb::all(
-            "SELECT plan_id, name, code, description, price_bdt, billing_cycle, is_free
+            "SELECT plan_id, name, code, description, price_bdt, billing_cycle, is_free, device_limit, method_limit, credit_allowance
              FROM gp_plans WHERE status = 'active' AND is_free = 0 ORDER BY price_bdt ASC"
         );
         $plans = array_map(static function (array $r): array {
@@ -50,10 +51,14 @@ final class BillingController
                 'code' => (string) $r['code'],
                 'name' => (string) $r['name'],
                 'description' => (string) ($r['description'] ?? ''),
+                'deviceLimit' => (int) $r['device_limit'],
+                'checkoutLimit' => (int) $r['credit_allowance'] >= 999999 ? 0 : ((int) $r['credit_allowance'] ?: 50),
+                'websiteLimit' => GpPlanLimits::maxBrandsForCode((string) $r['code']),
                 'priceBdt' => (string) ($r['price_bdt'] ?? '0'),
                 'billingCycle' => (string) ($r['billing_cycle'] ?? 'monthly'),
             ];
         }, $rows);
+        if ($public) GpJson::send(['plans' => $plans]);
         GpJson::send(['plans' => $plans, 'billingBrandConfigured' => GpPlatformBilling::billingBrandId() !== null]);
     }
 

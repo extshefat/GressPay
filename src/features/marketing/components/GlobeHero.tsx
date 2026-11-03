@@ -15,7 +15,7 @@ export function GlobeHero() {
       <div className="mx-auto grid max-w-7xl items-center gap-10 px-5 sm:px-8 lg:grid-cols-[1.03fr_1fr] lg:gap-16">
         <div>
           <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[.13em] text-[var(--text-secondary)]">
-            <span aria-hidden className="h-px w-8 bg-teal-600" /> Payment verification for Asia
+            <span aria-hidden className="h-px w-8 bg-teal-600" /> Payment verification · South Asia
           </p>
           <h1 className="mt-5 max-w-[12ch] text-[clamp(2.8rem,5.2vw,4.8rem)] font-semibold leading-[1.04] tracking-[-.055em] text-[var(--text-primary)]">
             Know when your customer has paid.
@@ -30,9 +30,9 @@ export function GlobeHero() {
             <Link href="/checkout-preview" className="inline-flex min-h-12 items-center rounded-xl border border-[var(--border-color)] px-5 text-[var(--text-primary)]">Try the checkout</Link>
           </div>
         </div>
-        <figure className="overflow-hidden rounded-3xl border border-[var(--border-color)] bg-[var(--bg-surface)]">
+        <figure className="relative overflow-hidden border-y border-[var(--border-color)] bg-[var(--bg-page)]">
           <div className="flex justify-between px-6 pt-5 text-[11px] font-semibold uppercase tracking-[.12em] text-[var(--text-muted)]">
-            <span>Regional coverage</span><span>South Asia</span>
+            <span>Regional coverage</span><span>23.81° N · 90.41° E</span>
           </div>
           <div className="flex justify-center" style={{backgroundImage: "radial-gradient(var(--border-color) 1px, transparent 1px)", backgroundSize: "16px 16px"}}>
             <InteractiveGlobe />

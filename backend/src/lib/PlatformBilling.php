@@ -152,7 +152,6 @@ final class GpPlatformBilling
             }
         }
 
-        $credits = (int) ($plan['credit_allowance'] ?? 0);
         $cycle = strtolower(trim((string) ($plan['billing_cycle'] ?? 'monthly')));
         $isLifetime = $cycle === 'lifetime' || $cycle === 'life_time' || !empty($plan['is_free']);
         $expiresAt = null;
@@ -179,22 +178,10 @@ final class GpPlatformBilling
         GpDb::exec(
             'INSERT INTO gp_subscriptions (subscription_id, merchant_id, plan_id, status, credits_remaining, credits_used, starts_at, expires_at, created_at, updated_at)
              VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?)',
-            [$subId, $merchantId, $planId, 'active', $credits, $now, $expiresAt, $now, $now]
+            [$subId, $merchantId, $planId, 'active', 0, $now, $expiresAt, $now, $now]
         );
 
-        $planName = (string) ($plan['name'] ?? $order['plan_name'] ?? $planId);
-        GpDb::exec(
-            'INSERT INTO gp_credit_transactions (merchant_id, delta, balance_after, reason, created_by, created_at)
-             VALUES (?, ?, ?, ?, ?, ?)',
-            [
-                $merchantId,
-                $credits,
-                $credits,
-                'Plan purchase: ' . $planName . ' (order ' . $orderId . ')',
-                'system:account-plan',
-                $now,
-            ]
-        );
+
     }
 
     public static function onCheckoutCanceled(string $sessionId): void

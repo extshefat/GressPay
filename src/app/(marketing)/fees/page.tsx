@@ -24,7 +24,7 @@ export default function FeesPage() {
     },
     {
       q: "How does GressPay verify that a customer actually paid?",
-      a: "You install the GressPay Android APK on the phone holding your payment SIM cards. When customer money arrives, the app securely captures the provider SMS and auto-matches the TrxID and amount to the pending checkout session within 1-2 seconds.",
+      a: "You install the GressPay Android APK on the phone holding your payment SIM cards. When customer money arrives, the app securely captures the provider SMS and auto-matches the TrxID and amount to the pending checkout session when the amount and reference match.",
     },
     {
       q: "Can I use multiple SIMs and phones simultaneously?",
@@ -32,7 +32,7 @@ export default function FeesPage() {
     },
     {
       q: "What happens if my phone temporarily loses internet connection?",
-      a: "The GressPay APK utilizes Android WorkManager with offline persistence. As soon as the phone reconnects to WiFi or mobile data, all buffered SMS notifications are synced and pending orders are instantly settled.",
+      a: "The GressPay APK utilizes Android WorkManager with offline persistence. As soon as the phone reconnects to WiFi or mobile data, queued payment receipts are retried. The server checks the payment window and matching evidence before updating an order.",
     },
   ];
 
@@ -51,7 +51,7 @@ export default function FeesPage() {
             Why teams choose GressPay over traditional gateways
           </h2>
           <p className="text-xs sm:text-sm text-zinc-500">
-            Engineered for speed, total financial custody, and zero downtime.
+            Customers pay directly into the receiving wallet configured for your business.
           </p>
         </div>
 

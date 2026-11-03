@@ -18,17 +18,19 @@ export default function SupportPage() {
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [tickets, setTickets] = useState<
-    { ticketId: string; subject: string; status: string; createdAt: string }[]
+    { ticketId: string; message: string; reply: string; subject: string; status: string; createdAt: string }[]
   >([]);
+  const [ticketError, setTicketError] = useState("");
   const [loadingTickets, setLoadingTickets] = useState(true);
 
   const loadTickets = useCallback(async () => {
     setLoadingTickets(true);
+    setTicketError("");
     try {
       const data = await api.listSupportTickets();
       setTickets(data.tickets || []);
-    } catch {
-      setTickets([]);
+    } catch (err) {
+      setTicketError(err instanceof Error ? err.message : "Could not load tickets.");
     } finally {
       setLoadingTickets(false);
     }
@@ -117,14 +119,16 @@ export default function SupportPage() {
             <RefreshCw className="h-3 w-3" />
           </Button>
         </div>
-        {tickets.length === 0 ? (
+        {ticketError ? <p role="alert">{ticketError}</p> : loadingTickets ? <p>Loading tickets…</p> : tickets.length === 0 ? (
           <p className="text-xs text-zinc-500">No tickets yet.</p>
         ) : (
           <ul className="divide-y divide-zinc-100 dark:divide-zinc-900">
             {tickets.map((t) => (
-              <li key={t.ticketId} className="flex items-center justify-between py-3 text-xs">
+              <li key={t.ticketId} className="grid min-w-0 gap-2 py-4 text-sm [overflow-wrap:anywhere]">
                 <div>
                   <div className="font-semibold text-zinc-900 dark:text-zinc-100">{t.subject}</div>
+                  <p className="my-2 whitespace-pre-wrap">{t.message}</p>
+                  {t.reply && <div className="my-3 border-l-2 border-blue-500 pl-3"><strong>GressPay support</strong><p className="whitespace-pre-wrap">{t.reply}</p></div>}
                   <div className="font-mono text-[10px] text-zinc-500">
                     {t.ticketId} · {formatDate(t.createdAt)}
                   </div>

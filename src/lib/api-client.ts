@@ -995,9 +995,18 @@ class ApiClient {
     });
   }
 
+  async supportInbox() {
+    return this.request<{ tickets: { ticket_id: string; subject: string; message: string; contact_email: string; status: string; reply: string | null }[] }>("/api/v1/admin/support");
+  }
+
+  async replyToTicket(id: string, reply: string) {
+    return this.request("/api/v1/admin/support/" + encodeURIComponent(id) + "/reply", { method: "POST", body: JSON.stringify({ reply }) });
+  }
+
   async listSupportTickets(): Promise<{
     tickets: {
       ticketId: string;
+      message: string; reply: string;
       subject: string;
       status: string;
       contactEmail: string;

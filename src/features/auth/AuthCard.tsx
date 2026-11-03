@@ -20,9 +20,10 @@ function homeFor(
   user: { role?: string; isAdmin?: boolean } | undefined,
   plan?: string | null
 ) {
+  localStorage.removeItem("gresspay_selected_plan");
   const base = user?.role === "admin" || user?.isAdmin ? "/dashboard/admin" : "/dashboard/overview";
-  if (plan && plan !== "starter") {
-    return `${base}?upgrade=${encodeURIComponent(plan)}`;
+  if (plan && plan !== "trial") {
+    return "/dashboard/my-payments?plan=" + encodeURIComponent(plan);
   }
   return base;
 }

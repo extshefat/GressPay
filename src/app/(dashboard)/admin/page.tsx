@@ -1,4 +1,5 @@
 "use client";
+import { SupportInbox } from "@/features/dashboard/components/SupportInbox";
 
 import React, { useEffect, useState } from "react";
 import { planIdsMatch, planMarketingCode } from "@/lib/plan-utils";
@@ -64,7 +65,7 @@ export default function AdminPage() {
   const [auditLogs, setAuditLogs] = useState<AdminAuditLog[]>([]);
 
   const [activeTab, setActiveTab] = useState<
-    "gateways" | "merchants" | "pricing" | "health"
+    "gateways" | "merchants" | "pricing" | "health" | "support"
   >("gateways");
   const [isLoading, setIsLoading] = useState(true);
   const [isForbidden, setIsForbidden] = useState(false);
@@ -86,13 +87,6 @@ export default function AdminPage() {
   const [smsStatusFilter, setSmsStatusFilter] = useState<string>("all");
 
   // Credit Adjustment Modal
-  const [creditModalOpen, setCreditModalOpen] = useState(false);
-  const [selectedMerchant, setSelectedMerchant] = useState<AdminMerchant | null>(null);
-  const [creditMode, setCreditMode] = useState<"delta" | "set">("delta");
-  const [creditDelta, setCreditDelta] = useState<number>(100);
-  const [creditSetBalance, setCreditSetBalance] = useState<number>(1000);
-  const [creditReason, setCreditReason] = useState<string>("Manual balance top-up by Super Admin");
-  const [isSubmittingCredit, setIsSubmittingCredit] = useState(false);
 
   // Plan Assignment Modal for Merchant
   const [planModalOpen, setPlanModalOpen] = useState(false);
@@ -100,7 +94,6 @@ export default function AdminPage() {
   const [targetPlanId, setTargetPlanId] = useState<string>("starter");
   const [targetPlanExpiresAt, setTargetPlanExpiresAt] = useState<string>("");
   const [targetPlanIsLifetime, setTargetPlanIsLifetime] = useState<boolean>(false);
-  const [targetBonusCredits, setTargetBonusCredits] = useState<number>(0);
   const [targetPlanReason, setTargetPlanReason] = useState<string>("Complimentary subscription assignment");
   const [isSubmittingPlanAssign, setIsSubmittingPlanAssign] = useState(false);
 
@@ -335,7 +328,7 @@ export default function AdminPage() {
         targetMerchant.id,
         targetPlanId,
         targetPlanIsLifetime ? null : (targetPlanExpiresAt || null),
-        targetBonusCredits,
+        0,
         targetPlanIsLifetime,
         targetPlanReason
       );
@@ -350,29 +343,6 @@ export default function AdminPage() {
   };
 
   // Credit Adjustment / Top-up
-  const handleCreditSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedMerchant) return;
-    setIsSubmittingCredit(true);
-    setErrorMessage(null);
-    try {
-      await api.adjustAdminCredit(
-        selectedMerchant.id,
-        creditMode === "delta" ? creditDelta : 0,
-        creditReason,
-        creditMode === "set" ? creditSetBalance : null
-      );
-      setSuccessMessage(`Successfully updated verification credits for ${selectedMerchant.name}.`);
-      setCreditModalOpen(false);
-      await loadData();
-    } catch (err: unknown) {
-      setErrorMessage(err instanceof Error ? err.message : "Failed to adjust credits.");
-    } finally {
-      setIsSubmittingCredit(false);
-    }
-  };
-
-  // Resolve Transaction Manually
   const handleResolveTx = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!resolvingTx) return;
@@ -537,6 +507,7 @@ export default function AdminPage() {
           { key: "gateways", label: "Global Gateway Control", icon: Sliders },
           { key: "merchants", label: "Accounts & subscriptions", icon: Users },
           { key: "pricing", label: "Pricing & Plans", icon: CreditCard },
+          { key: "support", label: "Support inbox", icon: Activity },
           { key: "health", label: "Transactions & Health", icon: Activity },
         ].map((tab) => {
           const Icon = tab.icon;
@@ -559,6 +530,7 @@ export default function AdminPage() {
       </div>
 
       {/* TAB 1: OVERVIEW */}
+      {activeTab === "support" && <SupportInbox />}
       {activeTab === "health" && stats && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -759,7 +731,7 @@ export default function AdminPage() {
                 Accounts, roles & SaaS subscriptions
               </h2>
               <p className="text-xs text-zinc-500">
-                Promote business accounts to Super Admin, assign subscription tiers, modify credit balances, and activate or suspend (ban) login.
+                Promote business accounts to Super Admin, assign subscription tiers, and activate or suspend (ban) login.
               </p>
             </div>
           </div>
@@ -819,7 +791,6 @@ export default function AdminPage() {
                   <th className="py-3 px-4">Role</th>
                   <th className="py-3 px-4">SaaS Plan</th>
                   <th className="py-3 px-4">Volume & Devices</th>
-                  <th className="py-3 px-4">Credits</th>
                   <th className="py-3 px-4">Status</th>
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
@@ -827,7 +798,7 @@ export default function AdminPage() {
               <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
                 {filteredMerchants.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center py-8 text-zinc-500">
+                    <td colSpan={6} className="text-center py-8 text-zinc-500">
                       No accounts match the selected filters.
                     </td>
                   </tr>
@@ -866,7 +837,6 @@ export default function AdminPage() {
                               setTargetPlanId(m.planId || "plan_trial");
                               setTargetPlanExpiresAt(m.planExpiresAt ? m.planExpiresAt.split("T")[0] : "");
                               setTargetPlanIsLifetime(m.planId === "lifetime" || !m.planExpiresAt);
-                              setTargetBonusCredits(0);
                               setTargetPlanReason(`Complimentary plan upgrade for ${m.name}`);
                               setPlanModalOpen(true);
                             }}
@@ -892,23 +862,7 @@ export default function AdminPage() {
                           </div>
                         </td>
 
-                        <td className="py-3 px-4">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedMerchant(m);
-                              setCreditMode("delta");
-                              setCreditDelta(500);
-                              setCreditSetBalance(m.credits ?? 1000);
-                              setCreditReason(`Balance adjustment for ${m.name}`);
-                              setCreditModalOpen(true);
-                            }}
-                            className="cursor-pointer font-mono font-bold text-zinc-900 dark:text-zinc-100 hover:underline flex items-center gap-1"
-                          >
-                            <span>{m.credits.toLocaleString()} credits</span>
-                            <span className="text-[10px] text-zinc-400">✎</span>
-                          </button>
-                        </td>
+
 
                         <td className="py-3 px-4">
                           <button
@@ -938,27 +892,13 @@ export default function AdminPage() {
                               setTargetPlanId(m.planId || "plan_trial");
                               setTargetPlanExpiresAt(m.planExpiresAt ? m.planExpiresAt.split("T")[0] : "");
                               setTargetPlanIsLifetime(m.planId === "lifetime" || !m.planExpiresAt);
-                              setTargetBonusCredits(0);
                               setTargetPlanReason(`Complimentary plan upgrade for ${m.name}`);
                               setPlanModalOpen(true);
                             }}
                           >
                             Plan
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              setSelectedMerchant(m);
-                              setCreditMode("delta");
-                              setCreditDelta(500);
-                              setCreditSetBalance(m.credits ?? 1000);
-                              setCreditReason(`Balance adjustment for ${m.name}`);
-                              setCreditModalOpen(true);
-                            }}
-                          >
-                            Credits
-                          </Button>
+
                         </td>
                       </tr>
                     );
@@ -1024,7 +964,7 @@ export default function AdminPage() {
               <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
                 {filteredTransactions.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center py-8 text-zinc-500">
+                    <td colSpan={6} className="text-center py-8 text-zinc-500">
                       No platform transactions match your search.
                     </td>
                   </tr>
@@ -1155,7 +1095,7 @@ export default function AdminPage() {
               <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
                 {filteredSmsLogs.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center py-8 text-zinc-500">
+                    <td colSpan={6} className="text-center py-8 text-zinc-500">
                       No incoming SMS notifications found.
                     </td>
                   </tr>
@@ -1257,7 +1197,7 @@ export default function AdminPage() {
                   <div className="space-y-1 text-xs font-mono text-zinc-700 dark:text-zinc-300 pt-2 border-t border-zinc-100 dark:border-zinc-900">
                     <div className="flex justify-between">
                       <span className="text-zinc-500">Monthly Trx Limit:</span>
-                      <span className="font-semibold">{p.creditAllowance} txns</span>
+                      <span className="font-semibold">{p.creditAllowance >= 999999 ? "Unlimited" : (p.creditAllowance || 50) + " / month"}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-zinc-500">Devices:</span>
@@ -1368,7 +1308,7 @@ export default function AdminPage() {
               Audit & Governance Trail
             </h2>
             <p className="text-xs text-zinc-500">
-              Immutable record of all admin role promotions, plan updates, credit grants, and gateway overrides.
+              Immutable record of all admin role promotions, plan updates, and gateway overrides.
             </p>
           </div>
 
@@ -1433,9 +1373,7 @@ export default function AdminPage() {
                 <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 font-bold">
                   Current: {(targetMerchant.planId || "starter").toUpperCase()}
                 </span>
-                <div className="text-[10px] text-zinc-400 font-mono mt-0.5">
-                  Balance: {targetMerchant.credits.toLocaleString()} credits
-                </div>
+
               </div>
             </div>
 
@@ -1459,7 +1397,7 @@ export default function AdminPage() {
                 {plans.length > 0 ? (
                   plans.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.name} ({p.code.toUpperCase()}) — ৳{p.priceBdt} / {p.billingCycle} ({p.creditAllowance.toLocaleString()} credits/mo)
+                      {p.name} ({p.code.toUpperCase()}) — ৳{p.priceBdt} / {p.billingCycle}
                     </option>
                   ))
                 ) : (
@@ -1527,36 +1465,6 @@ export default function AdminPage() {
               )}
             </div>
 
-            {/* Bonus Credits Gifting */}
-            <div>
-              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-                Bonus Verification Credits Gift
-              </label>
-              <Input
-                type="number"
-                min={0}
-                value={targetBonusCredits}
-                onChange={(e) => setTargetBonusCredits(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                placeholder="0"
-              />
-              <div className="flex gap-1.5 mt-1.5">
-                {[0, 500, 1000, 2500, 5000, 10000].map((b) => (
-                  <button
-                    key={b}
-                    type="button"
-                    onClick={() => setTargetBonusCredits(b)}
-                    className={`py-0.5 px-2 text-[10px] font-mono rounded border ${
-                      targetBonusCredits === b
-                        ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 border-zinc-900 dark:border-white"
-                        : "border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                    }`}
-                  >
-                    +{b.toLocaleString()}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {/* Reason */}
             <div>
               <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
@@ -1576,145 +1484,6 @@ export default function AdminPage() {
               </Button>
               <Button type="submit" variant="primary" disabled={isSubmittingPlanAssign}>
                 {isSubmittingPlanAssign ? "Granting Plan..." : "Gift / Save Plan"}
-              </Button>
-            </div>
-          </form>
-        </Modal>
-      )}
-
-      {/* MODAL 2: Credit Adjustment & Account Balance Top-up */}
-      {creditModalOpen && selectedMerchant && (
-        <Modal
-          open={creditModalOpen}
-          onClose={() => setCreditModalOpen(false)}
-          title={`Account balance & top-up — ${selectedMerchant.name}`}
-        >
-          <form onSubmit={handleCreditSubmit} className="space-y-4">
-            {/* Current Balance Display */}
-            <div className="p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex items-center justify-between">
-              <div>
-                <div className="font-semibold text-xs text-zinc-900 dark:text-zinc-100">{selectedMerchant.name}</div>
-                <div className="text-[11px] text-zinc-500 font-mono">{selectedMerchant.email}</div>
-              </div>
-              <div className="text-right">
-                <div className="text-[10px] text-zinc-500 uppercase font-mono">Current Balance</div>
-                <div className="text-base font-bold font-mono text-zinc-900 dark:text-zinc-100">
-                  {selectedMerchant.credits.toLocaleString()} <span className="text-xs font-normal">credits</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Mode Switcher */}
-            <div className="grid grid-cols-2 gap-2 p-1 bg-zinc-100 dark:bg-zinc-900 rounded-lg">
-              <button
-                type="button"
-                onClick={() => setCreditMode("delta")}
-                className={`py-1.5 text-xs font-medium rounded-md transition-colors ${
-                  creditMode === "delta"
-                    ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm"
-                    : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
-                }`}
-              >
-                Top-up / Adjust (+ / -)
-              </button>
-              <button
-                type="button"
-                onClick={() => setCreditMode("set")}
-                className={`py-1.5 text-xs font-medium rounded-md transition-colors ${
-                  creditMode === "set"
-                    ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm"
-                    : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
-                }`}
-              >
-                Set Exact Balance
-              </button>
-            </div>
-
-            {creditMode === "delta" ? (
-              <div>
-                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-                  Credit Delta (Positive to add, Negative to deduct)
-                </label>
-                <Input
-                  type="number"
-                  value={creditDelta}
-                  onChange={(e) => setCreditDelta(parseInt(e.target.value, 10) || 0)}
-                  placeholder="+500 or -100"
-                />
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {[100, 500, 1000, 2500, 5000, 10000].map((amt) => (
-                    <button
-                      key={amt}
-                      type="button"
-                      onClick={() => setCreditDelta(amt)}
-                      className="py-1 px-2 text-[10px] font-mono rounded border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 hover:border-zinc-900 dark:hover:border-zinc-100 transition-colors"
-                    >
-                      +{amt.toLocaleString()}
-                    </button>
-                  ))}
-                  {[-100, -500, -1000].map((amt) => (
-                    <button
-                      key={amt}
-                      type="button"
-                      onClick={() => setCreditDelta(amt)}
-                      className="py-1 px-2 text-[10px] font-mono rounded border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20 text-red-600 dark:text-red-400 hover:border-red-500 transition-colors"
-                    >
-                      {amt.toLocaleString()}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[11px] font-mono text-zinc-500 mt-2">
-                  New balance: <span className="font-bold text-zinc-900 dark:text-zinc-100">{Math.max(0, (selectedMerchant.credits || 0) + creditDelta).toLocaleString()}</span> credits
-                </p>
-              </div>
-            ) : (
-              <div>
-                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-                  Set Exact Account Balance
-                </label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={creditSetBalance}
-                  onChange={(e) => setCreditSetBalance(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                  placeholder="1000"
-                />
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {[500, 1000, 2500, 5000, 10000, 50000].map((amt) => (
-                    <button
-                      key={amt}
-                      type="button"
-                      onClick={() => setCreditSetBalance(amt)}
-                      className="py-1 px-2 text-[10px] font-mono rounded border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 hover:border-zinc-900 dark:hover:border-zinc-100 transition-colors"
-                    >
-                      {amt.toLocaleString()}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[11px] font-mono text-zinc-500 mt-2">
-                  Balance will be directly set to <span className="font-bold text-zinc-900 dark:text-zinc-100">{creditSetBalance.toLocaleString()}</span> credits
-                </p>
-              </div>
-            )}
-
-            <div>
-              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-                Audit / Top-up Reason
-              </label>
-              <Input
-                type="text"
-                value={creditReason}
-                onChange={(e) => setCreditReason(e.target.value)}
-                placeholder="e.g. Manual bKash payment verification top-up"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="outline" onClick={() => setCreditModalOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" variant="primary" disabled={isSubmittingCredit}>
-                {isSubmittingCredit ? "Saving..." : "Apply Balance Update"}
               </Button>
             </div>
           </form>
@@ -1919,21 +1688,11 @@ export default function AdminPage() {
                   <option value="lifetime">Lifetime</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-                  Monthly Trx Allowance
-                </label>
-                <Input
-                  type="number"
-                  value={planDefCredits}
-                  onChange={(e) => setPlanDefCredits(Number(e.target.value))}
-                  min={1}
-                  required
-                />
-              </div>
+
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Input type="number" label="Monthly completed checkouts (999999 = unlimited)" min={1} value={planDefCredits} onChange={e => setPlanDefCredits(Number(e.target.value))} required />
               <div>
                 <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
                   Device limit

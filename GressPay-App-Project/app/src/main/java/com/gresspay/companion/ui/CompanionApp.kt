@@ -27,6 +27,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -82,7 +84,7 @@ import java.util.Date
 import java.util.Locale
 
 // GressPay Fintech Palette
-private val GpBlue = Color(0xFF2563EB)
+private val GpBlue = Color(0xFF202B3B)
 private val GpGreen = Color(0xFF059669)
 private val GpRed = Color(0xFFDC2626)
 private val GpAmber = Color(0xFFD97706)
@@ -109,7 +111,8 @@ fun CompanionApp(prefs: Prefs) {
     val start = if (prefs.deviceToken.isNotBlank() || prefs.onboardingComplete) "home" else "welcome"
 
     MaterialTheme {
-        NavHost(navController = nav, startDestination = start, modifier = Modifier.background(GpPageBg).safeDrawingPadding()) {
+        Box(Modifier.fillMaxSize().background(GpPageBg).safeDrawingPadding().imePadding(), contentAlignment = Alignment.TopCenter) {
+        NavHost(navController = nav, startDestination = start, modifier = Modifier.widthIn(max = 600.dp).fillMaxSize()) {
             composable("welcome") {
                 WelcomeScreen(
                     onStart = { nav.navigate("sms") },
@@ -154,6 +157,7 @@ fun CompanionApp(prefs: Prefs) {
         }
     }
 }
+    }
 
 @Composable
 private fun GressPayMark(modifier: Modifier) {
@@ -170,11 +174,12 @@ private fun WelcomeScreen(onStart: () -> Unit, onTerms: () -> Unit, onPrivacy: (
         modifier = Modifier
             .fillMaxSize()
             .background(Color.White)
-            .padding(28.dp),
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        GressPayMark(Modifier.size(76.dp))
+        GressPayMark(Modifier.size(68.dp))
         Spacer(Modifier.height(28.dp))
         Text(
             "GressPay",
@@ -191,7 +196,7 @@ private fun WelcomeScreen(onStart: () -> Unit, onTerms: () -> Unit, onPrivacy: (
             fontSize = 14.sp,
             lineHeight = 20.sp,
         )
-        Spacer(Modifier.height(48.dp))
+        Spacer(Modifier.height(28.dp))
         Button(
             onClick = onStart,
             modifier = Modifier

@@ -56,7 +56,9 @@ function GoogleCallbackContent() {
           setStatus("success");
           const admin = res.user?.role === "admin" || Boolean(res.user?.isAdmin);
           setTimeout(() => {
-            router.replace(afterSignIn(admin ? "/admin" : "/overview"));
+            const plan = localStorage.getItem("gresspay_selected_plan");
+            localStorage.removeItem("gresspay_selected_plan");
+            router.replace(afterSignIn(plan && plan !== "trial" ? "/dashboard/my-payments?plan=" + encodeURIComponent(plan) : admin ? "/dashboard/admin" : "/dashboard/overview"));
           }, 600);
         }
       } catch (err: unknown) {
