@@ -121,6 +121,7 @@ final class GpRateLimiter
     public static function loginSucceeded(string $email): void
     {
         GpDb::exec('DELETE FROM gp_login_failures WHERE account_hash = ?', [self::accountHash($email)]);
+        GpDb::exec('DELETE FROM gp_rate_limit WHERE bucket = ?', [hash('sha256', 'login-reservation:' . self::accountHash($email) . '|900')]);
     }
 
     public static function guard(string $bucket, int $max, int $window = 60): void

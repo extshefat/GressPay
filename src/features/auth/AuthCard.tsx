@@ -239,7 +239,7 @@ export function AuthCard({ initialTab }: { initialTab: Tab }) {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••••••"
                 required
-                minLength={tab === "signup" ? 8 : 1}
+                minLength={tab === "signup" ? 10 : 1}
                 autoComplete={tab === "signup" ? "new-password" : "current-password"}
               />
               <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400">

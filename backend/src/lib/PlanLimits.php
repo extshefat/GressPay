@@ -37,7 +37,7 @@ final class GpPlanLimits
     private static function isAdminMerchant(array $merchant): bool
     {
         $email = strtolower(trim((string) ($merchant['email'] ?? '')));
-        return GpConfig::isAdmin($email) || (($merchant['role'] ?? '') === 'admin');
+        return !empty($merchant['email_verified']) && (GpConfig::isAdmin($email) || (($merchant['role'] ?? '') === 'admin'));
     }
 
     /** Plan code after expiry downgrade (paid plans past plan_expires_at → starter limits). */

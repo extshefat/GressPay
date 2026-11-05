@@ -1404,8 +1404,8 @@ final class CheckoutController
                 GpJson::error('DUPLICATE_TRX','Payment evidence cannot be used for this checkout.',409);
             }
             $dup = GpDb::one(
-                'SELECT session_id FROM gp_transactions WHERE brand_id = ? AND trx_id = ? AND session_id != ? AND status = ?',
-                [$row['brand_id'], strtoupper($trxId), $row['session_id'], 'completed']
+                'SELECT session_id FROM gp_transactions WHERE brand_id = ? AND ledger_mode = ? AND trx_id = ? AND session_id != ? AND status = ?',
+                [$row['brand_id'], $row['ledger_mode'] ?? 'live', strtoupper($trxId), $row['session_id'], 'completed']
             );
             if ($dup) {
                 $pdo->rollBack();

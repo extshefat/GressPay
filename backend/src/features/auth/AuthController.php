@@ -202,7 +202,7 @@ final class AuthController
         $email = strtolower(trim((string) $req->input('email', '')));
         $password = (string) $req->input('password', '');
         $remember = self::wantRemember($req);
-        if (!GpRateLimiter::accountAllowed($email)) {
+        if (!GpRateLimiter::accountAllowed($email) || !GpRateLimiter::hit('login-reservation:' . GpRateLimiter::accountHash($email), 5, 900)) {
             GpJson::error('INVALID_CREDENTIALS', 'Email or password is incorrect. Try again later.', 429);
         }
         $row = GpDb::one('SELECT * FROM gp_merchants WHERE email = ?', [$email]);
@@ -227,6 +227,7 @@ final class AuthController
         $ttl = $remember ? GpJwt::TTL_REMEMBER : GpJwt::TTL_DEFAULT;
         $token = GpJwt::encode([
             'sub' => $row['merchant_id'],
+            'tv' => (int) ($row['token_version'] ?? 0),
             'brand' => is_array($brand) ? (string) ($brand['brand_id'] ?? '') : '',
             'email' => $row['email'],
             'role' => $isAdmin ? 'admin' : ($row['role'] ?? 'merchant'),

@@ -4,3 +4,4 @@
 storage/*.sqlite*
 storage/*.log
 .git
+storage/qr/

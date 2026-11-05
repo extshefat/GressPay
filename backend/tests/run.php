@@ -1285,6 +1285,44 @@ assert_true(!CheckoutController::payerMatches(['require_payer_match'=>1],$phoneS
 assert_true(!CheckoutController::payerMatches(['require_payer_match'=>1],['metadata'=>'{}'],['payer_phone'=>'01712345678']),'TrxID mode rejects absent buyer phone when evidence includes payer');
 assert_true(CheckoutController::payerMatches(['require_payer_match'=>0],$phoneSession,['payer_phone'=>'01812345678']),'Owner may explicitly disable payer requirement');
 
+// Exercise the actual auth endpoints in child processes (GpJson exits on response).
+function auth_case(string $action, array $body, string $bearer = ''): array {
+    global $root;
+    $code = 'require ' . var_export($root . '/src/bootstrap.php', true) . ';'
+        . '$_SERVER["REMOTE_ADDR"]="127.0.0.42";$_SERVER["REQUEST_METHOD"]="POST";'
+        . '$_SERVER["HTTP_AUTHORIZATION"]=' . var_export($bearer !== '' ? 'Bearer '.$bearer : '',true) . ';'
+        . '$req=new GpRequest(["auth",' . var_export($action,true) . ']);$req->body=' . var_export($body,true) . ';AuthController::handle($req);';
+    $process=proc_open([PHP_BINARY,'-r',$code],[0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes);
+    if (!is_resource($process)) return [];
+    fclose($pipes[0]); $output=stream_get_contents($pipes[1]); fclose($pipes[1]);
+    // Development mail logs may contain a single-use link; never echo them in test reports.
+    stream_get_contents($pipes[2]); fclose($pipes[2]); proc_close($process);
+    return json_decode($output,true) ?: [];
+}
+$signup=auth_case('register',['name'=>'Admin impersonation','email'=>'stage1-admin@gresspay.test','password'=>'new-owner-password']);
+assert_true(($signup['user']['role'] ?? '') === 'merchant' && ($signup['user']['planId'] ?? $signup['user']['plan_id'] ?? '') !== 'lifetime', 'Registration cannot pre-hijack allowlisted admin privileges');
+$signupRow=GpDb::one('SELECT * FROM gp_merchants WHERE email = ?', ['stage1-admin@gresspay.test']);
+assert_true(is_array($signupRow) && empty($signupRow['email_verified']), 'Registration persists unverified email');
+$shortSignup=auth_case('register',['name'=>'Short password','email'=>'short-password@test.local','password'=>'123456789']);
+assert_true(($shortSignup['error']['code'] ?? '') === 'VALIDATION', 'Registration rejects passwords below ten characters');
+if ($signupRow !== null) {
+    $validLogin=auth_case('login',['email'=>$signupRow['email'],'password'=>'new-owner-password']);
+    assert_true(!empty($validLogin['token']), 'Unverified owner may sign in to dashboard');
+    $versionBefore=GpJwt::decode($validLogin['token'] ?? '');
+    $logout=auth_case('logout-all',[], $validLogin['token'] ?? '');
+    $afterLogout=GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?',[$signupRow['merchant_id']]);
+    assert_true(!empty($logout['ok']) && !GpAuth::tokenCurrent($versionBefore ?? [],$afterLogout), 'Logout-all endpoint revokes actual signed session');
+    $staleMint=GpJwt::decode(GpJwt::encode(['sub'=>$signupRow['merchant_id'],'tv'=>$versionBefore['tv']]));
+    assert_true(!GpAuth::tokenCurrent($staleMint,$afterLogout),'Concurrent old credential cannot mint a refreshed token version');
+    GpDb::exec('UPDATE gp_merchants SET password_hash = ? WHERE merchant_id = ?', [password_hash('new-owner-password',PASSWORD_BCRYPT,['cost'=>10]),$signupRow['merchant_id']]);
+    $rehashLogin=auth_case('login',['email'=>$signupRow['email'],'password'=>'new-owner-password']);
+    $rehashRow=GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?',[$signupRow['merchant_id']]);
+    assert_true(!empty($rehashLogin['token']) && password_get_info($rehashRow['password_hash'])['options']['cost']===12,'Login upgrades existing bcrypt cost to twelve');
+    $change=auth_case('password',['current_password'=>'new-owner-password','password'=>'replacement-password'],$rehashLogin['token'] ?? '');
+    $changedRow=GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?',[$signupRow['merchant_id']]);
+    assert_true(!empty($change['ok']) && password_verify('replacement-password',$changedRow['password_hash']) && !GpAuth::tokenCurrent(GpJwt::decode($rehashLogin['token']) ?? [],$changedRow),'Password change updates hash and revokes sessions atomically');
+}
+
 // Versioned migrations preserve existing data and skip already-applied work.
 $versions = GpDb::all('SELECT * FROM gp_schema_version ORDER BY version');
 GpMigrations::run();

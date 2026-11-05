@@ -30,6 +30,8 @@ services:
       - php
 
   php:
+    volumes:
+      - api-storage:/var/www/gresspay-api/storage
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -83,6 +85,8 @@ services:
     restart: unless-stopped
 
   webhook-worker:
+    volumes:
+      - api-storage:/var/www/gresspay-api/storage
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -91,3 +95,6 @@ services:
     restart: unless-stopped
     depends_on:
       - php
+
+volumes:
+  api-storage:

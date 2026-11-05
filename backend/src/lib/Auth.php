@@ -31,6 +31,8 @@ final class GpAuth
                 'merchant_id' => $merchant['merchant_id'],
                 'brand_id' => '',
                 'email' => $merchant['email'],
+                'token_version' => (int) ($payload['tv'] ?? 0),
+                'exp' => (int) ($payload['exp'] ?? 0),
                 'email_verified' => !empty($merchant['email_verified']),
                 'role' => $isAdmin ? 'admin' : ($merchant['role'] ?? 'merchant'),
                 'is_admin' => $isAdmin,

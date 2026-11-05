@@ -13,7 +13,7 @@ final class GpJwt
     {
         $header = ['alg' => 'HS256', 'typ' => 'JWT'];
         $merchant = GpDb::one('SELECT token_version FROM gp_merchants WHERE merchant_id = ?', [(string) ($payload['sub'] ?? '')]);
-        $payload['tv'] = (int) ($merchant['token_version'] ?? 0);
+        $payload['tv'] = (int) ($payload['tv'] ?? $merchant['token_version'] ?? 0);
         $payload['jti'] = bin2hex(random_bytes(16));
         $payload['iat'] = time();
         $payload['exp'] = time() + $ttlSeconds;

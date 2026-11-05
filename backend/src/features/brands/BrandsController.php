@@ -179,6 +179,7 @@ final class BrandsController
         $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$subject]);
         $token = GpJwt::encode([
             'sub' => $subject,
+            'tv' => (int) ($actor['token_version'] ?? 0),
             'brand' => $brandId,
             'email' => $merchant['email'] ?? $actor['email'],
             'role' => $actor['role'] ?? 'merchant',
@@ -238,6 +239,7 @@ final class BrandsController
         $ttl = ($remaining > GpJwt::TTL_DEFAULT) ? $remaining : GpJwt::TTL_DEFAULT;
         $token = GpJwt::encode([
             'sub' => $subject,
+            'tv' => (int) ($actor['token_version'] ?? 0),
             'brand' => $brand['brand_id'],
             'email' => $merchant['email'] ?? $actor['email'],
             'role' => $actor['role'] ?? 'merchant',
@@ -295,7 +297,7 @@ final class BrandsController
             GpJson::error('INVALID_THEME', 'checkoutTheme must be default, luxury, or minimal.', 400);
         }
         $status = strtolower(trim((string) $req->input('brandStatus', $req->input('brand_status', $brand['brand_status'] ?? 'active'))));
-        if ($status === 'active') GpAuth::requireVerified($actor);
+        if ($status === 'active' && ($brand['brand_status'] ?? '') !== 'active') GpAuth::requireVerified($actor);
         if (!in_array($status, ['active', 'inactive'], true)) {
             GpJson::error('INVALID_STATUS', 'brandStatus must be active or inactive.', 400);
         }
