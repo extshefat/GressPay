@@ -683,14 +683,16 @@ final class CheckoutController
                 $payable,
                 $methodCode,
                 isset($row['gateway_id']) ? (string) $row['gateway_id'] : null,
-                $gwAccount
+                $gwAccount,
+                $row
             )
             : self::matchingSmsByAmount(
                 (string) $row['brand_id'],
                 $payable,
                 $methodCode,
                 isset($row['gateway_id']) ? (string) $row['gateway_id'] : null,
-                $gwAccount
+                $gwAccount,
+                $row
             );
         if ($sms === null) {
             return $row;
@@ -1018,7 +1020,8 @@ final class CheckoutController
                 $payable,
                 $methodCode,
                 isset($row['gateway_id']) ? (string) $row['gateway_id'] : null,
-                $gwAccount
+                $gwAccount,
+                $row
             );
         } elseif ($smsAuto) {
             $sms = self::matchingSmsByAmount(
@@ -1026,7 +1029,8 @@ final class CheckoutController
                 $payable,
                 $methodCode,
                 isset($row['gateway_id']) ? (string) $row['gateway_id'] : null,
-                $gwAccount
+                $gwAccount,
+                $row
             );
             if ($sms !== null) {
                 $trxId = trim((string) ($sms['trx_id'] ?? ''));
@@ -1122,13 +1126,51 @@ final class CheckoutController
      * @param string|null $gatewayId Session-selected gateway; used for multi-account safety
      * @param string|null $expectedAccount Gateway receiving number when known
      */
+    /**
+     * Correlate SMS received_at with checkout window (same rules as markPaid).
+     * Without a session, only absolute age and future-skew checks apply.
+     *
+     * @param array<string,mixed> $sms
+     * @param array<string,mixed>|null $session
+     */
+    public static function smsWithinSessionWindow(array $sms, ?array $session = null): bool
+    {
+        // Prefer carrier received_at; fall back to ingest created_at for legacy rows.
+        $received = strtotime((string) ($sms['received_at'] ?? ''));
+        if ($received === false) {
+            $received = strtotime((string) ($sms['created_at'] ?? ''));
+        }
+        if ($received === false) {
+            return false;
+        }
+        if ($received > time() + 300 || time() - $received > self::SMS_MAX_AGE_SEC) {
+            return false;
+        }
+        if ($session === null) {
+            return true;
+        }
+        $opened = strtotime((string) ($session['created_at'] ?? ''));
+        $expires = strtotime((string) ($session['expires_at'] ?? ''));
+        if ($opened === false) {
+            return false;
+        }
+        if ($received < $opened - 120) {
+            return false;
+        }
+        if ($expires !== false && $received > $expires) {
+            return false;
+        }
+        return true;
+    }
+
     public static function matchingSms(
         string $brandId,
         string $trxId,
         string $payable,
         string $methodCode,
         ?string $gatewayId = null,
-        ?string $expectedAccount = null
+        ?string $expectedAccount = null,
+        ?array $session = null
     ): ?array {
         $sms = GpDb::one(
             'SELECT * FROM gp_sms_data WHERE brand_id = ? AND (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND status IN (?, ?) ORDER BY id DESC',
@@ -1141,8 +1183,7 @@ final class CheckoutController
         if ($sender !== '' && $sender !== $methodCode) {
             return null;
         }
-        $created = strtotime((string) ($sms['created_at'] ?? ''));
-        if ($created !== false && (time() - $created) > self::SMS_MAX_AGE_SEC) {
+        if (!self::smsWithinSessionWindow($sms, $session)) {
             return null;
         }
         $brand = GpDb::one('SELECT payment_tolerance FROM gp_brands WHERE brand_id = ?', [$brandId]);
@@ -1233,19 +1274,27 @@ final class CheckoutController
         string $payable,
         string $methodCode,
         ?string $gatewayId = null,
-        ?string $expectedAccount = null
+        ?string $expectedAccount = null,
+        ?array $preferSession = null
     ): ?array {
         $pending = GpDb::all("SELECT * FROM gp_transactions WHERE brand_id = ? AND status IN ('pending','initiated') AND (trx_id IS NULL OR trx_id = '')", [$brandId]);
-        $eligible = 0;
+        $eligibleSessions = [];
         $cat = GpCatalog::find($methodCode);
         foreach ($pending as $session) {
             if (GpCatalog::publicCode((string) ($session['method_code'] ?? '')) !== $methodCode
                 || (string) ($session['gateway_id'] ?? '') !== (string) ($gatewayId ?? '')
-                || (!empty($session['expires_at']) && strtotime($session['expires_at']) < time())) continue;
+                || (!empty($session['expires_at']) && strtotime($session['expires_at']) < time())) {
+                continue;
+            }
             $amount = self::submittedAmount($session, (string) ($cat['currency'] ?? 'BDT'));
-            if (GpMoney::sanitize($amount) === GpMoney::sanitize($payable)) $eligible++;
+            if (GpMoney::sanitize($amount) === GpMoney::sanitize($payable)) {
+                $eligibleSessions[] = $session;
+            }
         }
-        if ($eligible !== 1) return null;
+        if (count($eligibleSessions) !== 1) {
+            return null;
+        }
+        $windowSession = $preferSession ?? $eligibleSessions[0];
         $candidates = GpDb::all(
             'SELECT * FROM gp_sms_data WHERE brand_id = ? AND status IN (?, ?) ORDER BY id DESC LIMIT 40',
             [$brandId, 'approved', 'unmatched']
@@ -1256,14 +1305,15 @@ final class CheckoutController
             if ($trx === '') {
                 continue;
             }
-            // Reuse TrxID path so amount/wallet/age rules stay identical.
+            // Reuse TrxID path so amount/wallet/age/window rules stay identical.
             $hit = self::matchingSms(
                 $brandId,
                 $trx,
                 $payable,
                 $methodCode,
                 $gatewayId,
-                $expectedAccount
+                $expectedAccount,
+                $windowSession
             );
             if ($hit !== null) {
                 $matches[] = $hit;
@@ -1306,13 +1356,8 @@ final class CheckoutController
                 $evidencePhone = preg_replace('/\D+/', '', (string) ($sms['payer_phone'] ?? '')) ?: '';
                 if ($expectedPhone === '' || $evidencePhone === '' || substr($expectedPhone, -10) !== substr($evidencePhone, -10)) return $row;
             }
-            $received = strtotime((string) ($sms['received_at'] ?? ''));
-            $opened = strtotime((string) ($row['created_at'] ?? ''));
-            $expires = strtotime((string) ($row['expires_at'] ?? ''));
             // Keep late evidence for review, but never settle a different or expired session.
-            if ($received === false || $opened === false || $received < $opened - 120
-                || $received > time() + 300 || time() - $received > self::SMS_MAX_AGE_SEC
-                || ($expires !== false && $received > $expires)) {
+            if (!self::smsWithinSessionWindow($sms, $row)) {
                 return $row;
             }
         }
