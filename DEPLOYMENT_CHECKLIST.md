@@ -64,6 +64,31 @@ Complete in order. **Do not deploy from this checklist automatically** — use C
 - [ ] Confirm rail “Live-ready” badges
 - [ ] Manual Binance/Tron smoke with real credentials (owner-owned)
 
+## H. Backup & restore (runbook)
+
+Additive ops checklist — rehearse on staging before production schema changes.
+
+### Backup
+- [ ] Coolify DB volume snapshot / provider backup enabled
+- [ ] Logical dump (pick driver):
+  - PostgreSQL: `pg_dump -Fc -h $DB_HOST -U $DB_USER $DB_NAME > gresspay-$(date -u +%Y%m%d).dump`
+  - MySQL/MariaDB: `mysqldump -h $DB_HOST -u $DB_USER -p$DB_PASS $DB_NAME > gresspay-$(date -u +%Y%m%d).sql`
+- [ ] Store dump off-box (object storage / encrypted drive); never commit dumps to git
+- [ ] Note current git SHA / Coolify deploy id with the dump
+
+### Restore order
+1. Stop or scale down **webhook-worker** (avoid double-sends during restore)
+2. Restore database from dump onto a fresh volume / staging DB
+3. Start **gresspay-api** (PHP) and confirm `GET /api/v1/health` → 200
+4. Confirm `GET /api/v1/health/worker` returns queue stats (503 only if stale `processing` rows)
+5. Start **webhook-worker**, then **gresspay-web**
+6. Smoke: login, open Reconciliation, confirm a known completed session still reads correctly
+
+### Verify after restore
+- [ ] `SELECT COUNT(*) FROM gp_transactions` / `gp_sms_data` sane vs pre-backup notes
+- [ ] Unique SMS indexes still present (`uq_gp_sms_brand_trx` / PG `uq_gp_sms_brand_trx_lower`)
+- [ ] No merchant secrets in API JSON responses
+
 ## G. Explicit non-goals
 
 - [ ] Not installed PHP/JDK on personal PC for this deploy
