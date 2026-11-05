@@ -54,6 +54,27 @@ jobs:
           cache-dependency-path: package-lock.json
       - run: npm ci
       - run: npx tsc --noEmit
+      - name: ESLint
+        run: |
+          if [ -x node_modules/.bin/eslint ]; then
+            npm run lint
+          else
+            echo "eslint not present in lockfile yet — refresh with npm install after merging package.json pins"
+          fi
+      - name: Compose twin identity
+        run: |
+          # docker-compose.yml and docker-compose.yaml must stay in sync
+          # (ignore the single cross-ref comment line if present).
+          python3 - <<'PY'
+          from pathlib import Path
+          a = Path("docker-compose.yml").read_text().splitlines()
+          b = Path("docker-compose.yaml").read_text().splitlines()
+          def norm(lines):
+              return [ln for ln in lines if "identical twin" not in ln.lower() and "cross-ref" not in ln.lower()]
+          if norm(a) != norm(b):
+              raise SystemExit("docker-compose.yml and docker-compose.yaml diverge (beyond cross-ref comment)")
+          print("compose twins OK")
+          PY
       - run: npm run build
         env:
           NEXT_PUBLIC_DATA_SOURCE: live

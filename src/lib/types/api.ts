@@ -421,6 +421,7 @@ export interface MerchantSettings {
   supportContact?: string;
   receiptFooter?: string;
   telegramBotTokenSet?: boolean;
+  discordWebhookUrlSet?: boolean;
   telegramChatId?: string;
   discordWebhookUrl?: string;
   webhookUrl: string;

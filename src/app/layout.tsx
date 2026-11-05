@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/lib/theme";
 import { ToastProvider } from "@/components/ui/toast";
+import { themeBootScript } from "@/lib/theme-boot";
 
 export const metadata: Metadata = {
   title: "GressPay — Bangladesh MFS, Binance Pay & USDT",
@@ -30,22 +31,7 @@ export default function RootLayout({
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                try {
-                  var theme = localStorage.getItem('gresspay_theme');
-                  // Product default is dark; only light when explicitly stored.
-                  var isDark = theme !== 'light';
-                  if (isDark) {
-                    document.documentElement.classList.add('dark');
-                    document.documentElement.style.colorScheme = 'dark';
-                  } else {
-                    document.documentElement.classList.remove('dark');
-                    document.documentElement.style.colorScheme = 'light';
-                  }
-                } catch (e) {}
-              })();
-            `,
+            __html: themeBootScript,
           }}
         />
       </head>

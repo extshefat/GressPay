@@ -59,7 +59,7 @@ export default function SettingsPage() {
       setCurrency(data.currency || "BDT");
       setCryptoEnabled(Boolean(data.cryptoEnabled));
       setTelegramChatId(data.telegramChatId || "");
-      setDiscordWebhookUrl(data.discordWebhookUrl || "");
+      setDiscordWebhookUrl("");
       setTelegramBotToken("");
     } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : "Failed to load settings.");
@@ -102,9 +102,10 @@ export default function SettingsPage() {
       await api.updateSettings({
         telegramBotToken: telegramBotToken.trim() || undefined,
         telegramChatId,
-        discordWebhookUrl,
+        discordWebhookUrl: discordWebhookUrl.trim() || undefined,
       });
       setTelegramBotToken("");
+      setDiscordWebhookUrl("");
       success("Instant alert channels saved.", "Saved");
       await loadSettings();
     } catch (err: unknown) {
@@ -254,11 +255,11 @@ export default function SettingsPage() {
               placeholder="-1001234567890"
               className="font-mono text-xs"
             />
-            <Input
+            <PasswordInput
               label="Discord Webhook URL"
               value={discordWebhookUrl}
               onChange={(e) => setDiscordWebhookUrl(e.target.value)}
-              placeholder="https://discord.com/api/webhooks/..."
+              placeholder={settings?.discordWebhookUrlSet ? "•••• configured — paste to replace" : "https://discord.com/api/webhooks/..."}
             />
             <div className="flex flex-wrap justify-end gap-2 pt-2">
               <Button

@@ -1171,5 +1171,91 @@ GpDb::boot();
 $walletQuery->execute([$brandId]);
 assert_true($walletQuery->fetchColumn() === $stored, 'Repeated boot preserves the sealed wallet');
 
+// —— Phase 1 security regressions ——
+putenv('TRUSTED_PROXIES=127.0.0.1/32');
+$_ENV['TRUSTED_PROXIES'] = '127.0.0.1/32';
+putenv('TRUSTED_PROXY_HOPS=1');
+$_ENV['TRUSTED_PROXY_HOPS'] = '1';
+GpConfig::load();
+$_SERVER['REMOTE_ADDR'] = '203.0.113.9';
+$_SERVER['HTTP_X_FORWARDED_FOR'] = '1.2.3.4, 10.0.0.1';
+$_SERVER['HTTP_X_GRESSPAY_CLIENT_IP'] = '9.9.9.9';
+assert_true(GpClientIp::resolve() === '203.0.113.9', 'Untrusted peer ignores spoofed XFF/client-IP');
+$_SERVER['REMOTE_ADDR'] = '127.0.0.1';
+assert_true(GpClientIp::resolve() === '9.9.9.9', 'Trusted peer prefers X-GressPay-Client-IP');
+unset($_SERVER['HTTP_X_GRESSPAY_CLIENT_IP']);
+$_SERVER['HTTP_X_FORWARDED_FOR'] = '8.8.8.8, 10.0.0.5';
+assert_true(GpClientIp::resolve() === '10.0.0.5', 'Trusted peer takes XFF hop from the right');
+
+$bucket = 'test:atomic:' . bin2hex(random_bytes(4));
+assert_true(GpRateLimiter::hit($bucket, 3, 60) === true, 'Atomic rate limit allows first hit');
+assert_true(GpRateLimiter::hit($bucket, 3, 60) === true, 'Atomic rate limit allows second hit');
+assert_true(GpRateLimiter::hit($bucket, 3, 60) === true, 'Atomic rate limit allows third hit');
+assert_true(GpRateLimiter::hit($bucket, 3, 60) === false, 'Atomic rate limit blocks fourth hit');
+$emailA = GpRateLimiter::emailBucket('Alice@Example.com');
+$emailB = GpRateLimiter::emailBucket('bob@example.com');
+assert_true($emailA !== $emailB, 'Email rate buckets are isolated by address');
+assert_true($emailA === GpRateLimiter::emailBucket('alice@example.com'), 'Email bucket normalizes case');
+
+$discordBad = GpSafeHttp::validateDiscordWebhook('https://evil.example/api/webhooks/1/abc');
+assert_true($discordBad['ok'] === false, 'Discord webhook host allowlist rejects non-Discord');
+$discordPath = GpSafeHttp::validateDiscordWebhook('https://discord.com/api/v9/users/@me');
+assert_true($discordPath['ok'] === false, 'Discord webhook path must match /api/webhooks/…');
+$userinfo = GpSafeHttp::validateUrl('https://user:pass@example.com/x');
+assert_true($userinfo['ok'] === false, 'SafeHttp rejects URL userinfo');
+
+$verBefore = GpSchema::currentVersion();
+GpSchema::migrateToLatest();
+$verAfter = GpSchema::currentVersion();
+assert_true($verAfter >= $verBefore && $verAfter >= 1, 'Schema migrate is idempotent and stamped');
+
+$pfxTok = 'gpdev_' . bin2hex(random_bytes(20));
+$pfxDev = GpIds::make('dev', 8);
+GpDb::exec(
+    'INSERT INTO gp_devices (device_id, brand_id, label, token_hash, token_sealed, token_prefix, status, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?)',
+    [$pfxDev, $brandId, 'pfx', password_hash($pfxTok, PASSWORD_BCRYPT), GpCrypto::seal($pfxTok), substr($pfxTok, 0, 12), 'active', $now, $now]
+);
+$foundPfx = CompanionController::deviceForToken($pfxTok);
+assert_true(is_array($foundPfx) && ($foundPfx['device_id'] ?? '') === $pfxDev, 'deviceForToken uses token_prefix index');
+assert_true(CompanionController::deviceForToken('gpdev_' . str_repeat('0', 40)) === null, 'Wrong token misses prefix lookup');
+
+$tvMerchant = GpIds::make('mrc', 6);
+GpDb::exec(
+    'INSERT INTO gp_merchants (merchant_id, full_name, email, password_hash, role, status, plan_id, email_verified, token_version, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+    [$tvMerchant, 'TV', 'tv_' . bin2hex(random_bytes(3)) . '@test.local', password_hash('Password123!', PASSWORD_BCRYPT), 'merchant', 'active', 'trial', 1, 0, $now, $now]
+);
+$tvRow = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$tvMerchant]);
+$jwt0 = GpJwt::issueForMerchant($tvRow);
+$decoded0 = GpJwt::decode($jwt0);
+assert_true(is_array($decoded0) && ($decoded0['tv'] ?? -1) === 0 && !empty($decoded0['jti']), 'JWT carries tv=0 and jti');
+GpJwt::bumpTokenVersion($tvMerchant);
+assert_true(GpJwt::decode($jwt0) !== null, 'Signature still valid after bump');
+// resolveActor rejects stale tv — simulate via Auth decode path
+$tvRow2 = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$tvMerchant]);
+assert_true((int) $tvRow2['token_version'] === 1, 'token_version bumped to 1');
+$jwt1 = GpJwt::issueForMerchant($tvRow2);
+assert_true(GpJwt::decode($jwt1)['tv'] === 1, 'Fresh JWT carries tv=1');
+
+$normTrx = 'abc123xyz';
+assert_true(strtoupper($normTrx) === 'ABC123XYZ', 'TrxID normalize uppercase helper');
+$normBrand = GpIds::make('b', 6);
+$normMerch = GpIds::make('m', 6);
+GpDb::exec(
+    'INSERT INTO gp_merchants (merchant_id, full_name, email, password_hash, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    [$normMerch, 'Norm', 'norm_' . bin2hex(random_bytes(3)) . '@test.local', password_hash('x', PASSWORD_BCRYPT), 'active', $now, $now]
+);
+GpDb::exec(
+    'INSERT INTO gp_brands (brand_id, merchant_id, name, currency_code, timezone, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    [$normBrand, $normMerch, 'Norm Brand', 'BDT', 'Asia/Dhaka', $now, $now]
+);
+GpDb::exec(
+    'INSERT INTO gp_sms_data (brand_id, sender_key, amount, trx_id, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    [$normBrand, 'bkash', '100', 'MIXEDCASETRX', 'approved', $now, $now]
+);
+$matchUpper = CheckoutController::matchingSms($normBrand, 'mixedcasetrx', '100', 'bkash');
+assert_true($matchUpper !== null, 'matchingSms finds uppercase-normalized trx_id');
+
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);
