@@ -37,13 +37,6 @@ export default function OverviewPage() {
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [ledgerMode, setLedgerMode] = useState<"live" | "test">("live");
 
-  useEffect(() => {
-    setLedgerMode(api.getLedgerMode());
-    const onMode = () => setLedgerMode(api.getLedgerMode());
-    window.addEventListener("gresspay-mode", onMode);
-    return () => window.removeEventListener("gresspay-mode", onMode);
-  }, []);
-
   const loadData = async (days: 7 | 30 = rangeDays) => {
     setIsLoading(true);
     setErrorMessage(null);
@@ -60,6 +53,18 @@ export default function OverviewPage() {
       setIsLoading(false);
     }
   };
+
+  // BUG GP-13-03 / MET-01: refetch metrics when Live/Test changes.
+  useEffect(() => {
+    setLedgerMode(api.getLedgerMode());
+    const onMode = () => {
+      setLedgerMode(api.getLedgerMode());
+      void loadData(rangeDays);
+    };
+    window.addEventListener("gresspay-mode", onMode);
+    return () => window.removeEventListener("gresspay-mode", onMode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rangeDays]);
 
   useEffect(() => {
     loadData(rangeDays);

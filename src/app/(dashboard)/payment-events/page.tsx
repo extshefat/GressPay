@@ -159,15 +159,20 @@ export default function PaymentEventsPage() {
                         : row.attempt}
                     </td>
                     <td className="px-4 py-3 font-mono text-[11px] text-zinc-500">
-                      {row.queueStatus === "pending" && row.nextAttemptAt
-                        ? formatDate(row.nextAttemptAt)
-                        : row.queueStatus === "delivered" || row.status === "delivered" || row.status === "completed"
-                          ? "—"
-                          : row.queueLastError
-                            ? row.queueLastError.slice(0, 24)
-                            : "—"}
+                      {row.status === "blocked" && row.note
+                        ? String(row.note).slice(0, 48)
+                        : row.queueStatus === "pending" && row.nextAttemptAt
+                          ? formatDate(row.nextAttemptAt)
+                          : row.queueStatus === "delivered" || row.status === "delivered" || row.status === "completed"
+                            ? "—"
+                            : row.queueLastError
+                              ? row.queueLastError.slice(0, 24)
+                              : row.note
+                                ? String(row.note).slice(0, 24)
+                                : "—"}
                     </td>
                     <td className="px-4 py-3 text-right">
+                      {row.status !== "blocked" && (
                       <Button
                         size="sm"
                         variant="ghost"
@@ -177,6 +182,7 @@ export default function PaymentEventsPage() {
                       >
                         Retry
                       </Button>
+                      )}
                     </td>
                   </tr>
                 ))}

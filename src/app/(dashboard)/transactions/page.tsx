@@ -70,13 +70,6 @@ function TransactionsContent() {
   const [isResendingWebhook, setIsResendingWebhook] = useState(false);
   const [ledgerMode, setLedgerMode] = useState<"live" | "test">("live");
 
-  useEffect(() => {
-    setLedgerMode(api.getLedgerMode());
-    const onMode = () => setLedgerMode(api.getLedgerMode());
-    window.addEventListener("gresspay-mode", onMode);
-    return () => window.removeEventListener("gresspay-mode", onMode);
-  }, []);
-
   const loadTransactions = async () => {
     setIsLoading(true);
     setErrorMessage(null);
@@ -90,17 +83,44 @@ function TransactionsContent() {
     }
   };
 
+  // BUG TXN-01: refetch when Live/Test mode changes.
+  useEffect(() => {
+    setLedgerMode(api.getLedgerMode());
+    const onMode = () => {
+      setLedgerMode(api.getLedgerMode());
+      void loadTransactions();
+    };
+    window.addEventListener("gresspay-mode", onMode);
+    return () => window.removeEventListener("gresspay-mode", onMode);
+  }, []);
+
   useEffect(() => {
     loadTransactions();
   }, []);
 
+  // BUG TXN-02: deep-link via API when id is outside the loaded page.
   useEffect(() => {
     const wanted = searchParams.get("id")?.trim();
-    if (!wanted || transactions.length === 0) return;
+    if (!wanted) return;
     const match = transactions.find(
       (t) => t.id === wanted || (t.txid && t.txid === wanted)
     );
-    if (match) setSelectedTx(match);
+    if (match) {
+      setSelectedTx(match);
+      return;
+    }
+    let cancelled = false;
+    void api
+      .getTransaction(wanted)
+      .then((tx) => {
+        if (!cancelled) setSelectedTx(tx);
+      })
+      .catch(() => {
+        /* leave drawer closed if not found / mode mismatch */
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [searchParams, transactions]);
 
   // Filtered list
@@ -298,9 +318,14 @@ function TransactionsContent() {
         ) : (
           <div className="divide-y divide-zinc-100 dark:divide-zinc-900">
             {filteredTransactions.map((tx) => {
+              // BUG TXN-05: live BD MFS cannot be manually confirmed (SMS evidence required).
+              const liveMfs = ["bkash", "nagad", "rocket", "upay", "cellfin"].includes(
+                String(tx.paymentMethod || "").toLowerCase()
+              );
               const canConfirm =
                 tx.status === "PENDING" &&
                 !!tx.txid &&
+                !(tx.ledgerMode === "live" && liveMfs) &&
                 (tx.confirmationState === "submitted" || !tx.confirmationState);
 
               return (
@@ -469,7 +494,12 @@ function TransactionsContent() {
               <div className="flex justify-between py-1">
                 <span className="text-zinc-500">Net settlement to you:</span>
                 <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                  {formatCurrency(selectedTx.amount - selectedTx.fee, selectedTx.currency)}
+                  {formatCurrency(
+                    typeof selectedTx.netAmount === "number"
+                      ? selectedTx.netAmount
+                      : selectedTx.amount - selectedTx.fee,
+                    selectedTx.currency
+                  )}
                 </span>
               </div>
             </div>

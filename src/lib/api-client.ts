@@ -210,10 +210,14 @@ class ApiClient {
     this.token = null;
     this.rememberMe = false;
     this.setSessionFlag(false);
+    // BUG AUTH-01: clear brand + ledger so the next account cannot inherit workspace context.
+    this.setBrandId(null);
+    this.setLedgerMode("live");
     if (typeof window !== "undefined") {
       localStorage.removeItem("gresspay_jwt");
       sessionStorage.removeItem("gresspay_jwt");
       localStorage.removeItem("gresspay_remember");
+      localStorage.removeItem("gresspay_advanced_test_ledger");
       this.clearLegacyJwtCookie();
       await fetch("/api/auth/session", {
         method: "DELETE",
@@ -266,9 +270,25 @@ class ApiClient {
         const errData = await res.json().catch(() => ({}));
         const message =
           errData?.error?.message || errData?.message || `API Error: ${res.status}`;
-        if (res.status === 401 && endpoint === "/api/v1/me" && this.sessionActive) {
-          // Clear cookie + flag together so login cannot bounce back into dashboard.
+        // BUG AUTH-02: authenticated dashboard 401s clear session (not only /me).
+        // Never bounce public checkout/pay/store buyers to /login.
+        if (res.status === 401 && this.hasToken() && !endpoint.startsWith("/api/v1/auth/")) {
+          const path = typeof window !== "undefined" ? window.location.pathname : "";
+          const onPublic =
+            path.startsWith("/pay/") ||
+            path.startsWith("/store/") ||
+            path.startsWith("/checkout") ||
+            path.startsWith("/callback/");
           await this.clearToken();
+          if (
+            typeof window !== "undefined" &&
+            !onPublic &&
+            !path.startsWith("/login") &&
+            !path.startsWith("/register")
+          ) {
+            const next = encodeURIComponent(path + window.location.search);
+            window.location.assign(`/login?next=${next}`);
+          }
         }
         throw Object.assign(new Error(message), { status: res.status });
       }
