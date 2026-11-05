@@ -16,7 +16,8 @@ export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElemen
 
 export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
   ({ className = "", label, error, helperText, options, children, id, disabled, ...props }, ref) => {
-    const selectId = id || props.name || React.useId();
+    const generatedId = React.useId();
+    const selectId = id || props.name || generatedId;
 
     return (
       <div className="space-y-1.5 w-full text-left">

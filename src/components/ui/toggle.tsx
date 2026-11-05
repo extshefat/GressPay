@@ -21,7 +21,8 @@ export const Toggle: React.FC<ToggleProps> = ({
   className = "",
   id,
 }) => {
-  const toggleId = id || React.useId();
+  const generatedId = React.useId();
+  const toggleId = id || generatedId;
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
     if (e.key === " " || e.key === "Enter") {
