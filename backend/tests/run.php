@@ -980,6 +980,65 @@ $tokenRem = GpJwt::encode(['sub' => 'm_test'], GpJwt::TTL_REMEMBER);
 $payloadRem = GpJwt::decode($tokenRem);
 assert_true(is_array($payloadRem) && (($payloadRem['exp'] - $payloadRem['iat']) === GpJwt::TTL_REMEMBER), 'Remember-me JWT TTL is 7 days');
 
+// —— Match-time SMS window (received_at vs checkout open/expiry) ——
+$sessionWin = [
+    'created_at' => gmdate('Y-m-d\TH:i:s\Z', time() - 600),
+    'expires_at' => gmdate('Y-m-d\TH:i:s\Z', time() + 600),
+];
+$smsInWindow = [
+    'received_at' => gmdate('Y-m-d\TH:i:s\Z', time() - 60),
+    'created_at' => $now,
+];
+$smsBeforeOpen = [
+    'received_at' => gmdate('Y-m-d\TH:i:s\Z', time() - 7200),
+    'created_at' => $now,
+];
+$smsAfterExpiry = [
+    'received_at' => gmdate('Y-m-d\TH:i:s\Z', time() + 900),
+    'created_at' => $now,
+];
+assert_true(CheckoutController::smsWithinSessionWindow($smsInWindow, $sessionWin) === true, 'In-window SMS correlates with session');
+assert_true(CheckoutController::smsWithinSessionWindow($smsBeforeOpen, $sessionWin) === false, 'SMS before checkout open rejected at match time');
+assert_true(CheckoutController::smsWithinSessionWindow($smsAfterExpiry, $sessionWin) === false, 'SMS after session expiry rejected at match time');
+
+$winTrx = 'TRXWIN' . strtoupper(bin2hex(random_bytes(3)));
+$winSessionId = GpIds::make('chs', 6);
+$winOpened = gmdate('Y-m-d\TH:i:s\Z', time() - 300);
+$winExpires = gmdate('Y-m-d\TH:i:s\Z', time() + 900);
+$oldReceived = gmdate('Y-m-d\TH:i:s\Z', time() - 7200);
+GpDb::exec(
+    'INSERT INTO gp_transactions (session_id, brand_id, source, amount, currency, ledger_mode, method_code, status, expires_at, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+    [$winSessionId, $brandId, 'api', '500', 'BDT', 'live', 'bkash', 'pending', $winExpires, $winOpened, $now]
+);
+GpDb::exec(
+    'INSERT INTO gp_sms_data (brand_id, sender_key, amount, trx_id, received_at, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)',
+    [$brandId, 'bkash', '500', $winTrx, $oldReceived, 'approved', $now, $now]
+);
+$winRow = GpDb::one('SELECT * FROM gp_transactions WHERE session_id = ?', [$winSessionId]);
+$winSms = GpDb::one('SELECT * FROM gp_sms_data WHERE brand_id = ? AND trx_id = ?', [$brandId, $winTrx]);
+assert_true(
+    CheckoutController::matchingSms($brandId, $winTrx, '500', 'bkash', null, null, $winRow) === null,
+    'matchingSms rejects out-of-window SMS when session is known'
+);
+assert_true(
+    is_array($winSms) && CheckoutController::smsWithinSessionWindow($winSms, null) === true,
+    'Absolute age still accepts SMS within 48h when session context is absent'
+);
+$ambA = GpIds::make('chs', 6);
+$ambB = GpIds::make('chs', 6);
+foreach ([$ambA, $ambB] as $ambId) {
+    GpDb::exec(
+        'INSERT INTO gp_transactions (session_id, brand_id, source, amount, currency, ledger_mode, method_code, status, expires_at, created_at, updated_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+        [$ambId, $brandId, 'api', '777', 'BDT', 'live', 'bkash', 'pending', gmdate('Y-m-d\TH:i:s\Z', time() + 900), $now, $now]
+    );
+}
+assert_true(
+    CheckoutController::matchingSmsByAmount($brandId, '777', 'bkash') === null,
+    'Ambiguous equal-amount sessions never auto-match by amount'
+);
+
 // —— Safe DB error masking ——
 $mockEx = new RuntimeException("SQLSTATE[HY000] [2002] Connection refused to 10.0.0.99:5432 with secret password=xyz");
 $safeMsg = 'Database unavailable';

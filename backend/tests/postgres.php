@@ -49,6 +49,15 @@ check(CheckoutController::markPaid($delayed,$delayedTrx,'bkash',$method,'100','B
 $expired = $delayed; $expired['session_id'] = GpIds::make('chs',6); $expired['status'] = 'pending';
 $expired['expires_at'] = gmdate('Y-m-d\TH:i:s\Z',time()-4000);
 check(CheckoutController::markPaid($expired,$delayedTrx,'bkash',$method,'100','BDT',$late)['status'] === 'pending','receipt outside payment window cannot settle expired checkout');
+$tooOldTrx = 'PG'.strtoupper(bin2hex(random_bytes(5)));
+$tooOldSession = GpIds::make('chs',6);
+$tooOldOpened = gmdate('Y-m-d\TH:i:s\Z',time()-300);
+$tooOldReceived = gmdate('Y-m-d\TH:i:s\Z',time()-7200);
+GpDb::exec('INSERT INTO gp_transactions (session_id,brand_id,source,amount,currency,ledger_mode,method_code,status,expires_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)', [$tooOldSession,$brand,'api','100','BDT','live','bkash','pending',gmdate('Y-m-d\TH:i:s\Z',time()+600),$tooOldOpened,$now]);
+GpDb::exec('INSERT INTO gp_sms_data (brand_id,sender_key,amount,trx_id,received_at,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)',[$brand,'bkash','100',$tooOldTrx,$tooOldReceived,'approved',$now,$now]);
+$tooOldRow = GpDb::one('SELECT * FROM gp_transactions WHERE session_id = ?',[$tooOldSession]);
+check(CheckoutController::matchingSms($brand,$tooOldTrx,'100','bkash',null,null,$tooOldRow) === null,'match-time window rejects SMS before checkout open');
+check(CheckoutController::matchingSms($brand,$tooOldTrx,'100','bkash') !== null,'absolute-age match still finds SMS without session');
 echo "PostgreSQL integration checks completed\n";
 putenv('GRESSPAY_SMS_AUTO_ALLOWED=1'); $_ENV['GRESSPAY_SMS_AUTO_ALLOWED'] = '1';
 GpConfig::load();
