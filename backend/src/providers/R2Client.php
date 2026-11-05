@@ -85,6 +85,37 @@ final class R2Client
         ];
     }
 
+    /** Server-side PUT via short-lived presigned URL. */
+    public static function putObject(string $objectKey, string $bytes, string $contentType): void
+    {
+        self::requireConfigured();
+        $presigned = self::presignPut($objectKey, $contentType, 120);
+        if (!function_exists('curl_init')) {
+            throw new RuntimeException('curl extension required for R2 uploads');
+        }
+        $ch = curl_init($presigned['url']);
+        $headers = [];
+        foreach ($presigned['headers'] as $k => $v) {
+            $headers[] = $k . ': ' . $v;
+        }
+        curl_setopt_array($ch, [
+            CURLOPT_CUSTOMREQUEST => 'PUT',
+            CURLOPT_POSTFIELDS => $bytes,
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_TIMEOUT => 30,
+            CURLOPT_SSL_VERIFYPEER => true,
+        ]);
+        curl_exec($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err = curl_error($ch);
+        curl_close($ch);
+        if ($code < 200 || $code >= 300) {
+            throw new RuntimeException('R2 putObject failed HTTP ' . $code . ($err !== '' ? ': ' . $err : ''));
+        }
+    }
+
     public static function deleteObject(string $objectKey): bool
     {
         if (!self::isConfigured() || $objectKey === '') {

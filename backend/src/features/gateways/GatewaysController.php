@@ -475,53 +475,105 @@ final class GatewaysController
     private static function directUploadQr(array $actor, array $gw, GpRequest $req): never
     {
         GpRateLimiter::guard('qr-direct:' . $actor['brand_id'], 30, 60);
+        $binary = null;
         $dataUrl = trim((string) $req->input('dataUrl', $req->input('image', '')));
-        if ($dataUrl === '' && !empty($_FILES['file']['tmp_name'])) {
-            $tmp = $_FILES['file']['tmp_name'];
-            $mime = mime_content_type($tmp) ?: 'image/png';
-            $data = file_get_contents($tmp);
-            if ($data !== false) {
-                $dataUrl = 'data:' . $mime . ';base64,' . base64_encode($data);
+        if ($dataUrl !== '' && str_starts_with($dataUrl, 'data:image/')) {
+            $parts = explode(',', $dataUrl, 2);
+            if (count($parts) !== 2) {
+                GpJson::error('INVALID_DATA_URL', 'Invalid data URL format.', 400);
+            }
+            $binary = base64_decode($parts[1], true);
+            if ($binary === false) {
+                GpJson::error('BASE64_DECODE_FAILED', 'Could not decode image.', 400);
+            }
+        } elseif (!empty($_FILES['file']['tmp_name'])) {
+            $binary = file_get_contents($_FILES['file']['tmp_name']);
+            if ($binary === false) {
+                GpJson::error('INVALID_IMAGE', 'Could not read uploaded file.', 400);
             }
         }
-
-        if ($dataUrl === '' || !str_starts_with($dataUrl, 'data:image/')) {
+        if ($binary === null || $binary === '') {
             GpJson::error('INVALID_IMAGE', 'Please provide a valid image (PNG, JPEG, WebP).', 400);
         }
 
-        $parts = explode(',', $dataUrl, 2);
-        if (count($parts) !== 2) {
-            GpJson::error('INVALID_DATA_URL', 'Invalid data URL format.', 400);
-        }
-
-        $header = $parts[0];
-        $binary = base64_decode($parts[1], true);
-        if ($binary === false) {
-            GpJson::error('BASE64_DECODE_FAILED', 'Could not decode image.', 400);
-        }
-
         $len = strlen($binary);
-        if ($len > 3 * 1024 * 1024) {
-            GpJson::error('FILE_TOO_LARGE', 'QR image must be 3MB or smaller.', 400);
+        if ($len > 2 * 1024 * 1024) {
+            GpJson::error('FILE_TOO_LARGE', 'QR image must be 2MB or smaller.', 400);
         }
 
-        preg_match('/data:(image\/[a-zA-Z0-9\.\+]+);base64/', $header, $m);
-        $mime = $m[1] ?? 'image/png';
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $mime = $finfo->buffer($binary) ?: '';
+        $allowed = ['image/png' => 'png', 'image/jpeg' => 'jpg', 'image/webp' => 'webp'];
+        if (!isset($allowed[$mime])) {
+            GpJson::error('INVALID_IMAGE', 'QR image must be PNG, JPEG, or WebP (SVG not allowed).', 400);
+        }
+        $info = @getimagesizefromstring($binary);
+        if ($info === false || empty($info[0]) || empty($info[1])) {
+            GpJson::error('INVALID_IMAGE', 'Image bytes could not be parsed.', 400);
+        }
+        if ($info[0] > 4096 || $info[1] > 4096) {
+            GpJson::error('IMAGE_TOO_LARGE', 'QR dimensions must be 4096×4096 or smaller.', 400);
+        }
+
+        // Re-encode when GD is available to strip payloads / normalize.
+        if (function_exists('imagecreatefromstring') && function_exists('imagepng')) {
+            $img = @imagecreatefromstring($binary);
+            if ($img !== false) {
+                ob_start();
+                if ($mime === 'image/jpeg' && function_exists('imagejpeg')) {
+                    imagejpeg($img, null, 90);
+                    $mime = 'image/jpeg';
+                } elseif ($mime === 'image/webp' && function_exists('imagewebp')) {
+                    imagewebp($img, null, 90);
+                    $mime = 'image/webp';
+                } else {
+                    imagepng($img, null, 6);
+                    $mime = 'image/png';
+                }
+                imagedestroy($img);
+                $re = ob_get_clean();
+                if (is_string($re) && $re !== '') {
+                    $binary = $re;
+                    $len = strlen($binary);
+                }
+            }
+        }
+
+        if (!R2Client::isConfigured()) {
+            GpJson::error('R2_REQUIRED', 'Object storage (R2) must be configured to store QR images. Data-URL storage is disabled.', 503);
+        }
+
+        $ext = $allowed[$mime] ?? 'png';
+        $objectKey = 'qr/' . $actor['brand_id'] . '/' . $gw['gateway_id'] . '/' . bin2hex(random_bytes(8)) . '.' . $ext;
+        try {
+            R2Client::putObject($objectKey, $binary, $mime);
+        } catch (Throwable $e) {
+            error_log('QR R2 upload failed: ' . $e->getMessage());
+            GpJson::error('UPLOAD_FAILED', 'Could not store QR image.', 502);
+        }
         $checksum = hash('sha256', $binary);
 
         GpDb::exec(
             'UPDATE gp_gateways SET qr_object_key = ?, qr_mime = ?, qr_bytes = ?, qr_checksum = ?, qr_status = ?, updated_at = ?
              WHERE brand_id = ? AND gateway_id = ?',
-            [$dataUrl, $mime, $len, $checksum, 'ready', GpIds::now(), $actor['brand_id'], $gw['gateway_id']]
+            [$objectKey, $mime, $len, $checksum, 'ready', GpIds::now(), $actor['brand_id'], $gw['gateway_id']]
         );
 
-        self::audit($actor, 'gateway.qr.direct', ['gatewayId' => $gw['gateway_id'], 'bytes' => $len]);
+        self::audit($actor, 'gateway.qr.direct', ['gatewayId' => $gw['gateway_id'], 'bytes' => $len, 'key' => $objectKey]);
+
+        $url = null;
+        try {
+            $url = R2Client::presignGet($objectKey, min(600, GpConfig::r2PresignTtl()));
+        } catch (Throwable $e) {
+            $url = null;
+        }
 
         GpJson::send([
             'ok' => true,
             'gatewayId' => $gw['gateway_id'],
             'qrStatus' => 'ready',
-            'qrUrl' => $dataUrl,
+            'qrUrl' => $url,
+            'contentType' => $mime,
         ]);
     }
 
