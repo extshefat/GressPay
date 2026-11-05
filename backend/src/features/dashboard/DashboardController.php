@@ -25,7 +25,96 @@ final class DashboardController
             GpTeam::requireCan($actor, 'dashboard', 'view');
             self::metrics($actor, $req);
         }
+        if ($req->method === 'GET' && $action === 'reconciliation') {
+            GpTeam::requireCan($actor, 'dashboard', 'view');
+            self::reconciliation($actor);
+        }
         GpJson::error('NOT_FOUND', 'Unknown dashboard route.', 404);
+    }
+
+    /**
+     * Brand-scoped unmatched SMS + pending checkouts for merchant review.
+     * Never returns sealed secrets or full SMS bodies (none are stored).
+     *
+     * @param array<string,mixed> $actor
+     */
+    private static function reconciliation(array $actor): never
+    {
+        $brandId = GpAuth::activeBrandId($actor);
+        if ($brandId === '') {
+            GpJson::send([
+                'pendingSessions' => [],
+                'unmatchedSms' => [],
+                'counts' => ['pendingSessions' => 0, 'unmatchedSms' => 0],
+            ]);
+        }
+
+        $pendingRows = GpDb::all(
+            "SELECT session_id, amount, currency, method_code, status, trx_id, gateway_id, ledger_mode, expires_at, created_at, updated_at
+             FROM gp_transactions
+             WHERE brand_id = ? AND status IN ('pending', 'initiated')
+             ORDER BY id DESC
+             LIMIT 100",
+            [$brandId]
+        );
+        $pendingSessions = [];
+        foreach ($pendingRows as $r) {
+            $pendingSessions[] = [
+                'sessionId' => (string) $r['session_id'],
+                'amount' => (string) $r['amount'],
+                'currency' => (string) $r['currency'],
+                'methodCode' => GpCatalog::publicCode((string) ($r['method_code'] ?? '')),
+                'status' => (string) $r['status'],
+                'trxId' => $r['trx_id'] !== null && $r['trx_id'] !== '' ? (string) $r['trx_id'] : null,
+                'gatewayId' => $r['gateway_id'] !== null && $r['gateway_id'] !== '' ? (string) $r['gateway_id'] : null,
+                'ledgerMode' => (string) ($r['ledger_mode'] ?? 'live'),
+                'expiresAt' => (string) ($r['expires_at'] ?? ''),
+                'createdAt' => (string) ($r['created_at'] ?? ''),
+                'updatedAt' => (string) ($r['updated_at'] ?? ''),
+            ];
+        }
+
+        $smsRows = GpDb::all(
+            "SELECT id, sender_key, amount, trx_id, number, status, received_at, created_at, device_id
+             FROM gp_sms_data
+             WHERE brand_id = ? AND status IN ('approved', 'unmatched')
+             ORDER BY id DESC
+             LIMIT 100",
+            [$brandId]
+        );
+        $unmatchedSms = [];
+        foreach ($smsRows as $s) {
+            $unmatchedSms[] = [
+                'id' => (int) $s['id'],
+                'rail' => GpCatalog::publicCode((string) ($s['sender_key'] ?? '')),
+                'amount' => (string) $s['amount'],
+                'trxId' => (string) ($s['trx_id'] ?? ''),
+                'walletHint' => self::maskWallet((string) ($s['number'] ?? '')),
+                'status' => (string) $s['status'],
+                'receivedAt' => (string) ($s['received_at'] ?? ''),
+                'createdAt' => (string) ($s['created_at'] ?? ''),
+                'hasDevice' => trim((string) ($s['device_id'] ?? '')) !== '',
+            ];
+        }
+
+        GpJson::send([
+            'pendingSessions' => $pendingSessions,
+            'unmatchedSms' => $unmatchedSms,
+            'counts' => [
+                'pendingSessions' => count($pendingSessions),
+                'unmatchedSms' => count($unmatchedSms),
+            ],
+            'note' => 'Manual confirm on Transactions requires a reason and is distinct from automatic SMS/provider evidence.',
+        ]);
+    }
+
+    private static function maskWallet(string $number): string
+    {
+        $digits = preg_replace('/\D+/', '', $number) ?: '';
+        if (strlen($digits) < 6) {
+            return $digits === '' ? '' : '••••';
+        }
+        return substr($digits, 0, 3) . str_repeat('•', max(0, strlen($digits) - 5)) . substr($digits, -2);
     }
 
     private static function metrics(array $actor, GpRequest $req): never

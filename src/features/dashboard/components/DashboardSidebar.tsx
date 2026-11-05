@@ -22,6 +22,7 @@ import {
   X,
   Activity,
   CreditCard,
+  Scale,
 } from "lucide-react";
 import { GpMark } from "@/components/brand/GpMark";
 import { User } from "@/lib/types/api";
@@ -44,6 +45,7 @@ const CORE_NAV = [
 ];
 
 const AUTOMATION_NAV = [
+  { href: "/dashboard/reconciliation", label: "Reconciliation", icon: Scale },
   { href: "/dashboard/webhooks", label: "Webhooks & delivery", icon: Webhook },
   { href: "/dashboard/payment-events", label: "Payment events", icon: Activity },
   { href: "/dashboard/notifications", label: "Notifications", icon: Bell },

@@ -717,6 +717,37 @@ class ApiClient {
     return this.request<DashboardMetrics>(`/api/v1/dashboard/metrics?days=${days}`);
   }
 
+  async getReconciliation(): Promise<{
+    pendingSessions: Array<{
+      sessionId: string;
+      amount: string;
+      currency: string;
+      methodCode: string;
+      status: string;
+      trxId: string | null;
+      gatewayId: string | null;
+      ledgerMode: string;
+      expiresAt: string;
+      createdAt: string;
+      updatedAt: string;
+    }>;
+    unmatchedSms: Array<{
+      id: number;
+      rail: string;
+      amount: string;
+      trxId: string;
+      walletHint: string;
+      status: string;
+      receivedAt: string;
+      createdAt: string;
+      hasDevice: boolean;
+    }>;
+    counts: { pendingSessions: number; unmatchedSms: number };
+    note?: string;
+  }> {
+    return this.request(`/api/v1/dashboard/reconciliation`);
+  }
+
   async getApiCredentials(): Promise<ApiCredentials> {
         return this.request<ApiCredentials>("/api/v1/merchant/api-keys");
   }
