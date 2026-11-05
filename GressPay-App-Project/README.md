@@ -37,7 +37,7 @@ Open this folder in **Android Studio**. Package: `com.gresspay.companion`.
 3. Production API base is baked into the release build (`BuildConfig.API_BASE`); users never edit it in Setup.
 4. Paste device key on Setup → consent → enable matching → optional inbox scan
 
-Public download (after assemble): `/download/gresspay-companion.apk` (version `1.2.2`).
+Public download (after assemble): `/download/gresspay.apk` (version `1.3.2` / versionCode `10`).
 
 ## Tests / build
 

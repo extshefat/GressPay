@@ -59,7 +59,7 @@ android {
         jvmTarget = "17"
     }
     buildFeatures {
-        viewBinding = true
+        // Compose-only UI — viewBinding removed with unused activity_main.xml
         compose = true
         buildConfig = true
     }

@@ -7,7 +7,7 @@ class KhaltiPersonalGateway extends GressPayBaseGateway
     {
         return [
             'title' => 'Khalti',
-            'logo' => '/methods/khalti.svg',
+            'logo' => '/methods/khalti.png',
             'currency' => 'NPR',
             'tab' => 'mfs',
             'gateway_type' => 'automation',

@@ -26,3 +26,14 @@ Thumbs.db
 *.swp
 
 .android-sdk/
+
+# Android companion (GressPay-App-Project) — never commit build outputs or keystores
+GressPay-App-Project/**/build/
+GressPay-App-Project/.gradle/
+GressPay-App-Project/local.properties
+GressPay-App-Project/*.iml
+GressPay-App-Project/**/*.jks
+GressPay-App-Project/**/*.keystore
+# Ship APKs only via public/download/ or CI artifacts — not app/build outputs
+GressPay-App-Project/**/*.apk
+GressPay-App-Project/**/*.aab
