@@ -69,8 +69,9 @@ Production session/proxy/CSP checks passed, along with anonymous/member/
 unverified-admin denial and verified-admin access using an isolated upstream
 fixture. Real admin authentication still depends on PHP.
 
-The workspace's existing node_modules contains Next 15.1.0 although the manifest
-and lockfile specify 15.5.29. No dependencies were installed. CI or an authorized
-managed environment must repeat checks after `npm ci` to validate that exact
-locked version. This is not a full screen-reader/device audit, nor a contrast
-certification for merchant-supplied checkout colors.
+Verified locally on 2026-11-05 (Asia/Dhaka) with Next 15.5.29: `npm run check:design`,
+`npx tsc --noEmit`, and `NEXT_PUBLIC_DATA_SOURCE=live npm run build` all passed.
+Danger buttons in dark use ink text on the lighter danger fill for AA. Logo PNG
+samples remain `#077C73` / `#1BD1C0` / `#081525`. Dev `/design-system` renders
+light and dark specimens side by side. This is not a full screen-reader/device
+audit, nor a contrast certification for merchant-supplied checkout colors.

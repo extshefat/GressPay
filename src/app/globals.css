@@ -55,8 +55,12 @@
   --ds-warning: 237 186 87;
   --ds-danger: 255 151 146;
   --ds-info: 152 191 235;
+  /* on-brand stays light for teal primary buttons; danger buttons override below. */
+  --ds-on-brand: 237 243 236;
+  --ds-paper: 17 33 36;
   color-scheme: dark;
   --highlight: rgb(255 255 255 / .06);
+  --shadow-color: 0 0 0;
   --shadow-strength: .28;
 }
 :root, .light, .dark, [data-theme] {
@@ -196,7 +200,8 @@ body { font-variant-numeric:tabular-nums; margin:0; color:var(--text-primary); b
 .gp-button[data-variant="ghost"],.gp-button[data-variant="link"] { background:transparent; color:rgb(var(--ds-accent)); }
 .gp-button[data-variant="link"] { text-decoration:underline; text-underline-offset:4px; padding-inline:4px; }
 .gp-button[data-variant="ghost"]:hover { background:var(--bg-muted); }
-.gp-button[data-variant="danger"] { background:rgb(176 43 43); color:rgb(var(--ds-on-brand)); border-color:rgb(140 32 32); box-shadow:var(--elevation-raised); }
+.gp-button[data-variant="danger"] { background:rgb(var(--ds-danger)); color:rgb(var(--ds-on-brand)); border-color:color-mix(in srgb,rgb(var(--ds-danger)) 82%,rgb(var(--ds-ink-solid))); box-shadow:var(--elevation-raised); }
+.dark .gp-button[data-variant="danger"], [data-theme="dark"] .gp-button[data-variant="danger"] { color:rgb(var(--ds-ink-solid)); border-color:color-mix(in srgb,rgb(var(--ds-danger)) 70%,rgb(var(--ds-ink-solid))); }
 .gp-button:active:not(:disabled) { transform:translateY(1px); box-shadow:var(--elevation-flat); }
 .gp-button:disabled { opacity:.5; cursor:not-allowed; }
 .gp-control { width:100%; min-height:44px; padding:10px 14px; color:var(--text-primary); background:var(--bg-card); border:1px solid rgb(var(--ds-border-strong)); border-radius:10px; font-size:.875rem; line-height:1.5; box-shadow:inset 0 1px 2px rgb(var(--shadow-color) / .07); transition:box-shadow 150ms var(--ease-precision),border-color 150ms var(--ease-precision); }

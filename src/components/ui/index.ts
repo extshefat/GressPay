@@ -33,4 +33,5 @@ export * from "./toggle";
 export * from "./tooltip";
 export * from "./tilt-3d";
 export * from "./rail-chip-3d";
+export * from "./elevated-surface";
 export * from "./layout";
