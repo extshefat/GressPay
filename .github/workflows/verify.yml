@@ -55,6 +55,7 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
+      - run: npm run lint
       - run: npx tsc --noEmit
       - run: npm run build
         env:
@@ -85,8 +86,9 @@ jobs:
           fi
       - name: Install extensions
         run: |
-          apk add --no-cache $PHPIZE_DEPS icu-dev curl-dev
-          docker-php-ext-install bcmath
+          apk add --no-cache $PHPIZE_DEPS icu-dev curl-dev libpng-dev libjpeg-turbo-dev libwebp-dev
+          docker-php-ext-configure gd --with-jpeg --with-webp
+          docker-php-ext-install bcmath gd
       - name: Run tests
         run: |
           find backend -name '*.php' -print0 | xargs -0 -n1 php -l
