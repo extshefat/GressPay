@@ -20,6 +20,7 @@ final class GpMigrations
             $migrations = [
                 1 => static function (): void { GpDb::installLegacySchema(); },
                 2 => [self::class, 'securityColumns'],
+                3 => [GpQrStorage::class, 'migrateLegacy'],
             ];
             foreach ($migrations as $version => $apply) {
                 if (GpDb::one('SELECT version FROM gp_schema_version WHERE version = ?', [$version]) !== null) {

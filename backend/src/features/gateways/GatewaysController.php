@@ -170,6 +170,7 @@ final class GatewaysController
             $status = 'active';
         }
 
+        if ($status === 'active') GpAuth::requireVerified($actor);
         [$gatewayFee, $feeType] = self::feeFromRequest($req, null);
         $exchangeRate = self::nullableAmount($req->input('exchangeRate', $req->input('custom_rate_bdt', null)));
         $gwCategory = trim((string) $req->input('gatewayCategory', $req->input('category', $cat['category'] ?? 'mfs')));
@@ -261,6 +262,7 @@ final class GatewaysController
             }
         }
 
+        if ($status === 'active') GpAuth::requireVerified($actor);
         [$gatewayFee, $feeType] = self::feeFromRequest($req, $gw);
         $exchangeRate = self::nullableAmount($req->input('exchangeRate', $req->input('custom_rate_bdt', $gw['exchange_rate'] ?? null)));
         $gwCategoryIn = $req->input('gatewayCategory', $req->input('category', null));
@@ -302,6 +304,7 @@ final class GatewaysController
     /** @param array{brand_id:string,merchant_id?:string} $actor @param array<string,mixed> $gw */
     private static function setStatus(array $actor, array $gw, string $status): never
     {
+        if ($status === 'active') GpAuth::requireVerified($actor);
         if ($status === 'active' && (string) ($gw['method_code'] ?? '') !== 'binance_pay') {
             if (trim((string) ($gw['account'] ?? '')) === '') {
                 GpJson::error('DESTINATION_REQUIRED', 'Save a receiving account before enabling.', 400);
@@ -414,35 +417,19 @@ final class GatewaysController
         if ($objectKey === '' || !str_starts_with($objectKey, $prefix) || str_contains($objectKey, '..')) {
             GpJson::error('INVALID_KEY', 'objectKey is not valid for this gateway.', 400);
         }
-        $head = R2Client::headObject($objectKey);
-        if (empty($head['ok'])) {
-            GpJson::error('OBJECT_MISSING', 'Uploaded object not found in storage. Retry upload.', 400);
+        $bytes = R2Client::readObject($objectKey, min(3 * 1024 * 1024, GpConfig::r2MaxUploadBytes()));
+        try {
+            if ($bytes === null) throw new InvalidArgumentException('Upload is missing or too large.');
+            $image = GpQrStorage::validate($bytes);
+            $validatedKey = GpQrStorage::put($image);
+        } catch (InvalidArgumentException $e) {
+            GpJson::error('INVALID_IMAGE', 'Upload must be a valid PNG, JPEG or WebP QR image (max 2048px and 3MB).', 400);
         }
-        $len = (int) ($head['contentLength'] ?? 0);
-        $max = GpConfig::r2MaxUploadBytes();
-        if ($len <= 0 || $len > $max) {
-            R2Client::deleteObject($objectKey);
-            GpJson::error('FILE_TOO_LARGE', 'Stored object exceeds size limit.', 400);
-        }
-        $ctype = strtolower((string) ($head['contentType'] ?? ''));
-        // Normalize charset suffixes
-        $ctype = explode(';', $ctype)[0];
-        if (!in_array($ctype, ['image/png', 'image/jpeg', 'image/webp'], true)) {
-            // Some R2 returns octet-stream — accept if extension matches
-            $ext = strtolower(pathinfo($objectKey, PATHINFO_EXTENSION));
-            $ctype = match ($ext) {
-                'png' => 'image/png',
-                'jpg', 'jpeg' => 'image/jpeg',
-                'webp' => 'image/webp',
-                default => '',
-            };
-            if ($ctype === '') {
-                R2Client::deleteObject($objectKey);
-                GpJson::error('INVALID_MIME', 'Object content type not allowed.', 400);
-            }
-        }
+        // Upload URL remains writable until expiry. Store a separate sanitized immutable copy.
+        $len = strlen($image['bytes']); $ctype = $image['mime'];
+        $checksum = $image['checksum'];
         $oldKey = (string) ($gw['qr_object_key'] ?? '');
-        $checksum = (string) ($head['etag'] ?? hash('sha256', $objectKey . '|' . $len));
+        $objectKey = $validatedKey;
         GpDb::exec(
             'UPDATE gp_gateways SET qr_object_key = ?, qr_mime = ?, qr_bytes = ?, qr_checksum = ?, qr_status = ?, updated_at = ?
              WHERE brand_id = ? AND gateway_id = ?',
@@ -475,44 +462,23 @@ final class GatewaysController
     private static function directUploadQr(array $actor, array $gw, GpRequest $req): never
     {
         GpRateLimiter::guard('qr-direct:' . $actor['brand_id'], 30, 60);
-        $dataUrl = trim((string) $req->input('dataUrl', $req->input('image', '')));
-        if ($dataUrl === '' && !empty($_FILES['file']['tmp_name'])) {
-            $tmp = $_FILES['file']['tmp_name'];
-            $mime = mime_content_type($tmp) ?: 'image/png';
-            $data = file_get_contents($tmp);
-            if ($data !== false) {
-                $dataUrl = 'data:' . $mime . ';base64,' . base64_encode($data);
+        if (!in_array((string) $gw['method_code'], self::qrCapableMethods(), true)) GpJson::error('QR_UNSUPPORTED', 'This payment method does not support QR images.', 400);
+        try {
+            if (!empty($_FILES['file']['tmp_name'])) {
+                if ((int) ($_FILES['file']['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK || filesize($_FILES['file']['tmp_name']) > 3 * 1024 * 1024) throw new InvalidArgumentException('Invalid upload.');
+                $image = GpQrStorage::validate((string) file_get_contents($_FILES['file']['tmp_name']));
+            } else {
+                $image = GpQrStorage::fromDataUrl(trim((string) $req->input('dataUrl', $req->input('image', ''))));
             }
+            $key = GpQrStorage::put($image);
+        } catch (InvalidArgumentException $e) {
+            GpJson::error('INVALID_IMAGE', 'Upload must be a valid PNG, JPEG or WebP QR image (max 2048px and 3MB).', 400);
         }
-
-        if ($dataUrl === '' || !str_starts_with($dataUrl, 'data:image/')) {
-            GpJson::error('INVALID_IMAGE', 'Please provide a valid image (PNG, JPEG, WebP).', 400);
-        }
-
-        $parts = explode(',', $dataUrl, 2);
-        if (count($parts) !== 2) {
-            GpJson::error('INVALID_DATA_URL', 'Invalid data URL format.', 400);
-        }
-
-        $header = $parts[0];
-        $binary = base64_decode($parts[1], true);
-        if ($binary === false) {
-            GpJson::error('BASE64_DECODE_FAILED', 'Could not decode image.', 400);
-        }
-
-        $len = strlen($binary);
-        if ($len > 3 * 1024 * 1024) {
-            GpJson::error('FILE_TOO_LARGE', 'QR image must be 3MB or smaller.', 400);
-        }
-
-        preg_match('/data:(image\/[a-zA-Z0-9\.\+]+);base64/', $header, $m);
-        $mime = $m[1] ?? 'image/png';
-        $checksum = hash('sha256', $binary);
-
+        $mime = $image['mime']; $len = strlen($image['bytes']); $checksum = $image['checksum'];
         GpDb::exec(
             'UPDATE gp_gateways SET qr_object_key = ?, qr_mime = ?, qr_bytes = ?, qr_checksum = ?, qr_status = ?, updated_at = ?
              WHERE brand_id = ? AND gateway_id = ?',
-            [$dataUrl, $mime, $len, $checksum, 'ready', GpIds::now(), $actor['brand_id'], $gw['gateway_id']]
+            [$key, $mime, $len, $checksum, 'ready', GpIds::now(), $actor['brand_id'], $gw['gateway_id']]
         );
 
         self::audit($actor, 'gateway.qr.direct', ['gatewayId' => $gw['gateway_id'], 'bytes' => $len]);
@@ -521,7 +487,7 @@ final class GatewaysController
             'ok' => true,
             'gatewayId' => $gw['gateway_id'],
             'qrStatus' => 'ready',
-            'qrUrl' => $dataUrl,
+            'qrUrl' => GpQrStorage::url($key),
         ]);
     }
 
@@ -532,14 +498,10 @@ final class GatewaysController
         if ($key === '' || ($gw['qr_status'] ?? '') !== 'ready') {
             GpJson::error('NO_QR', 'No QR image ready for this gateway.', 404);
         }
-        if (str_starts_with($key, 'data:image/')) {
-            GpJson::send([
-                'url' => $key,
-                'expiresIn' => 86400,
-                'mime' => $gw['qr_mime'] ?? 'image/png',
-                'note' => 'Direct data-URL preview.',
-            ]);
+        if (str_starts_with($key, 'local-qr/')) {
+            GpJson::send(['url'=>GpQrStorage::url($key),'expiresIn'=>0,'mime'=>'image/png']);
         }
+        if (str_starts_with($key, 'data:')) GpJson::error('NO_QR', 'QR requires migration.', 409);
         if (!R2Client::isConfigured()) {
             GpJson::error('R2_UNAVAILABLE', 'QR preview unavailable.', 503);
         }
@@ -641,8 +603,10 @@ final class GatewaysController
         }
         if ($includeQrUrl && $qrStatus === 'ready' && !empty($gw['qr_object_key'])) {
             $qrKey = (string) $gw['qr_object_key'];
-            if (str_starts_with($qrKey, 'data:image/')) {
-                $out['qrImageUrl'] = $qrKey;
+            if (str_starts_with($qrKey, 'local-qr/')) {
+                $out['qrImageUrl'] = GpQrStorage::url($qrKey);
+            } elseif (str_starts_with($qrKey, 'data:')) {
+                $out['qrImageUrl'] = null;
             } elseif (R2Client::isConfigured()) {
                 try {
                     $out['qrImageUrl'] = R2Client::presignGet($qrKey, min(900, GpConfig::r2PresignTtl()));

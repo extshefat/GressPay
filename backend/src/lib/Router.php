@@ -26,6 +26,8 @@ final class GpRouter
         $req = new GpRequest($v1);
         $head = $req->part(0) ?? '';
 
+        if ($head === 'assets' && $req->part(1) === 'qr' && $req->method === 'GET') GpQrStorage::serve((string) $req->part(2));
+
         match ($head) {
             'health' => self::health($req),
             'auth' => AuthController::handle($req),

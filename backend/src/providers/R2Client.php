@@ -85,6 +85,23 @@ final class R2Client
         ];
     }
 
+    /** Fetch a private upload for byte validation; never publish the upload-intent key. */
+    public static function readObject(string $objectKey, int $maxBytes): ?string
+    {
+        if (!self::isConfigured()) return null;
+        $ch = curl_init(self::presignGet($objectKey, 60));
+        $bytes = '';
+        curl_setopt_array($ch, [CURLOPT_SSL_VERIFYPEER=>true, CURLOPT_SSL_VERIFYHOST=>2,
+            CURLOPT_FOLLOWLOCATION=>false, CURLOPT_PROTOCOLS=>CURLPROTO_HTTPS,
+            CURLOPT_CONNECTTIMEOUT=>5, CURLOPT_TIMEOUT=>15,
+            CURLOPT_WRITEFUNCTION=>static function ($handle,string $chunk) use (&$bytes,$maxBytes): int {
+                if (strlen($bytes)+strlen($chunk)>$maxBytes) return 0;
+                $bytes.=$chunk; return strlen($chunk);
+            }]);
+        $ok=curl_exec($ch); $code=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE); curl_close($ch);
+        return $ok !== false && $code >= 200 && $code < 300 ? $bytes : null;
+    }
+
     public static function deleteObject(string $objectKey): bool
     {
         if (!self::isConfigured() || $objectKey === '') {

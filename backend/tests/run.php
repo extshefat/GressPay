@@ -1258,12 +1258,27 @@ assert_true($victimRow['password_hash'] === null && (int)$victimRow['token_versi
 GpEmailVerification::adoptGoogleIdentity($victimRow);
 assert_true((int)GpDb::one('SELECT token_version FROM gp_merchants WHERE merchant_id = ?',[$googleVictim])['token_version'] === 1, 'Repeat Google sign-in preserves verified sessions');
 
+// Raster QR input is validated from bytes, not the data URL MIME.
+foreach (['<svg xmlns="http://www.w3.org/2000/svg"></svg>', '<?php echo 1;', str_repeat('x',3*1024*1024+1)] as $invalidImage) {
+    $rejected=false; try { GpQrStorage::validate($invalidImage); } catch (InvalidArgumentException $e) { $rejected=true; }
+    assert_true($rejected, 'QR rejects SVG, executable payload and oversized input');
+}
+$qrPng=base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=');
+$polyglotRejected=false; try { GpQrStorage::validate($qrPng . '<script>alert(1)</script>'); } catch (InvalidArgumentException $e) { $polyglotRejected=true; }
+assert_true($polyglotRejected,'QR rejects appended image polyglot');
+if (function_exists('imagecreatefromstring')) {
+    $qrClean=GpQrStorage::validate($qrPng);
+    $qrKey=GpQrStorage::put($qrClean);
+    assert_true(str_starts_with($qrKey,'local-qr/') && !str_contains($qrKey,'data:'),'QR object key references a sanitized file');
+    assert_true($qrClean['mime']==='image/png' && getimagesizefromstring($qrClean['bytes'])[0]===1,'QR re-encodes validated raster');
+}
+
 // Versioned migrations preserve existing data and skip already-applied work.
 $versions = GpDb::all('SELECT * FROM gp_schema_version ORDER BY version');
 GpMigrations::run();
 assert_true(GpDb::all('SELECT * FROM gp_schema_version ORDER BY version') === $versions, 'Migrations are idempotent and retain version stamps');
 assert_true(GpDb::one('SELECT merchant_id FROM gp_merchants WHERE merchant_id = ?', [$merchantId]) !== null, 'Migration preserves existing merchant data');
-assert_true(count($versions) === 2, 'Ordered schema migrations applied');
+assert_true(count($versions) === 3, 'Ordered schema migrations applied');
 
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

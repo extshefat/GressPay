@@ -37,3 +37,6 @@ GressPay-App-Project/**/*.keystore
 # Ship APKs only via public/download/ or CI artifacts — not app/build outputs
 GressPay-App-Project/**/*.apk
 GressPay-App-Project/**/*.aab
+
+# Sanitized QR blobs are runtime state, never source.
+backend/storage/qr/
