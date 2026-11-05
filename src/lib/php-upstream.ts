@@ -14,6 +14,16 @@ function isUsableOrigin(origin: string): boolean {
     const u = new URL(origin);
     if (u.protocol !== "http:" && u.protocol !== "https:") return false;
     const host = u.hostname.toLowerCase();
+    // Loopback / Docker bind addresses are never valid cross-container PHP URLs.
+    if (
+      host === "0.0.0.0" ||
+      host === "127.0.0.1" ||
+      host === "localhost" ||
+      host === "::1" ||
+      host === "::"
+    ) {
+      return false;
+    }
     // Public site / Cloudflare loop — Next must talk to the internal PHP service.
     if (host === "gresspay.extxcheats.com" || host.endsWith(".extxcheats.com")) {
       if (!host.startsWith("php") && !host.includes("api")) return false;

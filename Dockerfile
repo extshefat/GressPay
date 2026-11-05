@@ -9,15 +9,20 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ARG NEXT_PUBLIC_APP_URL=https://gresspay.extxcheats.com
 ARG R2_PUBLIC_BASE_URL=
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
+ENV R2_PUBLIC_BASE_URL=$R2_PUBLIC_BASE_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_PUBLIC_DATA_SOURCE=live
 RUN npm run build
 
 FROM node:20-alpine AS runner
 WORKDIR /app
+ARG NEXT_PUBLIC_APP_URL=https://gresspay.extxcheats.com
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_PUBLIC_DATA_SOURCE=live
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
+ENV APP_URL=$NEXT_PUBLIC_APP_URL
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 COPY --from=builder --chown=node:node /app/public ./public
