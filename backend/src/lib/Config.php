@@ -57,7 +57,8 @@ final class GpConfig
 
     public static function get(string $key, string $default = ''): string
     {
-        $value = self::$env[$key] ?? '';
+        $process = getenv($key);
+        $value = $process !== false ? $process : (self::$env[$key] ?? '');
         if ($value === '') {
             $aliases = [
                 'DB_NAME' => ['DB_DATABASE'],
@@ -329,11 +330,15 @@ final class GpConfig
         return self::isAdmin($email);
     }
 
-    public static function isAdmin(string $email): bool
+    public static function isAdmin(string $email, bool $verifiedByProvider = false): bool
     {
         $email = strtolower(trim($email));
         if ($email === '') {
             return false;
+        }
+        if (!$verifiedByProvider) {
+            $merchant = GpDb::one('SELECT email_verified FROM gp_merchants WHERE email = ?', [$email]);
+            if (empty($merchant['email_verified'])) return false;
         }
         try {
             $row = GpDb::withinSavepoint(

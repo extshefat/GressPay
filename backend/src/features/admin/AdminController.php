@@ -593,7 +593,7 @@ final class AdminController
         if ($status === 'suspended' && $merchantId === $actor['merchant_id']) {
             GpJson::error('SELF_SUSPENSION', 'You cannot suspend your own administrator account.', 409);
         }
-        GpDb::exec('UPDATE gp_merchants SET status = ?, updated_at = ? WHERE merchant_id = ?', [$status, GpIds::now(), $merchantId]);
+        GpDb::exec('UPDATE gp_merchants SET status = ?, updated_at = ?, token_version = token_version + 1 WHERE merchant_id = ?', [$status, GpIds::now(), $merchantId]);
 
         self::logAudit($actor['email'], 'merchant', $merchantId, 'status_change', [
             'previous' => $merchant['status'],

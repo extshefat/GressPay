@@ -57,7 +57,7 @@ final class GpPresenters
     public static function user(array $merchant, array $brand): array
     {
         $email = strtolower(trim((string) ($merchant['email'] ?? '')));
-        $isAdmin = GpConfig::isAdmin($email) || (($merchant['role'] ?? '') === 'admin');
+        $isAdmin = GpConfig::isAdmin($email) || (!empty($merchant['email_verified']) && ($merchant['role'] ?? '') === 'admin');
         $role = $isAdmin ? 'admin' : ($merchant['role'] ?? 'merchant');
         $planId = $isAdmin ? 'lifetime' : ($merchant['plan_id'] ?? 'starter');
         $mid = (string) ($merchant['merchant_id'] ?? '');
@@ -81,7 +81,8 @@ final class GpPresenters
             'plan_id' => $planId,
             'planExpiresAt' => $merchant['plan_expires_at'] ?? null,
             'status' => $merchant['status'] ?? 'active',
-            'isVerified' => ($merchant['status'] ?? '') === 'active',
+            'emailVerified' => !empty($merchant['email_verified']),
+            'isVerified' => !empty($merchant['email_verified']),
             'credits' => $credits,
             'creditsRemaining' => $sub ? (int) $sub['credits_remaining'] : $credits,
             'subscription' => $sub ? [

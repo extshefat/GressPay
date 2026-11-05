@@ -8,6 +8,32 @@ final class AuthController
         $action = $req->part(1) ?? '';
         $subAction = $req->part(2) ?? '';
 
+        if ($req->method === 'POST' && $action === 'verify-email') {
+            GpRateLimiter::guard('email-verify:' . GpRateLimiter::ip(), 20, 300);
+            if (!GpEmailVerification::consume((string) $req->input('token', ''))) GpJson::error('INVALID_TOKEN', 'Verification link is invalid or expired.', 400);
+            GpJson::send(['ok' => true, 'message' => 'Email verified. Sign in again.']);
+        }
+        if ($req->method === 'POST' && $action === 'resend-verification') {
+            $actor = GpAuth::requireDashboardUser($req);
+            GpRateLimiter::guard('email-resend:' . $actor['merchant_id'], 3, 3600);
+            $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$actor['merchant_id']]);
+            if (empty($merchant['email_verified'])) {
+                try { GpEmailVerification::send($merchant); }
+                catch (Throwable $e) { error_log('Verification mail delivery failed.'); GpJson::error('MAIL_UNAVAILABLE', 'Email could not be sent. Please try again later.', 503); }
+            }
+            GpJson::send(['ok' => true]);
+        }
+        if ($req->method === 'POST' && in_array($action, ['logout-all','password'], true)) {
+            $actor = GpAuth::requireDashboardUser($req);
+            if ($action === 'password') {
+                GpRateLimiter::guard('password:' . $actor['merchant_id'], 5, 900);
+                $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$actor['merchant_id']]);
+                $password = (string) $req->input('password', '');
+                if (strlen($password) < 10 || empty($merchant['password_hash']) || !password_verify((string) $req->input('current_password', ''), $merchant['password_hash'])) GpJson::error('INVALID_CREDENTIALS', 'Current password is incorrect or new password is too short.', 400);
+                GpDb::exec('UPDATE gp_merchants SET password_hash = ?, token_version = token_version + 1 WHERE merchant_id = ?', [password_hash($password, PASSWORD_BCRYPT, ['cost'=>12]), $actor['merchant_id']]);
+            } else { GpAuth::revokeSessions($actor['merchant_id']); }
+            GpJson::send(['ok'=>true]);
+        }
         if ($req->method === 'POST' && $action === 'register') {
             self::register($req);
         }
@@ -114,8 +140,8 @@ final class AuthController
         $name = trim((string) $req->input('full_name', $req->input('name', '')));
         $email = strtolower(trim((string) $req->input('email', '')));
         $password = (string) $req->input('password', '');
-        if ($name === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($password) < 8) {
-            GpJson::error('VALIDATION', 'full_name, valid email, and password (8+ chars) are required.');
+        if ($name === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($password) < 10) {
+            GpJson::error('VALIDATION', 'full_name, valid email, and password (10+ chars) are required.');
         }
         $remember = self::wantRemember($req);
 
@@ -124,7 +150,7 @@ final class AuthController
         }
 
         $now = GpIds::now();
-        $isAdmin = GpConfig::isAdmin($email);
+        $isAdmin = false; // Local registration never proves ownership of the email.
         $role = $isAdmin ? 'admin' : 'merchant';
         $planId = $isAdmin ? 'lifetime' : 'trial';
         $merchantId = GpIds::make('mrc', 8);
@@ -136,7 +162,7 @@ final class AuthController
             GpDb::exec(
                 'INSERT INTO gp_merchants (merchant_id, full_name, email, password_hash, role, status, plan_id, auth_provider, created_at, updated_at)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                [$merchantId, $name, $email, password_hash($password, PASSWORD_BCRYPT), $role, 'active', $planId, 'local', $now, $now]
+                [$merchantId, $name, $email, password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]), $role, 'active', $planId, 'local', $now, $now]
             );
 
             $pdo->commit();
@@ -148,6 +174,8 @@ final class AuthController
             GpJson::error('TRANSACTION_FAILED', 'Account creation could not be completed. Rolled back.', 500);
         }
 
+        try { GpEmailVerification::send(['merchant_id' => $merchantId, 'email' => $email]); }
+        catch (Throwable $e) { error_log('Verification mail delivery failed; resend is available.'); }
         $ttl = $remember ? GpJwt::TTL_REMEMBER : GpJwt::TTL_DEFAULT;
         $token = GpJwt::encode(
             ['sub' => $merchantId, 'brand' => '', 'email' => $email, 'role' => $role, 'is_admin' => $isAdmin, 'plan_id' => $planId],
@@ -183,10 +211,13 @@ final class AuthController
             GpJson::error('INVALID_CREDENTIALS', 'Email or password is incorrect.', 401);
         }
         GpRateLimiter::loginSucceeded($email);
+        if (password_needs_rehash($row['password_hash'], PASSWORD_BCRYPT, ['cost' => 12])) {
+            GpDb::exec('UPDATE gp_merchants SET password_hash = ? WHERE merchant_id = ? AND password_hash = ?', [password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]), $row['merchant_id'], $row['password_hash']]);
+        }
         if ($row['status'] !== 'active') {
             GpJson::error('SUSPENDED', 'This account is not active.', 403);
         }
-        $isAdmin = GpConfig::isAdmin($row['email']) || (($row['role'] ?? '') === 'admin');
+        $isAdmin = GpConfig::isAdmin($row['email']) || (!empty($row['email_verified']) && ($row['role'] ?? '') === 'admin');
         if ($isAdmin && (($row['role'] ?? '') !== 'admin' || ($row['plan_id'] ?? '') !== 'lifetime')) {
             GpDb::exec("UPDATE gp_merchants SET role = 'admin', plan_id = 'lifetime' WHERE merchant_id = ?", [$row['merchant_id']]);
             $row['role'] = 'admin';
@@ -220,7 +251,7 @@ final class AuthController
         $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$actor['merchant_id']]);
         if ($merchant) {
             $email = strtolower(trim((string) ($merchant['email'] ?? '')));
-            $isAdmin = GpConfig::isAdmin($email) || (($merchant['role'] ?? '') === 'admin');
+            $isAdmin = GpConfig::isAdmin($email) || (!empty($merchant['email_verified']) && ($merchant['role'] ?? '') === 'admin');
             if ($isAdmin && (($merchant['role'] ?? '') !== 'admin' || ($merchant['plan_id'] ?? '') !== 'lifetime')) {
                 GpDb::exec("UPDATE gp_merchants SET role = 'admin', plan_id = 'lifetime' WHERE merchant_id = ?", [$merchant['merchant_id']]);
                 $merchant['role'] = 'admin';

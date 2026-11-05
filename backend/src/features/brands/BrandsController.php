@@ -172,7 +172,7 @@ final class BrandsController
                 [$brandId, $m['code'], 'inactive', '{}', $now, $now]
             );
         }
-        GpAuth::issueKey($brandId, 'live', 'Website API key');
+        if (!empty($actor['email_verified'])) GpAuth::issueKey($brandId, 'live', 'Website API key');
         GpAuth::issueKey($brandId, 'test', 'Default test');
 
         $subject = self::jwtSubject($actor);
@@ -295,6 +295,7 @@ final class BrandsController
             GpJson::error('INVALID_THEME', 'checkoutTheme must be default, luxury, or minimal.', 400);
         }
         $status = strtolower(trim((string) $req->input('brandStatus', $req->input('brand_status', $brand['brand_status'] ?? 'active'))));
+        if ($status === 'active') GpAuth::requireVerified($actor);
         if (!in_array($status, ['active', 'inactive'], true)) {
             GpJson::error('INVALID_STATUS', 'brandStatus must be active or inactive.', 400);
         }

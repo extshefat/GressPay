@@ -16,11 +16,11 @@ final class GpAuth
                 $payload['sub'] ?? '',
                 'active',
             ]);
-            if ($merchant === null) {
+            if ($merchant === null || !self::tokenCurrent($payload, $merchant)) {
                 return null;
             }
             $email = strtolower(trim((string) ($merchant['email'] ?? '')));
-            $isAdmin = GpConfig::isAdmin($email) || (($merchant['role'] ?? '') === 'admin');
+            $isAdmin = GpConfig::isAdmin($email) || (!empty($merchant['email_verified']) && ($merchant['role'] ?? '') === 'admin');
             if ($isAdmin && (($merchant['role'] ?? '') !== 'admin' || ($merchant['plan_id'] ?? '') !== 'lifetime')) {
                 GpDb::exec("UPDATE gp_merchants SET role = 'admin', plan_id = 'lifetime' WHERE merchant_id = ?", [$merchant['merchant_id']]);
                 $merchant['role'] = 'admin';
@@ -31,6 +31,7 @@ final class GpAuth
                 'merchant_id' => $merchant['merchant_id'],
                 'brand_id' => '',
                 'email' => $merchant['email'],
+                'email_verified' => !empty($merchant['email_verified']),
                 'role' => $isAdmin ? 'admin' : ($merchant['role'] ?? 'merchant'),
                 'is_admin' => $isAdmin,
                 'plan_id' => $isAdmin ? 'lifetime' : ($merchant['plan_id'] ?? 'starter'),
@@ -85,6 +86,22 @@ final class GpAuth
             ];
         }
         return null;
+    }
+
+    public static function tokenCurrent(array $payload, array $merchant): bool
+    {
+        return (int) ($payload['tv'] ?? 0) === (int) ($merchant['token_version'] ?? 0);
+    }
+
+    public static function revokeSessions(string $merchantId): void
+    {
+        GpDb::exec('UPDATE gp_merchants SET token_version = token_version + 1 WHERE merchant_id = ?', [$merchantId]);
+    }
+
+    public static function requireVerified(array $actor): void
+    {
+        $row = GpDb::one('SELECT email_verified FROM gp_merchants WHERE merchant_id = ?', [$actor['merchant_id']]);
+        if (empty($row['email_verified'])) GpJson::error('EMAIL_UNVERIFIED', 'Verify your email before going live.', 403);
     }
 
     /** JWT actors may select ledger via X-GressPay-Mode; public buyers never reach here. */
@@ -177,7 +194,7 @@ final class GpAuth
     {
         $actor = self::requireActor($req);
         $email = strtolower(trim((string) ($actor['email'] ?? '')));
-        $isAdmin = GpConfig::isAdmin($email) || (($actor['role'] ?? '') === 'admin');
+        $isAdmin = !empty($actor['email_verified']) && (GpConfig::isAdmin($email) || (($actor['role'] ?? '') === 'admin'));
         if (($actor['auth'] ?? '') !== 'jwt' || !$isAdmin) {
             GpJson::error('FORBIDDEN', 'Administrator privileges required for this action.', 403);
         }
@@ -229,6 +246,10 @@ final class GpAuth
 
     public static function issueKey(string $brandId, string $mode, string $name): array
     {
+        if ($mode !== 'test') {
+            $owner = GpDb::one('SELECT m.email_verified FROM gp_merchants m INNER JOIN gp_brands b ON b.merchant_id = m.merchant_id WHERE b.brand_id = ?', [$brandId]);
+            if (empty($owner['email_verified'])) GpJson::error('EMAIL_UNVERIFIED', 'Verify your email before issuing live API keys.', 403);
+        }
         $plain = ($mode === 'test' ? 'gp_test_' : 'gp_live_') . bin2hex(random_bytes(18));
         $prefix = substr($plain, 0, 16);
         $now = GpIds::now();

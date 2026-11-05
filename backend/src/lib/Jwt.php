@@ -12,6 +12,9 @@ final class GpJwt
     public static function encode(array $payload, int $ttlSeconds = self::TTL_DEFAULT): string
     {
         $header = ['alg' => 'HS256', 'typ' => 'JWT'];
+        $merchant = GpDb::one('SELECT token_version FROM gp_merchants WHERE merchant_id = ?', [(string) ($payload['sub'] ?? '')]);
+        $payload['tv'] = (int) ($merchant['token_version'] ?? 0);
+        $payload['jti'] = bin2hex(random_bytes(16));
         $payload['iat'] = time();
         $payload['exp'] = time() + $ttlSeconds;
         $h = self::b64(json_encode($header, JSON_UNESCAPED_SLASHES));
@@ -27,6 +30,8 @@ final class GpJwt
             return null;
         }
         [$h, $p, $s] = $parts;
+        $header = json_decode(self::ub64($h), true);
+        if (!is_array($header) || ($header['alg'] ?? '') !== 'HS256' || strlen($token) > 4096) return null;
         $expected = self::b64(hash_hmac('sha256', $h . '.' . $p, GpConfig::jwtSecret(), true));
         if (!hash_equals($expected, $s)) {
             return null;

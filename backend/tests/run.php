@@ -89,6 +89,7 @@ GpDb::exec(
     'INSERT INTO gp_merchants (merchant_id, full_name, email, password_hash, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
     [$merchantId, 'T', 't_' . bin2hex(random_bytes(3)) . '@test.local', password_hash('x', PASSWORD_BCRYPT), 'active', $now, $now]
 );
+GpDb::exec('UPDATE gp_merchants SET email_verified = 1 WHERE merchant_id = ?', [$merchantId]);
 GpDb::exec(
     'INSERT INTO gp_brands (brand_id, merchant_id, name, currency_code, timezone, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
     [$brandId, $merchantId, 'Brand', 'BDT', 'Asia/Dhaka', $now, $now]
@@ -650,7 +651,7 @@ $_ENV['ADMIN_EMAIL'] = 'stage1-admin@gresspay.test';
 putenv('GOOGLE_REDIRECT_URI=http://localhost:3000/callback/google');
 $_ENV['GOOGLE_REDIRECT_URI'] = 'http://localhost:3000/callback/google';
 GpConfig::load();
-assert_true(GpConfig::isAdminEmail('stage1-admin@gresspay.test') === true, 'isAdminEmail matches ADMIN_EMAIL');
+assert_true(GpConfig::isAdminEmail('stage1-admin@gresspay.test') === false, 'Allowlisted email alone grants no admin privileges');
 assert_true(GpConfig::isAdminEmail('someone-else@gresspay.test') === false, 'isAdminEmail fails closed');
 $_SERVER['HTTP_X_FORWARDED_HOST'] = 'gresspay.extxcheats.com';
 $_SERVER['HTTP_X_FORWARDED_PROTO'] = 'https';
@@ -1227,6 +1228,25 @@ $secretMerchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', 
 assert_true(str_starts_with($secretMerchant['telegram_bot_token'], 'v1:') && !str_contains($secretMerchant['telegram_bot_token'],'test-token'), 'Telegram token sealed at rest');
 assert_true(GpCrypto::open($secretMerchant['telegram_bot_token'], 'gresspay/merchant/discord_webhook_url') === null, 'Alert credential purposes cannot be swapped');
 assert_true(GpMerchantSecrets::read($secretMerchant, 'telegram_bot_token') === 'test-token', 'Sealed alert credential round trip');
+
+// Email verification is signed, expiring, single-use, and revokes old sessions.
+$verifyMerchant = GpIds::make('mrc', 8);
+GpDb::exec('INSERT INTO gp_merchants (merchant_id,full_name,email,password_hash,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?)', [$verifyMerchant,'Unverified','verify@test.local',password_hash('test-password',PASSWORD_BCRYPT),'active',$now,$now]);
+$oldSession = GpJwt::decode(GpJwt::encode(['sub'=>$verifyMerchant]));
+$verifyToken = GpEmailVerification::issue($verifyMerchant);
+assert_true(!GpEmailVerification::consume($verifyToken . 'x'), 'Tampered verification signature rejected');
+assert_true(GpEmailVerification::consume($verifyToken), 'Signed email verification succeeds');
+assert_true(!GpEmailVerification::consume($verifyToken), 'Verification token is single use');
+$verifiedMerchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$verifyMerchant]);
+assert_true(!empty($verifiedMerchant['email_verified']) && !empty($verifiedMerchant['verified_at']), 'Verified identity is persisted');
+assert_true(!GpAuth::tokenCurrent($oldSession,$verifiedMerchant), 'Email verification revokes earlier sessions');
+$currentSession = GpJwt::decode(GpJwt::encode(['sub'=>$verifyMerchant]));
+assert_true(GpAuth::tokenCurrent($currentSession,$verifiedMerchant) && !empty($currentSession['jti']), 'New JWT includes current version and unique identifier');
+GpAuth::revokeSessions($verifyMerchant);
+assert_true(!GpAuth::tokenCurrent($currentSession,GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?',[$verifyMerchant])), 'Logout-all invalidates signed JWTs');
+$expiredToken = GpEmailVerification::issue($verifyMerchant);
+GpDb::exec('UPDATE gp_email_verifications SET expires_at = ? WHERE token_hash = ?', [time()-1,hash('sha256',$expiredToken)]);
+assert_true(!GpEmailVerification::consume($expiredToken), 'Expired stored verification token rejected');
 
 // Versioned migrations preserve existing data and skip already-applied work.
 $versions = GpDb::all('SELECT * FROM gp_schema_version ORDER BY version');

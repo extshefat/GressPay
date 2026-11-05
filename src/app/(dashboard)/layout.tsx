@@ -8,6 +8,7 @@ import { User } from "@/lib/types/api";
 import { DashboardSidebar } from "@/features/dashboard/components/DashboardSidebar";
 import { DashboardHeader } from "@/features/dashboard/components/DashboardHeader";
 import { PlanUsageBanner } from "@/features/dashboard/components/PlanUsageBanner";
+import { EmailVerificationBanner } from "@/features/auth/EmailVerificationBanner";
 import { NoBrandBanner } from "@/features/dashboard/components/NoBrandBanner";
 import { GpMark } from "@/components/brand/GpMark";
 import { Button } from "@/components/ui/button";
@@ -133,6 +134,7 @@ export default function DashboardLayout({
       <div className="flex-1 flex flex-col min-w-0">
         <DashboardHeader user={user} onMenuClick={() => setMobileNavOpen(true)} />
         <main key={`${ledgerMode}-${activeBrandId}`} className="dashboard-canvas flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-7 lg:px-8 lg:py-9 xl:px-10">
+          {user?.emailVerified === false && <EmailVerificationBanner />}
           <NoBrandBanner user={user} />
           <PlanUsageBanner usage={user?.planUsage} className="mb-6 max-w-7xl mx-auto" />
           {children}

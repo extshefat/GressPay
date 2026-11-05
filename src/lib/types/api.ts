@@ -20,6 +20,7 @@ export interface User {
   planUsage?: PlanUsage | null;
   status?: string;
   isVerified: boolean;
+  emailVerified?: boolean;
   avatarUrl?: string;
   createdAt: string;
 }
