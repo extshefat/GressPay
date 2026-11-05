@@ -83,6 +83,8 @@ final class GpMigrations
         self::index('idx_gp_device_prefix', 'gp_devices', 'token_prefix, status');
         self::index('idx_gp_rate_expiry', 'gp_rate_limit', 'window_start');
         GpDb::pdo()->exec('CREATE TABLE IF NOT EXISTS gp_login_failures (account_hash VARCHAR(64) PRIMARY KEY, failures INTEGER NOT NULL, window_start INTEGER NOT NULL, next_attempt INTEGER NOT NULL)');
+        self::index('idx_gp_login_expiry','gp_login_failures','window_start');
+        self::index('idx_gp_email_expiry','gp_email_verifications','expires_at');
     }
 
     private static function transactionClaims(): void

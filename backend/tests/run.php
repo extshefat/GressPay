@@ -1271,6 +1271,8 @@ if (function_exists('imagecreatefromstring')) {
     $qrKey=GpQrStorage::put($qrClean);
     assert_true(str_starts_with($qrKey,'local-qr/') && !str_contains($qrKey,'data:'),'QR object key references a sanitized file');
     assert_true($qrClean['mime']==='image/png' && getimagesizefromstring($qrClean['bytes'])[0]===1,'QR re-encodes validated raster');
+    GpQrStorage::delete($qrKey);
+    assert_true(!is_file($root.'/storage/qr/'.basename($qrKey)),'Unreferenced sanitized QR file is removed safely');
 }
 
 // Settlement claims are tenant-scoped and survive concurrent inserts through a unique PK.

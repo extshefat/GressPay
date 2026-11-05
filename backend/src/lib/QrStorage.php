@@ -47,6 +47,14 @@ final class GpQrStorage
         return $key;
     }
 
+    public static function delete(string $key): void
+    {
+        if (!preg_match('#^local-qr/[a-f0-9]{48}\.png$#D', $key)) return;
+        if (GpDb::one('SELECT id FROM gp_gateways WHERE qr_object_key = ?', [$key]) !== null) return;
+        $path=GRESSPAY_ROOT . '/storage/qr/' . basename($key);
+        if (is_file($path) && !unlink($path)) error_log('Unreferenced QR file cleanup failed.');
+    }
+
     public static function url(string $key): string
     {
         return GpPlatform::publicSiteRoot() . '/api/v1/assets/qr/' . basename($key);

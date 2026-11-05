@@ -347,9 +347,7 @@ final class GatewaysController
             'DELETE FROM gp_gateways WHERE brand_id = ? AND gateway_id = ?',
             [$actor['brand_id'], $gw['gateway_id']]
         );
-        if ($key !== '' && R2Client::isConfigured()) {
-            R2Client::deleteObject($key);
-        }
+        self::deleteStoredQr($key);
         self::mirrorPrimaryMethod($actor['brand_id'], (string) $gw['method_code']);
         self::audit($actor, 'gateway.delete', ['gatewayId' => $gw['gateway_id']]);
         GpJson::send(['ok' => true, 'deleted' => $gw['gateway_id']]);
@@ -436,7 +434,7 @@ final class GatewaysController
             [$objectKey, $ctype, $len, $checksum, 'ready', GpIds::now(), $actor['brand_id'], $gw['gateway_id']]
         );
         if ($oldKey !== '' && $oldKey !== $objectKey) {
-            R2Client::deleteObject($oldKey);
+            self::deleteStoredQr($oldKey);
         }
         self::audit($actor, 'gateway.qr.complete', ['gatewayId' => $gw['gateway_id'], 'bytes' => $len]);
         GpJson::send(['gateway' => self::present(self::owned($actor['brand_id'], (string) $gw['gateway_id']))]);
@@ -451,9 +449,7 @@ final class GatewaysController
              WHERE brand_id = ? AND gateway_id = ?',
             ['none', GpIds::now(), $actor['brand_id'], $gw['gateway_id']]
         );
-        if ($key !== '' && R2Client::isConfigured()) {
-            R2Client::deleteObject($key);
-        }
+        self::deleteStoredQr($key);
         self::audit($actor, 'gateway.qr.delete', ['gatewayId' => $gw['gateway_id']]);
         GpJson::send(['gateway' => self::present(self::owned($actor['brand_id'], (string) $gw['gateway_id']))]);
     }
@@ -481,6 +477,7 @@ final class GatewaysController
             [$key, $mime, $len, $checksum, 'ready', GpIds::now(), $actor['brand_id'], $gw['gateway_id']]
         );
 
+        self::deleteStoredQr((string) ($gw['qr_object_key'] ?? ''));
         self::audit($actor, 'gateway.qr.direct', ['gatewayId' => $gw['gateway_id'], 'bytes' => $len]);
 
         GpJson::send([
@@ -512,6 +509,12 @@ final class GatewaysController
             'mime' => $gw['qr_mime'] ?? null,
             'note' => 'Short-lived URL for merchant preview only. Scanning a QR does not complete payment.',
         ]);
+    }
+
+    private static function deleteStoredQr(string $key): void
+    {
+        if (str_starts_with($key,'local-qr/')) GpQrStorage::delete($key);
+        elseif ($key !== '' && !str_starts_with($key,'data:') && R2Client::isConfigured()) R2Client::deleteObject($key);
     }
 
     /** @return array<string,mixed> */

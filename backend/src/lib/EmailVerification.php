@@ -14,6 +14,7 @@ final class GpEmailVerification
 
     public static function issue(string $merchantId): string
     {
+        GpDb::exec('DELETE FROM gp_email_verifications WHERE expires_at < ?', [time() - 86400]);
         $payload = $merchantId . '.' . (time() + 86400) . '.' . bin2hex(random_bytes(24));
         $token = $payload . '.' . hash_hmac('sha256', 'verify-email|' . $payload, GpConfig::jwtSecret());
         GpDb::exec('INSERT INTO gp_email_verifications (token_hash, merchant_id, expires_at) VALUES (?, ?, ?)', [hash('sha256', $token), $merchantId, time() + 86400]);
