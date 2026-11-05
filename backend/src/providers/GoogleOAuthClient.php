@@ -296,7 +296,8 @@ final class GoogleOAuthClient
                 // 2. Existing merchant by email
                 $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE email = ?', [$email]);
                 if ($merchant !== null) {
-                    $isAdmin = GpConfig::isAdmin($email) || (($merchant['role'] ?? '') === 'admin');
+                    GpEmailVerification::adoptGoogleIdentity($merchant);
+                    $isAdmin = GpConfig::isAdmin($email, true) || (($merchant['role'] ?? '') === 'admin');
                     $role = $isAdmin ? 'admin' : ($merchant['role'] ?? 'merchant');
                     $planId = $isAdmin ? 'lifetime' : ($merchant['plan_id'] ?? 'starter');
                     GpDb::exec(
@@ -310,7 +311,7 @@ final class GoogleOAuthClient
                 } else {
                     // 3. New registration
                     $isNew = true;
-                    $isAdmin = GpConfig::isAdmin($email);
+                    $isAdmin = GpConfig::isAdmin($email, true);
                     $role = $isAdmin ? 'admin' : 'merchant';
                     $planId = $isAdmin ? 'lifetime' : 'trial';
                     $merchantId = GpIds::make('mrc', 8);
@@ -325,23 +326,15 @@ final class GoogleOAuthClient
                 }
             }
 
+            GpDb::exec('UPDATE gp_merchants SET email_verified = 1, verified_at = COALESCE(verified_at, ?) WHERE merchant_id = ?', [$now, $merchant['merchant_id']]);
+            $merchant['email_verified'] = 1;
             $pdo->commit();
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
             }
             error_log('Google OAuth account linking error: ' . $e->getMessage());
-            $detail = trim(preg_replace('/\s+/', ' ', $e->getMessage()) ?? '');
-            if (strlen($detail) > 180) {
-                $detail = substr($detail, 0, 180) . '…';
-            }
-            return [
-                'ok' => false,
-                'error' => 'TRANSACTION_FAILED',
-                'message' => $detail !== ''
-                    ? 'Database error while linking Google account. ' . $detail
-                    : 'Database error while linking Google account.',
-            ];
+            return ['ok' => false, 'error' => 'TRANSACTION_FAILED', 'message' => 'Google sign-in could not be completed. Please try again.'];
         }
 
         $isAdmin = GpConfig::isAdmin($merchant['email']) || (($merchant['role'] ?? '') === 'admin');

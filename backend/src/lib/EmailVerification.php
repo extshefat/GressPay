@@ -3,6 +3,15 @@ declare(strict_types=1);
 
 final class GpEmailVerification
 {
+    /** Called only after Google returns email_verified=true, inside the linking transaction. */
+    public static function adoptGoogleIdentity(array $merchant): void
+    {
+        if (empty($merchant['email_verified'])) {
+            GpDb::exec('UPDATE gp_merchants SET password_hash = NULL, token_version = token_version + 1 WHERE merchant_id = ?', [$merchant['merchant_id']]);
+        }
+        GpDb::exec('UPDATE gp_merchants SET email_verified = 1, verified_at = COALESCE(verified_at, ?) WHERE merchant_id = ?', [GpIds::now(), $merchant['merchant_id']]);
+    }
+
     public static function issue(string $merchantId): string
     {
         $payload = $merchantId . '.' . (time() + 86400) . '.' . bin2hex(random_bytes(24));

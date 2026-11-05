@@ -75,6 +75,7 @@ final class GpAuth
             if ($merchant === null) {
                 return null;
             }
+            if ($mode === 'live' && empty($merchant['email_verified'])) return null;
             $scopes = self::parseScopes((string) ($row['scopes'] ?? ''));
             return [
                 'merchant_id' => $brand['merchant_id'],
