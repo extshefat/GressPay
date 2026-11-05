@@ -29,9 +29,10 @@ services:
     ports:
       - "3000"
     restart: unless-stopped
+    # Do not use condition: service_healthy — Coolify compose fails the whole
+    # deploy when php is still migrating / DB is briefly 503. Web retries via BFF.
     depends_on:
-      php:
-        condition: service_healthy
+      - php
 
   php:
     volumes:
@@ -40,11 +41,20 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     healthcheck:
-      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1:8080/api/v1/health') === false ? 1 : 0);"]
-      interval: 30s
-      timeout: 10s
-      start_period: 30s
-      retries: 3
+      # Liveness only: any HTTP response (200 or 503) means nginx+FPM is up.
+      # file_get_contents returns false on 503 without ignore_errors, which
+      # incorrectly marked the container unhealthy during DB warm-up.
+      test:
+        [
+          "CMD",
+          "php",
+          "-r",
+          "$$c=stream_context_create(['http'=>['timeout'=>3,'ignore_errors'=>true]]); $$b=@file_get_contents('http://127.0.0.1:8080/api/v1/health',false,$$c); exit($$b===false?1:0);",
+        ]
+      interval: 15s
+      timeout: 5s
+      start_period: 90s
+      retries: 5
     environment: &php_environment
       PORT: "8080"
       TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
