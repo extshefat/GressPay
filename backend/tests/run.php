@@ -1257,5 +1257,78 @@ GpDb::exec(
 $matchUpper = CheckoutController::matchingSms($normBrand, 'mixedcasetrx', '100', 'bkash');
 assert_true($matchUpper !== null, 'matchingSms finds uppercase-normalized trx_id');
 
+// —— Phase 2 regressions (BUG_AUDIT) ——
+$feeAmt = 100.0;
+$feeVal = 1.5;
+$txnNetRow = [
+    'session_id' => 'chs_net1',
+    'amount' => $feeAmt,
+    'fee' => $feeVal,
+    'local_net' => '98.50',
+    'currency' => 'BDT',
+    'method_code' => 'bkash',
+    'status' => 'completed',
+    'ledger_mode' => 'live',
+    'trx_id' => 'NETTRX1',
+    'created_at' => $now,
+    'updated_at' => $now,
+    'source' => 'api',
+    'metadata' => '{}',
+];
+$presentedNet = GpPresenters::transaction($txnNetRow, ['name' => 'N', 'brand_id' => $normBrand, 'merchant_id' => $normMerch], []);
+assert_true(
+    abs((float) $presentedNet['netAmount'] - 98.5) < 0.001,
+    'MONEY-01: netAmount is amount − fee (local_net), not amount + fee'
+);
+assert_true(
+    (float) $presentedNet['netAmount'] < (float) $presentedNet['amount'],
+    'MONEY-01: netAmount below gross amount'
+);
+
+$rateBrand = GpIds::make('b', 6);
+$rateMerch = GpIds::make('m', 6);
+GpDb::exec(
+    'INSERT INTO gp_merchants (merchant_id, full_name, email, password_hash, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    [$rateMerch, 'Rate', 'rate_' . bin2hex(random_bytes(3)) . '@test.local', password_hash('x', PASSWORD_BCRYPT), 'active', $now, $now]
+);
+GpDb::exec(
+    'INSERT INTO gp_brands (brand_id, merchant_id, name, currency_code, timezone, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    [$rateBrand, $rateMerch, 'Rate Brand', 'BDT', 'Asia/Dhaka', $now, $now]
+);
+GpDb::exec(
+    'INSERT INTO gp_methods (brand_id, code, status, options, created_at, updated_at) VALUES (?,?,?,?,?,?)',
+    [$rateBrand, 'binance_pay', 'active', json_encode(['custom_rate_bdt' => 999]), $now, $now]
+);
+GpDb::exec(
+    'INSERT INTO gp_methods (brand_id, code, status, options, created_at, updated_at) VALUES (?,?,?,?,?,?)',
+    [$rateBrand, 'usdt_trc20', 'active', json_encode(['custom_rate_bdt' => 122.5]), $now, $now]
+);
+$usdtOnly = GpRatesEngine::customRateBdt($rateBrand);
+assert_true($usdtOnly !== null && abs($usdtOnly - 122.5) < 0.01, 'GW-01: customRateBdt reads usdt_trc20 only, not Binance');
+
+$expMerch = GpIds::make('m', 6);
+$expBrand = GpIds::make('b', 6);
+$past = gmdate('Y-m-d\TH:i:s\Z', time() - 86400);
+GpDb::exec(
+    'INSERT INTO gp_merchants (merchant_id, full_name, email, password_hash, role, status, plan_id, plan_expires_at, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)',
+    [$expMerch, 'Exp', 'exp_' . bin2hex(random_bytes(3)) . '@test.local', password_hash('x', PASSWORD_BCRYPT), 'merchant', 'active', 'pro', $past, $now, $now]
+);
+GpDb::exec(
+    'INSERT INTO gp_brands (brand_id, merchant_id, name, currency_code, timezone, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    [$expBrand, $expMerch, 'Exp Brand', 'BDT', 'Asia/Dhaka', $now, $now]
+);
+$limitsExp = GpPlatform::planLimitsForBrand($expBrand);
+assert_true(($limitsExp['planId'] ?? '') === 'trial', 'BILL-01: expired pro plan falls back to trial device/gateway limits');
+
+$tvSwitch = GpIds::make('m', 6);
+GpDb::exec(
+    'INSERT INTO gp_merchants (merchant_id, full_name, email, password_hash, status, email_verified, token_version, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)',
+    [$tvSwitch, 'Sw', 'sw_' . bin2hex(random_bytes(3)) . '@test.local', password_hash('Password123!', PASSWORD_BCRYPT), 'active', 1, 3, $now, $now]
+);
+$swRow = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$tvSwitch]);
+$swJwt = GpJwt::issueForMerchant($swRow, ['brand' => 'brd_test']);
+$swPayload = GpJwt::decode($swJwt);
+assert_true(is_array($swPayload) && (int) ($swPayload['tv'] ?? -1) === 3, 'WS-01: issueForMerchant embeds current token_version');
+
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

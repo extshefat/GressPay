@@ -235,17 +235,18 @@ final class BrandsController
         }
         $subject = self::jwtSubject($actor);
         $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$subject]);
+        if (!is_array($merchant)) {
+            GpJson::error('UNAUTHORIZED', 'Merchant session is no longer valid.', 401);
+        }
         $existingExp = isset($actor['exp']) ? (int) $actor['exp'] : 0;
         $remaining = $existingExp - time();
         $ttl = ($remaining > GpJwt::TTL_DEFAULT) ? $remaining : GpJwt::TTL_DEFAULT;
-        $token = GpJwt::encode([
-            'sub' => $subject,
-            'brand' => $brand['brand_id'],
-            'email' => $merchant['email'] ?? $actor['email'],
-            'role' => $actor['role'] ?? 'merchant',
-            'is_admin' => !empty($actor['is_admin']),
-            'plan_id' => $actor['plan_id'] ?? 'starter',
-        ], $ttl);
+        // BUG WS-01: must carry token_version (tv) or resolveActor rejects after Google link / wipe.
+        $token = GpJwt::issueForMerchant(
+            $merchant,
+            ['brand' => (string) $brand['brand_id']],
+            $ttl
+        );
         GpJson::send([
             'brandId' => $brand['brand_id'],
             'name' => $brand['name'],
