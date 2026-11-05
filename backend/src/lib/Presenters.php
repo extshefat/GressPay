@@ -287,6 +287,17 @@ final class GpPresenters
             'completed' => 'Payment completed.',
             default => null,
         };
+        if ($message === null) {
+            $message = match ($status) {
+                'EXPIRED' => 'This payment window has ended. Ask the seller for a new checkout before sending money again.',
+                'FAILED' => 'This checkout was canceled or failed. Contact the seller with your session id before paying again.',
+                'REFUNDED' => 'This payment was refunded by the merchant. Contact them before sending another payment.',
+                'PENDING' => empty($row['trx_id'])
+                    ? 'Waiting for payment evidence. Pay the shown wallet, then submit your Transaction ID.'
+                    : 'Transaction ID received. Waiting for matching companion SMS or provider confirmation — do not pay twice.',
+                default => null,
+            };
+        }
         $returnUrl = isset($meta['returnUrl']) && is_string($meta['returnUrl']) ? $meta['returnUrl'] : null;
         $redirectUrl = null;
         if ($status === 'COMPLETED' && $returnUrl) {

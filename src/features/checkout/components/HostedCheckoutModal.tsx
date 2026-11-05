@@ -278,6 +278,9 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
 
       try {
         const res = await api.getCheckoutStatus(session.sessionId);
+        if (res.message) {
+          setStatusMessage(res.message);
+        }
         if (res.status === "COMPLETED") {
           if (pollingRef.current) clearInterval(pollingRef.current);
           setIsPollingVerification(false);
@@ -517,7 +520,10 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
   if (checkoutStatus === "FAILED" || checkoutStatus === "REFUNDED") {
     return <section className="mx-auto max-w-lg space-y-3 rounded-2xl border bg-[var(--bg-card)] p-8 text-center">
       <h2 className="text-xl font-semibold">{checkoutStatus === "FAILED" ? "Payment unsuccessful" : "Payment refunded"}</h2>
-      <p className="text-sm text-[var(--text-secondary)]">Contact {session.merchantName} with your order reference before sending another payment.</p>
+      <p className="text-sm text-[var(--text-secondary)]">
+        {statusMessage ||
+          `Contact ${session.merchantName} with your order reference before sending another payment.`}
+      </p>
       <p className="break-all font-mono text-xs">{session.sessionId}</p>
       {session.returnUrl && <a className="inline-block underline" href={session.returnUrl}>Return to seller</a>}
     </section>;
@@ -536,7 +542,8 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
           Payment Window Ended
         </h2>
         <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed max-w-sm mx-auto">
-          This payment session has timed out for security. Please request a new checkout link or invoice from the seller.
+          {statusMessage ||
+            "This payment session has timed out for security. Please request a new checkout link or invoice from the seller."}
         </p>
         <div className="pt-2">
           <Button
