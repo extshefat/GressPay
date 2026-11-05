@@ -143,6 +143,9 @@ final class BrandsController
         }
         GpTeam::requireCan($actor, 'brands', 'create');
         GpPlanLimits::assertBrandCreateAllowed((string) $actor['merchant_id']);
+        // Live API keys require a verified email; brand + test key can still be created.
+        $merchantCheck = GpDb::one('SELECT email_verified FROM gp_merchants WHERE merchant_id = ?', [$actor['merchant_id']]);
+        $emailVerified = !empty($merchantCheck['email_verified']) || !empty($actor['email_verified']);
 
         $name = trim((string) $req->input('name', $req->input('brand_name', '')));
         if ($name === '') {
@@ -152,8 +155,8 @@ final class BrandsController
         $now = GpIds::now();
         $webhookSecret = 'gpwh_' . bin2hex(random_bytes(24));
         GpDb::exec(
-            'INSERT INTO gp_brands (brand_id, merchant_id, name, currency_code, timezone, webhook_secret, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO gp_brands (brand_id, merchant_id, name, currency_code, timezone, webhook_secret, require_payer_match, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)',
             [
                 $brandId,
                 $actor['merchant_id'],
@@ -172,19 +175,17 @@ final class BrandsController
                 [$brandId, $m['code'], 'inactive', '{}', $now, $now]
             );
         }
-        GpAuth::issueKey($brandId, 'live', 'Website API key');
+        if ($emailVerified) {
+            GpAuth::issueKey($brandId, 'live', 'Website API key');
+        }
         GpAuth::issueKey($brandId, 'test', 'Default test');
 
         $subject = self::jwtSubject($actor);
         $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$subject]);
-        $token = GpJwt::encode([
-            'sub' => $subject,
-            'brand' => $brandId,
-            'email' => $merchant['email'] ?? $actor['email'],
-            'role' => $actor['role'] ?? 'merchant',
-            'is_admin' => !empty($actor['is_admin']),
-            'plan_id' => $actor['plan_id'] ?? 'starter',
-        ]);
+        $token = GpJwt::issueForMerchant(
+            $merchant ?: ['merchant_id' => $subject, 'email' => $actor['email'] ?? '', 'role' => $actor['role'] ?? 'merchant', 'plan_id' => $actor['plan_id'] ?? 'starter', 'email_verified' => $emailVerified ? 1 : 0, 'token_version' => 0],
+            ['brand' => $brandId]
+        );
         GpJson::send([
             'brand' => [
                 'brandId' => $brandId,
@@ -202,6 +203,7 @@ final class BrandsController
         if (!self::isWorkspaceOwner($actor)) {
             GpJson::error('FORBIDDEN', 'Only the workspace owner can rotate website API keys.', 403);
         }
+        GpAuth::requireEmailVerified($actor, 'minting live API keys');
         $brand = GpDb::one(
             'SELECT * FROM gp_brands WHERE brand_id = ? AND merchant_id = ?',
             [$brandId, $actor['merchant_id']]
@@ -343,6 +345,8 @@ final class BrandsController
         }
         $shuffleRaw = $req->input('shuffleDuplicateGateways', $req->input('shuffle_duplicate_gateways', $brand['shuffle_duplicate_gateways'] ?? 0));
         $shuffle = ($shuffleRaw === true || $shuffleRaw === 1 || $shuffleRaw === '1' || $shuffleRaw === 'true') ? 1 : 0;
+        $payerMatchRaw = $req->input('requirePayerMatch', $req->input('require_payer_match', $brand['require_payer_match'] ?? 1));
+        $requirePayerMatch = ($payerMatchRaw === true || $payerMatchRaw === 1 || $payerMatchRaw === '1' || $payerMatchRaw === 'true') ? 1 : 0;
 
         // equal_or_more uses a small default tolerance so SMS overpay can still match.
         $tolerance = $amountPolicy === 'equal_or_more'
@@ -358,7 +362,7 @@ final class BrandsController
                 support_mobile = ?, support_whatsapp = ?, support_email = ?, support_telegram = ?,
                 checkout_theme = ?, brand_status = ?, verification_mode = ?,
                 amount_policy = ?, amount_format = ?, brand_fee = ?, brand_fee_type = ?,
-                shuffle_duplicate_gateways = ?, payment_tolerance = ?, updated_at = ?
+                shuffle_duplicate_gateways = ?, payment_tolerance = ?, require_payer_match = ?, updated_at = ?
              WHERE brand_id = ?',
             [
                 $name,
@@ -377,6 +381,7 @@ final class BrandsController
                 $feeType,
                 $shuffle,
                 $tolerance,
+                $requirePayerMatch,
                 GpIds::now(),
                 $brandId,
             ]
@@ -422,6 +427,9 @@ final class BrandsController
             'brandFee' => $fee,
             'brandFeeType' => (string) ($row['brand_fee_type'] ?? 'fixed') ?: 'fixed',
             'shuffleDuplicateGateways' => !empty($row['shuffle_duplicate_gateways']),
+            'requirePayerMatch' => array_key_exists('require_payer_match', $row)
+                ? !empty($row['require_payer_match'])
+                : true,
         ];
     }
 

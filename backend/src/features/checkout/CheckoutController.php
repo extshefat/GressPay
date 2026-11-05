@@ -50,6 +50,9 @@ final class CheckoutController
         GpRateLimiter::guard('checkout:' . $actor['brand_id'], 60, 60);
         // Ledger mode comes only from authenticated actor (JWT header / API key prefix) — never from buyer body.
         $mode = $actor['mode'] === 'test' ? 'test' : 'live';
+        if ($mode === 'live' && ($actor['auth'] ?? '') === 'jwt') {
+            GpAuth::requireEmailVerified($actor, 'creating live payments');
+        }
         $session = self::openSession($req, $actor['brand_id'], $mode, null, 'api');
         GpJson::send(self::sessionPayload($session), 201);
     }
@@ -879,35 +882,37 @@ final class CheckoutController
                     $trxId = (string) $check['trx_id'];
                 }
             }
+            $trxId = strtoupper($trxId);
         } elseif (!$smsAuto) {
             GpJson::error('MISSING_FIELD', 'trx_id is required.');
         }
 
         // Anti-Fraud & Duplicate TrxID Protection (skip when sms_auto with no TrxID yet).
+        // Brand-scoped equality only — generic errors (no cross-tenant oracle).
         if ($trxId !== '') {
             $dupCompleted = GpDb::one(
-                'SELECT session_id FROM gp_transactions WHERE (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND status = ?',
-                [$trxId, strtoupper($trxId), strtolower($trxId), 'completed']
+                'SELECT session_id FROM gp_transactions WHERE brand_id = ? AND UPPER(trx_id) = ? AND status = ?',
+                [$row['brand_id'], $trxId, 'completed']
             );
             if ($dupCompleted) {
-                GpJson::error('DUPLICATE_TRX', 'This Transaction ID has already been used.', 409);
+                GpJson::error('DUPLICATE_TRX', 'This Transaction ID cannot be used.', 409);
             }
 
             $usedSms = GpDb::one(
-                'SELECT id FROM gp_sms_data WHERE (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND status = ?',
-                [$trxId, strtoupper($trxId), strtolower($trxId), 'used']
+                'SELECT id FROM gp_sms_data WHERE brand_id = ? AND UPPER(trx_id) = ? AND status = ?',
+                [$row['brand_id'], $trxId, 'used']
             );
             if ($usedSms) {
-                GpJson::error('DUPLICATE_TRX', 'This Transaction ID has already been used.', 409);
+                GpJson::error('DUPLICATE_TRX', 'This Transaction ID cannot be used.', 409);
             }
 
             $openDup = GpDb::one(
                 'SELECT session_id FROM gp_transactions
-                 WHERE (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND brand_id = ? AND session_id != ? AND status IN (?, ?)',
-                [$trxId, strtoupper($trxId), strtolower($trxId), $row['brand_id'], $id, 'pending', 'initiated']
+                 WHERE brand_id = ? AND UPPER(trx_id) = ? AND session_id != ? AND status IN (?, ?)',
+                [$row['brand_id'], $trxId, $id, 'pending', 'initiated']
             );
             if ($openDup) {
-                GpJson::error('DUPLICATE_TRX', 'This Transaction ID is already attached to another open checkout.', 409);
+                GpJson::error('DUPLICATE_TRX', 'This Transaction ID cannot be used.', 409);
             }
         }
 
@@ -1172,9 +1177,11 @@ final class CheckoutController
         ?string $expectedAccount = null,
         ?array $session = null
     ): ?array {
+        $trxId = strtoupper(trim($trxId));
+        // UPPER() keeps legacy mixed-case rows matchable until fully backfilled.
         $sms = GpDb::one(
-            'SELECT * FROM gp_sms_data WHERE brand_id = ? AND (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND status IN (?, ?) ORDER BY id DESC',
-            [$brandId, $trxId, strtoupper($trxId), strtolower($trxId), 'approved', 'unmatched']
+            'SELECT * FROM gp_sms_data WHERE brand_id = ? AND UPPER(trx_id) = ? AND status IN (?, ?) ORDER BY id DESC',
+            [$brandId, $trxId, 'approved', 'unmatched']
         );
         if ($sms === null) {
             return null;
@@ -1348,13 +1355,30 @@ final class CheckoutController
                 GpJson::error('EVIDENCE_REQUIRED', 'This payment requires verified receipt, provider or blockchain evidence.', 409);
             }
         }
+        $trxId = strtoupper(trim($trxId));
+        $brand = GpDb::one('SELECT verification_mode, require_payer_match FROM gp_brands WHERE brand_id = ?', [$row['brand_id']]);
         if ($sms !== null && strtolower((string) ($row['ledger_mode'] ?? 'live')) === 'live') {
-            $brand = GpDb::one('SELECT verification_mode FROM gp_brands WHERE brand_id = ?', [$row['brand_id']]);
             if (GpConfig::get('GRESSPAY_SMS_AUTO_ALLOWED', '0') === '1' && ($brand['verification_mode'] ?? '') === 'sms_auto') {
                 $phoneMeta = self::decodeMeta($row);
                 $expectedPhone = preg_replace('/\D+/', '', (string) ($phoneMeta['sender_number'] ?? '')) ?: '';
                 $evidencePhone = preg_replace('/\D+/', '', (string) ($sms['payer_phone'] ?? '')) ?: '';
                 if ($expectedPhone === '' || $evidencePhone === '' || substr($expectedPhone, -10) !== substr($evidencePhone, -10)) return $row;
+            }
+            // trx_id mode: when require_payer_match is on and SMS has payer_phone, buyer digits must match.
+            $requirePayer = !isset($brand['require_payer_match']) || !empty($brand['require_payer_match']);
+            if ($requirePayer && ($brand['verification_mode'] ?? 'trx_id') === 'trx_id') {
+                $smsPhone = preg_replace('/\D+/', '', (string) ($sms['payer_phone'] ?? '')) ?: '';
+                if ($smsPhone !== '') {
+                    $metaPhone = self::decodeMeta($row);
+                    $buyerPhone = preg_replace(
+                        '/\D+/',
+                        '',
+                        (string) ($metaPhone['sender_number'] ?? $metaPhone['payer_phone'] ?? $metaPhone['buyer_phone'] ?? '')
+                    ) ?: '';
+                    if ($buyerPhone !== '' && substr($buyerPhone, -10) !== substr($smsPhone, -10)) {
+                        return $row;
+                    }
+                }
             }
             // Keep late evidence for review, but never settle a different or expired session.
             if (!self::smsWithinSessionWindow($sms, $row)) {
@@ -1378,13 +1402,27 @@ final class CheckoutController
         $pdo = GpDb::pdo();
         $pdo->beginTransaction();
         try {
+            $driver = GpDb::driver();
+            // Lock candidate session row to prevent concurrent settlement races.
+            if ($driver === 'mysql' || $driver === 'pgsql') {
+                $locked = GpDb::one(
+                    'SELECT * FROM gp_transactions WHERE session_id = ? FOR UPDATE',
+                    [$row['session_id']]
+                );
+                if ($locked === null) {
+                    $pdo->rollBack();
+                    return $row;
+                }
+                $row = $locked;
+            }
             $dup = GpDb::one(
-                'SELECT session_id FROM gp_transactions WHERE (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND session_id != ? AND status = ?',
-                [$trxId, strtoupper($trxId), strtolower($trxId), $row['session_id'], 'completed']
+                'SELECT session_id FROM gp_transactions WHERE brand_id = ? AND UPPER(trx_id) = ? AND session_id != ? AND status = ?',
+                [$row['brand_id'], $trxId, $row['session_id'], 'completed']
             );
             if ($dup) {
                 $pdo->rollBack();
-                GpJson::error('DUPLICATE_TRX', 'This Transaction ID has already been used.', 409);
+                // Generic message — no cross-tenant oracle wording.
+                GpJson::error('DUPLICATE_TRX', 'This Transaction ID cannot be used.', 409);
             }
 
             if ($sms) {

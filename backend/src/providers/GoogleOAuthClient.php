@@ -296,19 +296,37 @@ final class GoogleOAuthClient
                 // 2. Existing merchant by email
                 $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE email = ?', [$email]);
                 if ($merchant !== null) {
-                    $isAdmin = GpConfig::isAdmin($email) || (($merchant['role'] ?? '') === 'admin');
+                    // Linking Google to an existing local account: wipe password, bump token_version, mark verified.
+                    $tv = ((int) ($merchant['token_version'] ?? 0)) + 1;
+                    $isAdmin = true && (GpConfig::isAdmin($email) || (($merchant['role'] ?? '') === 'admin'));
+                    // Admin only after verified (Google email is verified here).
                     $role = $isAdmin ? 'admin' : ($merchant['role'] ?? 'merchant');
                     $planId = $isAdmin ? 'lifetime' : ($merchant['plan_id'] ?? 'starter');
                     GpDb::exec(
-                        'UPDATE gp_merchants SET google_id = ?, avatar_url = COALESCE(avatar_url, ?), google_email_verified = 1, role = ?, plan_id = ?, updated_at = ? WHERE merchant_id = ?',
-                        [$googleId, $picture, $role, $planId, $now, $merchant['merchant_id']]
+                        'UPDATE gp_merchants SET google_id = ?, avatar_url = COALESCE(avatar_url, ?), google_email_verified = 1,
+                         email_verified = 1, email_verified_at = ?, password_hash = NULL, token_version = ?,
+                         role = ?, plan_id = ?, auth_provider = ?, updated_at = ? WHERE merchant_id = ?',
+                        [
+                            $googleId,
+                            $picture,
+                            $now,
+                            $tv,
+                            $role,
+                            $planId,
+                            'google',
+                            $now,
+                            $merchant['merchant_id'],
+                        ]
                     );
                     $merchant['role'] = $role;
                     $merchant['plan_id'] = $planId;
                     $merchant['google_id'] = $googleId;
                     $merchant['avatar_url'] = $picture;
+                    $merchant['email_verified'] = 1;
+                    $merchant['token_version'] = $tv;
+                    $merchant['password_hash'] = null;
                 } else {
-                    // 3. New registration
+                    // 3. New registration via Google — verified, never admin until allowlisted+verified.
                     $isNew = true;
                     $isAdmin = GpConfig::isAdmin($email);
                     $role = $isAdmin ? 'admin' : 'merchant';
@@ -316,12 +334,21 @@ final class GoogleOAuthClient
                     $merchantId = GpIds::make('mrc', 8);
 
                     GpDb::exec(
-                        "INSERT INTO gp_merchants (merchant_id, full_name, email, password_hash, role, status, plan_id, google_id, auth_provider, avatar_url, google_email_verified, created_at, updated_at)
-                         VALUES (?, ?, ?, NULL, ?, 'active', ?, ?, 'google', ?, 1, ?, ?)",
-                        [$merchantId, $fullName, $email, $role, $planId, $googleId, $picture, $now, $now]
+                        "INSERT INTO gp_merchants (merchant_id, full_name, email, password_hash, role, status, plan_id, google_id, auth_provider, avatar_url, google_email_verified, email_verified, email_verified_at, token_version, created_at, updated_at)
+                         VALUES (?, ?, ?, NULL, ?, 'active', ?, ?, 'google', ?, 1, 1, ?, 0, ?, ?)",
+                        [$merchantId, $fullName, $email, $role, $planId, $googleId, $picture, $now, $now, $now]
                     );
 
                     $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$merchantId]);
+                }
+            } else {
+                // Existing google_id login — ensure verified flag.
+                if (empty($merchant['email_verified'])) {
+                    GpDb::exec(
+                        'UPDATE gp_merchants SET email_verified = 1, email_verified_at = ?, google_email_verified = 1, updated_at = ? WHERE merchant_id = ?',
+                        [$now, $now, $merchant['merchant_id']]
+                    );
+                    $merchant['email_verified'] = 1;
                 }
             }
 
@@ -331,20 +358,15 @@ final class GoogleOAuthClient
                 $pdo->rollBack();
             }
             error_log('Google OAuth account linking error: ' . $e->getMessage());
-            $detail = trim(preg_replace('/\s+/', ' ', $e->getMessage()) ?? '');
-            if (strlen($detail) > 180) {
-                $detail = substr($detail, 0, 180) . '…';
-            }
             return [
                 'ok' => false,
                 'error' => 'TRANSACTION_FAILED',
-                'message' => $detail !== ''
-                    ? 'Database error while linking Google account. ' . $detail
-                    : 'Database error while linking Google account.',
+                'message' => 'Google sign-in could not be completed. Please try again.',
             ];
         }
 
-        $isAdmin = GpConfig::isAdmin($merchant['email']) || (($merchant['role'] ?? '') === 'admin');
+        $isAdmin = !empty($merchant['email_verified'])
+            && (GpConfig::isAdmin($merchant['email']) || (($merchant['role'] ?? '') === 'admin'));
         if ($isAdmin && (($merchant['role'] ?? '') !== 'admin' || ($merchant['plan_id'] ?? '') !== 'lifetime')) {
             GpDb::exec("UPDATE gp_merchants SET role = 'admin', plan_id = 'lifetime' WHERE merchant_id = ?", [$merchant['merchant_id']]);
             $merchant['role'] = 'admin';
@@ -359,14 +381,10 @@ final class GoogleOAuthClient
         }
 
         $brand = GpDb::one('SELECT * FROM gp_brands WHERE merchant_id = ? ORDER BY id ASC', [$merchant['merchant_id']]);
-        $token = GpJwt::encode([
-            'sub' => $merchant['merchant_id'],
-            'brand' => is_array($brand) ? (string) ($brand['brand_id'] ?? '') : '',
-            'email' => $merchant['email'],
-            'role' => $merchant['role'] ?? 'merchant',
-            'is_admin' => ($merchant['role'] ?? '') === 'admin' || GpConfig::isAdmin($merchant['email']),
-            'plan_id' => $merchant['plan_id'] ?? 'starter',
-        ]);
+        $token = GpJwt::issueForMerchant(
+            $merchant,
+            ['brand' => is_array($brand) ? (string) ($brand['brand_id'] ?? '') : '']
+        );
 
         return [
             'ok' => true,

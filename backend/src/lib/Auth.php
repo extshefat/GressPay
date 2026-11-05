@@ -19,8 +19,15 @@ final class GpAuth
             if ($merchant === null) {
                 return null;
             }
+            $tvClaim = (int) ($payload['tv'] ?? 0);
+            $tvDb = (int) ($merchant['token_version'] ?? 0);
+            if ($tvClaim !== $tvDb) {
+                return null;
+            }
             $email = strtolower(trim((string) ($merchant['email'] ?? '')));
-            $isAdmin = GpConfig::isAdmin($email) || (($merchant['role'] ?? '') === 'admin');
+            $emailVerified = !empty($merchant['email_verified']);
+            // Admin/lifetime only when email is verified AND allowlisted.
+            $isAdmin = $emailVerified && (GpConfig::isAdmin($email) || (($merchant['role'] ?? '') === 'admin'));
             if ($isAdmin && (($merchant['role'] ?? '') !== 'admin' || ($merchant['plan_id'] ?? '') !== 'lifetime')) {
                 GpDb::exec("UPDATE gp_merchants SET role = 'admin', plan_id = 'lifetime' WHERE merchant_id = ?", [$merchant['merchant_id']]);
                 $merchant['role'] = 'admin';
@@ -33,6 +40,7 @@ final class GpAuth
                 'email' => $merchant['email'],
                 'role' => $isAdmin ? 'admin' : ($merchant['role'] ?? 'merchant'),
                 'is_admin' => $isAdmin,
+                'email_verified' => $emailVerified,
                 'plan_id' => $isAdmin ? 'lifetime' : ($merchant['plan_id'] ?? 'starter'),
                 'mode' => $mode,
                 'auth' => 'jwt',
@@ -177,13 +185,32 @@ final class GpAuth
     {
         $actor = self::requireActor($req);
         $email = strtolower(trim((string) ($actor['email'] ?? '')));
-        $isAdmin = GpConfig::isAdmin($email) || (($actor['role'] ?? '') === 'admin');
+        $merchant = GpDb::one('SELECT email_verified FROM gp_merchants WHERE merchant_id = ?', [$actor['merchant_id'] ?? '']);
+        $verified = !empty($actor['email_verified']) || !empty($merchant['email_verified']);
+        $isAdmin = $verified && (GpConfig::isAdmin($email) || (($actor['role'] ?? '') === 'admin'));
         if (($actor['auth'] ?? '') !== 'jwt' || !$isAdmin) {
             GpJson::error('FORBIDDEN', 'Administrator privileges required for this action.', 403);
         }
         $actor['is_admin'] = true;
         $actor['role'] = 'admin';
         return $actor;
+    }
+
+    /** Block live API key mint / live ledger create until email is verified. */
+    public static function requireEmailVerified(array $actor, string $action = 'this action'): void
+    {
+        if (($actor['auth'] ?? '') === 'api_key') {
+            // API keys imply the merchant already verified when the key was minted.
+            return;
+        }
+        $merchant = GpDb::one('SELECT email_verified FROM gp_merchants WHERE merchant_id = ?', [$actor['merchant_id'] ?? '']);
+        if (empty($merchant['email_verified']) && empty($actor['email_verified'])) {
+            GpJson::error(
+                'EMAIL_UNVERIFIED',
+                'Verify your email before ' . $action . '.',
+                403
+            );
+        }
     }
 
     public static function requireActor(GpRequest $req): array

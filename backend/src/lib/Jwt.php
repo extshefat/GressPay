@@ -14,6 +14,12 @@ final class GpJwt
         $header = ['alg' => 'HS256', 'typ' => 'JWT'];
         $payload['iat'] = time();
         $payload['exp'] = time() + $ttlSeconds;
+        if (!isset($payload['jti'])) {
+            $payload['jti'] = bin2hex(random_bytes(16));
+        }
+        if (!isset($payload['tv'])) {
+            $payload['tv'] = 0;
+        }
         $h = self::b64(json_encode($header, JSON_UNESCAPED_SLASHES));
         $p = self::b64(json_encode($payload, JSON_UNESCAPED_SLASHES));
         $sig = self::b64(hash_hmac('sha256', $h . '.' . $p, GpConfig::jwtSecret(), true));
@@ -36,6 +42,36 @@ final class GpJwt
             return null;
         }
         return $payload;
+    }
+
+    /** Issue a merchant session JWT including token_version. */
+    public static function issueForMerchant(array $merchant, array $extra = [], int $ttl = self::TTL_DEFAULT): string
+    {
+        $email = strtolower(trim((string) ($merchant['email'] ?? '')));
+        $verified = !empty($merchant['email_verified']);
+        $isAdmin = $verified && (GpConfig::isAdmin($email) || (($merchant['role'] ?? '') === 'admin'));
+        $payload = array_merge([
+            'sub' => $merchant['merchant_id'],
+            'brand' => '',
+            'email' => $merchant['email'] ?? '',
+            'role' => $isAdmin ? 'admin' : ($merchant['role'] ?? 'merchant'),
+            'is_admin' => $isAdmin,
+            'plan_id' => $isAdmin ? 'lifetime' : ($merchant['plan_id'] ?? 'starter'),
+            'tv' => (int) ($merchant['token_version'] ?? 0),
+            'jti' => bin2hex(random_bytes(16)),
+        ], $extra);
+        return self::encode($payload, $ttl);
+    }
+
+    public static function bumpTokenVersion(string $merchantId): int
+    {
+        $row = GpDb::one('SELECT token_version FROM gp_merchants WHERE merchant_id = ?', [$merchantId]);
+        $next = ((int) ($row['token_version'] ?? 0)) + 1;
+        GpDb::exec(
+            'UPDATE gp_merchants SET token_version = ?, updated_at = ? WHERE merchant_id = ?',
+            [$next, GpIds::now(), $merchantId]
+        );
+        return $next;
     }
 
     private static function b64(string $data): string
