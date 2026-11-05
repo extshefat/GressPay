@@ -891,8 +891,8 @@ final class CheckoutController
         // Anti-Fraud & Duplicate TrxID Protection (skip when sms_auto with no TrxID yet).
         if ($trxId !== '') {
             $dupCompleted = GpDb::one(
-                'SELECT session_id FROM gp_transactions WHERE brand_id = ? AND trx_id = ? AND status = ?',
-                [$row['brand_id'], strtoupper($trxId), 'completed']
+                'SELECT session_id FROM gp_transactions WHERE brand_id = ? AND ledger_mode = ? AND trx_id = ? AND status = ?',
+                [$row['brand_id'], $ledgerMode, strtoupper($trxId), 'completed']
             );
             if ($dupCompleted) {
                 GpJson::error('DUPLICATE_TRX', 'Payment evidence cannot be used for this checkout.', 409);
@@ -908,8 +908,8 @@ final class CheckoutController
 
             $openDup = GpDb::one(
                 'SELECT session_id FROM gp_transactions
-                 WHERE trx_id = ? AND brand_id = ? AND session_id != ? AND status IN (?, ?)',
-                [strtoupper($trxId), $row['brand_id'], $id, 'pending', 'initiated']
+                 WHERE trx_id = ? AND brand_id = ? AND ledger_mode = ? AND session_id != ? AND status IN (?, ?)',
+                [strtoupper($trxId), $row['brand_id'], $ledgerMode, $id, 'pending', 'initiated']
             );
             if ($openDup) {
                 GpJson::error('DUPLICATE_TRX', 'Payment evidence cannot be used for this checkout.', 409);

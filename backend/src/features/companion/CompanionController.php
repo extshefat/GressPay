@@ -204,8 +204,8 @@ final class CompanionController
 
             // Anti-Fraud: Strict uniqueness check against completed orders and used SMS
             $alreadyCompleted = GpDb::one(
-                'SELECT session_id FROM gp_transactions WHERE brand_id = ? AND trx_id = ? AND status = ?',
-                [$device['brand_id'], strtoupper($trxId), 'completed']
+                'SELECT session_id FROM gp_transactions WHERE brand_id = ? AND ledger_mode = ? AND trx_id = ? AND status = ?',
+                [$device['brand_id'], 'live', strtoupper($trxId), 'completed']
             );
             if ($alreadyCompleted) {
                 GpJson::error('DUPLICATE_TRX', 'Payment evidence cannot be used for this checkout.', 409);

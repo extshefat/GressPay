@@ -1288,10 +1288,12 @@ assert_true(CheckoutController::payerMatches(['require_payer_match'=>0],$phoneSe
 // Exercise the actual auth endpoints in child processes (GpJson exits on response).
 function auth_case(string $action, array $body, string $bearer = ''): array {
     global $root;
+    $parts=str_starts_with($action,'admin/') ? explode('/',$action) : ['auth',$action];
+    $controller=$parts[0]==='admin' ? 'AdminController' : 'AuthController';
     $code = 'require ' . var_export($root . '/src/bootstrap.php', true) . ';'
         . '$_SERVER["REMOTE_ADDR"]="127.0.0.42";$_SERVER["REQUEST_METHOD"]="POST";'
         . '$_SERVER["HTTP_AUTHORIZATION"]=' . var_export($bearer !== '' ? 'Bearer '.$bearer : '',true) . ';'
-        . '$req=new GpRequest(["auth",' . var_export($action,true) . ']);$req->body=' . var_export($body,true) . ';AuthController::handle($req);';
+        . '$req=new GpRequest(' . var_export($parts,true) . ');$req->body=' . var_export($body,true) . ';' . $controller . '::handle($req);';
     $process=proc_open([PHP_BINARY,'-r',$code],[0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes);
     if (!is_resource($process)) return [];
     fclose($pipes[0]); $output=stream_get_contents($pipes[1]); fclose($pipes[1]);
@@ -1345,6 +1347,22 @@ $legacyVerified=[]; foreach ($legacyResult['merchants'] ?? [] as $m) $legacyVeri
 assert_true(($legacyVerified['legacy-admin'] ?? 0)===1 && ($legacyVerified['legacy-google'] ?? 0)===1 && ($legacyVerified['legacy-local'] ?? 1)===0, 'Existing database upgrade verifies current admins and Google accounts only');
 assert_true(($legacyResult['idempotent'] ?? false) && (int)($legacyResult['brand']['require_payer_match'] ?? -1)===0, 'Existing database upgrade preserves brands and stamps versions once');
 @unlink($legacyPath);
+
+// Admin grants require verified targets; account disable revokes all previous sessions.
+$securityAdmin=GpIds::make('mrc',8);
+GpDb::exec('INSERT INTO gp_merchants (merchant_id,full_name,email,role,email_verified,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)',[$securityAdmin,'Security admin','phase1-admin@test.local','admin',1,'active',$now,$now]);
+$adminSession=GpJwt::encode(['sub'=>$securityAdmin]);
+if ($signupRow !== null) {
+    $target=$signupRow['merchant_id'];
+    $roleGrant=auth_case('admin/merchants/'.$target.'/role',['role'=>'admin'],$adminSession);
+    assert_true(($roleGrant['error']['code'] ?? '')==='EMAIL_UNVERIFIED','Admin role grant rejects an unverified target');
+    $planGrant=auth_case('admin/merchants/'.$target.'/plan',['plan_id'=>'lifetime'],$adminSession);
+    assert_true(($planGrant['error']['code'] ?? '')==='EMAIL_UNVERIFIED','Lifetime grant rejects an unverified target');
+    $beforeDisable=GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?',[$target]);
+    $disabled=auth_case('admin/merchants/'.$target.'/status',['status'=>'suspended'],$adminSession);
+    $afterDisable=GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?',[$target]);
+    assert_true(!empty($disabled['ok']) && $afterDisable['status']==='suspended' && (int)$afterDisable['token_version']===(int)$beforeDisable['token_version']+1,'Account disable revokes sessions in the same update');
+}
 
 // Versioned migrations preserve existing data and skip already-applied work.
 $versions = GpDb::all('SELECT * FROM gp_schema_version ORDER BY version');

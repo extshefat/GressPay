@@ -278,6 +278,7 @@ final class AdminController
 
         $now = GpIds::now();
         if ($role === 'admin') {
+            GpAuth::requireVerified(['merchant_id' => $merchantId]);
             GpDb::exec('UPDATE gp_merchants SET role = ?, plan_id = ?, updated_at = ? WHERE merchant_id = ?', [$role, 'lifetime', $now, $merchantId]);
         } else {
             GpDb::exec('UPDATE gp_merchants SET role = ?, updated_at = ? WHERE merchant_id = ?', [$role, $now, $merchantId]);
@@ -318,6 +319,7 @@ final class AdminController
             GpJson::error('NOT_FOUND', 'Merchant not found.', 404);
         }
 
+        if (GpPlanLimits::marketingCode($planId) === 'lifetime') GpAuth::requireVerified(['merchant_id' => $merchantId]);
         $isLifetime = (bool) $req->input('is_lifetime', $req->input('isLifetime', $planId === 'lifetime'));
         $durationDays = (int) $req->input('duration_days', $req->input('durationDays', 0));
         $expiresAt = null;
