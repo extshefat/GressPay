@@ -112,7 +112,15 @@ export function AuthCard({ initialTab }: { initialTab: Tab }) {
       }
       setError(res.reason || "Google sign-in is not configured on this server.");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Could not start Google sign-in.");
+      const status = typeof err === "object" && err && "status" in err ? Number((err as { status?: number }).status) : 0;
+      const code = typeof err === "object" && err && "code" in err ? String((err as { code?: string }).code || "") : "";
+      if (status === 502 || code === "PHP_UNREACHABLE" || code === "PHP_GATEWAY" || code === "PHP_TIMEOUT") {
+        setError(
+          "Google sign-in could not reach the GressPay API (502). The PHP service may be restarting — wait 10 seconds and try again. Operators: confirm Coolify web env GRESSPAY_PHP_URL=http://php:8080 and that the php container is healthy."
+        );
+      } else {
+        setError(err instanceof Error ? err.message : "Could not start Google sign-in.");
+      }
     } finally {
       setGoogleBusy(false);
     }

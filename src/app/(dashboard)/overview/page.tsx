@@ -125,13 +125,73 @@ export default function OverviewPage() {
         </Alert>
       )}
 
-      <Card className="p-5">
-        <h2 className="text-sm font-semibold">Set up your first verified payment</h2>
-        <p className="mt-1 text-xs text-muted">Follow these steps in order. A submitted TxID stays pending until the paired phone supplies matching payment evidence.</p>
-        <ol className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
-          {(metrics?.setupSteps || []).map((step, index) => <li key={step.href} className="rounded-lg border border-border p-3 dark:border-border"><Link className="underline underline-offset-4" href={step.href}>{index + 1}. {step.label}</Link><p className="mt-1 text-xs text-muted">{step.complete ? "Complete" : index === metrics?.setupSteps?.findIndex((item) => !item.complete) ? "Next action" : "To do"}</p></li>)}
-        </ol>
-      </Card>
+      {(metrics?.setupSteps || []).some((s) => !s.complete) ? (
+        <Card className="p-5">
+          <h2 className="text-sm font-semibold">First-run checklist</h2>
+          <p className="mt-1 text-xs text-muted">
+            Create a brand, add a gateway, pair a device (MFS rails), mint an API key, then make a test payment.
+            Done/not-done comes from live account data.
+          </p>
+          <ol className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            {(metrics?.setupSteps || []).map((step, index) => {
+              const nextIndex = metrics?.setupSteps?.findIndex((item) => !item.complete) ?? -1;
+              const state = step.complete ? "done" : index === nextIndex ? "next" : "todo";
+              return (
+                <li
+                  key={step.href}
+                  className={`rounded-lg border p-3 ${
+                    state === "done"
+                      ? "border-emerald-500/30 bg-emerald-500/5"
+                      : state === "next"
+                        ? "border-accent/40 bg-brand/5"
+                        : "border-border"
+                  }`}
+                >
+                  <Link className="font-medium underline-offset-4 hover:underline" href={step.href}>
+                    {index + 1}. {step.label}
+                  </Link>
+                  <p className="mt-1 text-xs text-muted">
+                    {state === "done" ? "Done" : state === "next" ? "Next action" : "Not done"}
+                  </p>
+                </li>
+              );
+            })}
+          </ol>
+        </Card>
+      ) : null}
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-live="polite">
+        {(metrics?.onlineDevicesCount ?? 1) === 0 ? (
+          <Alert variant="warning" title="Device offline">
+            No companion devices are online. Pair or wake the APK under Devices before MFS auto-match can work.
+            <div className="mt-2">
+              <Link href="/dashboard/devices" className="text-xs font-semibold underline">
+                Open Devices
+              </Link>
+            </div>
+          </Alert>
+        ) : null}
+        {(metrics?.activeMethodsCount ?? 1) === 0 ? (
+          <Alert variant="warning" title="Gateway not ready">
+            No active payment gateways on this brand. Add a rail under Gateways / Methods.
+            <div className="mt-2">
+              <Link href="/dashboard/methods" className="text-xs font-semibold underline">
+                Configure gateways
+              </Link>
+            </div>
+          </Alert>
+        ) : null}
+        {(metrics?.unmatchedSmsCount ?? 0) > 0 ? (
+          <Alert variant="warning" title="Unmatched SMS">
+            {metrics?.unmatchedSmsCount} SMS row(s) waiting without a matching checkout. Check Devices → SMS log.
+            <div className="mt-2">
+              <Link href="/dashboard/devices" className="text-xs font-semibold underline">
+                Review SMS log
+              </Link>
+            </div>
+          </Alert>
+        ) : null}
+      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard

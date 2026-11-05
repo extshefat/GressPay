@@ -54,6 +54,7 @@ function TransactionsContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [methodFilter, setMethodFilter] = useState<string>("ALL");
+  const [density, setDensity] = useState<"comfortable" | "compact">("comfortable");
 
   // Drawer & Confirm Dialog
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
@@ -265,22 +266,43 @@ function TransactionsContent() {
             />
           </div>
 
-          {/* Status Pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
-            {["ALL", "COMPLETED", "PENDING", "FAILED"].map((st) => (
-              <button
-                key={st}
-                type="button"
-                onClick={() => setStatusFilter(st)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-colors ${
-                  statusFilter === st
-                    ? "bg-ink-solid text-white dark:bg-surface-muted dark:text-muted"
-                    : "bg-surface text-muted hover:bg-surface-muted dark:bg-surface dark:text-muted"
-                }`}
-              >
-                {st}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Status Pills */}
+            <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+              {["ALL", "COMPLETED", "PENDING", "FAILED"].map((st) => (
+                <button
+                  key={st}
+                  type="button"
+                  onClick={() => setStatusFilter(st)}
+                  className={`min-h-9 px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-colors ${
+                    statusFilter === st
+                      ? "bg-ink-solid text-white dark:bg-surface-muted dark:text-muted"
+                      : "bg-surface text-muted hover:bg-surface-muted dark:bg-surface dark:text-muted"
+                  }`}
+                >
+                  {st}
+                </button>
+              ))}
+            </div>
+            <div
+              className="inline-flex items-center rounded-lg border border-border p-0.5"
+              role="group"
+              aria-label="Row density"
+            >
+              {(["comfortable", "compact"] as const).map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setDensity(d)}
+                  className={`min-h-9 rounded-md px-2.5 text-[11px] font-semibold capitalize ${
+                    density === d ? "bg-ink-solid text-white dark:bg-brand dark:text-on-brand" : "text-muted"
+                  }`}
+                  aria-pressed={density === d}
+                >
+                  {d}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </Card>
@@ -332,7 +354,9 @@ function TransactionsContent() {
                 <div
                   key={tx.id}
                   onClick={() => setSelectedTx(tx)}
-                  className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-card/60 dark:hover:bg-ink-solid/40 cursor-pointer transition-colors"
+                  className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-card/60 dark:hover:bg-ink-solid/40 cursor-pointer transition-colors ${
+                    density === "compact" ? "px-3 py-2.5" : "p-4 sm:p-5"
+                  }`}
                 >
                   <div className="space-y-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2">

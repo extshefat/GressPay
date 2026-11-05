@@ -187,6 +187,27 @@ For each rail you enable: bKash, Nagad, Rocket, Upay, Cellfin, Binance Pay, Bybi
 | 16.1 | Dashboard dates readable in Asia/Dhaka expectation | |
 | 16.2 | BDT amounts no float drift on fee display | |
 
+## Phase 5 — Dashboard shell & platform admin (new UI)
+
+| # | Case | Pass? |
+|---|------|-------|
+| P5.1 | Sidebar groups: Collect / Setup / Account; Platform admin only for admins | |
+| P5.2 | Desktop collapse to icons-only persists after reload | |
+| P5.3 | Mobile drawer: tap targets ≥44px; overlay closes drawer | |
+| P5.4 | Breadcrumbs + DashboardPageHeader on overview and admin | |
+| P5.5 | Header brand switcher + Live/Test toggle; Test strip visible when Test | |
+| P5.6 | Cmd/Ctrl+K palette: jump to pages, TrxID search, create payment link | |
+| P5.7 | Shortcuts popover lists Ctrl/⌘K and Esc | |
+| P5.8 | PlanUsageBanner / NoBrandBanner dismissible (session) without hiding hard txn limit forever | |
+| P5.9 | Overview checklist reflects real setupSteps; alerts for offline device / no gateway / unmatched SMS | |
+| P5.10 | Admin tabs: Accounts, Plans & lifetime, Admin overrides, Readiness/health, Audit log, Support | |
+| P5.11 | Health shows read-only `GRESSPAY_CRYPTO_ALLOWED` / `GRESSPAY_SMS_AUTO_ALLOWED` | |
+| P5.12 | Audit tab lists who/what/when; no secrets in admin UI | |
+| P5.13 | Google Continue: no bare `API Error: 502`; retry after PHP healthy works | |
+| P5.14 | Light + dark shell; 320px no horizontal scroll | |
+
+See also `docs/PHASE5_BEFORE_AFTER.md` for per-page intentional non-changes.
+
 ## Sign-off
 
 Blockers open: ________________  
@@ -198,3 +219,4 @@ Ready for production? Yes / No
 - Refresh lockfile already on `main` after Phase 1; keep `npm ci` green in CI.
 - Recommended: Playwright smoke — login, add bKash gateway, complete checkout, webhook test.
 - SMTP + `TRUSTED_PROXIES` + R2 required for verify-email / QR / correct client IP.
+- Coolify: web `GRESSPAY_PHP_URL=http://php:8080` (same Docker network); php healthy before web; Google OAuth env on php.

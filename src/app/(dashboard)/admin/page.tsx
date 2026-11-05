@@ -65,8 +65,8 @@ export default function AdminPage() {
   const [auditLogs, setAuditLogs] = useState<AdminAuditLog[]>([]);
 
   const [activeTab, setActiveTab] = useState<
-    "gateways" | "merchants" | "pricing" | "health" | "support"
-  >("gateways");
+    "merchants" | "pricing" | "gateways" | "health" | "audit" | "support"
+  >("merchants");
   const [isLoading, setIsLoading] = useState(true);
   const [isForbidden, setIsForbidden] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -143,7 +143,7 @@ export default function AdminPage() {
     try {
       const [s, m, g, t, sms, p, sub, a, billingBrand] = await Promise.all([
         api.getAdminStats(),
-        api.getAdminMerchants(),
+        api.getAdminMerchants({ q: merchantSearch.trim() || undefined, limit: 100, page: 1 }),
         api.getAdminPlatformGateways().catch(() => ({ gateways: [] })),
         api.getAdminTransactions().catch(() => ({ transactions: [], total: 0 })),
         api.getAdminSmsLogs().catch(() => ({ smsLogs: [], total: 0 })),
@@ -184,17 +184,25 @@ export default function AdminPage() {
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Filtered Merchants
-  const filteredMerchants = merchants.filter((m) => {
-    const q = merchantSearch.toLowerCase().trim();
-    const matchSearch =
-      q === "" ||
-      m.name.toLowerCase().includes(q) ||
-      m.email.toLowerCase().includes(q) ||
-      m.brandName.toLowerCase().includes(q);
+  const merchantSearchBoot = React.useRef(true);
+  useEffect(() => {
+    if (merchantSearchBoot.current) {
+      merchantSearchBoot.current = false;
+      return;
+    }
+    const handle = window.setTimeout(() => {
+      void loadData();
+    }, 350);
+    return () => window.clearTimeout(handle);
+    // Debounced server search when Accounts search changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [merchantSearch]);
 
+  // Filtered Merchants (role/status/plan remain client-side; search is server-side via q)
+  const filteredMerchants = merchants.filter((m) => {
     const matchRole =
       merchantRoleFilter === "all" ||
       (merchantRoleFilter === "admin" && (m.role === "admin" || (m as { is_admin?: boolean })?.is_admin)) ||
@@ -203,7 +211,7 @@ export default function AdminPage() {
     const matchStatus = merchantStatusFilter === "all" || m.status === merchantStatusFilter;
     const matchPlan = planIdsMatch(m.planId, merchantPlanFilter);
 
-    return matchSearch && matchRole && matchStatus && matchPlan;
+    return matchRole && matchStatus && matchPlan;
   });
 
   // Filtered Transactions
@@ -501,26 +509,25 @@ export default function AdminPage() {
         </Alert>
       )}
 
-      {/* Stage-2 Tab Bar — 4 control surfaces */}
-      <div className="dashboard-tabs no-scrollbar">
+      <div className="dashboard-tabs no-scrollbar" role="tablist" aria-label="Platform admin sections">
         {[
-          { key: "gateways", label: "Global Gateway Control", icon: Sliders },
-          { key: "merchants", label: "Accounts & subscriptions", icon: Users },
-          { key: "pricing", label: "Pricing & Plans", icon: CreditCard },
+          { key: "merchants", label: "Accounts", icon: Users },
+          { key: "pricing", label: "Plans & lifetime", icon: CreditCard },
+          { key: "gateways", label: "Admin overrides", icon: Sliders },
+          { key: "health", label: "Readiness / health", icon: Activity },
+          { key: "audit", label: "Audit log", icon: History },
           { key: "support", label: "Support inbox", icon: Activity },
-          { key: "health", label: "Transactions & Health", icon: Activity },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.key;
           return (
             <button
               key={tab.key}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
               onClick={() => setActiveTab(tab.key as typeof activeTab)}
-              className={`dashboard-tab ${
-                isActive
-                  ? "dashboard-tab-active"
-                  : ""
-              }`}
+              className={`dashboard-tab ${isActive ? "dashboard-tab-active" : ""}`}
             >
               <Icon className="w-3.5 h-3.5" />
               <span>{tab.label}</span>
@@ -1300,8 +1307,36 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* TAB 7: AUDIT TRAIL */}
-      {activeTab === "health" && (
+      {activeTab === "health" && stats?.system?.operatorToggles && (
+        <Card className="p-5 space-y-3">
+          <h2 className="text-sm font-semibold text-ink">Operator platform toggles (read-only)</h2>
+          <p className="text-xs text-muted">
+            These Coolify environment flags cannot be changed from the admin UI. Update them on the php
+            service and redeploy.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {(
+              [
+                ["GRESSPAY_CRYPTO_ALLOWED", stats.system.operatorToggles.GRESSPAY_CRYPTO_ALLOWED],
+                ["GRESSPAY_SMS_AUTO_ALLOWED", stats.system.operatorToggles.GRESSPAY_SMS_AUTO_ALLOWED],
+              ] as const
+            ).map(([name, on]) => (
+              <div
+                key={name}
+                className="flex items-center justify-between rounded-lg border border-border px-3 py-2.5"
+              >
+                <code className="font-mono text-[11px] text-ink">{name}</code>
+                <Badge variant={on ? "emerald" : "slate"} size="sm" dot>
+                  {on ? "On" : "Off"}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* AUDIT TRAIL */}
+      {activeTab === "audit" && (
         <div className="space-y-4">
           <div>
             <h2 className="text-base font-bold text-ink dark:text-ink">

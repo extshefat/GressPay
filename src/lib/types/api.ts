@@ -598,5 +598,13 @@ export interface AdminStats {
   webhooks?: { total: number; delivered: number; healthPercent: number };
   gateways?: { total: number; enabled: number };
   subscriptions: { activePlans: number; activeSubscriptions: number };
-  system: { status: string; adminEmails: string[]; serverTime: string };
+  system: {
+    status: string;
+    adminEmails: string[];
+    serverTime: string;
+    operatorToggles?: {
+      GRESSPAY_CRYPTO_ALLOWED?: boolean;
+      GRESSPAY_SMS_AUTO_ALLOWED?: boolean;
+    };
+  };
 }

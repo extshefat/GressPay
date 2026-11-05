@@ -335,6 +335,32 @@ export default function CompanionDevicesPage() {
         </Alert>
       )}
 
+      <Card className="space-y-2 border-border bg-white p-4 text-xs shadow-xs dark:border-border dark:bg-canvas">
+        <h2 className="text-sm font-semibold text-ink">OEM battery restrictions</h2>
+        <p className="text-muted">
+          Companion SMS matching stops when the OS kills the background listener. After pairing, disable battery
+          optimization for GressPay Companion:
+        </p>
+        <ul className="list-disc space-y-1 pl-5 text-muted">
+          <li>
+            <span className="font-medium text-ink">Xiaomi / Redmi / POCO:</span> Settings → Apps → GressPay →
+            Autostart on; Battery saver → No restrictions.
+          </li>
+          <li>
+            <span className="font-medium text-ink">Oppo / Realme / OnePlus:</span> Allow auto-launch and background
+            activity; turn off &quot;Optimize battery use&quot;.
+          </li>
+          <li>
+            <span className="font-medium text-ink">Vivo / iQOO:</span> High background power consumption → Allow;
+            Autostart management → Enabled.
+          </li>
+          <li>
+            <span className="font-medium text-ink">Samsung:</span> Sleeping apps → Remove GressPay; Battery →
+            Unrestricted.
+          </li>
+        </ul>
+      </Card>
+
       <Card className="overflow-hidden border-border bg-white shadow-xs dark:border-border dark:bg-canvas">
         <div className="flex items-center justify-between border-b border-border p-4 dark:border-border">
           <h3 className="text-sm font-bold text-ink dark:text-ink">Registered devices ({devices.length})</h3>

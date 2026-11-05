@@ -1,19 +1,34 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import type { PlanUsage } from "@/lib/types/api";
-import { ArrowRight, Crown } from "lucide-react";
+import { ArrowRight, Crown, X } from "lucide-react";
 
 type Props = {
   usage: PlanUsage | null | undefined;
   className?: string;
 };
 
+const DISMISS_KEY = "gresspay_plan_banner_dismissed";
+
 export function PlanUsageBanner({ usage, className = "" }: Props) {
-  if (!usage) return null;
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = window.sessionStorage.getItem(DISMISS_KEY);
+      if (!raw || !usage) return;
+      const parsed = JSON.parse(raw) as { month?: string; kind?: string };
+      if (parsed.month === usage.billingMonthLabel) setDismissed(true);
+    } catch {
+      /* ignore */
+    }
+  }, [usage]);
+
+  if (!usage || dismissed) return null;
 
   const { monthlyCompleted, brands } = usage;
   const atTxnLimit = monthlyCompleted.atLimit;
@@ -24,17 +39,46 @@ export function PlanUsageBanner({ usage, className = "" }: Props) {
     return null;
   }
 
+  const dismiss = (kind: string) => {
+    try {
+      window.sessionStorage.setItem(
+        DISMISS_KEY,
+        JSON.stringify({ month: usage.billingMonthLabel, kind })
+      );
+    } catch {
+      /* ignore */
+    }
+    setDismissed(true);
+  };
+
+  const shell = (kind: string, node: React.ReactNode) => (
+    <div className={`relative ${className}`}>
+      {node}
+      {!atTxnLimit ? (
+        <button
+          type="button"
+          onClick={() => dismiss(kind)}
+          className="absolute right-2 top-2 inline-flex min-h-9 min-w-9 items-center justify-center rounded-md text-muted hover:bg-brand/5 hover:text-ink"
+          aria-label="Dismiss plan notice"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      ) : null}
+    </div>
+  );
+
   if (atTxnLimit) {
     const limit = monthlyCompleted.limit ?? 50;
-    return (
-      <Alert variant="danger" className={className}>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    return shell(
+      "txn-limit",
+      <Alert variant="danger" title="Checkout limit reached">
+        <div className="flex flex-col gap-3 pr-8 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm">
-            Your account reached its limit of {limit} completed checkouts for {usage.billingMonthLabel}. New
-            checkout sessions are blocked until you upgrade or the next billing month starts.
+            You used all {limit} completed checkouts for {usage.billingMonthLabel}. New sessions stay
+            blocked until you upgrade or the next billing month starts.
           </p>
           <Link href="/fees">
-            <Button size="sm" variant="primary" rightIcon={<Crown className="w-4 h-4" />}>
+            <Button size="sm" variant="primary" rightIcon={<Crown className="h-4 w-4" />}>
               Upgrade account
             </Button>
           </Link>
@@ -46,15 +90,16 @@ export function PlanUsageBanner({ usage, className = "" }: Props) {
   if (warnTxn) {
     const limit = monthlyCompleted.limit ?? 50;
     const remaining = Math.max(0, limit - monthlyCompleted.used);
-    return (
-      <Alert variant="warning" className={className}>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    return shell(
+      "txn-warn",
+      <Alert variant="warning" title="Approaching monthly limit">
+        <div className="flex flex-col gap-3 pr-8 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm">
-            You have used {monthlyCompleted.used} of {limit} completed checkouts this month ({usage.billingMonthLabel}
-            ). About {remaining} remaining on your current plan.
+            {monthlyCompleted.used} of {limit} completed checkouts used in {usage.billingMonthLabel}
+            . About {remaining} remain on your current plan.
           </p>
           <Link href="/fees">
-            <Button size="sm" variant="secondary" rightIcon={<ArrowRight className="w-4 h-4" />}>
+            <Button size="sm" variant="secondary" rightIcon={<ArrowRight className="h-4 w-4" />}>
               View plans
             </Button>
           </Link>
@@ -64,14 +109,15 @@ export function PlanUsageBanner({ usage, className = "" }: Props) {
   }
 
   if (atBrandLimit && brands.limit <= 1) {
-    return (
-      <Alert variant="warning" className={className}>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    return shell(
+      "brand-limit",
+      <Alert variant="warning" title="Brand limit">
+        <div className="flex flex-col gap-3 pr-8 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm">
-            Your account is on Trial or Starter (1 website). Upgrade to add more websites to your account.
+            Trial/Starter includes one website. Upgrade when you need another brand workspace.
           </p>
           <Link href="/fees">
-            <Button size="sm" variant="secondary" rightIcon={<ArrowRight className="w-4 h-4" />}>
+            <Button size="sm" variant="secondary" rightIcon={<ArrowRight className="h-4 w-4" />}>
               Upgrade account
             </Button>
           </Link>
