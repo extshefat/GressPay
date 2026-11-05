@@ -7,6 +7,8 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+ARG NEXT_PUBLIC_APP_URL=https://gresspay.extxcheats.com
+ARG R2_PUBLIC_BASE_URL=
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_PUBLIC_DATA_SOURCE=live
 RUN npm run build

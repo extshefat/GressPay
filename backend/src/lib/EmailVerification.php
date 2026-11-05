@@ -22,6 +22,7 @@ final class GpEmailVerification
 
     public static function consume(string $token): bool
     {
+        if (strlen($token) > 1024) return false;
         $parts = explode('.', $token);
         if (count($parts) !== 4 || !ctype_digit($parts[1]) || (int) $parts[1] <= time()) return false;
         $signature = array_pop($parts);

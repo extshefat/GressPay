@@ -10,6 +10,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_APP_URL: ${APP_URL:-https://gresspay.extxcheats.com}
+        R2_PUBLIC_BASE_URL: ${R2_PUBLIC_BASE_URL:-}
     environment:
       APP_URL: ${APP_URL}
       NEXT_PUBLIC_APP_URL: ${APP_URL}

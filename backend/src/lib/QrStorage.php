@@ -49,7 +49,7 @@ final class GpQrStorage
 
     public static function url(string $key): string
     {
-        return '/api/v1/assets/qr/' . basename($key);
+        return GpPlatform::publicSiteRoot() . '/api/v1/assets/qr/' . basename($key);
     }
 
     public static function serve(string $filename): never

@@ -168,3 +168,73 @@ containers. Never put an Internet-wide CIDR in either trust list. Next drops all
 inbound client-IP headers and sends only its selected internal header. In the
 FPM image nginx passes the original socket peer to PHP; do not real_ip rewrite
 that internal listener. Changing container addressing requires updating trust.
+
+## Phase 1 security rollout (staging first)
+
+This branch changes installation and migration behavior. Do not deploy before the
+owner refreshes the intentionally unchanged npm lockfile and all CI jobs pass.
+No PHP, Docker, Java or Android checks were run on the owner's Windows machine.
+
+1. On a development checkout, run `npm install` to refresh the lockfile for Next
+   15.5.29, ESLint 9 and matching eslint-config-next. Review the lockfile diff;
+   then run `npm run lint`, `npx tsc --noEmit`, and `npm run build`.
+2. Review/commit the refreshed lockfile on this phase branch. Run CI for PHP lint,
+   the SQLite regression suite, PostgreSQL concurrency, MySQL upserts/migrations,
+   non-root API/worker runtime, web security smoke, and the existing Android jobs.
+   The phase agent does not push. Trigger CI through the owner's normal workflow.
+3. On the staging VPS/Coolify, configure SMTP_HOST, SMTP_PORT (587),
+   SMTP_ENCRYPTION (`tls` for STARTTLS, `ssl` for implicit TLS), SMTP_FROM,
+   SMTP_USERNAME and SMTP_PASSWORD in secure settings. Set APP_URL to the real
+   public origin. Development-only email fallback logs a single-use link;
+   production never logs that link and has no mail fallback.
+4. Configure verified proxy addresses as described above: web
+   WEB_TRUSTED_PROXY_HOPS, API TRUSTED_PROXIES/TRUSTED_NEXT_PROXIES and
+   TRUSTED_PROXY_HOPS. Default settings aggregate requests rather than trust
+   unverified client headers. API ingress remains internal; never expose FPM :9000.
+5. Build the images on the VPS/CI. The API now runs nginx + PHP-FPM on PORT
+   (default 8080), as www-data. Its entrypoint runs `php bin/migrate.php` before
+   HTTP serving or worker startup. The existing worker wrapper was already thin
+   and remains `php jobs/WebhookWorker.php`. Next runs as the `node` user.
+6. Keep the Compose `api-storage` volume (API + worker) across redeploys. It holds
+   SQLite if used, plus sanitized QR PNGs under storage/qr. For separately managed
+   Coolify API services, mount persistent storage at `/var/www/gresspay-api/storage`
+   with www-data write access. Back up database and storage together. Do not
+   remove the volume during an upgrade. MySQL/Postgres databases remain external.
+7. First migration run reconciles/stamps the old schema, then adds security fields,
+   backfills decryptable device prefixes, migrates legacy raster data URLs to QR
+   files, normalizes TrxIDs, and builds tenant/ledger-scoped receipt claims. No
+   columns/tables are dropped. Legacy invalid QR bytes remain in the DB marked
+   failed and are not served. Duplicate normalized evidence/settlements stop the
+   migration for review; no duplicate rows are silently deleted. Budget for an
+   initial migration window on a large database. Later production HTTP requests
+   neither create tables nor run ALTER/backfill loops.
+8. Existing admins and Google-verified users remain verified. Other local users
+   must verify email before live key issuance/new live checkouts. Existing brands
+   keep payer-match off for compatibility; new brands default it on. Enable it
+   deliberately on older brands after updating buyer integrations to send
+   sender_number when the companion receipt contains payer_phone.
+9. Check active legacy devices without a recoverable token prefix using the
+   read-only SQL `SELECT COUNT(*) FROM gp_devices WHERE status = 'active' AND token_prefix IS NULL;`.
+   Rotate/re-pair those devices from Dashboard → Devices; a one-way bcrypt hash
+   cannot recover its prefix. Other existing APK endpoints and header aliases stay.
+10. Verify `/api/v1/health`, register/resend/verify email, Google linking of a local
+    unverified account, password change/logout-all/account suspend, device pairing,
+    QR upload/preview, checkout payer matching, and webhook dispatch + retries in
+    staging. Preserve provider/payment evidence rules; this phase did not exercise
+    real payment-provider credentials.
+
+Merchant-controlled HTTPS requests resolve once, reject non-public destinations,
+then use TLS hostname verification plus CURLOPT_RESOLVE. They fail closed if an
+inherited HTTPS/ALL proxy would resolve the hostname independently: do not unset
+platform proxy settings to bypass this restriction. Proxy-only deployments need
+an operator-supported destination-pinning transport before webhook/alert delivery
+can be considered ready. R2 uses operator-controlled storage endpoints separately.
+
+Set R2_PUBLIC_BASE_URL at web build time if using a public image CDN; Compose passes
+it and APP_URL as build args. Only exact HTTPS app/R2 origins are allowed through
+Next's image optimizer; shipped rail logos use local paths. CSP is report-only for
+scripts/styles, with the rendered inline theme script hashed from shared source.
+Do not enforce it until reviewing Next hydration/provider violations in staging.
+Public checkout/store pages remain embeddable; sign-in/admin pages deny cross-site
+framing. The CSP policy intentionally remains a rollout task, not a claim that all
+inline Next hydration is already nonce-based.

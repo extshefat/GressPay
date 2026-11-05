@@ -25,6 +25,7 @@ final class GpJwt
 
     public static function decode(string $token): ?array
     {
+        if (strlen($token) > 4096) return null;
         $parts = explode('.', $token);
         if (count($parts) !== 3) {
             return null;

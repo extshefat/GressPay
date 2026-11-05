@@ -1325,6 +1325,27 @@ if ($signupRow !== null) {
 
 assert_true(GpAuth::subject(['merchant_id'=>'owner','staff_user_merchant_id'=>'staff']) === 'staff', 'Account security actions use authenticated staff identity rather than workspace owner');
 
+// Upgrade an actual pre-versioning SQLite database, rather than testing only fresh boot.
+$legacyPath=$root . '/storage/phase1_legacy_regression.sqlite';
+@unlink($legacyPath);
+$legacyCode='putenv("APP_ENV=production");putenv("SQLITE_PATH=storage/phase1_legacy_regression.sqlite");'
+    . '$_ENV["APP_ENV"]="production";$_ENV["SQLITE_PATH"]="storage/phase1_legacy_regression.sqlite";require ' . var_export($root.'/src/bootstrap.php',true) . ';'
+    . 'GpDb::pdo()->exec(file_get_contents(GRESSPAY_ROOT."/schema/install.sql"));'
+    . 'foreach ([["legacy-admin","admin",0],["legacy-google","merchant",1],["legacy-local","merchant",0]] as [$id,$role,$google]) GpDb::exec("INSERT INTO gp_merchants (merchant_id,full_name,email,role,google_email_verified,created_at,updated_at) VALUES (?,?,?,?,?,?,?)",[$id,$id,$id."@test.local",$role,$google,GpIds::now(),GpIds::now()]);'
+    . 'GpDb::exec("INSERT INTO gp_brands (brand_id,merchant_id,name,currency_code,timezone,created_at,updated_at) VALUES (?,?,?,?,?,?,?)",["legacy-brand","legacy-local","Legacy brand","BDT","Asia/Dhaka",GpIds::now(),GpIds::now()]);'
+    . 'GpMigrations::run();$before=GpDb::all("SELECT * FROM gp_schema_version ORDER BY version");GpMigrations::run();'
+    . 'echo json_encode(["merchants"=>GpDb::all("SELECT merchant_id,email_verified FROM gp_merchants ORDER BY merchant_id"),"brand"=>GpDb::one("SELECT require_payer_match FROM gp_brands WHERE brand_id = ?",["legacy-brand"]),"idempotent"=>$before===GpDb::all("SELECT * FROM gp_schema_version ORDER BY version")]);';
+$legacyProc=proc_open([PHP_BINARY,'-r',$legacyCode],[0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$legacyPipes);
+$legacyResult=[];
+if (is_resource($legacyProc)) {
+    fclose($legacyPipes[0]); $legacyResult=json_decode(stream_get_contents($legacyPipes[1]),true) ?: []; fclose($legacyPipes[1]);
+    stream_get_contents($legacyPipes[2]); fclose($legacyPipes[2]); proc_close($legacyProc);
+}
+$legacyVerified=[]; foreach ($legacyResult['merchants'] ?? [] as $m) $legacyVerified[$m['merchant_id']]=(int)$m['email_verified'];
+assert_true(($legacyVerified['legacy-admin'] ?? 0)===1 && ($legacyVerified['legacy-google'] ?? 0)===1 && ($legacyVerified['legacy-local'] ?? 1)===0, 'Existing database upgrade verifies current admins and Google accounts only');
+assert_true(($legacyResult['idempotent'] ?? false) && (int)($legacyResult['brand']['require_payer_match'] ?? -1)===0, 'Existing database upgrade preserves brands and stamps versions once');
+@unlink($legacyPath);
+
 // Versioned migrations preserve existing data and skip already-applied work.
 $versions = GpDb::all('SELECT * FROM gp_schema_version ORDER BY version');
 GpMigrations::run();

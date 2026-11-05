@@ -40,20 +40,21 @@ final class GpMigrations
         }
     }
 
-    public static function addColumn(string $table, string $column, string $definition): void
+    public static function addColumn(string $table, string $column, string $definition): bool
     {
         // Identifiers below are static migration definitions, never request values.
         $driver = GpDb::driver();
         if ($driver === 'sqlite') {
             $columns = GpDb::all('PRAGMA table_info(' . $table . ')');
             foreach ($columns as $existing) {
-                if ($existing['name'] === $column) return;
+                if ($existing['name'] === $column) return false;
             }
         } else {
             $schema = $driver === 'mysql' ? 'DATABASE()' : 'current_schema()';
-            if (GpDb::one('SELECT column_name FROM information_schema.columns WHERE table_schema = ' . $schema . ' AND table_name = ? AND column_name = ?', [$table, $column])) return;
+            if (GpDb::one('SELECT column_name FROM information_schema.columns WHERE table_schema = ' . $schema . ' AND table_name = ? AND column_name = ?', [$table, $column])) return false;
         }
         GpDb::pdo()->exec('ALTER TABLE ' . $table . ' ADD COLUMN ' . $column . ' ' . $definition);
+        return true;
     }
 
     private static function securityColumns(): void
@@ -64,7 +65,13 @@ final class GpMigrations
             ['gp_merchants', 'token_version', 'INTEGER NOT NULL DEFAULT 0'],
             ['gp_devices', 'token_prefix', 'VARCHAR(12)'],
             ['gp_brands', 'require_payer_match', 'INTEGER NOT NULL DEFAULT 1'],
-        ] as [$table, $column, $definition]) self::addColumn($table, $column, $definition);
+        ] as [$table, $column, $definition]) {
+            $added = self::addColumn($table, $column, $definition);
+            if ($added && $table === 'gp_brands' && $column === 'require_payer_match') {
+                // Preserve old SDK/buyer behavior; new INSERTs get DEFAULT 1.
+                GpDb::pdo()->exec('UPDATE gp_brands SET require_payer_match = 0');
+            }
+        }
         GpDb::exec("UPDATE gp_merchants SET email_verified = 1, verified_at = COALESCE(verified_at, ?) WHERE google_email_verified = 1 OR role = 'admin'", [GpIds::now()]);
         GpDb::pdo()->exec('CREATE TABLE IF NOT EXISTS gp_email_verifications (token_hash VARCHAR(64) PRIMARY KEY, merchant_id VARCHAR(24) NOT NULL, expires_at INTEGER NOT NULL, used_at VARCHAR(32))');
         foreach (GpDb::all("SELECT id, token_sealed FROM gp_devices WHERE token_prefix IS NULL AND token_sealed IS NOT NULL") as $row) {
@@ -84,8 +91,8 @@ final class GpMigrations
         // for owner review rather than silently legitimizing duplicate payments.
         GpDb::pdo()->exec('UPDATE gp_transactions SET trx_id = UPPER(TRIM(trx_id)) WHERE trx_id IS NOT NULL');
         GpDb::pdo()->exec('UPDATE gp_sms_data SET trx_id = UPPER(TRIM(trx_id)) WHERE trx_id IS NOT NULL');
-        self::index('idx_gp_txn_brand_normalized', 'gp_transactions', 'brand_id, trx_id');
-        self::index('idx_gp_sms_brand_normalized', 'gp_sms_data', 'brand_id, trx_id');
+        self::index('idx_gp_txn_brand_trx', 'gp_transactions', 'brand_id, trx_id');
+        self::index('idx_gp_sms_brand_trx', 'gp_sms_data', 'brand_id, trx_id, status');
         GpDb::pdo()->exec('CREATE TABLE IF NOT EXISTS gp_trx_claims (brand_id VARCHAR(24) NOT NULL, ledger_mode VARCHAR(8) NOT NULL, trx_id VARCHAR(160) NOT NULL, session_id VARCHAR(32) NOT NULL, PRIMARY KEY (brand_id,ledger_mode,trx_id))');
         foreach (GpDb::all("SELECT brand_id,ledger_mode,trx_id,session_id FROM gp_transactions WHERE status = 'completed' AND trx_id IS NOT NULL AND trx_id <> ''") as $row) {
             if (!GpTrxClaims::claim($row['brand_id'],$row['ledger_mode'],$row['trx_id'],$row['session_id'])) throw new RuntimeException('Conflicting legacy completed transaction IDs require owner review.');
