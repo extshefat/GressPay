@@ -15,8 +15,8 @@ final class AuthController
         }
         if ($req->method === 'POST' && $action === 'resend-verification') {
             $actor = GpAuth::requireDashboardUser($req);
-            GpRateLimiter::guard('email-resend:' . $actor['merchant_id'], 3, 3600);
-            $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$actor['merchant_id']]);
+            GpRateLimiter::guard('email-resend:' . GpAuth::subject($actor), 3, 3600);
+            $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [GpAuth::subject($actor)]);
             if (empty($merchant['email_verified'])) {
                 try { GpEmailVerification::send($merchant); }
                 catch (Throwable $e) { error_log('Verification mail delivery failed.'); GpJson::error('MAIL_UNAVAILABLE', 'Email could not be sent. Please try again later.', 503); }
@@ -26,12 +26,12 @@ final class AuthController
         if ($req->method === 'POST' && in_array($action, ['logout-all','password'], true)) {
             $actor = GpAuth::requireDashboardUser($req);
             if ($action === 'password') {
-                GpRateLimiter::guard('password:' . $actor['merchant_id'], 5, 900);
-                $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$actor['merchant_id']]);
+                GpRateLimiter::guard('password:' . GpAuth::subject($actor), 5, 900);
+                $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [GpAuth::subject($actor)]);
                 $password = (string) $req->input('password', '');
                 if (strlen($password) < 10 || empty($merchant['password_hash']) || !password_verify((string) $req->input('current_password', ''), $merchant['password_hash'])) GpJson::error('INVALID_CREDENTIALS', 'Current password is incorrect or new password is too short.', 400);
-                GpDb::exec('UPDATE gp_merchants SET password_hash = ?, token_version = token_version + 1 WHERE merchant_id = ?', [password_hash($password, PASSWORD_BCRYPT, ['cost'=>12]), $actor['merchant_id']]);
-            } else { GpAuth::revokeSessions($actor['merchant_id']); }
+                GpDb::exec('UPDATE gp_merchants SET password_hash = ?, token_version = token_version + 1 WHERE merchant_id = ?', [password_hash($password, PASSWORD_BCRYPT, ['cost'=>12]), GpAuth::subject($actor)]);
+            } else { GpAuth::revokeSessions(GpAuth::subject($actor)); }
             GpJson::send(['ok'=>true]);
         }
         if ($req->method === 'POST' && $action === 'register') {

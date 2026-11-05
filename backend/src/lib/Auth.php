@@ -96,6 +96,11 @@ final class GpAuth
         return (int) ($payload['tv'] ?? 0) === (int) ($merchant['token_version'] ?? 0);
     }
 
+    public static function subject(array $actor): string
+    {
+        return (string) ($actor['staff_user_merchant_id'] ?? $actor['merchant_id']);
+    }
+
     public static function revokeSessions(string $merchantId): void
     {
         GpDb::exec('UPDATE gp_merchants SET token_version = token_version + 1 WHERE merchant_id = ?', [$merchantId]);
@@ -103,8 +108,10 @@ final class GpAuth
 
     public static function requireVerified(array $actor): void
     {
-        $row = GpDb::one('SELECT email_verified FROM gp_merchants WHERE merchant_id = ?', [$actor['merchant_id']]);
-        if (empty($row['email_verified'])) GpJson::error('EMAIL_UNVERIFIED', 'Verify your email before going live.', 403);
+        foreach (array_unique([$actor['merchant_id'], self::subject($actor)]) as $id) {
+            $row = GpDb::one('SELECT email_verified FROM gp_merchants WHERE merchant_id = ?', [$id]);
+            if (empty($row['email_verified'])) GpJson::error('EMAIL_UNVERIFIED', 'Verify your email before going live.', 403);
+        }
     }
 
     /** JWT actors may select ledger via X-GressPay-Mode; public buyers never reach here. */

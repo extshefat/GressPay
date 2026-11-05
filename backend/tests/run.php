@@ -1323,6 +1323,8 @@ if ($signupRow !== null) {
     assert_true(!empty($change['ok']) && password_verify('replacement-password',$changedRow['password_hash']) && !GpAuth::tokenCurrent(GpJwt::decode($rehashLogin['token']) ?? [],$changedRow),'Password change updates hash and revokes sessions atomically');
 }
 
+assert_true(GpAuth::subject(['merchant_id'=>'owner','staff_user_merchant_id'=>'staff']) === 'staff', 'Account security actions use authenticated staff identity rather than workspace owner');
+
 // Versioned migrations preserve existing data and skip already-applied work.
 $versions = GpDb::all('SELECT * FROM gp_schema_version ORDER BY version');
 GpMigrations::run();
