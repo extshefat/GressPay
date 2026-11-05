@@ -23,6 +23,7 @@ final class GpWebhookWorker
                         "UPDATE gp_transactions SET status = 'expired', updated_at = ? WHERE currency = 'BDT' AND status IN ('initiated','pending') AND expires_at IS NOT NULL AND expires_at <> '' AND expires_at <= ?",
                         [GpIds::now(), $now]
                     );
+                    GpRateLimiter::cleanupExpired(60);
                     $nextExpirySweep = time() + 30;
                 }
                 $claimed = GpWebhook::claimDueQueue(10);

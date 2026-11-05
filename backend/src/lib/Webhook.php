@@ -238,34 +238,14 @@ final class GpWebhook
         array $payload,
         int $timeout
     ): int {
-        if (!function_exists('curl_init')) {
-            return 0;
-        }
-        $ch = curl_init($target);
-        curl_setopt_array($ch, [
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => $json,
-            CURLOPT_HTTPHEADER => [
-                'Content-Type: application/json',
-                'X-GressPay-Signature: ' . $sig,
-                'X-GressPay-Event: ' . $event,
-                'X-GressPay-Event-Id: ' . ($payload['eventId'] ?? ''),
-                'User-Agent: GressPay-Webhook/1.0',
-            ],
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_CONNECTTIMEOUT => min(4, $timeout),
-            CURLOPT_TIMEOUT => $timeout,
-            CURLOPT_SSL_VERIFYPEER => true,
-            CURLOPT_SSL_VERIFYHOST => 2,
-            CURLOPT_FOLLOWLOCATION => false,
-            CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
-            CURLOPT_REDIR_PROTOCOLS => 0,
-            CURLOPT_MAXREDIRS => 0,
+        $res = GpSafeHttp::postJson($target, $json, [
+            'X-GressPay-Signature: ' . $sig,
+            'X-GressPay-Event: ' . $event,
+            'X-GressPay-Event-Id: ' . ($payload['eventId'] ?? ''),
+            'User-Agent: GressPay-Webhook/1.0',
         ]);
-        curl_exec($ch);
-        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        return $code;
+        unset($timeout);
+        return (int) ($res['status'] ?? 0);
     }
 
     /** @param array<string,mixed> $payload */

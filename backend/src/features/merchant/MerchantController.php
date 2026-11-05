@@ -195,9 +195,9 @@ final class MerchantController
             'r2Configured' => R2Client::isConfigured(),
             'supportContact' => $merchant['support_contact'] ?? '',
             'receiptFooter' => $merchant['receipt_footer'] ?? '',
-            'telegramBotTokenSet' => trim((string) ($merchant['telegram_bot_token'] ?? '')) !== '',
+            'telegramBotTokenSet' => self::secretIsSet($merchant['telegram_bot_token'] ?? null),
             'telegramChatId' => $merchant['telegram_chat_id'] ?? '',
-            'discordWebhookUrl' => $merchant['discord_webhook_url'] ?? '',
+            'discordWebhookUrlSet' => self::secretIsSet($merchant['discord_webhook_url'] ?? null),
             'webhookUrl' => $brand['webhook_url'] ?? '',
             'currency' => $brand['currency_code'] ?? 'BDT',
             'cryptoEnabled' => !empty($brand['crypto_enabled']),
@@ -254,21 +254,34 @@ final class MerchantController
         $support = trim((string) $req->input('supportContact', $req->input('support_contact', $merchant['support_contact'] ?? '')));
         $receiptFooter = trim((string) $req->input('receiptFooter', $req->input('receipt_footer', $merchant['receipt_footer'] ?? '')));
         $telegramChatId = trim((string) $req->input('telegramChatId', $req->input('telegram_chat_id', $merchant['telegram_chat_id'] ?? '')));
-        $discordWebhook = trim((string) $req->input('discordWebhookUrl', $req->input('discord_webhook_url', $merchant['discord_webhook_url'] ?? '')));
+        $discordWebhookIn = $req->input('discordWebhookUrl', $req->input('discord_webhook_url', null));
         $telegramTokenIn = $req->input('telegramBotToken', $req->input('telegram_bot_token', null));
         $telegramToken = $merchant['telegram_bot_token'] ?? null;
         if ($telegramTokenIn !== null && trim((string) $telegramTokenIn) !== '') {
-            $telegramToken = trim((string) $telegramTokenIn);
+            $telegramToken = GpCrypto::seal(trim((string) $telegramTokenIn));
         }
         if ($req->input('clearTelegramBotToken', false) === true) {
             $telegramToken = null;
         }
+        $discordWebhook = $merchant['discord_webhook_url'] ?? null;
+        if ($discordWebhookIn !== null) {
+            $discordWebhookRaw = trim((string) $discordWebhookIn);
+            if ($discordWebhookRaw === '') {
+                $discordWebhook = null;
+            } else {
+                $dCheck = GpSafeHttp::validateDiscordWebhook($discordWebhookRaw);
+                if (!$dCheck['ok']) {
+                    GpJson::error('INVALID_URL', 'Discord webhook URL rejected (' . ($dCheck['error'] ?? 'unsafe') . ').', 400);
+                }
+                $discordWebhook = GpCrypto::seal($discordWebhookRaw);
+            }
+        }
+        if ($req->input('clearDiscordWebhookUrl', false) === true) {
+            $discordWebhook = null;
+        }
 
         if ($brandLogo !== '' && !preg_match('#^https://#i', $brandLogo)) {
             GpJson::error('INVALID_URL', 'Brand logo URL must be HTTPS.', 400);
-        }
-        if ($discordWebhook !== '' && !preg_match('#^https://#i', $discordWebhook)) {
-            GpJson::error('INVALID_URL', 'Discord webhook URL must be HTTPS.', 400);
         }
 
         $resolvedBrandName = $name !== '' ? $name : ($brandName !== '' ? $brandName : 'Store');
@@ -291,7 +304,7 @@ final class MerchantController
                 $receiptFooter !== '' ? $receiptFooter : null,
                 $telegramToken,
                 $telegramChatId !== '' ? $telegramChatId : null,
-                $discordWebhook !== '' ? $discordWebhook : null,
+                $discordWebhook,
                 GpIds::now(),
                 $actor['merchant_id'],
             ]
@@ -426,46 +439,39 @@ final class MerchantController
         $results = ['telegram' => null, 'discord' => null];
 
         if ($channel === 'telegram' || $channel === 'all') {
-            $token = trim((string) ($merchant['telegram_bot_token'] ?? ''));
+            $token = self::openSecret((string) ($merchant['telegram_bot_token'] ?? ''), 'telegram_bot_token', (string) $actor['merchant_id']);
             $chatId = trim((string) ($merchant['telegram_chat_id'] ?? ''));
             if ($token === '' || $chatId === '') {
                 $results['telegram'] = ['ok' => false, 'error' => 'Telegram bot token or chat ID is not configured.'];
             } else {
                 $url = 'https://api.telegram.org/bot' . rawurlencode($token) . '/sendMessage';
-                $payload = json_encode(['chat_id' => $chatId, 'text' => $message], JSON_UNESCAPED_UNICODE);
-                $ch = curl_init($url);
-                curl_setopt_array($ch, [
-                    CURLOPT_POST => true,
-                    CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-                    CURLOPT_POSTFIELDS => $payload,
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_TIMEOUT => 8,
-                ]);
-                $body = curl_exec($ch);
-                $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                curl_close($ch);
-                $results['telegram'] = ['ok' => $code >= 200 && $code < 300, 'httpCode' => $code, 'body' => is_string($body) ? substr($body, 0, 200) : ''];
+                $payload = json_encode(['chat_id' => $chatId, 'text' => $message], JSON_UNESCAPED_UNICODE) ?: '{}';
+                $res = GpSafeHttp::postJson($url, $payload, [], ['api.telegram.org']);
+                $results['telegram'] = [
+                    'ok' => !empty($res['ok']),
+                    'httpCode' => (int) ($res['status'] ?? 0),
+                    'error' => $res['error'] ?? null,
+                ];
             }
         }
 
         if ($channel === 'discord' || $channel === 'all') {
-            $hook = trim((string) ($merchant['discord_webhook_url'] ?? ''));
+            $hook = self::openSecret((string) ($merchant['discord_webhook_url'] ?? ''), 'discord_webhook_url', (string) $actor['merchant_id']);
             if ($hook === '') {
                 $results['discord'] = ['ok' => false, 'error' => 'Discord webhook URL is not configured.'];
             } else {
-                $payload = json_encode(['content' => $message], JSON_UNESCAPED_UNICODE);
-                $ch = curl_init($hook);
-                curl_setopt_array($ch, [
-                    CURLOPT_POST => true,
-                    CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-                    CURLOPT_POSTFIELDS => $payload,
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_TIMEOUT => 8,
-                ]);
-                $body = curl_exec($ch);
-                $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                curl_close($ch);
-                $results['discord'] = ['ok' => $code >= 200 && $code < 300, 'httpCode' => $code];
+                $dCheck = GpSafeHttp::validateDiscordWebhook($hook);
+                if (!$dCheck['ok']) {
+                    $results['discord'] = ['ok' => false, 'error' => 'Stored Discord webhook is unsafe (' . ($dCheck['error'] ?? 'blocked') . ').'];
+                } else {
+                    $payload = json_encode(['content' => $message], JSON_UNESCAPED_UNICODE) ?: '{}';
+                    $res = GpSafeHttp::postJson($hook, $payload, [], ['discord.com', 'discordapp.com']);
+                    $results['discord'] = [
+                        'ok' => !empty($res['ok']),
+                        'httpCode' => (int) ($res['status'] ?? 0),
+                        'error' => $res['error'] ?? null,
+                    ];
+                }
             }
         }
 
@@ -476,6 +482,34 @@ final class MerchantController
             }
         }
         GpJson::send(['ok' => $ok, 'results' => $results, 'message' => $ok ? 'Test alert dispatched.' : 'No alert channel accepted the test.']);
+    }
+
+    private static function secretIsSet(mixed $stored): bool
+    {
+        return trim((string) $stored) !== '';
+    }
+
+    /** Open sealed secret; lazy-upgrade plaintext rows to sealed form. */
+    private static function openSecret(string $stored, string $column, string $merchantId): string
+    {
+        $stored = trim($stored);
+        if ($stored === '') {
+            return '';
+        }
+        if (str_starts_with($stored, 'gpw1:') || str_starts_with($stored, 'v1:')) {
+            $plain = GpCrypto::open($stored);
+            return is_string($plain) ? $plain : '';
+        }
+        // Legacy plaintext — seal on read.
+        try {
+            GpDb::exec(
+                "UPDATE gp_merchants SET {$column} = ?, updated_at = ? WHERE merchant_id = ? AND {$column} = ?",
+                [GpCrypto::seal($stored), GpIds::now(), $merchantId, $stored]
+            );
+        } catch (Throwable $e) {
+            error_log('lazy seal failed: ' . $e->getMessage());
+        }
+        return $stored;
     }
 
     private static function getBinancePay(array $actor): never
