@@ -52,10 +52,17 @@ export function AuthCard({ initialTab }: { initialTab: Tab }) {
   const [busy, setBusy] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const googleErrorParam = searchParams.get("google_error");
 
   useEffect(() => {
     setTab(initialTab);
   }, [initialTab]);
+
+  useEffect(() => {
+    if (googleErrorParam) {
+      setError(googleErrorParam);
+    }
+  }, [googleErrorParam]);
 
   useEffect(() => {
     if (planParam) {
@@ -96,33 +103,28 @@ export function AuthCard({ initialTab }: { initialTab: Tab }) {
     router.replace(next === "signup" ? `/register${q}` : `/login${q}`);
   };
 
-  const google = async () => {
+  const google = () => {
+    // Navigate to a server 302 starter — never await a long client fetch that can
+    // leave the button stuck on "Connecting to Google…".
     setGoogleBusy(true);
     setError(null);
+    // If the browser never leaves this page (extension/blocker), unlock the button.
+    window.setTimeout(() => setGoogleBusy(false), 12000);
     try {
       if (planParam) {
         localStorage.setItem("gresspay_selected_plan", planParam);
       }
       sessionStorage.setItem("gresspay_oauth_remember", rememberMe ? "1" : "0");
       const redirectUri = `${window.location.origin}/callback/google`;
-      const res = await api.getGoogleAuthUrl(redirectUri, AbortSignal.timeout(20000));
-      if (res.enabled && res.url) {
-        window.location.href = res.url;
-        return;
-      }
-      setError(res.reason || "Google sign-in is not configured on this server.");
+      const returnPath = tab === "signup" ? "/register" : "/login";
+      const params = new URLSearchParams({
+        redirect_uri: redirectUri,
+        return: returnPath,
+      });
+      window.location.assign(`/api/auth/google/start?${params.toString()}`);
     } catch (err: unknown) {
-      const status = typeof err === "object" && err && "status" in err ? Number((err as { status?: number }).status) : 0;
-      const code = typeof err === "object" && err && "code" in err ? String((err as { code?: string }).code || "") : "";
-      if (status === 502 || code === "PHP_UNREACHABLE" || code === "PHP_GATEWAY" || code === "PHP_TIMEOUT") {
-        setError(
-          "Google sign-in could not reach the GressPay API (502). Wait 10s and retry. If it keeps failing: Coolify → php container must be Running, web env GRESSPAY_PHP_URL=http://php:8080, then Redeploy. Check /api/ops/php-reachability"
-        );
-      } else {
-        setError(err instanceof Error ? err.message : "Could not start Google sign-in.");
-      }
-    } finally {
       setGoogleBusy(false);
+      setError(err instanceof Error ? err.message : "Could not start Google sign-in.");
     }
   };
 
