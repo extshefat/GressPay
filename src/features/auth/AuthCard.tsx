@@ -116,7 +116,7 @@ export function AuthCard({ initialTab }: { initialTab: Tab }) {
       const code = typeof err === "object" && err && "code" in err ? String((err as { code?: string }).code || "") : "";
       if (status === 502 || code === "PHP_UNREACHABLE" || code === "PHP_GATEWAY" || code === "PHP_TIMEOUT") {
         setError(
-          "Google sign-in could not reach the GressPay API (502). The PHP service may be restarting — wait 10 seconds and try again. Operators: confirm Coolify web env GRESSPAY_PHP_URL=http://php:8080 and that the php container is healthy."
+          "Google sign-in could not reach the GressPay API (502). Wait 10s and retry. If it keeps failing: Coolify → php container must be Running, web env GRESSPAY_PHP_URL=http://php:8080, then Redeploy. Check /api/ops/php-reachability"
         );
       } else {
         setError(err instanceof Error ? err.message : "Could not start Google sign-in.");
