@@ -174,16 +174,15 @@ final class AuthController
         $email = strtolower(trim((string) $req->input('email', '')));
         $password = (string) $req->input('password', '');
         $remember = self::wantRemember($req);
+        if (!GpRateLimiter::accountAllowed($email)) {
+            GpJson::error('INVALID_CREDENTIALS', 'Email or password is incorrect. Try again later.', 429);
+        }
         $row = GpDb::one('SELECT * FROM gp_merchants WHERE email = ?', [$email]);
-        if ($row === null) {
+        if ($row === null || empty($row['password_hash']) || !password_verify($password, $row['password_hash'])) {
+            GpRateLimiter::loginFailed($email);
             GpJson::error('INVALID_CREDENTIALS', 'Email or password is incorrect.', 401);
         }
-        if (empty($row['password_hash'])) {
-            GpJson::error('SOCIAL_AUTH_ONLY', 'This account was created via Google. Please sign in using Google.', 400);
-        }
-        if (!password_verify($password, $row['password_hash'])) {
-            GpJson::error('INVALID_CREDENTIALS', 'Email or password is incorrect.', 401);
-        }
+        GpRateLimiter::loginSucceeded($email);
         if ($row['status'] !== 'active') {
             GpJson::error('SUSPENDED', 'This account is not active.', 403);
         }

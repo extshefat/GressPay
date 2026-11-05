@@ -1171,6 +1171,32 @@ GpDb::boot();
 $walletQuery->execute([$brandId]);
 assert_true($walletQuery->fetchColumn() === $stored, 'Repeated boot preserves the sealed wallet');
 
+// Trusted IPs and atomic rate buckets.
+$savedServer = $_SERVER;
+$_SERVER['REMOTE_ADDR'] = '203.0.113.5';
+$_SERVER['HTTP_CF_CONNECTING_IP'] = '8.8.8.8';
+$_SERVER['HTTP_X_FORWARDED_FOR'] = '1.1.1.1, 8.8.8.8';
+putenv('TRUSTED_PROXIES=10.0.0.0/8'); putenv('TRUSTED_PROXY_HOPS=1');
+GpConfig::load();
+assert_true(GpRateLimiter::ip() === '203.0.113.5', 'Untrusted peer cannot spoof forwarded client IP');
+$_SERVER['REMOTE_ADDR'] = '10.0.0.2';
+assert_true(GpRateLimiter::ip() === '8.8.8.8', 'Trusted proxy selects client from right');
+assert_true(GpRateLimiter::inCidr('2001:db8::1', '2001:db8::/32'), 'IPv6 CIDR matching');
+$_SERVER = $savedServer;
+putenv('TRUSTED_PROXIES='); putenv('TRUSTED_PROXY_HOPS=0'); GpConfig::load();
+assert_true(GpRateLimiter::hit('regression-bucket', 2, 900), 'Rate bucket admits first request');
+assert_true(GpRateLimiter::hit('regression-bucket', 2, 900), 'Rate bucket admits request within limit');
+assert_true(!GpRateLimiter::hit('regression-bucket', 2, 900), 'Rate bucket rejects excess request');
+$loginEmail = 'Account@Test.Local';
+assert_true(GpRateLimiter::accountAllowed($loginEmail), 'New login account is available');
+for ($attempt = 0; $attempt < 5; $attempt++) GpRateLimiter::loginFailed($loginEmail);
+assert_true(!GpRateLimiter::accountAllowed(strtolower($loginEmail)), 'Five failures throttle same normalized account');
+GpRateLimiter::loginSucceeded($loginEmail);
+assert_true(GpRateLimiter::accountAllowed($loginEmail), 'Successful login clears account failures');
+GpDb::exec('INSERT INTO gp_rate_limit (bucket,window_start,hit_count) VALUES (?,?,?)', ['expired-test', time()-200000, 1]);
+GpRateLimiter::cleanup();
+assert_true(GpDb::one('SELECT bucket FROM gp_rate_limit WHERE bucket = ?', ['expired-test']) === null, 'Expired rate buckets are removed');
+
 // Versioned migrations preserve existing data and skip already-applied work.
 $versions = GpDb::all('SELECT * FROM gp_schema_version ORDER BY version');
 GpMigrations::run();

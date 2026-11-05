@@ -1,3 +1,4 @@
+import { isIP } from "node:net";
 import { NextRequest, NextResponse } from "next/server";
 import {
   SESSION_CLIENT_HEADER,
@@ -17,6 +18,8 @@ const HOP = new Set([
   "upgrade",
   "host",
   "content-length",
+  "x-forwarded-for", "x-real-ip", "cf-connecting-ip", "forwarded",
+  "x-gresspay-client-ip",
 ]);
 
 /** Next.js 15 App Router catch-all: params is always a Promise. */
@@ -33,6 +36,14 @@ async function proxy(req: NextRequest, ctx: RouteContext): Promise<NextResponse>
       headers.set(key, value);
     }
   });
+
+  // Only safe behind an ingress that appends/overwrites XFF and blocks direct access.
+  // Zero (default) intentionally aggregates clients rather than trusting arbitrary input.
+  const hops = Number(process.env.TRUSTED_PROXY_HOPS || "0");
+  const chain = (req.headers.get("x-forwarded-for") || "").split(",").map(v => v.trim());
+  const client = Number.isInteger(hops) && hops > 0 && hops <= chain.length
+    ? chain[chain.length - hops] : "";
+  headers.set("x-gresspay-client-ip", isIP(client) ? client : "0.0.0.0");
 
   const hasAuth = Boolean(headers.get("authorization")?.trim());
   const sessionJwt = req.cookies.get(SESSION_COOKIE)?.value?.trim() || "";

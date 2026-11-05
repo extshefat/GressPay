@@ -18,6 +18,7 @@ final class GpWebhookWorker
         while (true) {
             try {
                 if (time() >= $nextExpirySweep) {
+                    GpRateLimiter::cleanup();
                     $now = gmdate('Y-m-d\TH:i:s\Z');
                     GpDb::exec(
                         "UPDATE gp_transactions SET status = 'expired', updated_at = ? WHERE currency = 'BDT' AND status IN ('initiated','pending') AND expires_at IS NOT NULL AND expires_at <> '' AND expires_at <= ?",

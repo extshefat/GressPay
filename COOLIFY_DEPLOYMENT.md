@@ -147,3 +147,24 @@ Leave `GRESSPAY_CRYPTO_ALLOWED=0` until:
 1. Strong secrets set  
 2. Merchant enables crypto in Settings  
 3. Merchant saves Binance credentials and/or USDT address on Methods  
+
+## Phase 1: trusted client addresses
+
+Do not expose Next or the API directly to the Internet. Next's App Router does not
+expose the TCP peer: it can only trust an ingress-controlled XFF chain. Configure
+Traefik forwardedHeaders.trustedIPs for the actual preceding load balancer, never
+forwardedHeaders.insecure. Verify its resulting XFF chain in your deployment
+before setting the web container's TRUSTED_PROXY_HOPS (count from the right).
+The supplied edge nginx overwrites XFF with its socket peer, so web hops=1 is
+correct only when that socket peer is the real client. Behind Traefik, configure
+nginx real_ip with that proxy's precise CIDRs first, or count the verified chain.
+With web hops=0 (default), all proxy requests share a fail-closed rate bucket.
+
+PHP accepts X-GressPay-Client-IP only when REMOTE_ADDR is in TRUSTED_NEXT_PROXIES:
+set this to the Next container's dedicated address, never a shared public subnet.
+TRUSTED_PROXIES and TRUSTED_PROXY_HOPS govern direct API ingress XFF separately;
+leave empty/0 if unused. The internal API must be unreachable to untrusted
+containers. Never put an Internet-wide CIDR in either trust list. Next drops all
+inbound client-IP headers and sends only its selected internal header. In the
+FPM image nginx passes the original socket peer to PHP; do not real_ip rewrite
+that internal listener. Changing container addressing requires updating trust.
