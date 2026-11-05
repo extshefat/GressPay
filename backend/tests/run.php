@@ -990,6 +990,44 @@ $tokenRem = GpJwt::encode(['sub' => 'm_test'], GpJwt::TTL_REMEMBER);
 $payloadRem = GpJwt::decode($tokenRem);
 assert_true(is_array($payloadRem) && (($payloadRem['exp'] - $payloadRem['iat']) === GpJwt::TTL_REMEMBER), 'Remember-me JWT TTL is 7 days');
 
+// —— sms_auto requires healthy bound device (gate mirrors BrandsController) ——
+$smsAutoBrand = GpIds::make('brd', 6);
+GpDb::exec(
+    'INSERT INTO gp_brands (brand_id, merchant_id, name, currency_code, timezone, verification_mode, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)',
+    [$smsAutoBrand, $merchantId, 'sms_auto gate', 'BDT', 'Asia/Dhaka', 'trx_id', $now, $now]
+);
+$noDevice = (int) (GpDb::one(
+    "SELECT COUNT(*) AS c FROM gp_devices WHERE brand_id = ? AND status = 'active' AND bound_gateway_id IS NOT NULL AND bound_gateway_id <> '' AND last_seen_at IS NOT NULL",
+    [$smsAutoBrand]
+)['c'] ?? 0);
+assert_true($noDevice === 0, 'sms_auto gate: brand without bound device is blocked');
+$autoGw = GpIds::make('gw', 4);
+GpDb::exec(
+    'INSERT INTO gp_gateways (gateway_id, brand_id, method_code, display_name, account, currency, country, display_order, status, qr_status, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+    [$autoGw, $smsAutoBrand, 'bkash', 'Auto wallet', '01799998888', 'BDT', 'BD', 1, 'active', 'none', $now, $now]
+);
+$autoDev = GpIds::make('dev', 4);
+GpDb::exec(
+    'INSERT INTO gp_devices (device_id, brand_id, token_hash, status, bound_gateway_id, last_seen_at, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)',
+    [$autoDev, $smsAutoBrand, password_hash('gpdev_auto', PASSWORD_BCRYPT), 'active', $autoGw, $now, $now, $now]
+);
+$withDevice = (int) (GpDb::one(
+    "SELECT COUNT(*) AS c FROM gp_devices WHERE brand_id = ? AND status = 'active' AND bound_gateway_id IS NOT NULL AND bound_gateway_id <> '' AND last_seen_at IS NOT NULL",
+    [$smsAutoBrand]
+)['c'] ?? 0);
+assert_true($withDevice === 1, 'sms_auto gate: healthy bound device satisfies requirement');
+$steps = DashboardController::setupSteps(['brand_id' => $smsAutoBrand, 'merchant_id' => $merchantId]);
+$testSmsStep = null;
+foreach ($steps as $step) {
+    if (str_contains((string) ($step['label'] ?? ''), 'test credit SMS')) {
+        $testSmsStep = $step;
+        break;
+    }
+}
+assert_true(is_array($testSmsStep), 'Onboarding includes test credit SMS step');
+assert_true(($testSmsStep['complete'] ?? true) === false, 'Test SMS step incomplete before any SMS evidence');
+
 // —— Device ↔ gateway bind ownership + DEVICE_RAIL_MISMATCH ——
 $railBrand = GpIds::make('brd', 6);
 GpDb::exec(

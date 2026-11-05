@@ -302,6 +302,29 @@ final class BrandsController
         if (!in_array($verifyMode, ['trx_id', 'sms_auto'], true)) {
             GpJson::error('INVALID_MODE', 'verificationMode must be trx_id or sms_auto.', 400);
         }
+        if ($verifyMode === 'sms_auto') {
+            if (GpConfig::get('GRESSPAY_SMS_AUTO_ALLOWED', '0') !== '1') {
+                GpJson::error(
+                    'SMS_AUTO_DISABLED',
+                    'sms_auto is disabled on this platform until GRESSPAY_SMS_AUTO_ALLOWED=1.',
+                    403
+                );
+            }
+            $healthyDevice = GpDb::one(
+                "SELECT COUNT(*) AS c FROM gp_devices
+                 WHERE brand_id = ? AND status = 'active'
+                   AND bound_gateway_id IS NOT NULL AND bound_gateway_id <> ''
+                   AND last_seen_at IS NOT NULL",
+                [(string) $brand['brand_id']]
+            );
+            if ((int) ($healthyDevice['c'] ?? 0) < 1) {
+                GpJson::error(
+                    'DEVICE_REQUIRED',
+                    'sms_auto requires at least one active companion device bound to a gateway with a heartbeat.',
+                    400
+                );
+            }
+        }
         $amountPolicy = strtolower(trim((string) $req->input('amountPolicy', $req->input('amount_policy', $brand['amount_policy'] ?? 'exact'))));
         if (!in_array($amountPolicy, ['exact', 'equal_or_more'], true)) {
             GpJson::error('INVALID_POLICY', 'amountPolicy must be exact or equal_or_more.', 400);
