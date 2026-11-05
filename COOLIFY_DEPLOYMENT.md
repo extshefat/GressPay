@@ -30,8 +30,9 @@ Cloudflare 502 with **Host = Error** means Coolify’s proxy cannot reach a runn
    curl -sS http://127.0.0.1:8080/api/v1/health
    curl -sS http://127.0.0.1:8080/api/v1/health/worker
    ```
-6. Confirm env on **web**: `GRESSPAY_PHP_URL=http://<api-service-name>:8080`
-7. Confirm env on **api**: `JWT_SECRET`, `APP_ENCRYPTION_KEY`, `DB_*`, `PORT=8080`
+6. Confirm env on **web**: `GRESSPAY_PHP_URL=http://php:8080` when using the root `docker-compose` (service name is `php`). If you run a separate Coolify API service, use that service’s Docker DNS name instead (e.g. `http://gresspay-api:8080`).
+7. From the **web** container (or browser after deploy): open `/api/ops/php-reachability` — it lists which internal PHP hosts respond (no secrets).
+8. Confirm env on **api/php**: `JWT_SECRET`, `APP_ENCRYPTION_KEY`, `DB_*`, `PORT=8080`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
 
 If deploy status is **Failed**, the public site will stay 502 until that deploy is green—no amount of Cloudflare refresh will help.
 

@@ -5,8 +5,8 @@ import {
   SESSION_CLIENT_VALUE,
   SESSION_COOKIE,
 } from "@/lib/session-cookie";
+import { fetchPhpUpstream, phpOriginCandidates, primaryPhpOrigin } from "@/lib/php-upstream";
 
-const PHP_ORIGIN = (process.env.GRESSPAY_PHP_URL || "http://php:8080").replace(/\/$/, "");
 const HOP = new Set([
   "connection",
   "keep-alive",
@@ -47,32 +47,12 @@ function jsonUpstreamError(status: number, code: string, message: string): NextR
   return NextResponse.json({ error: { code, message } }, { status });
 }
 
-async function fetchUpstream(target: string, init: RequestInit, retries = 0): Promise<Response> {
-  let lastError: unknown;
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      const upstream = await fetch(target, init);
-      if (upstream.status >= 502 && upstream.status <= 504 && attempt < retries) {
-        await new Promise((r) => setTimeout(r, 250 * (attempt + 1)));
-        continue;
-      }
-      return upstream;
-    } catch (err) {
-      lastError = err;
-      if (attempt < retries) {
-        await new Promise((r) => setTimeout(r, 250 * (attempt + 1)));
-        continue;
-      }
-    }
-  }
-  throw lastError instanceof Error ? lastError : new Error("Upstream fetch failed");
-}
-
 async function proxy(req: NextRequest, ctx: RouteContext): Promise<NextResponse> {
   const { path: segments = [] } = await ctx.params;
   const incoming = new URL(req.url);
-  const target = `${PHP_ORIGIN}/api/v1/${segments.join("/")}${incoming.search}`;
+  const apiPath = `/api/v1/${segments.join("/")}${incoming.search}`;
   const method = req.method.toUpperCase();
+  const preferred = primaryPhpOrigin();
 
   const headers = new Headers();
   req.headers.forEach((value, key) => {
@@ -114,7 +94,6 @@ async function proxy(req: NextRequest, ctx: RouteContext): Promise<NextResponse>
     method: req.method,
     headers,
     redirect: "manual",
-    // Google URL / health should fail fast rather than hang the login button.
     signal: AbortSignal.timeout(looksLikeAuthGoogleUrl(segments, method) ? 15000 : 25000),
   };
 
@@ -124,17 +103,18 @@ async function proxy(req: NextRequest, ctx: RouteContext): Promise<NextResponse>
 
   try {
     const retries = looksLikeAuthGoogleUrl(segments, method) ? 2 : 0;
-    const upstream = await fetchUpstream(target, init, retries);
+    const { response: upstream, origin } = await fetchPhpUpstream(apiPath, init, {
+      retriesPerOrigin: retries,
+    });
     const { buffer, text } = await readUpstreamBody(upstream);
     const contentType = (upstream.headers.get("content-type") || "").toLowerCase();
     const isJson = contentType.includes("application/json") || /^\s*[{[]/.test(text);
 
-    // Traefik/nginx HTML 502 must never surface as a blank "API Error: 502".
     if (upstream.status >= 502 && upstream.status <= 504 && !isJson) {
       return jsonUpstreamError(
         502,
         "PHP_GATEWAY",
-        `GressPay API returned HTTP ${upstream.status} from ${PHP_ORIGIN}. Check that the php service is healthy and GRESSPAY_PHP_URL points at http://<api-service>:8080 on the same Docker network.`
+        `GressPay API returned HTTP ${upstream.status} from ${origin}. Coolify: ensure the php container is Running and web GRESSPAY_PHP_URL matches the compose service (usually http://php:8080). Tried: ${phpOriginCandidates().join(", ")}.`
       );
     }
 
@@ -144,18 +124,20 @@ async function proxy(req: NextRequest, ctx: RouteContext): Promise<NextResponse>
         out.set(key, value);
       }
     });
+    out.set("x-gresspay-php-origin", origin);
     return new NextResponse(buffer, {
       status: upstream.status,
       headers: out,
     });
   } catch (err) {
     const timedOut = err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError");
+    const tried = phpOriginCandidates().join(", ");
     return jsonUpstreamError(
       502,
       timedOut ? "PHP_TIMEOUT" : "PHP_UNREACHABLE",
       timedOut
-        ? `GressPay API timed out at ${PHP_ORIGIN}. The php container may be restarting or overloaded.`
-        : `GressPay PHP is not reachable at GRESSPAY_PHP_URL (${PHP_ORIGIN}). On Coolify set GRESSPAY_PHP_URL=http://php:8080 (or your API service name) on the web service.`
+        ? `GressPay API timed out (preferred ${preferred}). PHP may be restarting. Tried: ${tried}.`
+        : `GressPay PHP is not reachable from the web container. Preferred ${preferred}. Tried: ${tried}. In Coolify → web env set GRESSPAY_PHP_URL=http://php:8080 (compose service name), confirm php is Running, then Redeploy.`
     );
   }
 }
