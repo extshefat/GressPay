@@ -1334,11 +1334,13 @@ $legacyPath=$root . '/storage/phase1_legacy_regression.sqlite';
 @unlink($legacyPath);
 $legacyCode='putenv("APP_ENV=production");putenv("SQLITE_PATH=storage/phase1_legacy_regression.sqlite");'
     . '$_ENV["APP_ENV"]="production";$_ENV["SQLITE_PATH"]="storage/phase1_legacy_regression.sqlite";require ' . var_export($root.'/src/bootstrap.php',true) . ';'
+    . '$noHttpMigration=GpDb::one("SELECT name FROM sqlite_master WHERE type = ? AND name = ?",["table","gp_schema_version"])===null;'
     . 'GpDb::pdo()->exec(file_get_contents(GRESSPAY_ROOT."/schema/install.sql"));'
     . 'foreach ([["legacy-admin","admin",0],["legacy-google","merchant",1],["legacy-local","merchant",0]] as [$id,$role,$google]) GpDb::exec("INSERT INTO gp_merchants (merchant_id,full_name,email,role,google_email_verified,created_at,updated_at) VALUES (?,?,?,?,?,?,?)",[$id,$id,$id."@test.local",$role,$google,GpIds::now(),GpIds::now()]);'
     . 'GpDb::exec("INSERT INTO gp_brands (brand_id,merchant_id,name,currency_code,timezone,created_at,updated_at) VALUES (?,?,?,?,?,?,?)",["legacy-brand","legacy-local","Legacy brand","BDT","Asia/Dhaka",GpIds::now(),GpIds::now()]);'
+    . 'GpDb::pdo()->exec("CREATE TABLE IF NOT EXISTS gp_devices (id INTEGER PRIMARY KEY AUTOINCREMENT,device_id VARCHAR(28) NOT NULL UNIQUE,brand_id VARCHAR(24) NOT NULL,token_hash TEXT NOT NULL,token_sealed TEXT,status VARCHAR(16) NOT NULL,last_seen_at TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)");$legacyToken="gpdev_".bin2hex(random_bytes(20));GpDb::exec("INSERT INTO gp_devices (device_id,brand_id,token_hash,token_sealed,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?)",["legacy-device","legacy-brand",password_hash($legacyToken,PASSWORD_BCRYPT),GpCrypto::seal($legacyToken),"active",GpIds::now(),GpIds::now()]);'
     . 'GpMigrations::run();$before=GpDb::all("SELECT * FROM gp_schema_version ORDER BY version");GpMigrations::run();'
-    . 'echo json_encode(["merchants"=>GpDb::all("SELECT merchant_id,email_verified FROM gp_merchants ORDER BY merchant_id"),"brand"=>GpDb::one("SELECT require_payer_match FROM gp_brands WHERE brand_id = ?",["legacy-brand"]),"idempotent"=>$before===GpDb::all("SELECT * FROM gp_schema_version ORDER BY version")]);';
+    . 'echo json_encode(["noHttpMigration"=>$noHttpMigration,"deviceBackfilled"=>(GpDb::one("SELECT token_prefix FROM gp_devices WHERE device_id = ?",["legacy-device"])["token_prefix"]??"")===substr($legacyToken,0,12),"merchants"=>GpDb::all("SELECT merchant_id,email_verified FROM gp_merchants ORDER BY merchant_id"),"brand"=>GpDb::one("SELECT require_payer_match FROM gp_brands WHERE brand_id = ?",["legacy-brand"]),"idempotent"=>$before===GpDb::all("SELECT * FROM gp_schema_version ORDER BY version")]);';
 $legacyProc=proc_open([PHP_BINARY,'-r',$legacyCode],[0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$legacyPipes);
 $legacyResult=[];
 if (is_resource($legacyProc)) {
@@ -1347,6 +1349,8 @@ if (is_resource($legacyProc)) {
 }
 $legacyVerified=[]; foreach ($legacyResult['merchants'] ?? [] as $m) $legacyVerified[$m['merchant_id']]=(int)$m['email_verified'];
 assert_true(($legacyVerified['legacy-admin'] ?? 0)===1 && ($legacyVerified['legacy-google'] ?? 0)===1 && ($legacyVerified['legacy-local'] ?? 1)===0, 'Existing database upgrade verifies current admins and Google accounts only');
+assert_true(!empty($legacyResult['noHttpMigration']), 'Production HTTP bootstrap does not create schema');
+assert_true(!empty($legacyResult['deviceBackfilled']), 'Legacy sealed device token prefix is backfilled during migration');
 assert_true(($legacyResult['idempotent'] ?? false) && (int)($legacyResult['brand']['require_payer_match'] ?? -1)===0, 'Existing database upgrade preserves brands and stamps versions once');
 @unlink($legacyPath);
 
