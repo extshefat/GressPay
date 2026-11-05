@@ -1,63 +1,26 @@
 import type { Config } from "tailwindcss";
-
+const color = (name: string) => `rgb(var(--ds-${name}) / <alpha-value>)`;
 const config: Config = {
-  content: [
-    "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/features/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/lib/**/*.{js,ts,jsx,tsx,mdx}",
-  ],
-  darkMode: "class",
-  theme: {
-    extend: {
-      colors: {
-        void: {
-          DEFAULT: "var(--bg-page)",
-          pure: "var(--bg-page)",
-          surface: "var(--bg-surface)",
-          card: "var(--bg-card)",
-          muted: "var(--bg-muted)",
-          border: "var(--border-color)",
-          borderLight: "var(--border-subtle)",
-        },
-        brand: {
-          primary: "var(--accent-primary)",
-          cyan: "var(--accent-primary)",
-          cyanGlow: "transparent",
-          emerald: "#10B981",
-          emeraldGlow: "transparent",
-          blue: "#2563EB",
-          sky: "#0284C7",
-          purple: "#7C3AED",
-          amber: "#D97706",
-          rose: "#E11D48",
-          soft: "var(--accent-soft)",
-        },
-      },
-      fontFamily: {
-        sans: ["var(--font-sora)", "system-ui", "sans-serif"],
-        mono: ["var(--font-ibm-plex-mono)", "ui-monospace", "monospace"],
-      },
-      boxShadow: {
-        "card-clean": "0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05)",
-        "card-elevated": "0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05)",
-        "cyan-glow": "none",
-        "emerald-glow": "none",
-      },
-      animation: {
-        "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-        ticker: "ticker 25s linear infinite",
-      },
-      keyframes: {
-        ticker: {
-          "0%": { transform: "translateX(0)" },
-          "100%": { transform: "translateX(-50%)" },
-        },
-      },
+  content: ["./src/**/*.{js,ts,jsx,tsx,mdx}"], darkMode: "class",
+  theme: { extend: {
+    colors: {
+      canvas: color("canvas"), surface: { DEFAULT: color("surface"), muted: color("surface-muted") },
+      card: color("card"), border: { DEFAULT: color("border"), strong: color("border-strong") },
+      ink: { DEFAULT: color("ink"), solid: color("ink-solid"), 800: color("ink-800"), 700: color("ink-700") },
+      muted: color("muted"), brand: { DEFAULT: color("brand"), hover: color("brand-hover"), soft: color("brand-soft"), 700: color("teal-700"), 600: color("teal-600"), 500: color("teal-500") },
+      accent: { DEFAULT: color("accent"), soft: color("accent-soft"), 400: color("mint-400"), 200: color("mint-200") },
+      success: color("success"), warning: color("warning"), danger: color("danger"), info: color("info"),
+      "on-brand": color("on-brand"), "on-ink": color("on-ink"),
+      white: color("paper"), black: color("ink-solid"),
     },
-  },
-  plugins: [],
+    fontFamily: { sans: ["var(--font-ui)", "var(--font-bengali)", "sans-serif"], display: ["var(--font-display)", "var(--font-bengali)", "sans-serif"], mono: ["var(--font-code)", "var(--font-bengali)", "monospace"] },
+    fontSize: { xs: ["0.75rem", "1.5"], sm: ["0.875rem", "1.5"], base: ["1rem", "1.6"], lg: ["1.125rem", "1.5"], xl: ["1.25rem", "1.5"], "2xl": ["1.5rem", "1.35"], "3xl": ["2rem", "1.2"], "4xl": ["2.75rem", "1.15"], "5xl": ["3.75rem", "1.1"] },
+    borderRadius: { sm: "6px", md: "10px", lg: "14px", xl: "20px" },
+    maxWidth: { marketing: "1200px", dashboard: "1440px" },
+    boxShadow: Object.fromEntries(["flat", "raised", "floating", "overlay", "sm", "md", "lg", "xl", "2xl", "card-clean", "card-elevated"].map(name => [name, `var(--elevation-${({sm:"raised",md:"raised",lg:"floating",xl:"floating","2xl":"overlay","card-clean":"raised","card-elevated":"floating"} as Record<string,string>)[name] || name})`])),
+    transitionTimingFunction: { precision: "cubic-bezier(.2,.7,.2,1)" },
+    animation: { ticker: "ticker 25s linear infinite" },
+    keyframes: { ticker: { "0%": { transform: "translateX(0)" }, "100%": { transform: "translateX(-50%)" } } },
+  } }, plugins: [],
 };
-
 export default config;

@@ -92,13 +92,13 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
         key={item.href}
         href={item.href}
         onClick={onClose}
-        className={`group flex min-h-10 items-center gap-3 rounded-md border-l-2 px-3 py-2 text-[13px] font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-300/40 ${
+        className={`group flex min-h-10 items-center gap-3 rounded-md border-l-2 px-3 py-2 text-[13px] font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-strong/40 ${
           isActive
-            ? "border-teal-400 bg-white/[0.09] text-white"
-            : "border-transparent text-slate-400 hover:bg-white/[0.05] hover:text-white"
+            ? "border-accent bg-brand/10 text-ink"
+            : "border-transparent text-muted hover:bg-brand/5 hover:text-ink"
         }`}
       >
-        <Icon className={`h-4 w-4 ${isActive ? "text-teal-300" : "text-slate-500 transition-colors group-hover:text-slate-200"}`} />
+        <Icon className={`h-4 w-4 ${isActive ? "text-accent" : "text-muted transition-colors group-hover:text-ink"}`} />
         <span>{item.label}</span>
       </Link>
     );
@@ -106,21 +106,21 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
 
   const nav = (
     <>
-      <div className="flex items-center justify-between gap-2 border-b border-white/[0.08] px-5 py-5">
+      <div className="flex items-center justify-between gap-2 border-b border-border px-5 py-5">
         <Link href="/" className="flex items-center gap-2.5" onClick={onClose}>
           <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/[0.07] ring-1 ring-white/[0.08]">
-            <GpMark inverse />
+            <GpMark />
           </span>
           <div>
-            <div className="text-[15px] font-bold tracking-tight text-white">GressPay</div>
-            <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-neutral-300/80">Business OS</div>
+            <div className="text-[15px] font-bold tracking-tight text-ink">GressPay</div>
+            <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted/80">Business OS</div>
           </div>
         </Link>
         {onClose && (
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-white/10 hover:text-white lg:hidden"
+            className="rounded-lg p-1.5 text-muted hover:bg-white/10 hover:text-ink lg:hidden"
             aria-label="Close menu"
           >
             <X className="w-5 h-5" />
@@ -131,16 +131,16 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
         {CORE_NAV.map(renderLink)}
 
-        <div className="mt-3 border-t border-white/[0.08] pt-4">
-          <div className="px-3 py-1 text-[9px] font-bold uppercase tracking-[0.18em] text-slate-500">
+        <div className="mt-3 border-t border-border pt-4">
+          <div className="px-3 py-1 text-[9px] font-bold uppercase tracking-[0.18em] text-muted">
             Automation
           </div>
           <div className="mt-1 space-y-1">{AUTOMATION_NAV.map(renderLink)}</div>
         </div>
 
         {(user?.role === "admin" || user?.isAdmin || (user as { is_admin?: boolean })?.is_admin) && (
-          <div className="mt-3 border-t border-white/[0.08] pt-4">
-            <div className="px-3 py-1 text-[9px] font-bold uppercase tracking-[0.18em] text-slate-500">
+          <div className="mt-3 border-t border-border pt-4">
+            <div className="px-3 py-1 text-[9px] font-bold uppercase tracking-[0.18em] text-muted">
               Platform Admin
             </div>
             <Link
@@ -148,8 +148,8 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               onClick={onClose}
               className={`flex min-h-10 items-center justify-between rounded-md border-l-2 px-3 py-2 text-[13px] font-semibold transition-all ${
                 pathname.startsWith("/admin") || pathname.startsWith("/dashboard/admin")
-                  ? "border-amber-400 bg-white/[0.09] text-white"
-                  : "border-transparent text-slate-300 hover:bg-white/[0.06] hover:text-white"
+                  ? "border-warning bg-brand/10 text-ink"
+                  : "border-transparent text-muted hover:bg-brand/5 hover:text-ink"
               }`}
             >
               <div className="flex items-center gap-3">
@@ -164,14 +164,14 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
         )}
       </nav>
 
-      <div className="border-t border-white/[0.08] p-3">
+      <div className="border-t border-border p-3">
         <Link
           href="/developers"
           onClick={onClose}
-          className="block rounded-lg border border-white/[0.08] bg-white/[0.04] p-3 text-xs transition hover:border-neutral-300/25 hover:bg-white/[0.07]"
+          className="block rounded-lg border border-border bg-white/[0.04] p-3 text-xs transition hover:border-border/25 hover:bg-white/[0.07]"
         >
-          <div className="font-semibold text-white">Developer documentation</div>
-          <div className="mt-0.5 text-[11px] text-slate-400">REST APIs, SDKs and webhooks</div>
+          <div className="font-semibold text-ink">Developer documentation</div>
+          <div className="mt-0.5 text-[11px] text-muted">REST APIs, SDKs and webhooks</div>
         </Link>
       </div>
     </>
@@ -179,7 +179,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
 
   return (
     <>
-      <aside className="hidden min-h-screen w-[17rem] shrink-0 flex-col border-r border-white/[0.07] bg-[#070b10] lg:flex">
+      <aside className="hidden min-h-screen w-[17rem] shrink-0 flex-col border-r border-border bg-surface lg:flex">
         {nav}
       </aside>
 
@@ -191,12 +191,12 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
       >
         <button
           type="button"
-          className="absolute inset-0 bg-zinc-950/50 backdrop-blur-[2px]"
+          className="absolute inset-0 bg-ink-solid/50 "
           onClick={onClose}
           aria-label="Close sidebar overlay"
         />
         <aside
-          className={`absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col border-r border-white/[0.06] bg-[#070b10] shadow-2xl transition-transform duration-200 ease-out ${
+          className={`absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col border-r border-border bg-surface shadow-overlay transition-transform duration-200 ease-out ${
             mobileOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >

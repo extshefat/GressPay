@@ -860,18 +860,18 @@ export default function GatewaysPage() {
         title="Payment gateways"
         icon={<Sliders className="h-5 w-5" />}
         badge={
-          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/30 dark:text-emerald-300">
+          <span className="rounded-full border border-success bg-success/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-success dark:border-success/60 dark:bg-success/30 dark:text-success">
             Direct settlement
           </span>
         }
         description={
           <>
             Showing wallets for{" "}
-            <span className="font-semibold text-zinc-800 dark:text-zinc-200">
+            <span className="font-semibold text-ink dark:text-ink">
               {currentBrandName || "the selected brand"}
             </span>
             . Verification mode is{" "}
-            <span className="font-semibold text-zinc-800 dark:text-zinc-200">
+            <span className="font-semibold text-ink dark:text-ink">
               {brandVerifyMode === "sms_auto" ? "SMS auto" : "TrxID + SMS"}
             </span>
             . Configure receiving accounts, checkout limits, fees and companion readiness from one place.
@@ -918,8 +918,8 @@ export default function GatewaysPage() {
             <span
               className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${
                 categoryFilter === tab.id
-                  ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-bold"
-                  : "bg-zinc-200/60 dark:bg-zinc-800/60 text-zinc-500"
+                  ? "bg-surface dark:bg-surface-muted text-ink dark:text-ink font-bold"
+                  : "bg-surface-muted/60 dark:bg-surface-muted/60 text-muted"
               }`}
             >
               {tab.count}
@@ -929,40 +929,40 @@ export default function GatewaysPage() {
       </div>
 
       {/* Non-Custodial Architecture Strip */}
-      <div className="dashboard-panel flex items-start gap-3 p-4 text-xs text-zinc-700 dark:text-zinc-300">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+      <div className="dashboard-panel flex items-start gap-3 p-4 text-xs text-ink dark:text-ink">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-success/10 text-success dark:bg-success/40 dark:text-success">
           <ShieldCheck className="h-4 w-4" />
         </span>
         <div className="space-y-1">
-          <div className="font-semibold text-zinc-900 dark:text-zinc-100">
+          <div className="font-semibold text-ink dark:text-ink">
             Funds settle directly to your account
           </div>
-          <p className="text-zinc-500 dark:text-zinc-400">
+          <p className="text-muted dark:text-muted">
             GressPay verifies the payment while funds go to your configured wallet. MFS rails use Companion SMS evidence; provider and on-chain rails use their own verification flow.
           </p>
         </div>
       </div>
 
       {errorMessage && (
-        <Card className="p-4 border-rose-300/50 flex gap-3 items-start bg-rose-50/50 dark:bg-rose-950/20">
-          <AlertCircle className="w-5 h-5 text-rose-500 shrink-0" />
-          <p className="text-xs text-rose-800 dark:text-rose-200">{errorMessage}</p>
+        <Card className="p-4 border-danger/50 flex gap-3 items-start bg-danger/10 dark:bg-danger/20">
+          <AlertCircle className="w-5 h-5 text-danger shrink-0" />
+          <p className="text-xs text-danger dark:text-danger">{errorMessage}</p>
         </Card>
       )}
 
       {/* Gateway Library Catalog */}
       {showLibrary && (
         <Card className="space-y-5 overflow-hidden p-5 sm:p-6">
-          <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
+          <div className="flex items-center justify-between border-b border-border dark:border-border pb-3">
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-sky-50 dark:bg-sky-950/50 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-800">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-info/10 dark:bg-info/50 text-info dark:text-info border border-info dark:border-info">
                   Gateway Catalog
                 </span>
-                <span className="text-xs text-zinc-400">· Click any rail to configure</span>
+                <span className="text-xs text-muted">· Click any rail to configure</span>
               </div>
-              <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 mt-1">Choose a payment channel</h2>
-              <p className="text-xs text-zinc-500">Select any official payment rail or add a custom bank/manual payment channel.</p>
+              <h2 className="text-lg font-bold text-ink dark:text-ink mt-1">Choose a payment channel</h2>
+              <p className="text-xs text-muted">Select any official payment rail or add a custom bank/manual payment channel.</p>
             </div>
             <Button size="sm" variant="outline" onClick={() => setShowLibrary(false)}>
               Close
@@ -971,16 +971,16 @@ export default function GatewaysPage() {
 
           <div className="flex flex-col gap-3 sm:flex-row">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted" />
               <input
                 type="text"
                 value={libraryQuery}
                 onChange={(e) => setLibraryQuery(e.target.value)}
                 placeholder="Search gateway by name, currency, or country (e.g. bKash, Nagad, Binance, USDT)…"
-                className="h-11 w-full rounded-xl border border-zinc-200 bg-white py-2 pl-10 pr-3 text-sm text-zinc-900 shadow-sm outline-none transition placeholder:text-zinc-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-600/10 dark:border-[#2a3a47] dark:bg-[#0b1620] dark:text-zinc-100 dark:focus:border-teal-400"
+                className="h-11 w-full rounded-xl border border-border bg-white py-2 pl-10 pr-3 text-sm text-ink shadow-sm outline-none transition placeholder:text-muted focus:border-accent focus:ring-2 focus:ring-accent/10 dark:border-border dark:bg-surface dark:text-ink dark:focus:border-accent"
               />
             </div>
-            <div className="flex flex-wrap gap-1 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 p-1">
+            <div className="flex flex-wrap gap-1 rounded-xl border border-border dark:border-border bg-surface dark:bg-surface p-1">
               {(["all", "mfs", "crypto", "bank"] as const).map((id) => (
                 <button
                   key={id}
@@ -988,8 +988,8 @@ export default function GatewaysPage() {
                   onClick={() => setLibraryFilter(id)}
                   className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                     libraryFilter === id
-                      ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-xs"
-                      : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
+                      ? "bg-white dark:bg-surface-muted text-ink dark:text-ink shadow-xs"
+                      : "text-muted dark:text-muted hover:text-ink dark:hover:text-on-ink"
                   }`}
                 >
                   {id === "all" ? "All" : id === "mfs" ? "Mobile Banking" : id === "crypto" ? "Crypto & Global" : "Bank / Manual"}
@@ -1004,13 +1004,13 @@ export default function GatewaysPage() {
               <button
                 type="button"
                 onClick={pickCustomGateway}
-                className="group flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-sky-400/60 dark:border-sky-500/40 bg-sky-50/50 dark:bg-sky-950/20 p-4 text-center transition hover:border-sky-600 dark:hover:border-sky-400 hover:bg-sky-100/50 dark:hover:bg-sky-950/40 hover:shadow-md"
+                className="group flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-info/60 dark:border-info/40 bg-info/10 dark:bg-info/20 p-4 text-center transition hover:border-info dark:hover:border-info hover:bg-info/10 dark:hover:bg-info/40 hover:shadow-md"
               >
-                <div className="mb-2.5 flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/30 group-hover:scale-105 transition-transform">
-                  <Plus className="h-6 w-6 text-sky-600 dark:text-sky-400" />
+                <div className="mb-2.5 flex h-12 w-12 items-center justify-center rounded-2xl bg-info/10 text-info dark:text-info border border-info/30 group-hover:scale-105 transition-transform">
+                  <Plus className="h-6 w-6 text-info dark:text-info" />
                 </div>
-                <div className="text-xs font-bold text-sky-900 dark:text-sky-200">Custom Manual Gateway</div>
-                <div className="mt-1 font-mono text-[9px] text-sky-600 dark:text-sky-400">Bank, Offline, or MFS</div>
+                <div className="text-xs font-bold text-info dark:text-info">Custom Manual Gateway</div>
+                <div className="mt-1 font-mono text-[9px] text-info dark:text-info">Bank, Offline, or MFS</div>
               </button>
             )}
 
@@ -1035,9 +1035,9 @@ export default function GatewaysPage() {
                   type="button"
                   disabled={["IN", "PK", "NP"].includes(g.country)}
                   onClick={() => pickCuratedGateway(g)}
-                  className="group relative flex min-h-[136px] flex-col items-center rounded-2xl border border-zinc-200 bg-white p-3.5 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-teal-700/30 hover:shadow-lg dark:border-[#2a3a47] dark:bg-[#0b1620] dark:hover:border-teal-300/30"
+                  className="group relative flex min-h-[136px] flex-col items-center rounded-2xl border border-border bg-white p-3.5 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-accent/30 hover:shadow-lg dark:border-border dark:bg-surface dark:hover:border-accent/30"
                 >
-                  <div className="relative mb-2.5 flex h-12 w-12 items-center justify-center rounded-xl bg-white p-2 shadow-xs border border-zinc-200/80 dark:border-zinc-700/80 group-hover:scale-105 transition-transform">
+                  <div className="relative mb-2.5 flex h-12 w-12 items-center justify-center rounded-xl bg-white p-2 shadow-xs border border-border/80 dark:border-border/80 group-hover:scale-105 transition-transform">
                     <Image
                       src={g.logo || gatewayLogoPath(g.code)}
                       alt={g.name}
@@ -1046,18 +1046,18 @@ export default function GatewaysPage() {
                       className="h-8 w-8 object-contain"
                     />
                   </div>
-                  <div className="text-xs font-bold text-zinc-900 dark:text-zinc-100 line-clamp-1">{g.name}</div>
-                  <div className="mt-1 flex items-center gap-1 font-mono text-[10px] uppercase text-zinc-500 dark:text-zinc-400">
-                    <span className="rounded bg-zinc-100 dark:bg-zinc-800 px-1 py-0.2 text-[9px] text-zinc-600 dark:text-zinc-300">{g.country}</span>
+                  <div className="text-xs font-bold text-ink dark:text-ink line-clamp-1">{g.name}</div>
+                  <div className="mt-1 flex items-center gap-1 font-mono text-[10px] uppercase text-muted dark:text-muted">
+                    <span className="rounded bg-surface dark:bg-surface-muted px-1 py-0.2 text-[9px] text-muted dark:text-ink">{g.country}</span>
                     <span>·</span>
                     <span>{g.currency}</span>{["IN", "PK", "NP"].includes(g.country) && <span className="text-[9px]"> · Planned adapter</span>}
                   </div>
                   <div className="mt-2">
                     <span className={`rounded-full px-2 py-0.5 text-[8px] font-semibold tracking-wide uppercase ${
-                      g.type === "automation" ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30" :
-                      g.type === "onchain" ? "bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-500/30" :
-                      g.type === "provider" ? "bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/30" :
-                      "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700"
+                      g.type === "automation" ? "bg-success/10 text-success dark:text-success border border-success/30" :
+                      g.type === "onchain" ? "bg-brand/10 text-brand dark:text-brand border border-brand/30" :
+                      g.type === "provider" ? "bg-info/10 text-info dark:text-info border border-info/30" :
+                      "bg-surface dark:bg-surface-muted text-muted dark:text-ink border border-border dark:border-border"
                     }`}>
                       {g.type === "automation" ? "SMS Receipt Match" :
                        g.type === "onchain" ? "On-Chain" :
@@ -1076,22 +1076,22 @@ export default function GatewaysPage() {
           <button
             type="button"
             aria-label="Close gateway configuration"
-            className="absolute inset-0 bg-[#071018]/70 backdrop-blur-sm"
+            className="absolute inset-0 bg-ink-solid/70 "
             onClick={() => {
               setShowForm(false);
               setEditing(null);
             }}
           />
-          <aside className="relative flex h-full w-full max-w-3xl flex-col overflow-hidden border-l border-zinc-200 bg-white shadow-2xl dark:border-[#2a3a47] dark:bg-[#0f1b26]">
-          <div className="flex items-center justify-between border-b border-zinc-200 px-5 py-5 dark:border-[#21313f] sm:px-7">
+          <aside className="relative flex h-full w-full max-w-3xl flex-col overflow-hidden border-l border-border bg-white shadow-2xl dark:border-border dark:bg-surface">
+          <div className="flex items-center justify-between border-b border-border px-5 py-5 dark:border-border sm:px-7">
             <div>
               <div className="dashboard-kicker">Gateway configuration</div>
-              <h2 className="mt-1 text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+              <h2 className="mt-1 text-xl font-bold tracking-tight text-ink dark:text-ink">
                 {formMethod === "binance_pay"
                   ? `Binance Setup${currentBrandName ? ` for ${currentBrandName}` : ""}`
                   : `${gatewayShortLabel(formMethod)} Setup${currentBrandName ? ` for ${currentBrandName}` : ""}`}
               </h2>
-              <p className="mt-1 text-xs text-zinc-500">
+              <p className="mt-1 text-xs text-muted">
                 {editing ? `Editing destination ID: ${editing.gatewayId}` : "Configure credentials, limits, and optional receiving QR code."}
               </p>
             </div>
@@ -1103,20 +1103,20 @@ export default function GatewaysPage() {
           <form onSubmit={saveForm} className="flex-1 space-y-5 overflow-y-auto px-5 py-6 sm:px-7">
             {/* Select Brand Indicator */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+              <label className="text-xs font-semibold text-ink dark:text-ink">
                 Select Brand
               </label>
               <Input
                 value={currentBrandName || "Current Active Brand"}
                 disabled
-                className="bg-zinc-100 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 font-semibold text-xs cursor-not-allowed"
+                className="bg-surface dark:bg-surface text-ink dark:text-ink font-semibold text-xs cursor-not-allowed"
               />
             </div>
 
             {/* Sleek Selected Rail Card */}
-            <div className="flex flex-col items-start justify-between gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-3.5 dark:border-[#2a3a47] dark:bg-[#0b1620]/70 sm:flex-row sm:items-center">
+            <div className="flex flex-col items-start justify-between gap-3 rounded-2xl border border-border bg-card p-3.5 dark:border-border dark:bg-surface/70 sm:flex-row sm:items-center">
               <div className="flex min-w-0 items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-white p-2 shadow-xs border border-zinc-200 dark:border-zinc-700 flex items-center justify-center shrink-0">
+                <div className="w-12 h-12 rounded-xl bg-white p-2 shadow-xs border border-border dark:border-border flex items-center justify-center shrink-0">
                   <Image
                     src={gatewayLogoPath(formMethod)}
                     alt={formName || formMethod}
@@ -1127,13 +1127,13 @@ export default function GatewaysPage() {
                 </div>
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
+                    <h3 className="font-bold text-sm text-ink dark:text-ink">
                       {gatewayShortLabel(formMethod)}
                     </h3>
-                    <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
+                    <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-surface-muted dark:bg-surface-muted text-ink dark:text-ink">
                       {formCurrency || "BDT"}
                     </span>
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-success/10 text-success dark:text-success border border-success/20">
                       {MFS_CODES.has(formMethod)
                         ? "MFS Companion Automation"
                         : CRYPTO_CODES.has(formMethod)
@@ -1141,8 +1141,8 @@ export default function GatewaysPage() {
                         : "Direct Settlement"}
                     </span>
                   </div>
-                  <p className="text-[11px] text-zinc-500 mt-0.5">
-                    Channel Code: <span className="font-mono text-zinc-700 dark:text-zinc-300">{formMethod}</span>
+                  <p className="text-[11px] text-muted mt-0.5">
+                    Channel Code: <span className="font-mono text-ink dark:text-ink">{formMethod}</span>
                   </p>
                 </div>
               </div>
@@ -1174,10 +1174,10 @@ export default function GatewaysPage() {
             {MFS_CODES.has(formMethod) && (
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                  <span className="text-xs font-semibold text-ink dark:text-ink">
                     Select Account Type
                   </span>
-                  <span className="text-[11px] text-zinc-500">
+                  <span className="text-[11px] text-muted">
                     Select transfer method for customers
                   </span>
                 </div>
@@ -1191,12 +1191,12 @@ export default function GatewaysPage() {
                         onClick={() => setFormAccountType(t.id)}
                         className={`p-3 rounded-xl border text-left transition-all ${
                           isSelected
-                            ? "border-zinc-950 dark:border-white bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-sm"
-                            : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 hover:border-zinc-300 dark:hover:border-zinc-700"
+                            ? "border-border dark:border-white bg-ink-solid text-white dark:bg-brand dark:text-on-brand shadow-sm"
+                            : "border-border dark:border-border bg-white dark:bg-surface text-ink dark:text-ink hover:border-border dark:hover:border-border"
                         }`}
                       >
                         <div className="font-bold text-xs">{t.label}</div>
-                        <div className={`mt-0.5 text-[10px] leading-tight ${isSelected ? "opacity-80" : "text-zinc-500"}`}>
+                        <div className={`mt-0.5 text-[10px] leading-tight ${isSelected ? "opacity-80" : "text-muted"}`}>
                           {t.hint}
                         </div>
                       </button>
@@ -1205,7 +1205,7 @@ export default function GatewaysPage() {
                 </div>
 
                 {formMethod === "bkash" && formAccountType === "merchant" && (
-                  <div className="grid grid-cols-1 gap-3 rounded-xl border border-zinc-200 p-3 dark:border-zinc-800 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-3 rounded-xl border border-border p-3 dark:border-border sm:grid-cols-2">
                     <Input
                       label="bKash username (optional)"
                       value={formUsername}
@@ -1236,14 +1236,14 @@ export default function GatewaysPage() {
                       autoComplete="new-password"
                       required
                     />
-                    <p className="col-span-full text-[11px] text-zinc-500">
+                    <p className="col-span-full text-[11px] text-muted">
                       API credentials are encrypted at rest. Live checkout still confirms via Companion SMS this
                       release (official bKash PGW adapter comes later). Pair a device under Devices for this brand.
                     </p>
                   </div>
                 )}
                 {(formAccountType !== "merchant" || formMethod !== "bkash") && (
-                  <p className="text-[11px] text-zinc-500">
+                  <p className="text-[11px] text-muted">
                     This number is verified by Companion SMS match. Pair an Android device under{" "}
                     <Link href="/dashboard/devices" className="font-semibold underline">
                       Companion devices
@@ -1256,17 +1256,17 @@ export default function GatewaysPage() {
 
             {/* Binance Pay — merchant API credentials (required for live checkout) */}
             {formMethod === "binance_pay" && (
-              <div className="space-y-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 bg-zinc-50/60 dark:bg-zinc-900/40">
+              <div className="space-y-3 rounded-2xl border border-border dark:border-border p-4 bg-card/60 dark:bg-surface/40">
                 <div className="space-y-1">
-                  <div className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
+                  <div className="text-xs font-bold text-ink dark:text-ink">
                     Credentials (Binance Merchant API)
                   </div>
-                  <p className="text-[11px] text-zinc-500 leading-relaxed">
+                  <p className="text-[11px] text-muted leading-relaxed">
                     Live Binance Pay needs your Merchant API Key, Secret Key, and Certificate SN. Saving credentials
                     also enables crypto rails for this brand so the gateway appears on checkout.
                   </p>
                   {binanceLiveConfigured && (
-                    <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">
+                    <p className="text-[11px] text-success dark:text-success font-medium">
                       Live API credentials are saved. Leave key fields blank to keep them, or enter all three to rotate.
                     </p>
                   )}
@@ -1356,10 +1356,10 @@ export default function GatewaysPage() {
 
             {formMethod === "usdt_trc20" && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <label className="block text-xs font-medium space-y-1.5 text-zinc-700 dark:text-zinc-300">
+                <label className="block text-xs font-medium space-y-1.5 text-ink dark:text-ink">
                   <span>Exchange Rate Mode</span>
                   <select
-                    className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3.5 text-sm font-medium shadow-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/10 dark:border-[#2a3a47] dark:bg-[#0b1620] dark:focus:border-teal-400"
+                    className="h-11 w-full rounded-xl border border-border bg-white px-3.5 text-sm font-medium shadow-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/10 dark:border-border dark:bg-surface dark:focus:border-accent"
                     value={formRateMode}
                     onChange={(e) => setFormRateMode(e.target.value as "auto" | "custom")}
                   >
@@ -1380,10 +1380,10 @@ export default function GatewaysPage() {
             )}
 
             {/* Universal QR Code Upload Section (Available on EVERY gateway!) */}
-            <div className="space-y-2.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 bg-zinc-50/60 dark:bg-zinc-900/40">
+            <div className="space-y-2.5 rounded-2xl border border-border dark:border-border p-4 bg-card/60 dark:bg-surface/40">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
-                  <ImageIcon className="w-4 h-4 text-zinc-500" />
+                <span className="text-xs font-semibold text-ink dark:text-ink flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4 text-muted" />
                   <span>Receiving QR Code (Optional)</span>
                 </span>
                 {previewUrl && (
@@ -1399,14 +1399,14 @@ export default function GatewaysPage() {
                       setFormQrDataUrl(null);
                       setFormQrFile(null);
                     }}
-                    className="text-[11px] text-rose-600 hover:text-rose-700 dark:text-rose-400 flex items-center gap-1 font-medium"
+                    className="text-[11px] text-danger hover:text-danger dark:text-danger flex items-center gap-1 font-medium"
                   >
                     <Trash2 className="w-3 h-3" />
                     <span>Remove QR</span>
                   </button>
                 )}
               </div>
-              <p className="text-[11px] text-zinc-500 leading-relaxed">
+              <p className="text-[11px] text-muted leading-relaxed">
                 Upload your receiving QR code (Personal/Merchant bKash/Nagad/Rocket QR, Binance Pay QR, or Bank QR). It will be rendered on the checkout page for buyers to scan.
               </p>
               <div className="flex items-center gap-4 pt-1">
@@ -1415,11 +1415,11 @@ export default function GatewaysPage() {
                   <img
                     src={previewUrl}
                     alt="QR preview"
-                    className="w-24 h-24 object-contain border border-zinc-200 dark:border-zinc-700 rounded-xl bg-white p-1.5 shadow-sm shrink-0"
+                    className="w-24 h-24 object-contain border border-border dark:border-border rounded-xl bg-white p-1.5 shadow-sm shrink-0"
                   />
                 )}
-                <label className="cursor-pointer inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs font-semibold text-zinc-800 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-750 transition shadow-2xs">
-                  <Plus className="w-3.5 h-3.5 text-zinc-500" />
+                <label className="cursor-pointer inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-border dark:border-border bg-white dark:bg-surface-muted text-xs font-semibold text-ink dark:text-ink hover:bg-card dark:hover:bg-surface-muted transition shadow-2xs">
+                  <Plus className="w-3.5 h-3.5 text-muted" />
                   <span>{previewUrl ? "Change QR Image" : "Choose File"}</span>
                   <input
                     type="file"
@@ -1452,11 +1452,11 @@ export default function GatewaysPage() {
             </div>
 
             {/* Limits & Fees Section */}
-            <div className="space-y-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
-              <div className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
+            <div className="space-y-2 pt-2 border-t border-border dark:border-border">
+              <div className="text-xs font-bold text-ink dark:text-ink">
                 Limits & Fees
               </div>
-              <div className="grid grid-cols-1 gap-3 rounded-xl border border-zinc-200 p-3 dark:border-zinc-800 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 rounded-xl border border-border p-3 dark:border-border sm:grid-cols-2 lg:grid-cols-3">
                 <Input
                   label={`Minimum Amount (${formCurrency || "BDT"})`}
                   value={formMinAmount}
@@ -1481,10 +1481,10 @@ export default function GatewaysPage() {
                   onChange={(e) => setFormGatewayFee(e.target.value)}
                   className="font-mono text-xs"
                 />
-                <label className="block space-y-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                <label className="block space-y-1.5 text-xs font-medium text-ink dark:text-ink">
                   <span>Gateway Fee Type</span>
                   <select
-                    className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3.5 text-sm shadow-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/10 dark:border-[#2a3a47] dark:bg-[#0b1620] dark:focus:border-teal-400"
+                    className="h-11 w-full rounded-xl border border-border bg-white px-3.5 text-sm shadow-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/10 dark:border-border dark:bg-surface dark:focus:border-accent"
                     value={formGatewayFeeType}
                     onChange={(e) => setFormGatewayFeeType(e.target.value as "percentage" | "fixed")}
                   >
@@ -1492,10 +1492,10 @@ export default function GatewaysPage() {
                     <option value="fixed">Fixed amount</option>
                   </select>
                 </label>
-                <label className="block space-y-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                <label className="block space-y-1.5 text-xs font-medium text-ink dark:text-ink">
                   <span>Gateway Category</span>
                   <select
-                    className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3.5 text-sm shadow-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/10 dark:border-[#2a3a47] dark:bg-[#0b1620] dark:focus:border-teal-400"
+                    className="h-11 w-full rounded-xl border border-border bg-white px-3.5 text-sm shadow-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/10 dark:border-border dark:bg-surface dark:focus:border-accent"
                     value={formGatewayCategory}
                     onChange={(e) => setFormGatewayCategory(e.target.value)}
                   >
@@ -1516,15 +1516,15 @@ export default function GatewaysPage() {
             />
 
             {editing && MFS_CODES.has(formMethod) && (
-              <div className="flex items-center justify-between p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs">
-                <span className="text-zinc-600 dark:text-zinc-400">Companion readiness</span>
+              <div className="flex items-center justify-between p-3 rounded-xl border border-border dark:border-border text-xs">
+                <span className="text-muted dark:text-muted">Companion readiness</span>
                 <Badge variant={editing.readiness === "needs_companion" ? "amber" : "emerald"} size="sm" dot>
                   {editing.readiness === "needs_companion" ? "No Active Device" : "Connected to Companion APK"}
                 </Badge>
               </div>
             )}
 
-            <div className="sticky bottom-0 -mx-5 -mb-6 flex flex-col-reverse gap-2.5 border-t border-zinc-200 bg-white/95 px-5 py-4 backdrop-blur dark:border-[#21313f] dark:bg-[#0f1b26]/95 sm:-mx-7 sm:flex-row sm:items-center sm:px-7">
+            <div className="sticky bottom-0 -mx-5 -mb-6 flex flex-col-reverse gap-2.5 border-t border-border bg-white/95 px-5 py-4  dark:border-border dark:bg-surface/95 sm:-mx-7 sm:flex-row sm:items-center sm:px-7">
               <Button type="submit" variant="primary" className="w-full sm:w-auto" isLoading={busyId === "form"} leftIcon={<Save className="w-4 h-4" />}>
                 Save Gateway Credentials
               </Button>
@@ -1552,19 +1552,19 @@ export default function GatewaysPage() {
       {/* Unified Configured Gateways Section (ZiNiPay / UddoktaPay Standard) */}
       {isLoading ? (
         <div className="py-20 text-center space-y-3">
-          <div className="w-8 h-8 border-2 border-zinc-900 dark:border-white border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-xs font-mono text-zinc-500">Loading payment gateways…</p>
+          <div className="w-8 h-8 border-2 border-border dark:border-white border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-xs font-mono text-muted">Loading payment gateways…</p>
         </div>
       ) : filteredGateways.length === 0 ? (
-        <Card className="p-12 text-center space-y-4 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 rounded-2xl">
-          <div className="p-3 rounded-2xl bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 w-fit mx-auto">
+        <Card className="p-12 text-center space-y-4 border-border dark:border-border bg-white dark:bg-canvas rounded-2xl">
+          <div className="p-3 rounded-2xl bg-surface dark:bg-surface text-ink dark:text-ink w-fit mx-auto">
             <Smartphone className="w-8 h-8" />
           </div>
           <div className="space-y-1">
-            <h3 className="font-bold text-base text-zinc-900 dark:text-zinc-100">
+            <h3 className="font-bold text-base text-ink dark:text-ink">
               No payment destinations in this category
             </h3>
-            <p className="text-xs text-zinc-500 max-w-sm mx-auto">
+            <p className="text-xs text-muted max-w-sm mx-auto">
               Add your bKash, Nagad, Rocket, Upay, Cellfin, or crypto wallets to start accepting automated payments.
             </p>
           </div>
@@ -1587,8 +1587,8 @@ export default function GatewaysPage() {
                 key={g.gatewayId}
                 className={`p-5 transition-all ${
                   g.enabled
-                    ? "hover:-translate-y-0.5 hover:border-teal-700/20 hover:shadow-lg dark:hover:border-teal-300/20"
-                    : "bg-zinc-50/70 opacity-70 dark:bg-[#0b1620]/60"
+                    ? "hover:-translate-y-0.5 hover:border-accent/20 hover:shadow-lg dark:hover:border-accent/20"
+                    : "bg-card/70 opacity-70 dark:bg-surface/60"
                 }`}
                 role="listitem"
               >
@@ -1602,7 +1602,7 @@ export default function GatewaysPage() {
                         aria-label="Move up"
                         onClick={() => moveFiltered(filteredIndex, -1)}
                         disabled={filteredIndex === 0}
-                        className="p-1 rounded-md text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:pointer-events-none transition"
+                        className="p-1 rounded-md text-muted hover:text-ink dark:hover:text-on-ink hover:bg-surface dark:hover:bg-ink-solid disabled:opacity-30 disabled:pointer-events-none transition"
                       >
                         <ArrowUp className="w-3.5 h-3.5" />
                       </button>
@@ -1611,14 +1611,14 @@ export default function GatewaysPage() {
                         aria-label="Move down"
                         onClick={() => moveFiltered(filteredIndex, 1)}
                         disabled={filteredIndex === filteredGateways.length - 1}
-                        className="p-1 rounded-md text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:pointer-events-none transition"
+                        className="p-1 rounded-md text-muted hover:text-ink dark:hover:text-on-ink hover:bg-surface dark:hover:bg-ink-solid disabled:opacity-30 disabled:pointer-events-none transition"
                       >
                         <ArrowDown className="w-3.5 h-3.5" />
                       </button>
                     </div>
 
                     {/* Logo container */}
-                    <div className="relative w-12 h-12 rounded-xl bg-white dark:bg-zinc-800 p-2 shadow-2xs border border-zinc-200 dark:border-zinc-700/80 flex items-center justify-center shrink-0">
+                    <div className="relative w-12 h-12 rounded-xl bg-white dark:bg-surface-muted p-2 shadow-2xs border border-border dark:border-border/80 flex items-center justify-center shrink-0">
                       <Image
                         src={gatewayLogoPath(g.methodCode)}
                         alt={g.displayName}
@@ -1632,14 +1632,14 @@ export default function GatewaysPage() {
                     <div className="min-w-0 flex-1 space-y-1">
                       {/* Name & Badges */}
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
+                        <span className="font-bold text-sm text-ink dark:text-ink">
                           {g.displayName}
                         </span>
-                        <span className="text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200/80 dark:border-zinc-700">
+                        <span className="text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded bg-surface dark:bg-surface-muted text-ink dark:text-ink border border-border/80 dark:border-border">
                           {gatewayShortLabel(g.methodCode)}
                         </span>
                         {g.accountType && (
-                          <span className="text-[10px] font-mono uppercase font-semibold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800">
+                          <span className="text-[10px] font-mono uppercase font-semibold px-2 py-0.5 rounded-full bg-info/10 dark:bg-info/40 text-info dark:text-info border border-info/60 dark:border-info">
                             {g.accountType}
                           </span>
                         )}
@@ -1650,9 +1650,9 @@ export default function GatewaysPage() {
 
                       {/* Account Number & Copy */}
                       <div className="flex flex-wrap items-center gap-2 pt-0.5">
-                        <div className="flex items-center gap-1.5 font-mono text-xs text-zinc-600 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 rounded-md">
-                          <span className="text-zinc-400 font-sans text-[11px]">Receiving:</span>
-                          <span className="font-bold text-zinc-900 dark:text-zinc-100">
+                        <div className="flex items-center gap-1.5 font-mono text-xs text-muted dark:text-ink bg-surface dark:bg-surface px-2 py-0.5 rounded-md">
+                          <span className="text-muted font-sans text-[11px]">Receiving:</span>
+                          <span className="font-bold text-ink dark:text-ink">
                             {g.account || "Not configured"}
                           </span>
                           {g.account && (
@@ -1660,10 +1660,10 @@ export default function GatewaysPage() {
                               type="button"
                               onClick={() => copyToClipboard(g.account || "", g.gatewayId)}
                               title="Copy receiving address/number"
-                              className="ml-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition"
+                              className="ml-1 text-muted hover:text-ink dark:hover:text-on-ink transition"
                             >
                               {isCopied ? (
-                                <Check className="w-3.5 h-3.5 text-emerald-500" />
+                                <Check className="w-3.5 h-3.5 text-success" />
                               ) : (
                                 <Copy className="w-3.5 h-3.5" />
                               )}
@@ -1671,29 +1671,29 @@ export default function GatewaysPage() {
                           )}
                         </div>
                         {isCopied && (
-                          <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                          <span className="text-[11px] font-semibold text-success dark:text-success">
                             Copied!
                           </span>
                         )}
                       </div>
 
                       {/* Limits, Fee & Currency */}
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-zinc-500 font-mono pt-0.5">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted font-mono pt-0.5">
                         <span>
-                          Min: <strong className="text-zinc-700 dark:text-zinc-300">{g.minAmount ? `${g.currency || "৳"} ${formatCleanNumber(g.minAmount)}` : "—"}</strong>
+                          Min: <strong className="text-ink dark:text-ink">{g.minAmount ? `${g.currency || "৳"} ${formatCleanNumber(g.minAmount)}` : "—"}</strong>
                         </span>
                         <span>·</span>
                         <span>
-                          Max: <strong className="text-zinc-700 dark:text-zinc-300">{g.maxAmount ? `${g.currency || "৳"} ${formatCleanNumber(g.maxAmount)}` : "—"}</strong>
+                          Max: <strong className="text-ink dark:text-ink">{g.maxAmount ? `${g.currency || "৳"} ${formatCleanNumber(g.maxAmount)}` : "—"}</strong>
                         </span>
                         <span>·</span>
                         <span>
-                          Fee: <strong className="text-zinc-700 dark:text-zinc-300">{formatCleanNumber(g.gatewayFee)} {g.gatewayFeeType === "fixed" ? (g.currency || "BDT") : "%"}</strong>
+                          Fee: <strong className="text-ink dark:text-ink">{formatCleanNumber(g.gatewayFee)} {g.gatewayFeeType === "fixed" ? (g.currency || "BDT") : "%"}</strong>
                         </span>
                         {g.qrStatus === "ready" && (
                           <>
                             <span>·</span>
-                            <span className="text-purple-600 dark:text-purple-400 font-semibold flex items-center gap-1 font-sans">
+                            <span className="text-brand dark:text-brand font-semibold flex items-center gap-1 font-sans">
                               <ImageIcon className="w-3 h-3" /> QR Active
                             </span>
                           </>
@@ -1701,14 +1701,14 @@ export default function GatewaysPage() {
                         {g.instructions && (
                           <>
                             <span>·</span>
-                            <span className="truncate max-w-[260px] text-zinc-400 italic font-sans" title={g.instructions}>
+                            <span className="truncate max-w-[260px] text-muted italic font-sans" title={g.instructions}>
                               &ldquo;{g.instructions}&rdquo;
                             </span>
                           </>
                         )}
                       </div>
                       {reasonHint && g.readiness !== "live_ready" && g.readiness !== "ready_test" && (
-                        <p className="text-[11px] text-amber-700 dark:text-amber-400 font-sans leading-snug pt-1">
+                        <p className="text-[11px] text-warning dark:text-warning font-sans leading-snug pt-1">
                           {reasonHint}
                         </p>
                       )}
@@ -1716,7 +1716,7 @@ export default function GatewaysPage() {
                   </div>
 
                   {/* Right: Toggle Switch & Action Buttons */}
-                  <div className="flex items-center justify-between gap-3 border-t border-zinc-100 pt-4 dark:border-[#21313f]">
+                  <div className="flex items-center justify-between gap-3 border-t border-border pt-4 dark:border-border">
                     {/* Instant Direct Toggle Switch */}
                     <div className="flex items-center gap-2">
                       <button
@@ -1726,7 +1726,7 @@ export default function GatewaysPage() {
                         disabled={busyId === g.gatewayId}
                         onClick={() => toggle(g)}
                         className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                          g.enabled ? "bg-emerald-500" : "bg-zinc-200 dark:bg-zinc-700"
+                          g.enabled ? "bg-brand" : "bg-surface-muted dark:bg-surface-muted"
                         } ${busyId === g.gatewayId ? "opacity-50 cursor-wait" : ""}`}
                       >
                         <span
@@ -1735,7 +1735,7 @@ export default function GatewaysPage() {
                           }`}
                         />
                       </button>
-                      <span className={`text-xs font-bold font-mono w-8 ${g.enabled ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-400"}`}>
+                      <span className={`text-xs font-bold font-mono w-8 ${g.enabled ? "text-success dark:text-success" : "text-muted"}`}>
                         {g.enabled ? "ON" : "OFF"}
                       </span>
                     </div>
@@ -1749,7 +1749,7 @@ export default function GatewaysPage() {
                         variant="secondary"
                         onClick={() => remove(g)}
                         aria-label="Delete gateway"
-                        className="text-rose-600 hover:text-rose-700 dark:text-rose-400"
+                        className="text-danger hover:text-danger dark:text-danger"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>

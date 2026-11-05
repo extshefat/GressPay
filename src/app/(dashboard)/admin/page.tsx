@@ -443,14 +443,14 @@ export default function AdminPage() {
   if (isForbidden) {
     return (
       <div className="max-w-2xl mx-auto py-20 px-4 text-center space-y-5">
-        <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 mx-auto flex items-center justify-center shadow-sm">
+        <div className="w-16 h-16 rounded-2xl bg-surface dark:bg-surface border border-border dark:border-border text-ink dark:text-ink mx-auto flex items-center justify-center shadow-sm">
           <Lock className="w-8 h-8" />
         </div>
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+        <h1 className="text-2xl font-bold tracking-tight text-ink dark:text-ink">
           Super Admin Privileges Required
         </h1>
-        <p className="text-xs text-zinc-600 dark:text-zinc-400 max-w-md mx-auto leading-relaxed">
-          Your account is not recognized as a Super Admin in the server configuration (<code className="font-mono text-xs bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-700">ADMIN_EMAIL</code>).
+        <p className="text-xs text-muted dark:text-muted max-w-md mx-auto leading-relaxed">
+          Your account is not recognized as a Super Admin in the server configuration (<code className="font-mono text-xs bg-surface dark:bg-surface-muted px-1.5 py-0.5 rounded border border-border dark:border-border">ADMIN_EMAIL</code>).
         </p>
         <div className="pt-2">
           <Button variant="outline" onClick={() => (window.location.href = "/dashboard/overview")}>
@@ -468,7 +468,7 @@ export default function AdminPage() {
         title="Control center"
         icon={<ShieldCheck className="h-5 w-5" />}
         badge={
-          <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-300">
+          <span className="rounded-full border border-warning bg-warning/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-warning dark:border-warning/60 dark:bg-warning/30 dark:text-warning">
             Root access
           </span>
         }
@@ -564,51 +564,51 @@ export default function AdminPage() {
             {/* System Health Card */}
             <Card className="p-5 space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                <h2 className="text-sm font-bold text-ink dark:text-ink flex items-center gap-2">
                   <Activity className="w-4 h-4" />
                   System Health & Queue
                 </h2>
-                <span className="flex items-center gap-1.5 text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> OPERATIONAL
+                <span className="flex items-center gap-1.5 text-[10px] font-mono text-success dark:text-success font-bold">
+                  <span className="w-2 h-2 rounded-full bg-brand " /> OPERATIONAL
                 </span>
               </div>
               <div className="space-y-3 text-xs">
-                <div className="flex justify-between py-1.5 border-b border-zinc-100 dark:border-zinc-900">
-                  <span className="text-zinc-500">Global Gateways Enabled</span>
+                <div className="flex justify-between py-1.5 border-b border-border dark:border-border">
+                  <span className="text-muted">Global Gateways Enabled</span>
                   <span className="font-mono font-semibold">{stats.gateways?.enabled ?? 0} of {stats.gateways?.total ?? 8}</span>
                 </div>
-                <div className="flex justify-between py-1.5 border-b border-zinc-100 dark:border-zinc-900">
-                  <span className="text-zinc-500">Unmatched / Pending SMS</span>
+                <div className="flex justify-between py-1.5 border-b border-border dark:border-border">
+                  <span className="text-muted">Unmatched / Pending SMS</span>
                   <span className="font-mono font-semibold">{stats.sms?.unmatched ?? 0} messages</span>
                 </div>
-                <div className="flex justify-between py-1.5 border-b border-zinc-100 dark:border-zinc-900">
-                  <span className="text-zinc-500">Webhook Health</span>
+                <div className="flex justify-between py-1.5 border-b border-border dark:border-border">
+                  <span className="text-muted">Webhook Health</span>
                   <span className="font-mono font-semibold">{stats.webhooks?.healthPercent ?? 100}% Delivered</span>
                 </div>
                 <div className="flex justify-between py-1.5">
-                  <span className="text-zinc-500">Server UTC Time</span>
-                  <span className="font-mono text-zinc-700 dark:text-zinc-300">{stats.system.serverTime}</span>
+                  <span className="text-muted">Server UTC Time</span>
+                  <span className="font-mono text-ink dark:text-ink">{stats.system.serverTime}</span>
                 </div>
               </div>
             </Card>
 
             {/* Platform Allowlist */}
             <Card className="p-5 space-y-3 md:col-span-2">
-              <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-zinc-900 dark:text-zinc-100" />
+              <h2 className="text-sm font-bold text-ink dark:text-ink flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-ink dark:text-ink" />
                 Authorized Server Super Admins
               </h2>
-              <p className="text-xs text-zinc-500">
-                Accounts matching these emails in <code className="font-mono text-[11px] bg-zinc-100 dark:bg-zinc-800 px-1 py-0.5 rounded">ADMIN_EMAIL</code> automatically inherit root platform control upon sign in.
+              <p className="text-xs text-muted">
+                Accounts matching these emails in <code className="font-mono text-[11px] bg-surface dark:bg-surface-muted px-1 py-0.5 rounded">ADMIN_EMAIL</code> automatically inherit root platform control upon sign in.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                 {stats.system.adminEmails.map((email) => (
                   <div
                     key={email}
-                    className="flex items-center justify-between p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-mono"
+                    className="flex items-center justify-between p-2.5 rounded-lg bg-card dark:bg-surface border border-border dark:border-border text-xs font-mono"
                   >
-                    <span className="text-zinc-800 dark:text-zinc-200 truncate pr-2">{email}</span>
-                    <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-zinc-900 text-white dark:bg-white dark:text-zinc-900">
+                    <span className="text-ink dark:text-ink truncate pr-2">{email}</span>
+                    <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-ink-solid text-white dark:bg-brand dark:text-on-brand">
                       ROOT
                     </span>
                   </div>
@@ -624,16 +624,16 @@ export default function AdminPage() {
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+              <h2 className="text-base font-bold text-ink dark:text-ink">
                 Platform-Wide Gateway Controls
               </h2>
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-muted">
                 Disabling a payment gateway here instantly hides it platform-wide across all dashboards and hosted checkout pages.
               </p>
             </div>
           </div>
 
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-muted">
             Platform billing brand (plan upgrade wallets) is managed under{" "}
             <button
               type="button"
@@ -653,27 +653,27 @@ export default function AdminPage() {
                   key={gw.gateway_code}
                   className={`p-5 transition-all hover:-translate-y-0.5 hover:shadow-lg ${
                     isEnabled
-                      ? "hover:border-teal-700/20 dark:hover:border-teal-300/20"
-                      : "bg-zinc-50/60 opacity-70 dark:bg-[#0b1620]/50"
+                      ? "hover:border-accent/20 dark:hover:border-accent/20"
+                      : "bg-card/60 opacity-70 dark:bg-surface/50"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
+                        <span className="font-bold text-sm text-ink dark:text-ink">
                           {gw.display_name}
                         </span>
                         <span
                           className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded font-bold border ${
                             gw.category === "crypto"
-                              ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border-zinc-300 dark:border-zinc-700"
-                              : "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 border-zinc-900 dark:border-white"
+                              ? "bg-surface dark:bg-surface-muted text-ink dark:text-ink border-border dark:border-border"
+                              : "bg-ink-solid text-white dark:bg-brand dark:text-on-brand border-border dark:border-white"
                           }`}
                         >
                           {gw.category.toUpperCase()}
                         </span>
                       </div>
-                      <div className="text-xs font-mono text-zinc-500">
+                      <div className="text-xs font-mono text-muted">
                         Code: {gw.gateway_code} • Currency: {gw.currency}
                       </div>
                     </div>
@@ -683,20 +683,20 @@ export default function AdminPage() {
                       type="button"
                       onClick={() => handleToggleGateway(gw)}
                       className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        isEnabled ? "bg-teal-600 dark:bg-teal-400" : "bg-zinc-200 dark:bg-zinc-700"
+                        isEnabled ? "bg-brand dark:bg-brand" : "bg-surface-muted dark:bg-surface-muted"
                       }`}
                       aria-label={`Toggle ${gw.display_name}`}
                     >
                       <span
-                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-zinc-900 shadow-lg ring-0 transition duration-200 ease-in-out ${
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-surface shadow-lg ring-0 transition duration-200 ease-in-out ${
                           isEnabled ? "translate-x-5" : "translate-x-0"
                         }`}
                       />
                     </button>
                   </div>
 
-                  <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-900 flex items-center justify-between text-xs">
-                    <div className="text-zinc-500 font-mono">
+                  <div className="mt-4 pt-3 border-t border-border dark:border-border flex items-center justify-between text-xs">
+                    <div className="text-muted font-mono">
                       Limits: {formatCleanNumber(gw.min_amount)} – {formatCleanNumber(gw.max_amount)} {gw.currency}
                     </div>
                     <Button
@@ -727,17 +727,17 @@ export default function AdminPage() {
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+              <h2 className="text-base font-bold text-ink dark:text-ink">
                 Accounts, roles & SaaS subscriptions
               </h2>
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-muted">
                 Promote business accounts to Super Admin, assign subscription tiers, and activate or suspend (ban) login.
               </p>
             </div>
           </div>
 
           {/* Filters Bar */}
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 p-3 bg-zinc-50 dark:bg-zinc-900/50 rounded-xl border border-zinc-200 dark:border-zinc-800">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 p-3 bg-card dark:bg-surface/50 rounded-xl border border-border dark:border-border">
             <div className="sm:col-span-1">
               <Input
                 placeholder="Search name, email, store..."
@@ -749,7 +749,7 @@ export default function AdminPage() {
               <select
                 value={merchantRoleFilter}
                 onChange={(e) => setMerchantRoleFilter(e.target.value as any)}
-                className="w-full text-xs rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 px-3 py-2"
+                className="w-full text-xs rounded-lg border border-border dark:border-border bg-white dark:bg-surface text-ink dark:text-ink px-3 py-2"
               >
                 <option value="all">All Roles</option>
                 <option value="merchant">Account holders only</option>
@@ -760,7 +760,7 @@ export default function AdminPage() {
               <select
                 value={merchantStatusFilter}
                 onChange={(e) => setMerchantStatusFilter(e.target.value as any)}
-                className="w-full text-xs rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 px-3 py-2"
+                className="w-full text-xs rounded-lg border border-border dark:border-border bg-white dark:bg-surface text-ink dark:text-ink px-3 py-2"
               >
                 <option value="all">All Account Status</option>
                 <option value="active">Active Only</option>
@@ -771,7 +771,7 @@ export default function AdminPage() {
               <select
                 value={merchantPlanFilter}
                 onChange={(e) => setMerchantPlanFilter(e.target.value)}
-                className="w-full text-xs rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 px-3 py-2"
+                className="w-full text-xs rounded-lg border border-border dark:border-border bg-white dark:bg-surface text-ink dark:text-ink px-3 py-2"
               >
                 <option value="all">All Subscription Plans</option>
                 <option value="starter">Starter</option>
@@ -783,9 +783,9 @@ export default function AdminPage() {
           </div>
 
           {/* Merchants Table */}
-          <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
-            <table className="w-full text-left text-xs text-zinc-600 dark:text-zinc-400">
-              <thead className="bg-zinc-50 dark:bg-zinc-900/50 text-[11px] font-mono uppercase tracking-wider text-zinc-700 dark:text-zinc-300 border-b border-zinc-200 dark:border-zinc-800">
+          <div className="overflow-x-auto rounded-xl border border-border dark:border-border bg-white dark:bg-canvas">
+            <table className="w-full text-left text-xs text-muted dark:text-muted">
+              <thead className="bg-card dark:bg-surface/50 text-[11px] font-mono uppercase tracking-wider text-ink dark:text-ink border-b border-border dark:border-border">
                 <tr>
                   <th className="py-3 px-4">Account & store</th>
                   <th className="py-3 px-4">Role</th>
@@ -795,10 +795,10 @@ export default function AdminPage() {
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+              <tbody className="divide-y divide-border dark:divide-border">
                 {filteredMerchants.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center py-8 text-zinc-500">
+                    <td colSpan={6} className="text-center py-8 text-muted">
                       No accounts match the selected filters.
                     </td>
                   </tr>
@@ -807,11 +807,11 @@ export default function AdminPage() {
                     const isAdmin = m.role === "admin" || (m as { is_admin?: boolean })?.is_admin;
                     const planName = (m.planId || "starter").toUpperCase();
                     return (
-                      <tr key={m.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30 transition-colors">
+                      <tr key={m.id} className="hover:bg-card/50 dark:hover:bg-ink-solid/30 transition-colors">
                         <td className="py-3 px-4">
-                          <div className="font-semibold text-zinc-900 dark:text-zinc-100">{m.name}</div>
-                          <div className="text-[11px] text-zinc-500 font-mono">{m.email}</div>
-                          <div className="text-[10px] text-zinc-400 mt-0.5">Brand: {m.brandName}</div>
+                          <div className="font-semibold text-ink dark:text-ink">{m.name}</div>
+                          <div className="text-[11px] text-muted font-mono">{m.email}</div>
+                          <div className="text-[10px] text-muted mt-0.5">Brand: {m.brandName}</div>
                         </td>
 
                         <td className="py-3 px-4">
@@ -821,8 +821,8 @@ export default function AdminPage() {
                             title="Click to toggle role"
                             className={`cursor-pointer px-2 py-0.5 text-[10px] font-mono uppercase font-bold rounded border transition-colors ${
                               isAdmin
-                                ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 border-zinc-900 dark:border-white"
-                                : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-300 dark:border-zinc-700 hover:bg-zinc-200"
+                                ? "bg-ink-solid text-white dark:bg-brand dark:text-on-brand border-border dark:border-white"
+                                : "bg-surface dark:bg-surface-muted text-ink dark:text-ink border-border dark:border-border hover:bg-surface-muted"
                             }`}
                           >
                             {isAdmin ? "SUPER ADMIN" : "BUSINESS"}
@@ -842,11 +842,11 @@ export default function AdminPage() {
                             }}
                             className="cursor-pointer text-left group"
                           >
-                            <span className="px-2 py-0.5 text-[10px] font-mono font-bold rounded border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 group-hover:border-zinc-900 dark:group-hover:border-white transition-colors">
+                            <span className="px-2 py-0.5 text-[10px] font-mono font-bold rounded border border-border dark:border-border bg-card dark:bg-surface text-ink dark:text-ink group-hover:border-border dark:group-hover:border-white transition-colors">
                               {planName} ✎
                             </span>
                             {m.planExpiresAt && (
-                              <div className="text-[10px] text-zinc-400 mt-1 font-mono">
+                              <div className="text-[10px] text-muted mt-1 font-mono">
                                 Exp: {m.planExpiresAt.split("T")[0]}
                               </div>
                             )}
@@ -854,10 +854,10 @@ export default function AdminPage() {
                         </td>
 
                         <td className="py-3 px-4">
-                          <div className="font-mono font-semibold text-zinc-900 dark:text-zinc-100">
+                          <div className="font-mono font-semibold text-ink dark:text-ink">
                             {formatCurrency(m.totalVolumeBdt ?? 0, "BDT")}
                           </div>
-                          <div className="text-[10px] text-zinc-400 mt-0.5 font-mono">
+                          <div className="text-[10px] text-muted mt-0.5 font-mono">
                             {m.deviceCount ?? 0} Devices • {m.activeGatewaysCount ?? 0} Active Rails
                           </div>
                         </td>
@@ -875,8 +875,8 @@ export default function AdminPage() {
                             }
                             className={`cursor-pointer px-2 py-0.5 text-[10px] font-mono uppercase font-bold rounded border transition-colors ${
                               m.status === "active"
-                                ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800"
-                                : "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-300 dark:border-red-800"
+                                ? "bg-success/10 dark:bg-success/40 text-success dark:text-success border-success dark:border-success"
+                                : "bg-danger/10 dark:bg-danger/40 text-danger dark:text-danger border-danger dark:border-danger"
                             }`}
                           >
                             {m.status === "active" ? "ACTIVE" : "SUSPENDED / BAN"}
@@ -915,17 +915,17 @@ export default function AdminPage() {
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+              <h2 className="text-base font-bold text-ink dark:text-ink">
                 Platform-Wide Transactions
               </h2>
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-muted">
                 Real-time transaction feed across all accounts. Review submitted references for manual payment methods.
               </p>
             </div>
           </div>
 
           {/* Transaction Filters Bar */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-zinc-50 dark:bg-zinc-900/50 rounded-xl border border-zinc-200 dark:border-zinc-800">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-card dark:bg-surface/50 rounded-xl border border-border dark:border-border">
             <div className="sm:col-span-2">
               <Input
                 placeholder="Search TrxID, Session ID, Customer number, Account email..."
@@ -937,7 +937,7 @@ export default function AdminPage() {
               <select
                 value={txStatusFilter}
                 onChange={(e) => setTxStatusFilter(e.target.value)}
-                className="w-full text-xs rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 px-3 py-2"
+                className="w-full text-xs rounded-lg border border-border dark:border-border bg-white dark:bg-surface text-ink dark:text-ink px-3 py-2"
               >
                 <option value="all">All Statuses</option>
                 <option value="completed">Completed Only</option>
@@ -948,9 +948,9 @@ export default function AdminPage() {
           </div>
 
           {/* Transactions Table */}
-          <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
-            <table className="w-full text-left text-xs text-zinc-600 dark:text-zinc-400">
-              <thead className="bg-zinc-50 dark:bg-zinc-900/50 text-[11px] font-mono uppercase tracking-wider text-zinc-700 dark:text-zinc-300 border-b border-zinc-200 dark:border-zinc-800">
+          <div className="overflow-x-auto rounded-xl border border-border dark:border-border bg-white dark:bg-canvas">
+            <table className="w-full text-left text-xs text-muted dark:text-muted">
+              <thead className="bg-card dark:bg-surface/50 text-[11px] font-mono uppercase tracking-wider text-ink dark:text-ink border-b border-border dark:border-border">
                 <tr>
                   <th className="py-3 px-4">Session & Trx ID</th>
                   <th className="py-3 px-4">Account & store</th>
@@ -961,10 +961,10 @@ export default function AdminPage() {
                   <th className="py-3 px-4 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+              <tbody className="divide-y divide-border dark:divide-border">
                 {filteredTransactions.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center py-8 text-zinc-500">
+                    <td colSpan={6} className="text-center py-8 text-muted">
                       No platform transactions match your search.
                     </td>
                   </tr>
@@ -972,29 +972,29 @@ export default function AdminPage() {
                   filteredTransactions.map((tx) => {
                     const isPending = tx.status === "pending" && tx.trxId && tx.methodCode && !["bkash", "nagad", "rocket", "upay", "cellfin", "usdt_trc20", "binance_pay"].includes(tx.methodCode);
                     return (
-                      <tr key={tx.sessionId} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30 transition-colors">
+                      <tr key={tx.sessionId} className="hover:bg-card/50 dark:hover:bg-ink-solid/30 transition-colors">
                         <td className="py-3 px-4">
-                          <div className="font-mono font-semibold text-zinc-900 dark:text-zinc-100">
+                          <div className="font-mono font-semibold text-ink dark:text-ink">
                             {tx.trxId || "PENDING_BUYER_INPUT"}
                           </div>
-                          <div className="text-[10px] text-zinc-400 font-mono mt-0.5">{tx.sessionId}</div>
+                          <div className="text-[10px] text-muted font-mono mt-0.5">{tx.sessionId}</div>
                           {tx.customerNumber && (
-                            <div className="text-[10px] text-zinc-500 mt-0.5">From: {tx.customerNumber}</div>
+                            <div className="text-[10px] text-muted mt-0.5">From: {tx.customerNumber}</div>
                           )}
                         </td>
 
                         <td className="py-3 px-4">
-                          <div className="font-semibold text-zinc-900 dark:text-zinc-100">{tx.brandName}</div>
-                          <div className="text-[11px] text-zinc-500 font-mono">{tx.merchantEmail}</div>
+                          <div className="font-semibold text-ink dark:text-ink">{tx.brandName}</div>
+                          <div className="text-[11px] text-muted font-mono">{tx.merchantEmail}</div>
                         </td>
 
                         <td className="py-3 px-4 font-mono uppercase">
-                          <span className="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 text-[10px] font-bold">
+                          <span className="px-1.5 py-0.5 rounded bg-surface dark:bg-surface-muted text-ink dark:text-ink text-[10px] font-bold">
                             {tx.methodCode || "MFS"}
                           </span>
                         </td>
 
-                        <td className="py-3 px-4 font-mono font-bold text-zinc-900 dark:text-zinc-100">
+                        <td className="py-3 px-4 font-mono font-bold text-ink dark:text-ink">
                           {formatCurrency(tx.amount, tx.currency as any)}
                         </td>
 
@@ -1002,17 +1002,17 @@ export default function AdminPage() {
                           <span
                             className={`px-2 py-0.5 text-[10px] font-mono uppercase font-bold rounded border ${
                               tx.status === "completed"
-                                ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800"
+                                ? "bg-success/10 dark:bg-success/40 text-success dark:text-success border-success dark:border-success"
                                 : isPending
-                                ? "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800"
-                                : "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-300 dark:border-red-800"
+                                ? "bg-warning/10 dark:bg-warning/40 text-warning dark:text-warning border-warning dark:border-warning"
+                                : "bg-danger/10 dark:bg-danger/40 text-danger dark:text-danger border-danger dark:border-danger"
                             }`}
                           >
                             {tx.status.toUpperCase()}
                           </span>
                         </td>
 
-                        <td className="py-3 px-4 text-zinc-500 text-[11px]">
+                        <td className="py-3 px-4 text-muted text-[11px]">
                           {formatDate(tx.createdAt)}
                         </td>
 
@@ -1047,17 +1047,17 @@ export default function AdminPage() {
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+              <h2 className="text-base font-bold text-ink dark:text-ink">
                 Live Companion SMS Feed
               </h2>
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-muted">
                 Real-time stream of parsed SMS notifications ingested from Companion Android phones.
               </p>
             </div>
           </div>
 
           {/* SMS Filters Bar */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-zinc-50 dark:bg-zinc-900/50 rounded-xl border border-zinc-200 dark:border-zinc-800">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-card dark:bg-surface/50 rounded-xl border border-border dark:border-border">
             <div className="sm:col-span-2">
               <Input
                 placeholder="Search Trx ID, Phone number, Device label..."
@@ -1069,7 +1069,7 @@ export default function AdminPage() {
               <select
                 value={smsStatusFilter}
                 onChange={(e) => setSmsStatusFilter(e.target.value)}
-                className="w-full text-xs rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 px-3 py-2"
+                className="w-full text-xs rounded-lg border border-border dark:border-border bg-white dark:bg-surface text-ink dark:text-ink px-3 py-2"
               >
                 <option value="all">All SMS States</option>
                 <option value="approved">Ready / Unmatched</option>
@@ -1079,9 +1079,9 @@ export default function AdminPage() {
           </div>
 
           {/* SMS Table */}
-          <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
-            <table className="w-full text-left text-xs text-zinc-600 dark:text-zinc-400">
-              <thead className="bg-zinc-50 dark:bg-zinc-900/50 text-[11px] font-mono uppercase tracking-wider text-zinc-700 dark:text-zinc-300 border-b border-zinc-200 dark:border-zinc-800">
+          <div className="overflow-x-auto rounded-xl border border-border dark:border-border bg-white dark:bg-canvas">
+            <table className="w-full text-left text-xs text-muted dark:text-muted">
+              <thead className="bg-card dark:bg-surface/50 text-[11px] font-mono uppercase tracking-wider text-ink dark:text-ink border-b border-border dark:border-border">
                 <tr>
                   <th className="py-3 px-4">Time Received</th>
                   <th className="py-3 px-4">Rail / Gateway</th>
@@ -1092,10 +1092,10 @@ export default function AdminPage() {
                   <th className="py-3 px-4">Match Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+              <tbody className="divide-y divide-border dark:divide-border">
                 {filteredSmsLogs.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center py-8 text-zinc-500">
+                    <td colSpan={6} className="text-center py-8 text-muted">
                       No incoming SMS notifications found.
                     </td>
                   </tr>
@@ -1103,34 +1103,34 @@ export default function AdminPage() {
                   filteredSmsLogs.map((sms) => {
                     const isMatched = sms.status === "used";
                     return (
-                      <tr key={sms.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30 transition-colors">
-                        <td className="py-3 px-4 text-zinc-500 font-mono text-[11px]">
+                      <tr key={sms.id} className="hover:bg-card/50 dark:hover:bg-ink-solid/30 transition-colors">
+                        <td className="py-3 px-4 text-muted font-mono text-[11px]">
                           {formatDate(sms.createdAt)}
                         </td>
                         <td className="py-3 px-4">
-                          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 border border-zinc-900 dark:border-white">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-ink-solid text-white dark:bg-brand dark:text-on-brand border border-border dark:border-white">
                             {sms.senderKey}
                           </span>
                         </td>
-                        <td className="py-3 px-4 font-mono font-bold text-zinc-900 dark:text-zinc-100">
+                        <td className="py-3 px-4 font-mono font-bold text-ink dark:text-ink">
                           ৳{sms.amount.toFixed(2)}
                         </td>
-                        <td className="py-3 px-4 font-mono font-semibold text-zinc-900 dark:text-zinc-100">
+                        <td className="py-3 px-4 font-mono font-semibold text-ink dark:text-ink">
                           {sms.trxId}
                         </td>
-                        <td className="py-3 px-4 font-mono text-zinc-500">
+                        <td className="py-3 px-4 font-mono text-muted">
                           {sms.number || "—"}
                         </td>
-                        <td className="py-3 px-4 text-zinc-600 dark:text-zinc-400">
+                        <td className="py-3 px-4 text-muted dark:text-muted">
                           <div className="font-semibold">{sms.deviceLabel}</div>
-                          <div className="text-[10px] text-zinc-400">{sms.brandName}</div>
+                          <div className="text-[10px] text-muted">{sms.brandName}</div>
                         </td>
                         <td className="py-3 px-4">
                           <span
                             className={`px-2 py-0.5 text-[10px] font-mono uppercase font-bold rounded border ${
                               isMatched
-                                ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800"
-                                : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800"
+                                ? "bg-success/10 dark:bg-success/40 text-success dark:text-success border-success dark:border-success"
+                                : "bg-warning/10 dark:bg-warning/40 text-warning dark:text-warning border-warning dark:border-warning"
                             }`}
                           >
                             {isMatched ? "MATCHED (USED)" : "READY / UNMATCHED"}
@@ -1151,10 +1151,10 @@ export default function AdminPage() {
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+              <h2 className="text-base font-bold text-ink dark:text-ink">
                 SaaS Subscription Plans
               </h2>
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-muted">
                 Commercial tiers defining pricing, transaction limits, and feature availability for account holders.
               </p>
             </div>
@@ -1170,49 +1170,49 @@ export default function AdminPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {plans.map((p) => (
-              <Card key={p.id} className="p-5 flex flex-col justify-between border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-sm">
+              <Card key={p.id} className="p-5 flex flex-col justify-between border border-border dark:border-border bg-white dark:bg-canvas shadow-sm">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-base text-zinc-900 dark:text-zinc-100">
+                    <span className="font-bold text-base text-ink dark:text-ink">
                       {p.name}
                     </span>
                     <div className="flex items-center gap-1.5">
                       <span className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded font-bold border ${
                         p.status === "active"
-                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                          : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border-zinc-200 dark:border-zinc-700"
+                          ? "bg-success/10 text-success dark:text-success border-success/20"
+                          : "bg-surface dark:bg-surface-muted text-muted border-border dark:border-border"
                       }`}>
                         {p.status || "active"}
                       </span>
-                      <span className="font-mono text-xs text-zinc-500 uppercase bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded">
+                      <span className="font-mono text-xs text-muted uppercase bg-surface dark:bg-surface-muted px-2 py-0.5 rounded">
                         {p.code}
                       </span>
                     </div>
                   </div>
-                  <div className="text-2xl font-bold font-mono text-zinc-900 dark:text-zinc-100">
+                  <div className="text-2xl font-bold font-mono text-ink dark:text-ink">
                     ৳{p.priceBdt}
-                    <span className="text-xs text-zinc-500 font-normal"> / {p.billingCycle}</span>
+                    <span className="text-xs text-muted font-normal"> / {p.billingCycle}</span>
                   </div>
-                  <p className="text-xs text-zinc-500 min-h-[32px]">{p.description}</p>
-                  <div className="space-y-1 text-xs font-mono text-zinc-700 dark:text-zinc-300 pt-2 border-t border-zinc-100 dark:border-zinc-900">
+                  <p className="text-xs text-muted min-h-[32px]">{p.description}</p>
+                  <div className="space-y-1 text-xs font-mono text-ink dark:text-ink pt-2 border-t border-border dark:border-border">
                     <div className="flex justify-between">
-                      <span className="text-zinc-500">Monthly Trx Limit:</span>
+                      <span className="text-muted">Monthly Trx Limit:</span>
                       <span className="font-semibold">{p.creditAllowance >= 999999 ? "Unlimited" : (p.creditAllowance || 50) + " / month"}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-zinc-500">Devices:</span>
+                      <span className="text-muted">Devices:</span>
                       <span className="font-semibold">{p.deviceLimit ?? "—"}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-zinc-500">Gateways:</span>
+                      <span className="text-muted">Gateways:</span>
                       <span className="font-semibold">{p.methodLimit ?? "—"}</span>
                     </div>
                     {p.isFree ? (
-                      <div className="text-[11px] text-amber-600 dark:text-amber-400 font-sans font-medium">Free Tier Account</div>
+                      <div className="text-[11px] text-warning dark:text-warning font-sans font-medium">Free Tier Account</div>
                     ) : null}
                   </div>
                 </div>
-                <div className="pt-4 mt-3 border-t border-zinc-100 dark:border-zinc-900 flex justify-end">
+                <div className="pt-4 mt-3 border-t border-border dark:border-border flex justify-end">
                   <Button
                     size="sm"
                     variant="outline"
@@ -1225,25 +1225,25 @@ export default function AdminPage() {
             ))}
           </div>
 
-          <Card className="p-5 space-y-3 border border-amber-200 dark:border-amber-900/50 bg-amber-50/40 dark:bg-amber-950/20">
+          <Card className="p-5 space-y-3 border border-warning dark:border-warning/50 bg-warning/10 dark:bg-warning/20">
             <div>
-              <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+              <h3 className="text-sm font-bold text-ink dark:text-ink">
                 Account plan billing brand
               </h3>
-              <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
+              <p className="text-xs text-muted dark:text-muted mt-1">
                 Businesses pay for subscriptions through this brand&apos;s live gateways (My Payments → checkout). Pick a brand
                 that already has receiving wallets under View Gateways. Brand ID is also shown on the Brands page.
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-2 items-end">
               <div className="flex-1 w-full space-y-1.5">
-                <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                <label className="block text-xs font-medium text-muted dark:text-muted">
                   Billing brand ID
                 </label>
                 <select
                   value={billingBrandId}
                   onChange={(e) => setBillingBrandId(e.target.value)}
-                  className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3.5 text-sm text-zinc-900 shadow-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/10 dark:border-[#2a3a47] dark:bg-[#0b1620] dark:text-zinc-100 dark:focus:border-teal-400"
+                  className="h-11 w-full rounded-xl border border-border bg-white px-3.5 text-sm text-ink shadow-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/10 dark:border-border dark:bg-surface dark:text-ink dark:focus:border-accent"
                 >
                   <option value="">Select brand (brd_…)</option>
                   {billingBrandOptions.map((b) => (
@@ -1278,7 +1278,7 @@ export default function AdminPage() {
               </Button>
             </div>
             {billingBrandName ? (
-              <p className="text-[11px] text-zinc-600 dark:text-zinc-400">
+              <p className="text-[11px] text-muted dark:text-muted">
                 Active: <span className="font-semibold">{billingBrandName}</span>
                 {" · "}
                 <span className="font-mono">{billingBrandId}</span>
@@ -1286,12 +1286,12 @@ export default function AdminPage() {
                 {billingLiveGatewayCount} usable gateway{billingLiveGatewayCount === 1 ? "" : "s"}
               </p>
             ) : (
-              <p className="text-[11px] text-amber-700 dark:text-amber-400">
+              <p className="text-[11px] text-warning dark:text-warning">
                 No billing brand set yet. Select a brand with live gateways above.
               </p>
             )}
             {billingBrandId && billingLiveGatewayCount < 1 && (
-              <p className="text-[11px] text-amber-600 dark:text-amber-400">
+              <p className="text-[11px] text-warning dark:text-warning">
                 This brand has no active receiving gateways yet. Add wallets under that brand&apos;s View Gateways
                 before merchants can pay.
               </p>
@@ -1304,17 +1304,17 @@ export default function AdminPage() {
       {activeTab === "health" && (
         <div className="space-y-4">
           <div>
-            <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+            <h2 className="text-base font-bold text-ink dark:text-ink">
               Audit & Governance Trail
             </h2>
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-muted">
               Immutable record of all admin role promotions, plan updates, and gateway overrides.
             </p>
           </div>
 
-          <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
-            <table className="w-full text-left text-xs text-zinc-600 dark:text-zinc-400">
-              <thead className="bg-zinc-50 dark:bg-zinc-900/50 text-[11px] font-mono uppercase tracking-wider text-zinc-700 dark:text-zinc-300 border-b border-zinc-200 dark:border-zinc-800">
+          <div className="overflow-x-auto rounded-xl border border-border dark:border-border bg-white dark:bg-canvas">
+            <table className="w-full text-left text-xs text-muted dark:text-muted">
+              <thead className="bg-card dark:bg-surface/50 text-[11px] font-mono uppercase tracking-wider text-ink dark:text-ink border-b border-border dark:border-border">
                 <tr>
                   <th className="py-3 px-4">Timestamp</th>
                   <th className="py-3 px-4">Admin Email</th>
@@ -1323,27 +1323,27 @@ export default function AdminPage() {
                   <th className="py-3 px-4">Details</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-mono text-[11px]">
+              <tbody className="divide-y divide-border dark:divide-border font-mono text-[11px]">
                 {auditLogs.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="text-center py-8 text-zinc-500">
+                    <td colSpan={5} className="text-center py-8 text-muted">
                       No admin audit logs recorded yet.
                     </td>
                   </tr>
                 ) : (
                   auditLogs.map((log) => (
-                    <tr key={log.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30">
-                      <td className="py-3 px-4 text-zinc-500">{formatDate(log.createdAt)}</td>
-                      <td className="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100">
+                    <tr key={log.id} className="hover:bg-card/50 dark:hover:bg-ink-solid/30">
+                      <td className="py-3 px-4 text-muted">{formatDate(log.createdAt)}</td>
+                      <td className="py-3 px-4 font-semibold text-ink dark:text-ink">
                         {log.actorEmail}
                       </td>
-                      <td className="py-3 px-4 uppercase text-zinc-500">{log.targetType}</td>
+                      <td className="py-3 px-4 uppercase text-muted">{log.targetType}</td>
                       <td className="py-3 px-4">
-                        <span className="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200">
+                        <span className="px-1.5 py-0.5 rounded bg-surface dark:bg-surface-muted text-ink dark:text-ink">
                           {log.action}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-zinc-500 truncate max-w-xs">
+                      <td className="py-3 px-4 text-muted truncate max-w-xs">
                         {JSON.stringify(log.details)}
                       </td>
                     </tr>
@@ -1364,13 +1364,13 @@ export default function AdminPage() {
         >
           <form onSubmit={handleAssignPlan} className="space-y-4">
             {/* Merchant Summary Bar */}
-            <div className="p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex items-center justify-between">
+            <div className="p-3 rounded-lg border border-border dark:border-border bg-card dark:bg-surface/50 flex items-center justify-between">
               <div>
-                <div className="font-semibold text-xs text-zinc-900 dark:text-zinc-100">{targetMerchant.name}</div>
-                <div className="text-[11px] text-zinc-500 font-mono">{targetMerchant.email}</div>
+                <div className="font-semibold text-xs text-ink dark:text-ink">{targetMerchant.name}</div>
+                <div className="text-[11px] text-muted font-mono">{targetMerchant.email}</div>
               </div>
               <div className="text-right">
-                <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 font-bold">
+                <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded border border-border dark:border-border bg-white dark:bg-surface text-ink dark:text-ink font-bold">
                   Current: {(targetMerchant.planId || "starter").toUpperCase()}
                 </span>
 
@@ -1379,7 +1379,7 @@ export default function AdminPage() {
 
             {/* Plan Tier Selection */}
             <div>
-              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+              <label className="block text-xs font-semibold text-ink dark:text-ink mb-1">
                 Select Subscription Tier
               </label>
               <select
@@ -1392,7 +1392,7 @@ export default function AdminPage() {
                     setTargetPlanExpiresAt("");
                   }
                 }}
-                className="w-full text-xs rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 px-3 py-2"
+                className="w-full text-xs rounded-lg border border-border dark:border-border bg-white dark:bg-surface text-ink dark:text-ink px-3 py-2"
               >
                 {plans.length > 0 ? (
                   plans.map((p) => (
@@ -1416,10 +1416,10 @@ export default function AdminPage() {
             {/* Validity & Duration Options */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                <label className="text-xs font-semibold text-ink dark:text-ink">
                   Plan Duration & Validity
                 </label>
-                <label className="flex items-center gap-1.5 cursor-pointer text-xs text-zinc-700 dark:text-zinc-300">
+                <label className="flex items-center gap-1.5 cursor-pointer text-xs text-ink dark:text-ink">
                   <input
                     type="checkbox"
                     checked={targetPlanIsLifetime}
@@ -1427,7 +1427,7 @@ export default function AdminPage() {
                       setTargetPlanIsLifetime(e.target.checked);
                       if (e.target.checked) setTargetPlanExpiresAt("");
                     }}
-                    className="rounded border-zinc-300 text-zinc-900 focus:ring-0"
+                    className="rounded border-border text-ink focus:ring-0"
                   />
                   <span>Lifetime Pass (Never Expires)</span>
                 </label>
@@ -1450,7 +1450,7 @@ export default function AdminPage() {
                           d.setDate(d.getDate() + preset.days);
                           setTargetPlanExpiresAt(d.toISOString().split("T")[0]);
                         }}
-                        className="py-1 px-2 text-[10px] font-mono rounded border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 hover:border-zinc-900 dark:hover:border-zinc-100 transition-colors"
+                        className="py-1 px-2 text-[10px] font-mono rounded border border-border dark:border-border bg-card dark:bg-surface hover:border-border dark:hover:border-border transition-colors"
                       >
                         {preset.label}
                       </button>
@@ -1467,7 +1467,7 @@ export default function AdminPage() {
 
             {/* Reason */}
             <div>
-              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+              <label className="block text-xs font-semibold text-ink dark:text-ink mb-1">
                 Gift / Audit Reason
               </label>
               <Input
@@ -1499,7 +1499,7 @@ export default function AdminPage() {
         >
           <form onSubmit={handleSaveGateway} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+              <label className="block text-xs font-semibold text-ink dark:text-ink mb-1">
                 Display Name
               </label>
               <Input
@@ -1510,7 +1510,7 @@ export default function AdminPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                <label className="block text-xs font-semibold text-ink dark:text-ink mb-1">
                   Min Amount ({editingGateway.currency})
                 </label>
                 <Input
@@ -1520,7 +1520,7 @@ export default function AdminPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                <label className="block text-xs font-semibold text-ink dark:text-ink mb-1">
                   Max Amount ({editingGateway.currency})
                 </label>
                 <Input
@@ -1532,7 +1532,7 @@ export default function AdminPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+              <label className="block text-xs font-semibold text-ink dark:text-ink mb-1">
                 Display Order (1 = Top priority)
               </label>
               <Input
@@ -1543,7 +1543,7 @@ export default function AdminPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+              <label className="block text-xs font-semibold text-ink dark:text-ink mb-1">
                 Customer Instructions
               </label>
               <Input
@@ -1573,25 +1573,25 @@ export default function AdminPage() {
           title={`Manual Approval — ${resolvingTx.sessionId}`}
         >
           <form onSubmit={handleResolveTx} className="space-y-4">
-            <div className="p-3 bg-zinc-50 dark:bg-zinc-900 rounded-lg text-xs space-y-1">
+            <div className="p-3 bg-card dark:bg-surface rounded-lg text-xs space-y-1">
               <div className="flex justify-between">
-                <span className="text-zinc-500">Store:</span>
+                <span className="text-muted">Store:</span>
                 <span className="font-semibold">{resolvingTx.brandName}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-zinc-500">Payable Amount:</span>
+                <span className="text-muted">Payable Amount:</span>
                 <span className="font-mono font-bold">
                   {formatCurrency(resolvingTx.amount, resolvingTx.currency as any)}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-zinc-500">Payment Method:</span>
+                <span className="text-muted">Payment Method:</span>
                 <span className="font-mono uppercase">{resolvingTx.methodCode}</span>
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+              <label className="block text-xs font-semibold text-ink dark:text-ink mb-1">
                 Confirmed Transaction ID (TrxID)
               </label>
               <Input
@@ -1603,7 +1603,7 @@ export default function AdminPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+              <label className="block text-xs font-semibold text-ink dark:text-ink mb-1">
                 Resolution Note (Auditable)
               </label>
               <Input
@@ -1636,7 +1636,7 @@ export default function AdminPage() {
           <form onSubmit={handleSavePlanDef} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                <label className="block text-xs font-semibold text-ink dark:text-ink mb-1">
                   Plan Name
                 </label>
                 <Input
@@ -1647,7 +1647,7 @@ export default function AdminPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                <label className="block text-xs font-semibold text-ink dark:text-ink mb-1">
                   Plan Code (Unique ID)
                 </label>
                 <Input
@@ -1662,7 +1662,7 @@ export default function AdminPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                <label className="block text-xs font-semibold text-ink dark:text-ink mb-1">
                   Price (BDT)
                 </label>
                 <Input
@@ -1675,13 +1675,13 @@ export default function AdminPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                <label className="block text-xs font-semibold text-ink dark:text-ink mb-1">
                   Billing Cycle
                 </label>
                 <select
                   value={planDefBillingCycle}
                   onChange={(e) => setPlanDefBillingCycle(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs font-medium text-zinc-900 dark:text-zinc-100"
+                  className="w-full rounded-xl border border-border dark:border-border bg-white dark:bg-surface px-3 py-2 text-xs font-medium text-ink dark:text-ink"
                 >
                   <option value="monthly">Monthly</option>
                   <option value="yearly">Yearly</option>
@@ -1694,7 +1694,7 @@ export default function AdminPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Input type="number" label="Monthly completed checkouts (999999 = unlimited)" min={1} value={planDefCredits} onChange={e => setPlanDefCredits(Number(e.target.value))} required />
               <div>
-                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                <label className="block text-xs font-semibold text-ink dark:text-ink mb-1">
                   Device limit
                 </label>
                 <Input
@@ -1706,7 +1706,7 @@ export default function AdminPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                <label className="block text-xs font-semibold text-ink dark:text-ink mb-1">
                   Method / gateway limit
                 </label>
                 <Input
@@ -1720,47 +1720,47 @@ export default function AdminPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+              <label className="block text-xs font-semibold text-ink dark:text-ink mb-1">
                 Description
               </label>
               <textarea
                 value={planDefDescription}
                 onChange={(e) => setPlanDefDescription(e.target.value)}
                 placeholder="Key marketing highlights, limits, and capabilities..."
-                className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs font-normal text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 min-h-[64px]"
+                className="w-full rounded-xl border border-border dark:border-border bg-white dark:bg-surface px-3 py-2 text-xs font-normal text-ink dark:text-ink focus:outline-none focus:ring-2 focus:ring-border-strong dark:focus:ring-border-strong min-h-[64px]"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+              <label className="block text-xs font-semibold text-ink dark:text-ink mb-1">
                 Features (one per line)
               </label>
               <textarea
                 value={planDefFeatures}
                 onChange={(e) => setPlanDefFeatures(e.target.value)}
                 placeholder={"Unlimited brands\nPriority SMS matching\nCustom domain"}
-                className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs font-normal text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 min-h-[72px]"
+                className="w-full rounded-xl border border-border dark:border-border bg-white dark:bg-surface px-3 py-2 text-xs font-normal text-ink dark:text-ink focus:outline-none focus:ring-2 focus:ring-border-strong dark:focus:ring-border-strong min-h-[72px]"
               />
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-              <label className="flex items-center gap-2 cursor-pointer text-xs text-zinc-700 dark:text-zinc-300">
+              <label className="flex items-center gap-2 cursor-pointer text-xs text-ink dark:text-ink">
                 <input
                   type="checkbox"
                   checked={planDefIsFree}
                   onChange={(e) => setPlanDefIsFree(e.target.checked)}
-                  className="rounded border-zinc-300 text-zinc-900 focus:ring-0"
+                  className="rounded border-border text-ink focus:ring-0"
                 />
                 <span>Free plan</span>
               </label>
 
               {editingPlanDef && (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-zinc-500">Status:</span>
+                  <span className="text-xs text-muted">Status:</span>
                   <select
                     value={planDefStatus}
                     onChange={(e) => setPlanDefStatus(e.target.value as any)}
-                    className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1 text-xs"
+                    className="rounded-lg border border-border dark:border-border bg-white dark:bg-surface px-2 py-1 text-xs"
                   >
                     <option value="active">Active</option>
                     <option value="disabled">Disabled</option>
@@ -1770,7 +1770,7 @@ export default function AdminPage() {
               )}
             </div>
 
-            <div className="flex justify-end gap-2 pt-3 border-t border-zinc-100 dark:border-zinc-900">
+            <div className="flex justify-end gap-2 pt-3 border-t border-border dark:border-border">
               <Button type="button" variant="outline" onClick={() => setPlanDefModalOpen(false)}>
                 Cancel
               </Button>

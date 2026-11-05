@@ -1,28 +1,31 @@
 "use client";
 
 import * as React from "react";
+import { MotionConfig } from "framer-motion";
 import { Moon, Sun } from "lucide-react";
 
 type Theme = "light" | "dark";
+export type ThemePreference = Theme | "system";
 
 type ThemeContextValue = {
   theme: Theme;
-  setTheme: (t: Theme) => void;
+  preference: ThemePreference;
+  setTheme: (t: ThemePreference) => void;
   toggle: () => void;
 };
 
 const ThemeContext = React.createContext<ThemeContextValue | null>(null);
 const THEME_KEY = "gresspay_theme";
 
-function readStoredTheme(): Theme {
-  if (typeof window === "undefined") return "dark";
+function readStoredTheme(): ThemePreference {
+  if (typeof window === "undefined") return "system";
   try {
     const stored = localStorage.getItem(THEME_KEY);
     if (stored === "light" || stored === "dark") return stored;
   } catch {
     // ignore
   }
-  return "dark";
+  return "system";
 }
 
 function applyDomTheme(theme: Theme) {
@@ -31,33 +34,35 @@ function applyDomTheme(theme: Theme) {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = React.useState<Theme>("dark");
-
-  React.useEffect(() => {
-    const initial = readStoredTheme();
-    setThemeState(initial);
-    applyDomTheme(initial);
+  const [theme, setThemeState] = React.useState<Theme>("light");
+  const [preference, setPreference] = React.useState<ThemePreference>("system");
+  const update = React.useCallback((choice: ThemePreference) => {
+    const resolved = choice === "system" ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : choice;
+    setPreference(choice); setThemeState(resolved); applyDomTheme(resolved);
   }, []);
-
-  const setTheme = (t: Theme) => {
-    setThemeState(t);
-    try {
-      localStorage.setItem(THEME_KEY, t);
-    } catch {
-      // ignore
-    }
-    applyDomTheme(t);
+  React.useEffect(() => {
+    update(readStoredTheme());
+    const media = matchMedia("(prefers-color-scheme: dark)");
+    const sync = () => update(readStoredTheme());
+    media.addEventListener("change", sync);
+    window.addEventListener("storage", sync);
+    return () => { media.removeEventListener("change", sync); window.removeEventListener("storage", sync); };
+  }, [update]);
+  const setTheme = (choice: ThemePreference) => {
+    try { if (choice === "system") localStorage.removeItem(THEME_KEY); else localStorage.setItem(THEME_KEY, choice); } catch { /* Theme still works when storage is unavailable. */ }
+    update(choice);
   };
 
   return (
     <ThemeContext.Provider
       value={{
         theme,
+        preference,
         setTheme,
         toggle: () => setTheme(theme === "dark" ? "light" : "dark"),
       }}
     >
-      {children}
+      <MotionConfig reducedMotion="user">{children}</MotionConfig>
     </ThemeContext.Provider>
   );
 }

@@ -40,7 +40,7 @@ export function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-[var(--border-color)] bg-[color-mix(in_srgb,var(--bg-page)_88%,transparent)] backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-[var(--border-color)] bg-[color-mix(in_srgb,var(--bg-page)_88%,transparent)] ">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-5 sm:px-8">
         <Link href="/" className="flex items-center">
           <GressPayLogo size="sm" />
@@ -51,7 +51,7 @@ export function Navbar() {
             <Link
               key={l.href}
               href={l.href}
-              className={pathname === l.href ? "text-teal-700 dark:text-teal-400" : "transition hover:text-[var(--text-primary)]"}
+              className={pathname === l.href ? "text-accent dark:text-accent" : "transition hover:text-[var(--text-primary)]"}
             >
               {l.label}
             </Link>

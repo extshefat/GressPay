@@ -320,11 +320,11 @@ export default function BrandsPage() {
     <div className="mx-auto max-w-5xl space-y-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">My Brands</h1>
-          <p className="mt-1 max-w-xl text-xs leading-relaxed text-zinc-500">
-            Each brand has its own <strong className="font-semibold text-zinc-700 dark:text-zinc-300">Brand ID</strong>,{" "}
-            <strong className="font-semibold text-zinc-700 dark:text-zinc-300">Brand Logo</strong> (shown on checkout), and{" "}
-            <strong className="font-semibold text-zinc-700 dark:text-zinc-300">website API key</strong> for server-side checkout (<code className="font-mono">POST /payment/create</code>).
+          <h1 className="text-2xl font-bold tracking-tight text-ink dark:text-ink">My Brands</h1>
+          <p className="mt-1 max-w-xl text-xs leading-relaxed text-muted">
+            Each brand has its own <strong className="font-semibold text-ink dark:text-ink">Brand ID</strong>,{" "}
+            <strong className="font-semibold text-ink dark:text-ink">Brand Logo</strong> (shown on checkout), and{" "}
+            <strong className="font-semibold text-ink dark:text-ink">website API key</strong> for server-side checkout (<code className="font-mono">POST /payment/create</code>).
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -343,9 +343,9 @@ export default function BrandsPage() {
         </Alert>
       )}
 
-      <div className="overflow-x-auto rounded-md border border-zinc-200 bg-white shadow-xs dark:border-zinc-800 dark:bg-zinc-950">
+      <div className="overflow-x-auto rounded-md border border-border bg-white shadow-xs dark:border-border dark:bg-canvas">
         <table className="min-w-full text-left text-xs">
-          <thead className="border-b border-zinc-200 bg-zinc-50 font-mono text-[10px] uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
+          <thead className="border-b border-border bg-card font-mono text-[10px] uppercase tracking-wide text-muted dark:border-border dark:bg-surface">
             <tr>
               <th className="px-4 py-3 w-10">#</th>
               <th className="px-4 py-3">Brand & Logo</th>
@@ -362,11 +362,11 @@ export default function BrandsPage() {
               const isCopiedKey = copiedId === `web-${b.brandId}`;
 
               return (
-                <tr key={b.brandId} className="border-b border-zinc-100 dark:border-zinc-900 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/40 transition">
-                  <td className="px-4 py-3.5 text-zinc-500">{idx + 1}</td>
+                <tr key={b.brandId} className="border-b border-border dark:border-border hover:bg-card/50 dark:hover:bg-ink-solid/40 transition">
+                  <td className="px-4 py-3.5 text-muted">{idx + 1}</td>
                   <td className="px-4 py-3.5">
                     <div className="flex items-center gap-3">
-                      <div className="relative w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
+                      <div className="relative w-10 h-10 rounded-xl bg-surface dark:bg-surface-muted border border-border dark:border-border flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
                         {b.logoUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
@@ -375,21 +375,21 @@ export default function BrandsPage() {
                             className="w-full h-full object-contain p-1"
                           />
                         ) : (
-                          <span className="font-bold text-xs text-zinc-600 dark:text-zinc-300">
+                          <span className="font-bold text-xs text-muted dark:text-ink">
                             {b.name.slice(0, 2).toUpperCase()}
                           </span>
                         )}
                       </div>
                       <div className="min-w-0">
-                        <div className="font-semibold text-zinc-900 dark:text-zinc-100 truncate flex items-center gap-1.5 flex-wrap">
+                        <div className="font-semibold text-ink dark:text-ink truncate flex items-center gap-1.5 flex-wrap">
                           <span>{b.name}</span>
                           {isSelected && (
-                            <span className="text-[9px] font-mono font-bold uppercase px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                            <span className="text-[9px] font-mono font-bold uppercase px-1.5 py-0.2 rounded bg-success/10 text-success dark:text-success border border-success/20">
                               Current
                             </span>
                           )}
                           {platformBillingBrandId === b.brandId && (
-                            <span className="text-[9px] font-mono font-bold uppercase px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
+                            <span className="text-[9px] font-mono font-bold uppercase px-1.5 py-0.2 rounded bg-warning/10 text-warning dark:text-warning border border-warning/20">
                               Billing Brand
                             </span>
                           )}
@@ -397,7 +397,7 @@ export default function BrandsPage() {
                         <button
                           type="button"
                           onClick={() => openLogoModal(b)}
-                          className="text-[11px] text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-1 mt-0.5"
+                          className="text-[11px] text-info dark:text-info hover:underline flex items-center gap-1 mt-0.5"
                         >
                           <ImageIcon className="w-3 h-3" />
                           <span>{b.logoUrl ? "Change logo" : "Upload logo"}</span>
@@ -406,33 +406,33 @@ export default function BrandsPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-900 px-2 py-1 rounded-lg w-fit border border-zinc-200/80 dark:border-zinc-800">
-                      <span className="font-mono text-xs font-bold text-zinc-800 dark:text-zinc-200 select-all">
+                    <div className="flex items-center gap-1.5 bg-surface dark:bg-surface px-2 py-1 rounded-lg w-fit border border-border/80 dark:border-border">
+                      <span className="font-mono text-xs font-bold text-ink dark:text-ink select-all">
                         {b.brandId}
                       </span>
                       <button
                         type="button"
-                        className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition"
+                        className="text-muted hover:text-ink dark:hover:text-on-ink transition"
                         title="Copy Brand ID"
                         onClick={() => copyToClipboard(b.brandId, "Brand ID", `bid-${b.brandId}`)}
                       >
-                        {isCopiedBid ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                        {isCopiedBid ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
                       </button>
                     </div>
                   </td>
                   <td className="px-4 py-3.5">
                     <div className="flex items-center gap-1.5">
-                      <span className="font-mono text-[11px] tracking-wider text-zinc-600 dark:text-zinc-400">
+                      <span className="font-mono text-[11px] tracking-wider text-muted dark:text-muted">
                         {b.websiteApiKeyMasked || (b.websiteApiKey ? MASKED_KEY : "—")}
                       </span>
                       <button
                         type="button"
-                        className="inline-flex items-center justify-center rounded-md border border-zinc-200 p-1.5 text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                        className="inline-flex items-center justify-center rounded-md border border-border p-1.5 text-muted hover:bg-surface dark:border-border dark:text-ink dark:hover:bg-ink-solid"
                         aria-label={`Copy website API key for ${b.name}`}
                         title="Copy website key"
                         onClick={() => copyWebsiteKey(b)}
                       >
-                        {isCopiedKey ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                        {isCopiedKey ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
                       </button>
                     </div>
                   </td>
@@ -446,7 +446,7 @@ export default function BrandsPage() {
                           {b.brandStatus === "inactive" ? "Disabled" : "Active"}
                         </Badge>
                       </div>
-                      <div className="text-[11px] font-mono text-zinc-500">
+                      <div className="text-[11px] font-mono text-muted">
                         {b.gatewayCount} gateway{b.gatewayCount === 1 ? "" : "s"}
                         {b.verificationMode === "sms_auto" ? " · SMS auto" : " · TrxID"}
                       </div>
@@ -456,7 +456,7 @@ export default function BrandsPage() {
                     <div className="inline-flex items-center justify-end gap-1">
                       <button
                         type="button"
-                        className="inline-flex rounded-lg p-2 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                        className="inline-flex rounded-lg p-2 text-muted hover:bg-surface dark:text-ink dark:hover:bg-ink-solid"
                         aria-label={`Rotate website key for ${b.name}`}
                         title="Rotate website key"
                         disabled={busy === `rotate-${b.brandId}`}
@@ -466,7 +466,7 @@ export default function BrandsPage() {
                       </button>
                       <button
                         type="button"
-                        className="inline-flex rounded-lg p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                        className="inline-flex rounded-lg p-2 hover:bg-surface dark:hover:bg-ink-solid"
                         aria-label="More brand actions"
                         onClick={() => setMenuOpen(menuOpen === b.brandId ? null : b.brandId)}
                       >
@@ -477,28 +477,28 @@ export default function BrandsPage() {
                       <Modal open onClose={() => setMenuOpen(null)} title={b.name + " · Brand actions"}>
                         <button
                           type="button"
-                          className="flex items-center gap-2 w-full px-3 py-2 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200"
+                          className="flex items-center gap-2 w-full px-3 py-2 text-xs hover:bg-card dark:hover:bg-ink-solid text-ink dark:text-ink"
                           onClick={() => openEditBrand(b)}
                         >
-                          <Pencil className="h-3.5 w-3.5 text-zinc-400" />
+                          <Pencil className="h-3.5 w-3.5 text-muted" />
                           <span>Edit Brand</span>
                         </button>
                         <button
                           type="button"
-                          className="flex items-center gap-2 w-full px-3 py-2 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200"
+                          className="flex items-center gap-2 w-full px-3 py-2 text-xs hover:bg-card dark:hover:bg-ink-solid text-ink dark:text-ink"
                           onClick={() => openLogoModal(b)}
                         >
-                          <ImageIcon className="h-3.5 w-3.5 text-zinc-400" />
+                          <ImageIcon className="h-3.5 w-3.5 text-muted" />
                           <span>Upload / Change Logo</span>
                         </button>
                         {isAdmin && (
                           <button
                             type="button"
-                            className="flex items-center gap-2 w-full px-3 py-2 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800 text-emerald-600 dark:text-emerald-400 font-medium"
+                            className="flex items-center gap-2 w-full px-3 py-2 text-xs hover:bg-card dark:hover:bg-ink-solid text-success dark:text-success font-medium"
                             onClick={() => setAsPlatformBilling(b)}
                             disabled={busy === `billing-${b.brandId}`}
                           >
-                            <Star className="h-3.5 w-3.5 text-emerald-500" />
+                            <Star className="h-3.5 w-3.5 text-success" />
                             <span>
                               {platformBillingBrandId === b.brandId
                                 ? "Billing brand (active)"
@@ -509,7 +509,7 @@ export default function BrandsPage() {
                         {!isSelected && (
                           <button
                             type="button"
-                            className="block w-full px-3 py-2 text-left text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                            className="block w-full px-3 py-2 text-left text-xs hover:bg-card dark:hover:bg-ink-solid"
                             onClick={() => switchTo(b.brandId)}
                           >
                             Switch to this brand
@@ -517,14 +517,14 @@ export default function BrandsPage() {
                         )}
                         <Link
                           href="/dashboard/methods"
-                          className="block px-3 py-2 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                          className="block px-3 py-2 text-xs hover:bg-card dark:hover:bg-ink-solid"
                           onClick={() => setMenuOpen(null)}
                         >
                           Configure gateways
                         </Link>
                         <Link
                           href="/dashboard/api-keys"
-                          className="block px-3 py-2 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                          className="block px-3 py-2 text-xs hover:bg-card dark:hover:bg-ink-solid"
                           onClick={() => setMenuOpen(null)}
                         >
                           Webhooks & integration
@@ -538,12 +538,12 @@ export default function BrandsPage() {
           </tbody>
         </table>
         {loading && brands.length === 0 && (
-          <p className="p-8 text-center text-xs text-zinc-500">Loading brands…</p>
+          <p className="p-8 text-center text-xs text-muted">Loading brands…</p>
         )}
         {!loading && brands.length === 0 && (
           <div className="space-y-3 p-10 text-center">
-            <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">No brands yet</p>
-            <p className="mx-auto max-w-md text-xs text-zinc-500">
+            <p className="text-sm font-semibold text-ink dark:text-ink">No brands yet</p>
+            <p className="mx-auto max-w-md text-xs text-muted">
               Add your first store brand to get a website API key for checkout integration. Companion phones use separate
               device keys on the Devices page.
             </p>
@@ -558,7 +558,7 @@ export default function BrandsPage() {
 
       {/* Add New Brand Modal */}
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Add New Brand">
-        <p className="mb-4 text-xs leading-relaxed text-zinc-500">
+        <p className="mb-4 text-xs leading-relaxed text-muted">
           A live website API key and Brand ID are created automatically. Copy the key from the table for server-side{" "}
           <code className="font-mono">/payment/create</code> calls on your website — never paste it into the Companion
           app.
@@ -572,7 +572,7 @@ export default function BrandsPage() {
             required
             autoFocus
           />
-          <div className="flex justify-end gap-2 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+          <div className="flex justify-end gap-2 border-t border-border pt-3 dark:border-border">
             <Button type="button" variant="outline" onClick={() => setAddOpen(false)}>
               Cancel
             </Button>
@@ -605,10 +605,10 @@ export default function BrandsPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <label className="block text-xs font-medium space-y-1.5 text-zinc-700 dark:text-zinc-300">
+            <label className="block text-xs font-medium space-y-1.5 text-ink dark:text-ink">
               <span>Payment Amount Type</span>
               <select
-                className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs"
+                className="w-full rounded-xl border border-border dark:border-border bg-white dark:bg-surface px-3 py-2 text-xs"
                 value={editAmountPolicy}
                 onChange={(e) => setEditAmountPolicy(e.target.value)}
               >
@@ -616,10 +616,10 @@ export default function BrandsPage() {
                 <option value="equal_or_more">Equal Amount and More</option>
               </select>
             </label>
-            <label className="block text-xs font-medium space-y-1.5 text-zinc-700 dark:text-zinc-300">
+            <label className="block text-xs font-medium space-y-1.5 text-ink dark:text-ink">
               <span>Amount Format</span>
               <select
-                className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs"
+                className="w-full rounded-xl border border-border dark:border-border bg-white dark:bg-surface px-3 py-2 text-xs"
                 value={editAmountFormat}
                 onChange={(e) => setEditAmountFormat(e.target.value)}
               >
@@ -634,10 +634,10 @@ export default function BrandsPage() {
               onChange={(e) => setEditFee(e.target.value)}
               className="font-mono text-xs"
             />
-            <label className="block text-xs font-medium space-y-1.5 text-zinc-700 dark:text-zinc-300">
+            <label className="block text-xs font-medium space-y-1.5 text-ink dark:text-ink">
               <span>Transaction Fee Type</span>
               <select
-                className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs"
+                className="w-full rounded-xl border border-border dark:border-border bg-white dark:bg-surface px-3 py-2 text-xs"
                 value={editFeeType}
                 onChange={(e) => setEditFeeType(e.target.value as "fixed" | "percentage")}
               >
@@ -645,10 +645,10 @@ export default function BrandsPage() {
                 <option value="percentage">Percentage (%)</option>
               </select>
             </label>
-            <label className="block text-xs font-medium space-y-1.5 text-zinc-700 dark:text-zinc-300">
+            <label className="block text-xs font-medium space-y-1.5 text-ink dark:text-ink">
               <span>Checkout Theme</span>
               <select
-                className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs"
+                className="w-full rounded-xl border border-border dark:border-border bg-white dark:bg-surface px-3 py-2 text-xs"
                 value={editTheme}
                 onChange={(e) => setEditTheme(e.target.value)}
               >
@@ -657,10 +657,10 @@ export default function BrandsPage() {
                 <option value="minimal">Minimal</option>
               </select>
             </label>
-            <label className="block text-xs font-medium space-y-1.5 text-zinc-700 dark:text-zinc-300">
+            <label className="block text-xs font-medium space-y-1.5 text-ink dark:text-ink">
               <span>Status</span>
               <select
-                className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs"
+                className="w-full rounded-xl border border-border dark:border-border bg-white dark:bg-surface px-3 py-2 text-xs"
                 value={editStatus}
                 onChange={(e) => setEditStatus(e.target.value)}
               >
@@ -671,8 +671,8 @@ export default function BrandsPage() {
           </div>
 
           <div className="space-y-2">
-            <div className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">Payment Verification Method</div>
-            <label className="flex items-start gap-2 text-sm leading-relaxed text-zinc-700 dark:text-zinc-200">
+            <div className="text-xs font-semibold text-ink dark:text-ink">Payment Verification Method</div>
+            <label className="flex items-start gap-2 text-sm leading-relaxed text-ink dark:text-ink">
               <input type="checkbox" className="mt-1" checked={requirePayerMatch} onChange={e => setRequirePayerMatch(e.target.checked)} />
               <span>Match payer phone with SMS evidence. Recommended: when a receipt includes the sender number, the buyer must enter that same number, even with a valid TrxID.</span>
             </label>
@@ -682,29 +682,29 @@ export default function BrandsPage() {
                 onClick={() => setEditVerifyMode("trx_id")}
                 className={`rounded-xl border p-3 text-left text-xs transition ${
                   editVerifyMode === "trx_id"
-                    ? "border-sky-500 bg-sky-50/80 dark:bg-sky-950/30 ring-1 ring-sky-500"
-                    : "border-zinc-200 dark:border-zinc-800"
+                    ? "border-info bg-info/10 dark:bg-info/30 ring-1 ring-info"
+                    : "border-border dark:border-border"
                 }`}
               >
-                <div className="font-bold text-zinc-900 dark:text-zinc-100">Verify using Transaction ID</div>
-                <p className="mt-1 text-zinc-500">Customer pays and enters the TrxID. Companion SMS still confirms live MFS.</p>
+                <div className="font-bold text-ink dark:text-ink">Verify using Transaction ID</div>
+                <p className="mt-1 text-muted">Customer pays and enters the TrxID. Companion SMS still confirms live MFS.</p>
               </button>
               <button
                 type="button"
                 onClick={() => setEditVerifyMode("sms_auto")}
                 className={`rounded-xl border p-3 text-left text-xs transition ${
                   editVerifyMode === "sms_auto"
-                    ? "border-sky-500 bg-sky-50/80 dark:bg-sky-950/30 ring-1 ring-sky-500"
-                    : "border-zinc-200 dark:border-zinc-800"
+                    ? "border-info bg-info/10 dark:bg-info/30 ring-1 ring-info"
+                    : "border-border dark:border-border"
                 }`}
               >
-                <div className="font-bold text-zinc-900 dark:text-zinc-100">Verify using payer phone + SMS</div>
-                <p className="mt-1 text-zinc-500">Customer enters the paying phone number. A trusted receipt must match phone, wallet, amount and time. Requires operator activation; missing or ambiguous evidence stays pending.</p>
+                <div className="font-bold text-ink dark:text-ink">Verify using payer phone + SMS</div>
+                <p className="mt-1 text-muted">Customer enters the paying phone number. A trusted receipt must match phone, wallet, amount and time. Requires operator activation; missing or ambiguous evidence stays pending.</p>
               </button>
             </div>
           </div>
 
-          <label className="flex items-start gap-3 rounded-xl border border-zinc-200 dark:border-zinc-800 p-3 text-xs cursor-pointer">
+          <label className="flex items-start gap-3 rounded-xl border border-border dark:border-border p-3 text-xs cursor-pointer">
             <input
               type="checkbox"
               className="mt-0.5"
@@ -712,20 +712,20 @@ export default function BrandsPage() {
               onChange={(e) => setEditShuffle(e.target.checked)}
             />
             <span>
-              <span className="font-semibold text-zinc-800 dark:text-zinc-200">Shuffle duplicate gateway numbers</span>
-              <span className="block text-zinc-500 mt-0.5">
+              <span className="font-semibold text-ink dark:text-ink">Shuffle duplicate gateway numbers</span>
+              <span className="block text-muted mt-0.5">
                 If the same rail has multiple wallets, checkout shows one random number for that session and keeps it.
               </span>
             </span>
           </label>
 
-          <p className="text-[11px] text-zinc-500 rounded-lg border border-amber-200/60 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-950/20 p-2.5">
+          <p className="text-[11px] text-muted rounded-lg border border-warning/60 dark:border-warning/40 bg-warning/10 dark:bg-warning/20 p-2.5">
             Merchant Transaction Verification API is always available for server-side clients (
             <code className="font-mono">POST /api/v1/checkout/verify-payment</code>
             ). Logo upload stays in the separate Logo action.
           </p>
 
-          <div className="flex justify-end gap-2 border-t border-zinc-100 dark:border-zinc-800 pt-3 sticky bottom-0 bg-white dark:bg-zinc-950">
+          <div className="flex justify-end gap-2 border-t border-border dark:border-border pt-3 sticky bottom-0 bg-white dark:bg-canvas">
             <Button type="button" variant="outline" onClick={() => setEditBrand(null)}>
               Cancel
             </Button>
@@ -743,29 +743,29 @@ export default function BrandsPage() {
         title={`Brand Logo — ${logoModalBrand?.name || ""}`}
       >
         <div className="space-y-4">
-          <p className="text-xs text-zinc-500 leading-relaxed">
-            Upload a high-resolution logo for <strong className="text-zinc-800 dark:text-zinc-200">{logoModalBrand?.name}</strong>.
+          <p className="text-xs text-muted leading-relaxed">
+            Upload a high-resolution logo for <strong className="text-ink dark:text-ink">{logoModalBrand?.name}</strong>.
             This logo is prominently displayed on the customer-facing hosted checkout page.
           </p>
 
-          <div className="flex flex-col items-center justify-center p-6 rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30 gap-3">
+          <div className="flex flex-col items-center justify-center p-6 rounded-2xl border-2 border-dashed border-border dark:border-border bg-card/50 dark:bg-surface/30 gap-3">
             {logoPreviewUrl ? (
               <div className="relative group">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={logoPreviewUrl}
                   alt="Brand Logo Preview"
-                  className="w-24 h-24 object-contain rounded-2xl bg-white border border-zinc-200 dark:border-zinc-700 p-2 shadow-sm"
+                  className="w-24 h-24 object-contain rounded-2xl bg-white border border-border dark:border-border p-2 shadow-sm"
                 />
               </div>
             ) : (
-              <div className="w-20 h-20 rounded-2xl bg-zinc-200/60 dark:bg-zinc-800 flex items-center justify-center text-zinc-400">
+              <div className="w-20 h-20 rounded-2xl bg-surface-muted/60 dark:bg-surface-muted flex items-center justify-center text-muted">
                 <ImageIcon className="w-8 h-8" />
               </div>
             )}
 
             <div className="text-center space-y-1">
-              <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 text-xs font-semibold hover:opacity-90 transition">
+              <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-ink-solid text-white dark:bg-brand dark:text-on-brand text-xs font-semibold hover:opacity-90 transition">
                 <span>Choose Image</span>
                 <input
                   type="file"
@@ -775,17 +775,17 @@ export default function BrandsPage() {
                   disabled={uploadingLogo}
                 />
               </label>
-              <p className="text-[10px] text-zinc-400">PNG, JPG, or WebP (max 2MB)</p>
+              <p className="text-[10px] text-muted">PNG, JPG, or WebP (max 2MB)</p>
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-3 border-t border-zinc-100 dark:border-zinc-800">
+          <div className="flex items-center justify-between pt-3 border-t border-border dark:border-border">
             {logoPreviewUrl ? (
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className="text-rose-600 hover:text-rose-700 dark:text-rose-400"
+                className="text-danger hover:text-danger dark:text-danger"
                 onClick={handleLogoDelete}
                 isLoading={uploadingLogo}
                 leftIcon={<Trash2 className="w-3.5 h-3.5" />}

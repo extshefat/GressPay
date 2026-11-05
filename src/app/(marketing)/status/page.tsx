@@ -10,40 +10,40 @@ export default function StatusPage() {
         <Badge variant="cyan" dot>
           Status
         </Badge>
-        <h1 className="text-3xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-100 tracking-tight">Service status</h1>
-        <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 leading-relaxed">
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-ink dark:text-ink tracking-tight">Service status</h1>
+        <p className="text-sm sm:text-base text-muted dark:text-muted leading-relaxed">
           GressPay is the software on this host. There is no separate public uptime network or 99.9%
           SLA. Health is whatever this instance reports.
         </p>
       </div>
 
-      <Card className="p-6 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 space-y-4">
+      <Card className="p-6 border-border dark:border-border bg-white dark:bg-surface/60 space-y-4">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">This website</span>
-          <span className="text-xs font-mono text-emerald-600 dark:text-emerald-400">Reachable if you can read this</span>
+          <span className="text-sm font-semibold text-ink dark:text-ink">This website</span>
+          <span className="text-xs font-mono text-success dark:text-success">Reachable if you can read this</span>
         </div>
-        <div className="flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800 pt-4">
-          <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">REST API</span>
-          <span className="text-xs font-mono text-zinc-500">
+        <div className="flex items-center justify-between border-t border-border dark:border-border pt-4">
+          <span className="text-sm font-semibold text-ink dark:text-ink">REST API</span>
+          <span className="text-xs font-mono text-muted">
             <code>/api/v1</code> on the same origin
           </span>
         </div>
-        <div className="flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800 pt-4">
-          <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Hosted checkout</span>
-          <span className="text-xs font-mono text-zinc-500">
+        <div className="flex items-center justify-between border-t border-border dark:border-border pt-4">
+          <span className="text-sm font-semibold text-ink dark:text-ink">Hosted checkout</span>
+          <span className="text-xs font-mono text-muted">
             <code>/pay/&#123;linkOrInvoiceId&#125;</code>
           </span>
         </div>
       </Card>
 
-      <p className="text-xs text-zinc-500 leading-relaxed">
+      <p className="text-xs text-muted leading-relaxed">
         Operators: check Docker / nginx and PHP-FPM on the VPS. Account holders: if checkout fails, confirm
         the method is enabled and a deposit number is set. See{" "}
-        <Link href="/help" className="text-teal-700 dark:text-teal-400 font-medium hover:underline">
+        <Link href="/help" className="text-accent dark:text-accent font-medium hover:underline">
           Help
         </Link>{" "}
         and the{" "}
-        <Link href="/developers" className="text-teal-700 dark:text-teal-400 font-medium hover:underline">
+        <Link href="/developers" className="text-accent dark:text-accent font-medium hover:underline">
           API docs
         </Link>
         .

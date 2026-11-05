@@ -1,4 +1,5 @@
 import { THEME_SCRIPT } from "@/lib/theme-script";
+import { uiFont, displayFont, codeFont, bengaliFont } from "@/lib/design/fonts";
 import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/lib/theme";
@@ -27,7 +28,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark scroll-smooth" suppressHydrationWarning>
+    <html lang="en" className={`${uiFont.variable} ${displayFont.variable} ${codeFont.variable} ${bengaliFont.variable} scroll-smooth`} suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -35,7 +36,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-screen bg-void font-sans text-zinc-900 dark:text-zinc-100 antialiased">
+      <body className="min-h-screen bg-canvas font-sans text-ink dark:text-ink antialiased">
         <ThemeProvider>
           <ToastProvider>
             {children}

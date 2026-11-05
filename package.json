@@ -4,9 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "sh scripts/check-no-conflict-markers.sh && next build",
+    "build": "sh scripts/check-no-conflict-markers.sh && node scripts/check-design-tokens.mjs && next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "check:design": "node scripts/check-design-tokens.mjs && node scripts/check-design-contrast.mjs && node scripts/check-design-contracts.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",

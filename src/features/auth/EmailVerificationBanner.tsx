@@ -15,7 +15,7 @@ export function EmailVerificationBanner() {
     } catch { setMessage("Could not reach the server. Please try again."); }
     finally { setBusy(false); }
   }
-  return <aside className="mb-6 rounded-xl border border-amber-600/40 bg-amber-50 p-4 text-sm leading-relaxed text-amber-950 dark:bg-amber-950 dark:text-amber-100" aria-label="Email verification">
+  return <aside className="mb-6 rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm leading-relaxed text-warning dark:bg-warning dark:text-warning" aria-label="Email verification">
     <p>Verify your email before creating live API keys or going live. You can continue exploring the dashboard.</p>
     <Button className="mt-3" size="sm" variant="outline" disabled={busy} onClick={resend}>{busy ? "Sending…" : "Send verification email"}</Button>
     <p role="status" className="mt-2">{message}</p>

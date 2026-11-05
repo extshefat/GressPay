@@ -56,16 +56,16 @@ export const FAQSection: React.FC = () => {
   ];
 
   return (
-    <section className="py-20 sm:py-28 bg-white dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-800 transition-colors">
+    <section className="py-20 sm:py-28 bg-white dark:bg-canvas border-t border-border dark:border-border transition-colors">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center space-y-3 mb-16">
           <Badge variant="emerald" dot>
             FAQ
           </Badge>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-100 tracking-tight">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-ink dark:text-ink tracking-tight">
             Frequently Asked Questions
           </h2>
-          <p className="text-zinc-600 dark:text-zinc-400 text-sm sm:text-base leading-relaxed">
+          <p className="text-muted dark:text-muted text-sm sm:text-base leading-relaxed">
             How verification, wallets, and webhooks behave in this build.
           </p>
         </div>
@@ -77,23 +77,23 @@ export const FAQSection: React.FC = () => {
             return (
               <div
                 key={idx}
-                className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/40 dark:bg-zinc-900/40 overflow-hidden transition-all"
+                className="rounded-2xl border border-border dark:border-border bg-card/40 dark:bg-surface/40 overflow-hidden transition-all"
               >
                 <button
                   type="button"
                   onClick={() => setOpenIndex(isOpen ? null : idx)}
-                  className="w-full flex items-center justify-between p-5 text-left font-semibold text-sm text-zinc-900 dark:text-zinc-100 hover:text-teal-700 dark:hover:text-teal-400 transition-colors"
+                  className="w-full flex items-center justify-between p-5 text-left font-semibold text-sm text-ink dark:text-ink hover:text-accent dark:hover:text-accent transition-colors"
                 >
                   <span className="pr-4">{faq.question}</span>
                   <ChevronDown
-                    className={`w-4 h-4 text-zinc-400 transition-transform duration-200 shrink-0 ${
-                      isOpen ? "rotate-180 text-teal-600 dark:text-teal-400" : ""
+                    className={`w-4 h-4 text-muted transition-transform duration-200 shrink-0 ${
+                      isOpen ? "rotate-180 text-accent dark:text-accent" : ""
                     }`}
                   />
                 </button>
 
                 {isOpen && (
-                  <div className="px-5 pb-5 pt-1 text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed border-t border-zinc-200/50 dark:border-zinc-800/60 animate-in fade-in duration-200">
+                  <div className="px-5 pb-5 pt-1 text-xs sm:text-sm text-muted dark:text-muted leading-relaxed border-t border-border/50 dark:border-border/60 duration-200">
                     {faq.answer}
                   </div>
                 )}

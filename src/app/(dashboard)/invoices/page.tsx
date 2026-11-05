@@ -103,10 +103,10 @@ export default function InvoicesPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+          <h1 className="text-2xl font-bold tracking-tight text-ink dark:text-ink">
             Invoices
           </h1>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+          <p className="text-xs text-muted dark:text-muted mt-1">
             Issue line-item digital invoices with dedicated hosted payment links.
           </p>
         </div>
@@ -139,20 +139,20 @@ export default function InvoicesPage() {
       )}
 
       {/* Invoice list table */}
-      <Card className="bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-xs">
+      <Card className="bg-white dark:bg-canvas border-border dark:border-border overflow-hidden shadow-xs">
         {isLoading ? (
           <div className="py-20 text-center space-y-3">
-            <div className="w-8 h-8 border-2 border-teal-700 border-t-transparent rounded-full animate-spin mx-auto" />
-            <p className="text-xs font-mono text-zinc-500">Querying invoices…</p>
+            <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="text-xs font-mono text-muted">Querying invoices…</p>
           </div>
         ) : invoices.length === 0 ? (
           <EmptyState
-            icon={<FileText className="w-6 h-6 text-zinc-400" />}
+            icon={<FileText className="w-6 h-6 text-muted" />}
             title="No invoices created yet"
             description="Send professional invoices to your customers with direct bKash, Nagad, Binance Pay, or USDT checkout."
           />
         ) : (
-          <div className="divide-y divide-zinc-100 dark:divide-zinc-900">
+          <div className="divide-y divide-border dark:divide-border">
             {invoices.map((inv) => {
               const url = getPayUrl(inv.id);
               const isPaid = inv.status === "PAID";
@@ -161,11 +161,11 @@ export default function InvoicesPage() {
                 <div
                   key={inv.id}
                   onClick={() => setActiveInvoice(inv)}
-                  className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/40 cursor-pointer transition-colors"
+                  className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-card/50 dark:hover:bg-ink-solid/40 cursor-pointer transition-colors"
                 >
                   <div className="space-y-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-xs text-zinc-900 dark:text-zinc-100 font-mono">
+                      <span className="font-semibold text-xs text-ink dark:text-ink font-mono">
                         {inv.invoiceNumber || inv.id}
                       </span>
                       <Badge variant={isPaid ? "emerald" : "amber"} size="sm" dot>
@@ -173,22 +173,22 @@ export default function InvoicesPage() {
                       </Badge>
                     </div>
 
-                    <p className="text-xs text-zinc-700 dark:text-zinc-300 font-medium">
+                    <p className="text-xs text-ink dark:text-ink font-medium">
                       {inv.clientName || "Customer"} ·{" "}
-                      <span className="text-zinc-500 font-normal">{inv.clientEmail}</span>
+                      <span className="text-muted font-normal">{inv.clientEmail}</span>
                     </p>
 
-                    <p className="text-[11px] text-zinc-400">
+                    <p className="text-[11px] text-muted">
                       Created: {formatDate(inv.createdAt || new Date().toISOString())}
                     </p>
                   </div>
 
                   <div className="flex items-center gap-4 self-end sm:self-center">
                     <div className="text-right">
-                      <div className="font-mono font-bold text-sm text-zinc-900 dark:text-zinc-100">
+                      <div className="font-mono font-bold text-sm text-ink dark:text-ink">
                         {formatCurrency(inv.total, inv.currency)}
                       </div>
-                      <span className="text-[10px] text-zinc-400 font-mono">
+                      <span className="text-[10px] text-muted font-mono">
                         {inv.currency}
                       </span>
                     </div>
@@ -198,7 +198,7 @@ export default function InvoicesPage() {
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      className="p-2 rounded-lg text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                      className="p-2 rounded-lg text-muted hover:text-ink dark:hover:text-on-ink hover:bg-surface dark:hover:bg-ink-solid transition-colors"
                       title="Open Payment Link"
                     >
                       <ExternalLink className="w-4 h-4" />
@@ -270,7 +270,7 @@ export default function InvoicesPage() {
             rows={2}
           />
 
-          <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+          <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-border dark:border-border">
             <Button
               type="button"
               variant="outline"
@@ -301,10 +301,10 @@ export default function InvoicesPage() {
       >
         {activeInvoice && (
           <div className="space-y-5 text-xs">
-            <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 flex items-center justify-between">
+            <div className="p-4 rounded-xl border border-border dark:border-border bg-card/50 dark:bg-surface/40 flex items-center justify-between">
               <div>
-                <span className="text-zinc-400">Total Billed</span>
-                <div className="text-xl font-bold font-mono text-zinc-900 dark:text-zinc-100">
+                <span className="text-muted">Total Billed</span>
+                <div className="text-xl font-bold font-mono text-ink dark:text-ink">
                   {formatCurrency(activeInvoice.total, activeInvoice.currency)}
                 </div>
               </div>
@@ -318,15 +318,15 @@ export default function InvoicesPage() {
             </div>
 
             <div className="space-y-2">
-              <div className="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800">
-                <span className="text-zinc-500">Billed To:</span>
-                <span className="font-medium text-zinc-900 dark:text-zinc-100">
+              <div className="flex justify-between py-1 border-b border-border dark:border-border">
+                <span className="text-muted">Billed To:</span>
+                <span className="font-medium text-ink dark:text-ink">
                   {activeInvoice.clientName || "N/A"}
                 </span>
               </div>
-              <div className="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800">
-                <span className="text-zinc-500">Email:</span>
-                <span className="font-mono text-zinc-900 dark:text-zinc-100">
+              <div className="flex justify-between py-1 border-b border-border dark:border-border">
+                <span className="text-muted">Email:</span>
+                <span className="font-mono text-ink dark:text-ink">
                   {activeInvoice.clientEmail}
                 </span>
               </div>
@@ -334,7 +334,7 @@ export default function InvoicesPage() {
 
             <CopyField label="Direct Hosted Payment URL" value={getPayUrl(activeInvoice.id)} />
 
-            <div className="flex items-center justify-between pt-3 border-t border-zinc-100 dark:border-zinc-800">
+            <div className="flex items-center justify-between pt-3 border-t border-border dark:border-border">
               <Button
                 size="sm"
                 variant="outline"

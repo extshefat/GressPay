@@ -19,7 +19,7 @@ export function SupportInbox() {
     {tickets.map(t => <article key={t.ticket_id} className="space-y-3 border border-[var(--border-color)] p-5 [overflow-wrap:anywhere]">
       <p className="text-xs text-[var(--text-muted)]">{t.ticket_id} · {t.contact_email} · {t.status}</p>
       <h3 className="font-semibold">{t.subject}</h3><p className="whitespace-pre-wrap">{t.message}</p>
-      {t.reply ? <p className="whitespace-pre-wrap border-l-2 border-blue-500 pl-3">{t.reply}</p> :
+      {t.reply ? <p className="whitespace-pre-wrap border-l-2 border-info pl-3">{t.reply}</p> :
         <form onSubmit={async e => {
           e.preventDefault(); const reply = String(new FormData(e.currentTarget).get("reply") || "").trim();
           if (!reply || busy) return;

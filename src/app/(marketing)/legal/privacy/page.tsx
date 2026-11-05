@@ -6,15 +6,15 @@ export default function PrivacyPage() {
     <div className="pt-28 pb-20 max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 transition-colors">
       <div className="space-y-3">
         <Badge variant="cyan">Privacy</Badge>
-        <h1 className="text-3xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-100 tracking-tight">
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-ink dark:text-ink tracking-tight">
           Privacy policy
         </h1>
-        <p className="text-xs text-zinc-500 font-mono">Last updated October 2026</p>
+        <p className="text-xs text-muted font-mono">Last updated October 2026</p>
       </div>
 
-      <div className="space-y-6 text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
+      <div className="space-y-6 text-sm text-muted dark:text-muted leading-relaxed">
         <section className="space-y-2">
-          <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Who this covers</h2>
+          <h2 className="text-base font-semibold text-ink dark:text-ink">Who this covers</h2>
           <p>
             This policy describes data handled by a GressPay deployment: users who create
             accounts, and buyers who pay through hosted checkout links or invoices.
@@ -22,7 +22,7 @@ export default function PrivacyPage() {
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">What we store</h2>
+          <h2 className="text-base font-semibold text-ink dark:text-ink">What we store</h2>
           <ul className="list-disc pl-5 space-y-1">
             <li>User account: name, email, password hash, business name</li>
             <li>API key prefixes and hashed secrets; webhook URL and signing secret</li>
@@ -33,7 +33,7 @@ export default function PrivacyPage() {
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">What we do not store</h2>
+          <h2 className="text-base font-semibold text-ink dark:text-ink">What we do not store</h2>
           <p>
             Card numbers, CVVs, 3-D Secure payloads, or full bank login credentials. Funds settle to
             the wallets you configure; GressPay is the ledger and confirmation layer.
@@ -41,19 +41,19 @@ export default function PrivacyPage() {
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Sessions and cookies</h2>
+          <h2 className="text-base font-semibold text-ink dark:text-ink">Sessions and cookies</h2>
           <p>
             Dashboard sign-in uses a server-managed HttpOnly session cookie (Secure, SameSite=Lax)
             holding a short-lived JWT. Session length is up to 24 hours, or 7 days with Remember me.
             Theme preference may be saved locally as{" "}
-            <code className="font-mono text-zinc-900 dark:text-zinc-100">gresspay_theme</code>. The
+            <code className="font-mono text-ink dark:text-ink">gresspay_theme</code>. The
             JWT is not kept in localStorage or sessionStorage. HttpOnly reduces token theft via XSS;
             a compromised page can still act as you while the session is open.
           </p>
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Webhooks</h2>
+          <h2 className="text-base font-semibold text-ink dark:text-ink">Webhooks</h2>
           <p>
             When a payment completes, GressPay may POST signed event JSON to the webhook URL you set.
             You control that endpoint and how long you retain payloads.
@@ -61,7 +61,7 @@ export default function PrivacyPage() {
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Operator responsibility</h2>
+          <h2 className="text-base font-semibold text-ink dark:text-ink">Operator responsibility</h2>
           <p>
             This software runs on the host you deploy. Retention, backups, and access control for the
             database are the operator&apos;s responsibility.

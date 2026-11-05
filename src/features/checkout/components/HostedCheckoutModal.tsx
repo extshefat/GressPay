@@ -1,4 +1,5 @@
 "use client";
+import { QR_COLORS } from "@/lib/design/tokens";
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import QRCode from "qrcode";
@@ -154,7 +155,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
         const dataUrl = await QRCode.toDataURL(dest, {
           width: 200,
           margin: 1,
-          color: { dark: "#09090b", light: "#ffffff" },
+          color: QR_COLORS,
           errorCorrectionLevel: "M",
         });
         if (!cancelled) setWalletQr({ destination: dest, url: dataUrl });
@@ -497,19 +498,19 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
   // 1. EXPIRED STATE
   if (cancelMessage) {
     return (
-      <div className="gp-canceled w-full max-w-lg mx-auto bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-2xl p-8 text-center space-y-4">
-        <div className="w-14 h-14 rounded-full bg-rose-100 dark:bg-rose-950/40 text-rose-600 flex items-center justify-center mx-auto">
+      <div className="gp-canceled w-full max-w-lg mx-auto bg-white dark:bg-canvas border border-border dark:border-border rounded-3xl shadow-2xl p-8 text-center space-y-4">
+        <div className="w-14 h-14 rounded-full bg-danger/10 dark:bg-danger/40 text-danger flex items-center justify-center mx-auto">
           <AlertCircle className="w-8 h-8" />
         </div>
-        <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">Checkout canceled</h2>
-        <p className="text-xs text-zinc-500">{cancelMessage}</p>
+        <h2 className="text-xl font-bold text-ink dark:text-ink">Checkout canceled</h2>
+        <p className="text-xs text-muted">{cancelMessage}</p>
         {cancelRedirectUrl && <a href={cancelRedirectUrl} className="inline-block py-2 text-sm font-semibold underline">Return now</a>}
-        {cancelRedirectUrl && <p className="text-[11px] font-mono text-zinc-400">
+        {cancelRedirectUrl && <p className="text-[11px] font-mono text-muted">
           Redirecting in {cancelRedirectSec} seconds…
         </p>}
-        <div className="h-1.5 w-full rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
+        <div className="h-1.5 w-full rounded-full bg-surface dark:bg-surface-muted overflow-hidden">
           <div
-            className="gp-redirect-meter h-full bg-rose-500"
+            className="gp-redirect-meter h-full bg-danger"
             style={{ width: `${Math.max(0, (cancelRedirectSec / 3) * 100)}%` }}
           />
         </div>
@@ -531,17 +532,17 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
 
   if (checkoutStatus === "EXPIRED") {
     return (
-      <div className="w-full max-w-lg mx-auto bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-xl p-8 text-center space-y-4">
-        <div className="w-14 h-14 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center mx-auto text-zinc-900 dark:text-zinc-100">
+      <div className="w-full max-w-lg mx-auto bg-white dark:bg-canvas border border-border dark:border-border rounded-3xl shadow-xl p-8 text-center space-y-4">
+        <div className="w-14 h-14 rounded-2xl bg-surface dark:bg-surface border border-border dark:border-border flex items-center justify-center mx-auto text-ink dark:text-ink">
           <Clock className="w-7 h-7" />
         </div>
-        <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
+        <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-surface dark:bg-surface-muted text-ink dark:text-ink">
           Session Expired
         </span>
-        <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
+        <h2 className="text-xl font-bold text-ink dark:text-ink">
           Payment Window Ended
         </h2>
-        <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed max-w-sm mx-auto">
+        <p className="text-xs text-muted dark:text-muted leading-relaxed max-w-sm mx-auto">
           {statusMessage ||
             "This payment session has timed out for security. Please request a new checkout link or invoice from the seller."}
         </p>
@@ -563,9 +564,9 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
   }
 
   if (secondsLeft === 0 && checkoutStatus !== "COMPLETED") {
-    return <div className="mx-auto max-w-lg space-y-4 rounded-2xl border border-zinc-300 bg-white p-8 text-center dark:border-zinc-700 dark:bg-zinc-950">
+    return <div className="mx-auto max-w-lg space-y-4 rounded-2xl border border-border bg-white p-8 text-center dark:border-border dark:bg-canvas">
       <h2 className="text-lg font-semibold">Confirming payment status</h2>
-      <p className="text-sm text-zinc-500">{errorMessage || statusMessage || "The server is checking whether this payment window has ended."}</p>
+      <p className="text-sm text-muted">{errorMessage || statusMessage || "The server is checking whether this payment window has ended."}</p>
       <Button variant="outline" onClick={() => window.location.reload()}>Retry status</Button>
     </div>;
   }
@@ -573,23 +574,23 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
   // 2. ACTIVE VERIFICATION POLLING STATE (Scenario B)
   if (isPollingVerification) {
     return (
-      <div className="w-full max-w-lg mx-auto bg-white dark:bg-zinc-950 border border-zinc-900 dark:border-zinc-700 rounded-3xl shadow-2xl p-8 text-center space-y-5">
+      <div className="w-full max-w-lg mx-auto bg-white dark:bg-canvas border border-border dark:border-border rounded-3xl shadow-2xl p-8 text-center space-y-5">
         <div className="relative w-16 h-16 mx-auto flex items-center justify-center">
-          <div className="absolute inset-0 rounded-full border-2 border-zinc-900 dark:border-zinc-100 border-t-transparent animate-spin" />
-          <div className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center text-zinc-900 dark:text-zinc-100">
-            <RefreshCw className="w-5 h-5 animate-pulse" />
+          <div className="absolute inset-0 rounded-full border-2 border-border dark:border-border border-t-transparent animate-spin" />
+          <div className="w-10 h-10 rounded-full bg-surface dark:bg-surface flex items-center justify-center text-ink dark:text-ink">
+            <RefreshCw className="w-5 h-5 " />
           </div>
         </div>
 
         <div className="space-y-1">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-surface dark:bg-surface-muted text-ink dark:text-ink">
+            <span className="w-2 h-2 rounded-full bg-brand animate-ping" />
             Payment submitted
           </span>
-          <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 pt-2">
+          <h2 className="text-xl font-bold text-ink dark:text-ink pt-2">
             Waiting for payment confirmation
           </h2>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed max-w-sm mx-auto">
+          <p className="text-xs text-muted dark:text-muted leading-relaxed max-w-sm mx-auto">
             {statusMessage ||
               "Your Transaction ID is registered. The merchant GressPay app is listening for incoming carrier SMS to auto-verify your payment."}
           </p>
@@ -597,43 +598,43 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
 
         {providerUrl && <a className="inline-block rounded-lg border px-4 py-2 text-sm font-semibold" href={providerUrl} target="_blank" rel="noopener noreferrer">Continue to Binance Pay ↗</a>}
 
-        <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-left font-mono text-xs space-y-2.5">
-          <div className="flex justify-between items-center text-zinc-500">
+        <div className="p-4 rounded-2xl bg-card dark:bg-surface border border-border dark:border-border text-left font-mono text-xs space-y-2.5">
+          <div className="flex justify-between items-center text-muted">
             <span>Submitted TrxID</span>
-            <span className="text-zinc-900 dark:text-zinc-100 font-semibold break-all text-right ml-3 font-mono">
+            <span className="text-ink dark:text-ink font-semibold break-all text-right ml-3 font-mono">
               {txidInput || "—"}
             </span>
           </div>
           {senderNumber && (
-            <div className="flex justify-between items-center text-zinc-500">
+            <div className="flex justify-between items-center text-muted">
               <span>Sender Number</span>
-              <span className="text-zinc-900 dark:text-zinc-100 font-medium font-mono">
+              <span className="text-ink dark:text-ink font-medium font-mono">
                 {senderNumber}
               </span>
             </div>
           )}
-          <div className="flex justify-between items-center text-zinc-500">
+          <div className="flex justify-between items-center text-muted">
             <span>Payment Rail</span>
-            <span className="text-zinc-900 dark:text-zinc-100 font-medium">
+            <span className="text-ink dark:text-ink font-medium">
               {selectedMethod?.name || "—"}
             </span>
           </div>
-          <div className="flex justify-between items-center text-zinc-500">
+          <div className="flex justify-between items-center text-muted">
             <span>Time Elapsed</span>
-            <span className="text-zinc-900 dark:text-zinc-100 font-mono">
+            <span className="text-ink dark:text-ink font-mono">
               {pollingSeconds}s
             </span>
           </div>
         </div>
 
-        <p className="text-[11px] font-mono text-zinc-400">
+        <p className="text-[11px] font-mono text-muted">
           Syncing automatically every 3 seconds • Do not close this window
         </p>
 
         <Button
           variant="outline"
           size="sm"
-          className="text-xs text-zinc-600 dark:text-zinc-400"
+          className="text-xs text-muted dark:text-muted"
           onClick={() => {
             if (pollingRef.current) clearInterval(pollingRef.current);
             setIsPollingVerification(false);
@@ -658,7 +659,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
 
     return (
       <div className={`gp-checkout-card mx-auto w-full max-w-lg overflow-hidden p-8 text-center space-y-5 ${doneThemeClass}`}>
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl" style={{ background: "var(--gp-ck-accent)", color: "var(--gp-ck-on-accent, #04110f)" }}>
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl" style={{ background: "var(--gp-ck-accent)", color: "var(--gp-ck-on-accent)" }}>
           <CheckCircle2 className="h-9 w-9 stroke-[2.5]" />
         </div>
         {session.merchantLogo ? (
@@ -695,7 +696,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
           variant="primary"
           size="lg"
           className="w-full font-semibold"
-          style={{ background: "var(--gp-ck-accent)", color: "var(--gp-ck-on-accent, #04110f)" }}
+          style={{ background: "var(--gp-ck-accent)", color: "var(--gp-ck-on-accent)" }}
           onClick={() => {
             if (returnTarget) window.location.href = returnTarget;
             else if (window.opener) window.close();
@@ -712,12 +713,12 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
   // 4. EMPTY RAILS STATE
   if (!methods.length || !selectedMethod) {
     return (
-      <div className="w-full max-w-lg mx-auto bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-xl p-8 text-center space-y-3">
-        <AlertCircle className="w-8 h-8 text-zinc-400 mx-auto" />
-        <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
+      <div className="w-full max-w-lg mx-auto bg-white dark:bg-canvas border border-border dark:border-border rounded-3xl shadow-xl p-8 text-center space-y-3">
+        <AlertCircle className="w-8 h-8 text-muted mx-auto" />
+        <h2 className="text-lg font-bold text-ink dark:text-ink">
           No payment methods available
         </h2>
-        <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+        <p className="text-xs text-muted dark:text-muted leading-relaxed">
           Contact the seller to request another way to pay.
         </p>
       </div>
@@ -766,7 +767,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
         <p className="my-4 text-sm">{locale === "bn" ? "এই অর্ডারের পেমেন্ট উইন্ডো বন্ধ হবে।" : "This closes the payment window for this order."}</p>
         <div className="flex justify-end gap-3">
           <button autoFocus onClick={() => cancelDialog.current?.close()}>{locale === "bn" ? "ফিরে যান" : "Go back"}</button>
-          <button className="rounded-lg bg-red-700 px-4 py-2 text-white" onClick={() => { cancelDialog.current?.close(); void handleCancelCheckout(); }}>{locale === "bn" ? "বাতিল করুন" : "Yes, cancel"}</button>
+          <button className="rounded-lg bg-danger px-4 py-2 text-white" onClick={() => { cancelDialog.current?.close(); void handleCancelCheckout(); }}>{locale === "bn" ? "বাতিল করুন" : "Yes, cancel"}</button>
         </div>
       </dialog>
       <aside className="gp-order-summary">
@@ -906,7 +907,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
               <img
                 src={generatedQr || selectedMethod.qrImageUrl || ""}
                 alt="Payment QR"
-                className="w-52 h-52 max-w-full object-contain mx-auto rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white p-2 shadow-xs"
+                className="w-52 h-52 max-w-full object-contain mx-auto rounded-xl border border-border dark:border-border bg-white p-2 shadow-xs"
               />
             </div>
           )}
@@ -920,7 +921,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
                 {checkoutAmount(payableAmount, payableCurrency)}
               </div>
               {isCrypto && session.exchangeRateToUsd != null && (
-                <span className="inline-flex mt-1 text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
+                <span className="inline-flex mt-1 text-[10px] font-mono px-2 py-0.5 rounded bg-surface dark:bg-surface-muted text-muted dark:text-ink">
                   Order currency · {session.currency}
                 </span>
               )}
@@ -939,7 +940,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
               className="font-mono text-xs"
               leftIcon={
                 copiedKey === "amount" ? (
-                  <Check className="w-3.5 h-3.5 text-emerald-500" />
+                  <Check className="w-3.5 h-3.5 text-success" />
                 ) : (
                   <Copy className="w-3.5 h-3.5" />
                 )
@@ -974,8 +975,8 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
                 </span>
               </div>
 
-              <div className="flex items-center justify-between gap-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 font-mono text-sm">
-                <span className="select-all break-all text-zinc-900 dark:text-zinc-100 font-bold tracking-wider">
+              <div className="flex items-center justify-between gap-2 bg-white dark:bg-canvas border border-border dark:border-border rounded-xl p-3 font-mono text-sm">
+                <span className="select-all break-all text-ink dark:text-ink font-bold tracking-wider">
                   {selectedMethod.depositAddressOrNumber}
                 </span>
 
@@ -989,7 +990,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
                   className="shrink-0 text-xs font-mono"
                   leftIcon={
                     copiedKey === "wallet" ? (
-                      <Check className="w-3.5 h-3.5 text-emerald-500" />
+                      <Check className="w-3.5 h-3.5 text-success" />
                     ) : (
                       <Copy className="w-3.5 h-3.5" />
                     )
@@ -1010,7 +1011,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
           ))}
 
           {/* Numbered Step-by-Step Instructions */}
-          {selectedMethod.code !== "binance_pay" && <div className="space-y-2 pt-1 border-t border-zinc-200/60 dark:border-zinc-800">
+          {selectedMethod.code !== "binance_pay" && <div className="space-y-2 pt-1 border-t border-border/60 dark:border-border">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--gp-ck-muted)] font-mono">
               {locale === "bn" ? "যেভাবে পেমেন্ট করবেন" : "Payment instructions"}
             </span>
@@ -1081,7 +1082,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
               </div>
             ) : smsAuto ? (
               <div className="space-y-3">
-                <div className="rounded-xl border border-emerald-200/70 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-950/20 p-3 text-xs text-emerald-900 dark:text-emerald-200 leading-relaxed">
+                <div className="rounded-xl border border-success/70 dark:border-success/50 bg-success/10 dark:bg-success/20 p-3 text-xs text-success dark:text-success leading-relaxed">
                   Pay the exact amount to the number above. Confirmation is automatic via the merchant&apos;s
                   GressPay SMS listener — you do not need to paste a TrxID.
                 </div>
@@ -1097,7 +1098,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
                   />
                 </div>
                 <details className="text-xs text-[var(--gp-ck-muted)]">
-                  <summary className="cursor-pointer font-semibold text-zinc-600 dark:text-zinc-300">
+                  <summary className="cursor-pointer font-semibold text-muted dark:text-ink">
                     Advanced: enter TrxID manually
                   </summary>
                   <div className="mt-2">
@@ -1145,7 +1146,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
               variant="primary"
               size="lg"
               className="w-full font-semibold"
-              style={{ background: "var(--gp-ck-accent)", color: "var(--gp-ck-on-accent, #04110f)" }}
+              style={{ background: "var(--gp-ck-accent)", color: "var(--gp-ck-on-accent)" }}
               isLoading={isVerifying}
               rightIcon={<ArrowRight className="w-4 h-4" />}
             >

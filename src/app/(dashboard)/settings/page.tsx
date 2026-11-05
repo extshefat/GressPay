@@ -157,10 +157,10 @@ export default function SettingsPage() {
     <div className="space-y-6 max-w-4xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+          <h1 className="text-2xl font-bold tracking-tight text-ink dark:text-ink">
             Account settings
           </h1>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+          <p className="text-xs text-muted dark:text-muted mt-1">
             Storefront text and alerts here. Checkout logos live on Brands. Webhook delivery lives under Webhooks.
           </p>
         </div>
@@ -181,7 +181,7 @@ export default function SettingsPage() {
         </Alert>
       )}
 
-      <div className="flex flex-wrap gap-1 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 p-1">
+      <div className="flex flex-wrap gap-1 rounded-xl border border-border dark:border-border bg-card dark:bg-surface p-1">
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -189,8 +189,8 @@ export default function SettingsPage() {
             onClick={() => setTab(t.id)}
             className={`flex-1 min-w-[110px] px-3 py-2 text-xs font-semibold rounded-lg transition-colors ${
               tab === t.id
-                ? "bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 shadow-sm"
-                : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                ? "bg-white dark:bg-canvas text-ink dark:text-ink shadow-sm"
+                : "text-muted hover:text-ink dark:hover:text-on-ink"
             }`}
           >
             {t.label}
@@ -199,9 +199,9 @@ export default function SettingsPage() {
       </div>
 
       {tab === "branding" && (
-        <Card className="p-6 bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 space-y-4">
+        <Card className="p-6 bg-white dark:bg-canvas border-border dark:border-border space-y-4">
           <form onSubmit={handleSaveBranding} className="space-y-4">
-            <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Checkout Branding</h3>
+            <h3 className="text-sm font-bold text-ink dark:text-ink">Checkout Branding</h3>
             <Input
               label="Store / Brand Name"
               value={brandName}
@@ -209,9 +209,9 @@ export default function SettingsPage() {
               leftIcon={<Building2 className="w-4 h-4" />}
               required
             />
-            <Link href="/dashboard/brands" className="block rounded-xl border border-zinc-300 p-4 text-sm font-semibold dark:border-zinc-700">
+            <Link href="/dashboard/brands" className="block rounded-xl border border-border p-4 text-sm font-semibold dark:border-border">
               Choose a checkout logo in Brands →
-              <span className="mt-1 block text-xs font-normal text-zinc-500">Select the business whose logo should appear on its payment page.</span>
+              <span className="mt-1 block text-xs font-normal text-muted">Select the business whose logo should appear on its payment page.</span>
             </Link>
             <Input
               label="Support WhatsApp / Telegram Link"
@@ -236,11 +236,11 @@ export default function SettingsPage() {
       )}
 
       {tab === "alerts" && (
-        <Card className="p-6 bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 space-y-4">
+        <Card className="p-6 bg-white dark:bg-canvas border-border dark:border-border space-y-4">
           <form onSubmit={handleSaveAlerts} className="space-y-4">
             <div className="flex items-center gap-2">
               <Bell className="w-4 h-4" />
-              <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Instant Alerts</h3>
+              <h3 className="text-sm font-bold text-ink dark:text-ink">Instant Alerts</h3>
             </div>
             <PasswordInput
               label="Telegram Bot Token"
@@ -281,9 +281,9 @@ export default function SettingsPage() {
       )}
 
       {tab === "general" && (
-        <Card className="p-6 bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800">
+        <Card className="p-6 bg-white dark:bg-canvas border-border dark:border-border">
           <form onSubmit={handleSaveGeneral} className="space-y-4">
-            <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">General Store Profile</h3>
+            <h3 className="text-sm font-bold text-ink dark:text-ink">General Store Profile</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
                 label="Business / Store Name"
@@ -303,9 +303,9 @@ export default function SettingsPage() {
                 ]}
               />
             </div>
-            <div className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
-              <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">Default webhook URL</p>
-              <p className="mt-1 text-[11px] text-zinc-500">
+            <div className="rounded-xl border border-border p-4 dark:border-border">
+              <p className="text-xs font-semibold text-ink dark:text-ink">Default webhook URL</p>
+              <p className="mt-1 text-[11px] text-muted">
                 Edit destination URL, rotate HMAC secret, and send test pings from{" "}
                 <Link href="/dashboard/webhooks" className="font-semibold underline">
                   Webhooks & delivery
@@ -324,12 +324,12 @@ export default function SettingsPage() {
                 />
               </div>
             </div>
-            <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 flex items-center justify-between">
+            <div className="p-4 rounded-xl border border-border dark:border-border bg-card/50 dark:bg-surface/40 flex items-center justify-between">
               <div className="space-y-0.5">
-                <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                <span className="text-xs font-semibold text-ink dark:text-ink">
                   Enable USDT TRC-20 Crypto Rail
                 </span>
-                <p className="text-[11px] text-zinc-500">
+                <p className="text-[11px] text-muted">
                   Allow customers to select on-chain TRON USDT settlement.
                 </p>
               </div>
@@ -342,9 +342,9 @@ export default function SettingsPage() {
             </div>
           </form>
 
-          <div className="mt-8 border-t border-zinc-200 pt-6 dark:border-zinc-800">
-            <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Where credentials live</h3>
-            <p className="mt-1 text-[11px] text-zinc-500">
+          <div className="mt-8 border-t border-border pt-6 dark:border-border">
+            <h3 className="text-sm font-bold text-ink dark:text-ink">Where credentials live</h3>
+            <p className="mt-1 text-[11px] text-muted">
               Website API keys and code snippets:{" "}
               <Link href="/dashboard/api-keys" className="font-semibold underline">
                 API keys & snippets

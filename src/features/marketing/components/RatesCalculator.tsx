@@ -31,14 +31,14 @@ export function RatesCalculator() {
     <section className="mx-auto max-w-6xl px-4 sm:px-6 py-16">
       <div className="max-w-xl mx-auto space-y-4">
         <div className="text-center space-y-2">
-          <h2 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+          <h2 className="text-2xl font-semibold tracking-tight text-ink dark:text-ink">
             Indicative Conversion Rate
           </h2>
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-muted">
             Configured conversion baseline for your account (<code className="font-mono text-xs">GET /api/v1/rates</code>).
           </p>
         </div>
-        <Card className="p-6 space-y-4 border-zinc-200 dark:border-zinc-800">
+        <Card className="p-6 space-y-4 border-border dark:border-border">
           <Input
             label="Amount"
             type="number"
@@ -47,9 +47,9 @@ export function RatesCalculator() {
           />
           <div className="grid grid-cols-2 gap-3">
             <label className="space-y-1.5 text-xs">
-              <span className="text-zinc-500">From</span>
+              <span className="text-muted">From</span>
               <select
-                className="w-full h-10 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 text-sm text-zinc-900 dark:text-zinc-100"
+                className="w-full h-10 rounded-xl border border-border dark:border-border bg-white dark:bg-canvas px-3 text-sm text-ink dark:text-ink"
                 value={from}
                 onChange={(e) => setFrom(e.target.value as (typeof CURRENCIES)[number])}
               >
@@ -61,9 +61,9 @@ export function RatesCalculator() {
               </select>
             </label>
             <label className="space-y-1.5 text-xs">
-              <span className="text-zinc-500">To</span>
+              <span className="text-muted">To</span>
               <select
-                className="w-full h-10 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 text-sm text-zinc-900 dark:text-zinc-100"
+                className="w-full h-10 rounded-xl border border-border dark:border-border bg-white dark:bg-canvas px-3 text-sm text-ink dark:text-ink"
                 value={to}
                 onChange={(e) => setTo(e.target.value as (typeof CURRENCIES)[number])}
               >
@@ -75,7 +75,7 @@ export function RatesCalculator() {
               </select>
             </label>
           </div>
-          <p className="text-2xl font-semibold text-teal-700 dark:text-teal-400 font-mono">
+          <p className="text-2xl font-semibold text-accent dark:text-accent font-mono">
             {converted.toLocaleString(undefined, { maximumFractionDigits: 4 })} {to}
           </p>
         </Card>

@@ -64,8 +64,8 @@ export default function ReconciliationPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Reconciliation</h1>
-          <p className="mt-1 text-xs text-zinc-500">
+          <h1 className="text-2xl font-bold text-ink dark:text-ink">Reconciliation</h1>
+          <p className="mt-1 text-xs text-muted">
             Brand-scoped pending checkouts and unused SMS evidence. Automatic settlement still requires
             server-side match — this view is for review only.
           </p>
@@ -97,8 +97,8 @@ export default function ReconciliationPage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="overflow-hidden p-0">
-          <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+          <div className="border-b border-border px-4 py-3 dark:border-border">
+            <h2 className="text-sm font-semibold text-ink dark:text-ink">
               Pending sessions ({pending.length})
             </h2>
           </div>
@@ -109,29 +109,29 @@ export default function ReconciliationPage() {
               description="Open sessions waiting for SMS or provider evidence will appear here."
             />
           ) : (
-            <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
+            <ul className="divide-y divide-border dark:divide-border">
               {pending.map((row) => (
                 <li key={row.sessionId} className="px-4 py-3 text-sm">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="font-medium text-zinc-900 dark:text-zinc-100">
+                      <p className="font-medium text-ink dark:text-ink">
                         {formatCurrency(Number(row.amount), (row.currency as Currency) || "BDT")} ·{" "}
                         {row.methodCode || "—"}
                       </p>
-                      <p className="mt-0.5 text-xs text-zinc-500">
+                      <p className="mt-0.5 text-xs text-muted">
                         {row.status} · {row.ledgerMode}
                         {row.trxId ? ` · TxID ${row.trxId}` : " · waiting for TxID / SMS"}
                       </p>
-                      <p className="mt-0.5 font-mono text-[11px] text-zinc-400">{row.sessionId}</p>
+                      <p className="mt-0.5 font-mono text-[11px] text-muted">{row.sessionId}</p>
                     </div>
                     <Link
                       href={`/dashboard/transactions`}
-                      className="shrink-0 text-xs font-medium text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-400"
+                      className="shrink-0 text-xs font-medium text-success underline-offset-2 hover:underline dark:text-success"
                     >
                       Review
                     </Link>
                   </div>
-                  <p className="mt-1 text-[11px] text-zinc-400">
+                  <p className="mt-1 text-[11px] text-muted">
                     Opened {formatDate(row.createdAt)}
                     {row.expiresAt ? ` · expires ${formatDate(row.expiresAt)}` : ""}
                   </p>
@@ -142,8 +142,8 @@ export default function ReconciliationPage() {
         </Card>
 
         <Card className="overflow-hidden p-0">
-          <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+          <div className="border-b border-border px-4 py-3 dark:border-border">
+            <h2 className="text-sm font-semibold text-ink dark:text-ink">
               Unused SMS evidence ({sms.length})
             </h2>
           </div>
@@ -154,18 +154,18 @@ export default function ReconciliationPage() {
               description="Approved SMS that has not settled a checkout will list here."
             />
           ) : (
-            <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
+            <ul className="divide-y divide-border dark:divide-border">
               {sms.map((row) => (
                 <li key={row.id} className="px-4 py-3 text-sm">
-                  <p className="font-medium text-zinc-900 dark:text-zinc-100">
+                  <p className="font-medium text-ink dark:text-ink">
                     {row.rail} · {formatCurrency(Number(row.amount), "BDT")} · TxID {row.trxId}
                   </p>
-                  <p className="mt-0.5 text-xs text-zinc-500">
+                  <p className="mt-0.5 text-xs text-muted">
                     {row.status}
                     {row.walletHint ? ` · wallet ${row.walletHint}` : ""}
                     {row.hasDevice ? " · device-linked" : ""}
                   </p>
-                  <p className="mt-0.5 text-[11px] text-zinc-400">
+                  <p className="mt-0.5 text-[11px] text-muted">
                     Received {row.receivedAt ? formatDate(row.receivedAt) : "—"}
                   </p>
                 </li>

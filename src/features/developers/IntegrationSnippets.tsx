@@ -132,7 +132,7 @@ function CopyButton({ text }: { text: string }) {
           /* ignore */
         }
       }}
-      className="inline-flex items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-[11px] font-medium text-zinc-200 hover:bg-zinc-800"
+      className="inline-flex items-center gap-1.5 rounded-md border border-border bg-ink-solid px-2.5 py-1 text-[11px] font-medium text-on-ink hover:bg-ink-solid"
     >
       {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
       {copied ? "Copied" : "Copy"}
@@ -147,10 +147,10 @@ export function IntegrationSnippets() {
   return (
     <section id="snippets" className="space-y-4">
       <div>
-        <h2 className="text-xl font-semibold tracking-tight text-zinc-950 dark:text-white">
+        <h2 className="text-xl font-semibold tracking-tight text-ink dark:text-white">
           Language examples
         </h2>
-        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+        <p className="mt-1 text-sm text-muted dark:text-muted">
           Create a session with your brand website API key (Dashboard → Brands), send the buyer to{" "}
           <code className="font-mono text-xs">payment_url</code>, then confirm
           with <code className="font-mono text-xs">POST /payment/verify</code> or{" "}
@@ -158,7 +158,7 @@ export function IntegrationSnippets() {
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-1 rounded-xl border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-800 dark:bg-zinc-950">
+      <div className="flex flex-wrap gap-1 rounded-xl border border-border bg-card p-1 dark:border-border dark:bg-canvas">
         {(Object.keys(SNIPPETS) as Lang[]).map((key) => (
           <button
             key={key}
@@ -166,8 +166,8 @@ export function IntegrationSnippets() {
             onClick={() => setLang(key)}
             className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
               lang === key
-                ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950"
-                : "text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white"
+                ? "bg-ink-solid text-white dark:bg-brand dark:text-on-brand"
+                : "text-muted hover:text-ink dark:text-muted dark:hover:text-white"
             }`}
           >
             {SNIPPETS[key].label}
@@ -175,21 +175,21 @@ export function IntegrationSnippets() {
         ))}
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950">
-        <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-2">
-          <span className="font-mono text-[11px] uppercase tracking-wide text-zinc-500">
+      <div className="overflow-hidden rounded-xl border border-border bg-ink-solid">
+        <div className="flex items-center justify-between border-b border-border px-4 py-2">
+          <span className="font-mono text-[11px] uppercase tracking-wide text-muted">
             {active.label}
           </span>
           <CopyButton text={active.code} />
         </div>
-        <pre className="overflow-x-auto p-4 text-xs leading-relaxed text-zinc-100">
+        <pre className="overflow-x-auto p-4 text-xs leading-relaxed text-on-ink">
           <code>{active.code}</code>
         </pre>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950">
-        <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-2">
-          <span className="font-mono text-[11px] uppercase tracking-wide text-zinc-500">
+      <div className="overflow-hidden rounded-xl border border-border bg-ink-solid">
+        <div className="flex items-center justify-between border-b border-border px-4 py-2">
+          <span className="font-mono text-[11px] uppercase tracking-wide text-muted">
             Verify payment status (your server)
           </span>
           <CopyButton
@@ -199,7 +199,7 @@ export function IntegrationSnippets() {
   -d '{"sessionId":"chs_your_session_id"}'`}
           />
         </div>
-        <pre className="overflow-x-auto p-4 text-xs leading-relaxed text-zinc-100">
+        <pre className="overflow-x-auto p-4 text-xs leading-relaxed text-on-ink">
           <code>{`// Buyer-facing status (public, no API key)
 GET ${HOST}/checkout/{sessionId}/status
 

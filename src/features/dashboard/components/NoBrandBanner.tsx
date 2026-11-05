@@ -11,7 +11,7 @@ export function NoBrandBanner({ user }: { user: User | null }) {
 
   return (
     <Alert variant="warning" title="Create your first brand" className="mb-6 max-w-7xl mx-auto">
-      <p className="text-xs text-zinc-600 dark:text-zinc-300">
+      <p className="text-xs text-muted dark:text-ink">
         Your account is ready. Add a brand when you want to configure gateways, devices, and checkout rails.
       </p>
       <div className="mt-3">

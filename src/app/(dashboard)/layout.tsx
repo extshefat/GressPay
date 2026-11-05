@@ -96,19 +96,19 @@ export default function DashboardLayout({
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white dark:bg-zinc-950 flex flex-col items-center justify-center transition-colors">
-        <GpMark size="lg" className="animate-pulse mb-3" />
-        <p className="text-xs font-mono text-zinc-500">Loading your account…</p>
+      <div className="min-h-screen bg-white dark:bg-canvas flex flex-col items-center justify-center transition-colors">
+        <GpMark size="lg" className=" mb-3" />
+        <p className="text-xs font-mono text-muted">Loading your account…</p>
       </div>
     );
   }
 
   if (authError) {
     return (
-      <div className="min-h-screen bg-white dark:bg-zinc-950 flex flex-col items-center justify-center p-6 text-center">
-        <GpMark size="lg" className="mb-4 text-rose-500" />
-        <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100 mb-1">Connection Delayed</h2>
-        <p className="text-xs text-zinc-500 max-w-sm mb-6">{authError}</p>
+      <div className="min-h-screen bg-white dark:bg-canvas flex flex-col items-center justify-center p-6 text-center">
+        <GpMark size="lg" className="mb-4 text-danger" />
+        <h2 className="text-base font-bold text-ink dark:text-ink mb-1">Connection Delayed</h2>
+        <p className="text-xs text-muted max-w-sm mb-6">{authError}</p>
         <div className="flex gap-3">
           <Button variant="primary" size="sm" onClick={() => window.location.reload()}>
             Retry Connection
@@ -129,7 +129,7 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex min-h-screen bg-void text-zinc-900 transition-colors dark:text-zinc-100">
+    <div className="flex min-h-screen bg-canvas text-ink transition-colors dark:text-ink">
       <DashboardSidebar mobileOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} user={user} />
       <div className="flex-1 flex flex-col min-w-0">
         <DashboardHeader user={user} onMenuClick={() => setMobileNavOpen(true)} />

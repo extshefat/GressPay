@@ -1,31 +1,4 @@
-import React from "react";
-
-export interface GpMarkProps {
-  size?: "sm" | "md" | "lg";
-  className?: string;
-  inverse?: boolean;
-}
-
-const sizeClass = {
-  sm: "h-7 w-7",
-  md: "h-8 w-8",
-  lg: "h-10 w-10",
-};
-
-/** Color mark on light backgrounds, white mark on dark backgrounds. */
-export const GpMark: React.FC<GpMarkProps> = ({ size = "md", className = "", inverse = false }) => {
-  const box = `${sizeClass[size]} object-contain shrink-0 ${className}`;
-  if (inverse) {
-    return (
-      <span className="inline-flex shrink-0" aria-hidden>
-        <img src="/brand/gresspay-mark-white.png" alt="" className={box} />
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex shrink-0" aria-hidden>
-      <img src="/brand/gresspay-mark-white.png" alt="" className={`${box} brightness-0 dark:hidden`} />
-      <img src="/brand/gresspay-mark-white.png" alt="" className={`${box} hidden dark:block`} />
-    </span>
-  );
-};
+import * as React from "react";
+export interface GpMarkProps {size?:"sm"|"md"|"lg";className?:string;inverse?:boolean;}
+export function MarkPaths({monochrome=false}:{monochrome?:boolean}){return <><path fill={monochrome?"currentColor":"rgb(var(--ds-teal-700))"} d="M20 88C37 35 72 12 124 12h112c4 0 5 2 3 5l-25 35c-5 6-10 8-18 8h-71c-22 0-40 10-48 28H20Zm0 61h58c10 25 27 38 52 38h28c29 0 46-15 46-40v-8h-29c-8 0-14-3-19-9l-17-25c-3-5-1-8 4-8h107c3 0 5 2 5 5v44c0 52-40 87-95 87h-30c-55 0-94-31-110-84Z"/><path fill={monochrome?"currentColor":"rgb(var(--ds-mint-400))"} d="M17 101h66c14 0 24 4 32 11l6-6 23 24-24 22-13-10c-7-5-15-7-25-7H15c-3-11-2-24 2-34Z"/></>;}
+export const GpMark:React.FC<GpMarkProps>=({size="md",className="",inverse=false})=><svg viewBox="0 0 256 244" fill="none" className={`${{sm:"h-7 w-7",md:"h-8 w-8",lg:"h-10 w-10"}[size]} shrink-0 ${className}`} aria-hidden="true"><MarkPaths monochrome={inverse}/></svg>;

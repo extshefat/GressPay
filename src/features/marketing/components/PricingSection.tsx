@@ -20,7 +20,7 @@ export function PricingSection({ showTitle = true }: { showTitle?: boolean }) {
       {showTitle && <div className="mb-10 max-w-3xl"><p className="gp-section-label">Plans & billing</p><h2 className="gp-rule-title mt-3 text-4xl font-semibold sm:text-5xl">Scale by storefront, not by surprise fees.</h2><p className="mt-4 text-[var(--text-secondary)]">Every plan publishes the same verified checkout. Move up only when you need more websites, devices or completed orders.</p></div>}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {[{code:"trial", name:"Trial", priceBdt:"0", billingCycle:"trial", websiteLimit:1, deviceLimit:1, checkoutLimit:50}, ...plans].map((plan,i) =>
-          <article key={plan.code} className="gp-plan-card" style={{borderTopColor:["#7590b9","#397cdc","#8660ca","#cd8830"][i % 4]}}>
+          <article key={plan.code} className="gp-plan-card" style={{borderTopColor:"rgb(var(--ds-accent))"}}>
             <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">{plan.billingCycle}</p>
             <h3 className="mt-2 text-2xl font-semibold">{plan.name}</h3>
             <p className="my-5 text-3xl font-semibold">৳{Number(plan.priceBdt).toLocaleString("en-BD")}</p>

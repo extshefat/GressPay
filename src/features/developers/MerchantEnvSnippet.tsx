@@ -13,9 +13,9 @@ GRESSPAY_VERIFY_URL=${host}/payment/verify`;
   const [copied, setCopied] = useState(false);
 
   return (
-    <div className="overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950">
-      <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-2 dark:border-zinc-800">
-        <span className="font-mono text-[11px] uppercase tracking-wide text-zinc-500">
+    <div className="overflow-hidden rounded-xl border border-border bg-card dark:border-border dark:bg-canvas">
+      <div className="flex items-center justify-between border-b border-border px-4 py-2 dark:border-border">
+        <span className="font-mono text-[11px] uppercase tracking-wide text-muted">
           Website API key — server-side .env only
         </span>
         <button
@@ -29,13 +29,13 @@ GRESSPAY_VERIFY_URL=${host}/payment/verify`;
               /* ignore */
             }
           }}
-          className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 bg-white px-2.5 py-1 text-[11px] font-medium text-zinc-800 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
+          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-white px-2.5 py-1 text-[11px] font-medium text-ink hover:bg-surface dark:border-border dark:bg-surface dark:text-ink"
         >
           {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
           {copied ? "Copied" : "Copy"}
         </button>
       </div>
-      <pre className="overflow-x-auto p-4 text-xs leading-relaxed text-zinc-800 dark:text-zinc-100">
+      <pre className="overflow-x-auto p-4 text-xs leading-relaxed text-ink dark:text-ink">
         <code>{envBlock}</code>
       </pre>
     </div>

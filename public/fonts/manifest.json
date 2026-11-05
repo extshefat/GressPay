@@ -1,0 +1,30 @@
+{
+  "ui": {
+    "upstream_family": "figtree",
+    "family": "GressPay UI",
+    "source_sha256": "26ad3db9b31ff7dde67a91ff515d022d2f495cd506590699cf264f0bfe6fb714",
+    "woff2_sha256": "421257a10a44342ce11a437ae5349df262de08c39b32478d65bc8732ed100045",
+    "bytes": 23136
+  },
+  "display": {
+    "upstream_family": "bricolagegrotesque",
+    "family": "GressPay Display",
+    "source_sha256": "413e7357809ddd12fd80a96a8a396de0e401638d4acd3cb3e37532f0472ac682",
+    "woff2_sha256": "c19ea1fb24dfb50faf6f3e2b0723e69eeb6fa21c7a7af6770fa990e51817d932",
+    "bytes": 177544
+  },
+  "mono": {
+    "upstream_family": "jetbrainsmono",
+    "family": "GressPay Mono",
+    "source_sha256": "48715a42ec242c21e9f02692891e147d022299a52e48d5e413e1a942193ffeda",
+    "woff2_sha256": "2c97ec43a1ac6896bdbc5c833fcfa4d7c06dc87b8fee2318cefa23970efc734a",
+    "bytes": 45148
+  },
+  "bengali": {
+    "upstream_family": "notosansbengali",
+    "family": "GressPay Bengali",
+    "source_sha256": "dcd42978094e584a849c84a51450eeac40c8826057d566ea6d4b9627a403a05a",
+    "woff2_sha256": "8d9601dd1d1bd0b3382e256d996d4112793099b44364f34ec7b3ab0980922294",
+    "bytes": 226672
+  }
+}

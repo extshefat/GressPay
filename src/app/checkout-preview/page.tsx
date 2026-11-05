@@ -30,9 +30,9 @@ export default function CheckoutPreview() {
   }, []);
   return (
     <main className="gp-checkout-shell min-h-screen px-3 py-6 sm:py-12">
-      <div className="mx-auto mb-5 max-w-[30rem] rounded-xl border border-zinc-300/80 bg-white/90 p-4 text-center text-sm shadow-sm backdrop-blur dark:border-zinc-700 dark:bg-zinc-950/90">
+      <div className="mx-auto mb-5 max-w-[30rem] rounded-xl border border-border/80 bg-white/90 p-4 text-center text-sm shadow-sm  dark:border-border dark:bg-canvas/90">
         <strong>Checkout preview</strong>
-        <p className="mt-1 text-xs text-zinc-500">Try a sample order. No money will move.</p>
+        <p className="mt-1 text-xs text-muted">Try a sample order. No money will move.</p>
       </div>
       {session && <HostedCheckoutModal session={session} demoMode />}
     </main>

@@ -33,10 +33,10 @@ export default function ApiKeysPage() {
     <div className="mx-auto max-w-4xl space-y-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+          <h1 className="text-2xl font-bold tracking-tight text-ink dark:text-ink">
             API keys & snippets
           </h1>
-          <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+          <p className="text-xs leading-relaxed text-muted dark:text-muted">
             Create a checkout on your server, redirect the buyer to the pay URL, then verify server-side.
             Webhook URL and HMAC secret live under Webhooks & delivery.
           </p>
@@ -70,12 +70,12 @@ export default function ApiKeysPage() {
       </ol>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Card className="flex flex-col gap-3 border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
+        <Card className="flex flex-col gap-3 border-border bg-white p-5 dark:border-border dark:bg-canvas">
           <div className="flex items-center gap-2">
-            <Building2 className="h-4 w-4 text-zinc-700 dark:text-zinc-300" />
-            <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Brand website API key</h3>
+            <Building2 className="h-4 w-4 text-ink dark:text-ink" />
+            <h3 className="text-sm font-bold text-ink dark:text-ink">Brand website API key</h3>
           </div>
-          <p className="text-xs leading-relaxed text-zinc-500">
+          <p className="text-xs leading-relaxed text-muted">
             One live <code className="font-mono">gp_live_</code> secret per brand for your website or backend. Copy from
             the Brands table — never paste into the Companion app.
           </p>
@@ -85,12 +85,12 @@ export default function ApiKeysPage() {
             </Button>
           </Link>
         </Card>
-        <Card className="flex flex-col gap-3 border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
+        <Card className="flex flex-col gap-3 border-border bg-white p-5 dark:border-border dark:bg-canvas">
           <div className="flex items-center gap-2">
-            <Smartphone className="h-4 w-4 text-zinc-700 dark:text-zinc-300" />
-            <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Companion device API key</h3>
+            <Smartphone className="h-4 w-4 text-ink dark:text-ink" />
+            <h3 className="text-sm font-bold text-ink dark:text-ink">Companion device API key</h3>
           </div>
-          <p className="text-xs leading-relaxed text-zinc-500">
+          <p className="text-xs leading-relaxed text-muted">
             Each registered phone gets a <code className="font-mono">gpdev_</code> Device API key. Copy from Devices and
             paste into Companion → Setup only.
           </p>
@@ -104,9 +104,9 @@ export default function ApiKeysPage() {
 
       <IntegrationSnippets />
 
-      <div className="flex items-start gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-xs dark:border-zinc-800 dark:bg-zinc-900/40">
-        <Lock className="mt-0.5 h-4 w-4 shrink-0 text-zinc-900 dark:text-zinc-100" />
-        <p className="leading-relaxed text-zinc-600 dark:text-zinc-400">
+      <div className="flex items-start gap-3 rounded-xl border border-border bg-card p-4 text-xs dark:border-border dark:bg-surface/40">
+        <Lock className="mt-0.5 h-4 w-4 shrink-0 text-ink dark:text-ink" />
+        <p className="leading-relaxed text-muted dark:text-muted">
           Brand and device keys stay re-copyable from their tables. Configure webhook URL, rotate HMAC secret, and send
           test pings on{" "}
           <Link href="/dashboard/webhooks" className="font-semibold underline">

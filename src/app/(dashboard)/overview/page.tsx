@@ -127,9 +127,9 @@ export default function OverviewPage() {
 
       <Card className="p-5">
         <h2 className="text-sm font-semibold">Set up your first verified payment</h2>
-        <p className="mt-1 text-xs text-zinc-500">Follow these steps in order. A submitted TxID stays pending until the paired phone supplies matching payment evidence.</p>
+        <p className="mt-1 text-xs text-muted">Follow these steps in order. A submitted TxID stays pending until the paired phone supplies matching payment evidence.</p>
         <ol className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
-          {(metrics?.setupSteps || []).map((step, index) => <li key={step.href} className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"><Link className="underline underline-offset-4" href={step.href}>{index + 1}. {step.label}</Link><p className="mt-1 text-xs text-zinc-500">{step.complete ? "Complete" : index === metrics?.setupSteps?.findIndex((item) => !item.complete) ? "Next action" : "To do"}</p></li>)}
+          {(metrics?.setupSteps || []).map((step, index) => <li key={step.href} className="rounded-lg border border-border p-3 dark:border-border"><Link className="underline underline-offset-4" href={step.href}>{index + 1}. {step.label}</Link><p className="mt-1 text-xs text-muted">{step.complete ? "Complete" : index === metrics?.setupSteps?.findIndex((item) => !item.complete) ? "Next action" : "To do"}</p></li>)}
         </ol>
       </Card>
 
@@ -178,7 +178,7 @@ export default function OverviewPage() {
             title="Revenue Trend"
             description={`${rangeDays}-day verified settlement velocity (USD equivalent).`}
             actions={
-              <div className="flex items-center gap-1 rounded-lg border border-zinc-200 dark:border-zinc-800 p-0.5">
+              <div className="flex items-center gap-1 rounded-lg border border-border dark:border-border p-0.5">
                 {([7, 30] as const).map((d) => (
                   <button
                     key={d}
@@ -186,8 +186,8 @@ export default function OverviewPage() {
                     onClick={() => setRangeDays(d)}
                     className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors ${
                       rangeDays === d
-                        ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950"
-                        : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                        ? "bg-ink-solid text-white dark:bg-brand dark:text-on-brand"
+                        : "text-muted hover:text-ink dark:hover:text-on-ink"
                     }`}
                   >
                     {d}D
@@ -199,12 +199,12 @@ export default function OverviewPage() {
             <SimpleVolumeChart data={chartData} height={160} />
           </ChartContainer>
 
-          <Card className="p-5 space-y-4 bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800">
+          <Card className="p-5 space-y-4 bg-white dark:bg-canvas border-border dark:border-border">
             <div>
-              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+              <h3 className="text-sm font-semibold text-ink dark:text-ink">
                 Payment Rail Distribution
               </h3>
-              <p className="text-xs text-zinc-500 mt-0.5">
+              <p className="text-xs text-muted mt-0.5">
                 Verified volume by rail (bKash, Nagad, Rocket, Upay, Binance Pay, Bybit Pay, USDT TRC20).
               </p>
             </div>
@@ -212,28 +212,28 @@ export default function OverviewPage() {
               {(metrics?.railBreakdown || []).map((rail) => (
                 <div key={rail.code} className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-medium text-zinc-800 dark:text-zinc-200">{rail.label}</span>
-                    <span className="font-mono text-zinc-500">{formatCurrency(rail.volumeBdt, "BDT")}</span>
+                    <span className="font-medium text-ink dark:text-ink">{rail.label}</span>
+                    <span className="font-mono text-muted">{formatCurrency(rail.volumeBdt, "BDT")}</span>
                   </div>
-                  <div className="h-1.5 rounded-full bg-zinc-100 dark:bg-zinc-900 overflow-hidden">
+                  <div className="h-1.5 rounded-full bg-surface dark:bg-surface overflow-hidden">
                     <div
-                      className="h-full rounded-full bg-zinc-900 dark:bg-zinc-100 transition-all"
+                      className="h-full rounded-full bg-ink-solid dark:bg-surface-muted transition-all"
                       style={{ width: `${Math.max(2, (rail.volumeBdt / maxRail) * 100)}%` }}
                     />
                   </div>
                 </div>
               ))}
               {!metrics?.railBreakdown?.length && (
-                <p className="text-xs text-zinc-500 py-4 text-center">No rail volume yet.</p>
+                <p className="text-xs text-muted py-4 text-center">No rail volume yet.</p>
               )}
             </div>
           </Card>
         </div>
 
         <div className="space-y-4">
-          <Card className="p-5 space-y-4 bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800">
-            <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Go live on your site</h3>
-            <p className="text-xs text-zinc-500 leading-relaxed">
+          <Card className="p-5 space-y-4 bg-white dark:bg-canvas border-border dark:border-border">
+            <h3 className="text-sm font-semibold text-ink dark:text-ink">Go live on your site</h3>
+            <p className="text-xs text-muted leading-relaxed">
               Run real checkouts with your API keys — plug create/verify into WordPress, Laravel, PHP, or custom code.
             </p>
             <ol className="space-y-2 text-xs">
@@ -248,7 +248,7 @@ export default function OverviewPage() {
                   <li key={item.href}>
                     <Link
                       href={item.href}
-                      className="flex items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 font-medium text-zinc-800 hover:border-zinc-900 dark:border-zinc-800 dark:text-zinc-200 dark:hover:border-zinc-100"
+                      className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 font-medium text-ink hover:border-border dark:border-border dark:text-ink dark:hover:border-border"
                     >
                       <Icon className="h-3.5 w-3.5" />
                       {item.label}
@@ -264,11 +264,11 @@ export default function OverviewPage() {
             </Link>
           </Card>
 
-          <Card className="p-5 space-y-4 bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800">
+          <Card className="p-5 space-y-4 bg-white dark:bg-canvas border-border dark:border-border">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Crown className="w-4 h-4 text-zinc-900 dark:text-zinc-100" />
-                <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                <Crown className="w-4 h-4 text-ink dark:text-ink" />
+                <h3 className="text-sm font-semibold text-ink dark:text-ink">
                   Subscription Plan
                 </h3>
               </div>
@@ -279,25 +279,25 @@ export default function OverviewPage() {
 
             <div className="space-y-3">
               <div>
-                <div className="flex justify-between text-[11px] text-zinc-500 mb-1">
+                <div className="flex justify-between text-[11px] text-muted mb-1">
                   <span>Devices</span>
                   <span className="font-mono">
                     {sub?.devicesUsed ?? 0}/{sub?.deviceLimit ?? 1}
                   </span>
                 </div>
-                <div className="h-1.5 rounded-full bg-zinc-100 dark:bg-zinc-900 overflow-hidden">
-                  <div className="h-full bg-zinc-900 dark:bg-zinc-100" style={{ width: `${devicePct}%` }} />
+                <div className="h-1.5 rounded-full bg-surface dark:bg-surface overflow-hidden">
+                  <div className="h-full bg-ink-solid dark:bg-surface-muted" style={{ width: `${devicePct}%` }} />
                 </div>
               </div>
               <div>
-                <div className="flex justify-between text-[11px] text-zinc-500 mb-1">
+                <div className="flex justify-between text-[11px] text-muted mb-1">
                   <span>Methods</span>
                   <span className="font-mono">
                     {sub?.methodsUsed ?? 0}/{sub?.methodLimit ?? 2}
                   </span>
                 </div>
-                <div className="h-1.5 rounded-full bg-zinc-100 dark:bg-zinc-900 overflow-hidden">
-                  <div className="h-full bg-zinc-900 dark:bg-zinc-100" style={{ width: `${methodPct}%` }} />
+                <div className="h-1.5 rounded-full bg-surface dark:bg-surface overflow-hidden">
+                  <div className="h-full bg-ink-solid dark:bg-surface-muted" style={{ width: `${methodPct}%` }} />
                 </div>
               </div>
             </div>
@@ -307,8 +307,8 @@ export default function OverviewPage() {
             </Button>
           </Card>
 
-          <Card className="p-5 space-y-3 bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800">
-            <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Quick Actions</h3>
+          <Card className="p-5 space-y-3 bg-white dark:bg-canvas border-border dark:border-border">
+            <h3 className="text-sm font-semibold text-ink dark:text-ink">Quick Actions</h3>
             <Link href="/dashboard/methods" className="block">
               <Button className="w-full" size="sm" variant="outline">
                 Configure Gateways
@@ -333,19 +333,19 @@ export default function OverviewPage() {
         </div>
       </div>
 
-      <Card className="p-5 space-y-4 bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800">
+      <Card className="p-5 space-y-4 bg-white dark:bg-canvas border-border dark:border-border">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+            <h3 className="text-sm font-semibold text-ink dark:text-ink">
               {ledgerMode === "test" ? "Recent Test Transactions" : "Recent Live Transactions"}
             </h3>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+            <p className="text-xs text-muted dark:text-muted mt-0.5">
               Instant status badges with one-click detail view.
             </p>
           </div>
           <Link
             href="/dashboard/transactions"
-            className="text-xs text-zinc-900 dark:text-zinc-100 hover:underline font-medium flex items-center gap-1"
+            className="text-xs text-ink dark:text-ink hover:underline font-medium flex items-center gap-1"
           >
             <span>View All</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -368,7 +368,7 @@ export default function OverviewPage() {
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-left text-xs">
               <thead>
-                <tr className="border-b border-zinc-100 dark:border-zinc-800 text-zinc-500 font-medium">
+                <tr className="border-b border-border dark:border-border text-muted font-medium">
                   <th className="py-2.5 px-3">Method</th>
                   <th className="py-2.5 px-3">Transaction ID</th>
                   <th className="py-2.5 px-3">Amount</th>
@@ -377,19 +377,19 @@ export default function OverviewPage() {
                   <th className="py-2.5 px-3 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-900">
+              <tbody className="divide-y divide-border dark:divide-border">
                 {transactions.map((tx) => (
                   <tr
                     key={tx.id}
-                    className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/40 transition-colors"
+                    className="hover:bg-card/50 dark:hover:bg-ink-solid/40 transition-colors"
                   >
-                    <td className="py-3 px-3 font-semibold text-zinc-900 dark:text-zinc-100">
+                    <td className="py-3 px-3 font-semibold text-ink dark:text-ink">
                       {tx.paymentMethodTitle || tx.paymentMethod}
                     </td>
-                    <td className="py-3 px-3 font-mono text-zinc-500 truncate max-w-[160px]">
+                    <td className="py-3 px-3 font-mono text-muted truncate max-w-[160px]">
                       {tx.txid || tx.id}
                     </td>
-                    <td className="py-3 px-3 font-mono font-medium text-zinc-900 dark:text-zinc-100">
+                    <td className="py-3 px-3 font-mono font-medium text-ink dark:text-ink">
                       {formatCurrency(tx.amount, tx.currency)}
                     </td>
                     <td className="py-3 px-3">
@@ -407,13 +407,13 @@ export default function OverviewPage() {
                         {tx.status}
                       </Badge>
                     </td>
-                    <td className="py-3 px-3 text-right text-zinc-400 font-mono text-[11px]">
+                    <td className="py-3 px-3 text-right text-muted font-mono text-[11px]">
                       {formatDate(tx.createdAt)}
                     </td>
                     <td className="py-3 px-3 text-right">
                       <Link
                         href={`/dashboard/transactions?id=${encodeURIComponent(tx.id)}`}
-                        className="text-[11px] font-semibold text-zinc-900 dark:text-zinc-100 underline"
+                        className="text-[11px] font-semibold text-ink dark:text-ink underline"
                       >
                         View
                       </Link>
@@ -428,8 +428,8 @@ export default function OverviewPage() {
 
       <Modal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} title="Upgrade Subscription Plan">
         <div className="space-y-4 text-xs">
-          <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed">
-            You are currently on <span className="font-semibold text-zinc-900 dark:text-zinc-100">{planLabel}</span>.
+          <p className="text-muted dark:text-muted leading-relaxed">
+            You are currently on <span className="font-semibold text-ink dark:text-ink">{planLabel}</span>.
             Choose a higher tier for more companion devices, payment methods, and priority support.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -438,12 +438,12 @@ export default function OverviewPage() {
                 key={plan}
                 className={`p-4 rounded-xl border ${
                   planLabel.toLowerCase().includes(plan.toLowerCase())
-                    ? "border-zinc-900 dark:border-zinc-100 bg-zinc-50 dark:bg-zinc-900"
-                    : "border-zinc-200 dark:border-zinc-800"
+                    ? "border-border dark:border-border bg-card dark:bg-surface"
+                    : "border-border dark:border-border"
                 }`}
               >
-                <div className="font-bold text-zinc-900 dark:text-zinc-100">{plan}</div>
-                <p className="text-[11px] text-zinc-500 mt-1">
+                <div className="font-bold text-ink dark:text-ink">{plan}</div>
+                <p className="text-[11px] text-muted mt-1">
                   {plan === "Starter" && "1 device · 2 methods"}
                   {plan === "Pro" && "3 devices · 5 methods"}
                   {plan === "Enterprise" && "10 devices · unlimited methods"}
@@ -452,7 +452,7 @@ export default function OverviewPage() {
               </div>
             ))}
           </div>
-          <p className="text-[11px] text-zinc-500">
+          <p className="text-[11px] text-muted">
             Contact support or wait for Super Admin to assign a plan. Platform upgrade payments use admin receiving wallets.
           </p>
           <div className="flex justify-end">

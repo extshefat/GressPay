@@ -7,7 +7,7 @@ export default function RegisterPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center bg-zinc-50 text-xs text-zinc-500 dark:bg-black">
+        <div className="flex min-h-screen items-center justify-center bg-card text-xs text-muted dark:bg-black">
           Loading…
         </div>
       }

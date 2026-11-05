@@ -98,18 +98,18 @@ export default function AppsPluginsPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-8">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+        <h1 className="text-2xl font-bold tracking-tight text-ink dark:text-ink">
           Apps &amp; Plugins
         </h1>
-        <p className="mt-1 text-xs text-zinc-500">
+        <p className="mt-1 text-xs text-muted">
           Go-live checklist for Companion SMS, branded checkout, and store SDKs.
         </p>
       </div>
 
       <section className="space-y-3">
         <div>
-          <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Go-live checklist</h2>
-          <p className="text-xs text-zinc-500 mt-0.5">
+          <h2 className="text-sm font-bold text-ink dark:text-ink">Go-live checklist</h2>
+          <p className="text-xs text-muted mt-0.5">
             Live bKash/Nagad verification needs an active, wallet-bound Companion device. Binance / USDT use API and on-chain
             proofs instead.
           </p>
@@ -120,18 +120,18 @@ export default function AppsPluginsPage() {
             return (
               <Card
                 key={item.step}
-                className="flex flex-col border-zinc-200 p-4 dark:border-zinc-800 bg-white dark:bg-zinc-950"
+                className="flex flex-col border-border p-4 dark:border-border bg-white dark:bg-canvas"
               >
                 <div className="flex items-start gap-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-[11px] font-bold text-white dark:bg-zinc-100 dark:text-zinc-900">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ink-solid text-[11px] font-bold text-white dark:bg-surface-muted dark:text-muted">
                     {item.step}
                   </div>
                   <div className="min-w-0 flex-1 space-y-2">
                     <div className="flex items-center gap-2">
-                      <Icon className="h-4 w-4 text-zinc-500" />
-                      <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{item.title}</h3>
+                      <Icon className="h-4 w-4 text-muted" />
+                      <h3 className="text-sm font-semibold text-ink dark:text-ink">{item.title}</h3>
                     </div>
-                    <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">{item.body}</p>
+                    <p className="text-xs text-muted dark:text-muted leading-relaxed">{item.body}</p>
                     <Link href={item.href}>
                       <Button size="sm" variant="outline" rightIcon={<ArrowRight className="h-3.5 w-3.5" />}>
                         {item.cta}
@@ -146,17 +146,17 @@ export default function AppsPluginsPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Downloads &amp; SDKs</h2>
+        <h2 className="text-sm font-bold text-ink dark:text-ink">Downloads &amp; SDKs</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           {TOOLS.map((tool) => {
             const Icon = tool.icon;
             return (
-              <Card key={tool.title} className="flex flex-col border-zinc-200 p-5 dark:border-zinc-800">
-                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-teal-700/10 text-teal-800 dark:bg-teal-400/15 dark:text-teal-300">
+              <Card key={tool.title} className="flex flex-col border-border p-5 dark:border-border">
+                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-brand/10 text-accent dark:bg-brand/15 dark:text-accent">
                   <Icon className="h-5 w-5" />
                 </div>
-                <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{tool.title}</h2>
-                <p className="mt-2 flex-1 text-xs text-zinc-600 dark:text-zinc-400">{tool.description}</p>
+                <h2 className="text-sm font-bold text-ink dark:text-ink">{tool.title}</h2>
+                <p className="mt-2 flex-1 text-xs text-muted dark:text-muted">{tool.description}</p>
                 {tool.disabled ? (
                   <Button size="sm" variant="outline" className="mt-4 w-fit" disabled>
                     {tool.cta}

@@ -42,7 +42,7 @@ export default function TeamPage() {
   return (
     <Suspense
       fallback={
-        <div className="mx-auto max-w-5xl py-10 text-xs text-zinc-500">Loading team…</div>
+        <div className="mx-auto max-w-5xl py-10 text-xs text-muted">Loading team…</div>
       }
     >
       <TeamPageContent />
@@ -237,15 +237,15 @@ function TeamPageContent() {
     return (
       <div className="mx-auto max-w-3xl space-y-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">Team</h1>
-          <p className="mt-1 text-xs text-zinc-500">You joined this workspace as staff.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-ink dark:text-ink">Team</h1>
+          <p className="mt-1 text-xs text-muted">You joined this workspace as staff.</p>
         </div>
         {acceptNote ? (
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
+          <div className="rounded-lg border border-success bg-success/10 px-3 py-2 text-xs text-success dark:border-success dark:bg-success/40 dark:text-success">
             {acceptNote}
           </div>
         ) : null}
-        <Card className="space-y-3 border-zinc-200 p-6 dark:border-zinc-800">
+        <Card className="space-y-3 border-border p-6 dark:border-border">
           <div className="flex items-center gap-2">
             <Users className="h-5 w-5" />
             <h2 className="text-sm font-bold">Your access</h2>
@@ -253,7 +253,7 @@ function TeamPageContent() {
               {staffRole || "staff"}
             </Badge>
           </div>
-          <p className="text-xs text-zinc-600 dark:text-zinc-400">
+          <p className="text-xs text-muted dark:text-muted">
             Only the workspace owner can invite or revoke members. Switch brands from the header to
             work within your assigned stores.
           </p>
@@ -266,8 +266,8 @@ function TeamPageContent() {
     <div className="mx-auto max-w-5xl space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">Team</h1>
-          <p className="mt-1 text-xs text-zinc-500">
+          <h1 className="text-2xl font-bold tracking-tight text-ink dark:text-ink">Team</h1>
+          <p className="mt-1 text-xs text-muted">
             Invite operators by email. Assign brands and a role preset.
           </p>
         </div>
@@ -277,53 +277,53 @@ function TeamPageContent() {
       </div>
 
       {acceptNote ? (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
+        <div className="rounded-lg border border-success bg-success/10 px-3 py-2 text-xs text-success dark:border-success dark:bg-success/40 dark:text-success">
           {acceptNote}
         </div>
       ) : null}
       {error ? (
-        <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
+        <div className="rounded-lg border border-danger bg-danger/10 px-3 py-2 text-xs text-danger dark:border-danger dark:bg-danger/40 dark:text-danger">
           {error}
         </div>
       ) : null}
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <Card className="border-zinc-200 p-4 dark:border-zinc-800">
-          <p className="text-[11px] uppercase tracking-wide text-zinc-500">Total</p>
+        <Card className="border-border p-4 dark:border-border">
+          <p className="text-[11px] uppercase tracking-wide text-muted">Total</p>
           <p className="mt-1 text-2xl font-semibold tabular-nums">{stats.total}</p>
         </Card>
-        <Card className="border-zinc-200 p-4 dark:border-zinc-800">
-          <p className="text-[11px] uppercase tracking-wide text-zinc-500">Active</p>
-          <p className="mt-1 text-2xl font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
+        <Card className="border-border p-4 dark:border-border">
+          <p className="text-[11px] uppercase tracking-wide text-muted">Active</p>
+          <p className="mt-1 text-2xl font-semibold tabular-nums text-success dark:text-success">
             {stats.active}
           </p>
         </Card>
-        <Card className="border-zinc-200 p-4 dark:border-zinc-800">
-          <p className="text-[11px] uppercase tracking-wide text-zinc-500">Invited</p>
-          <p className="mt-1 text-2xl font-semibold tabular-nums text-amber-700 dark:text-amber-400">
+        <Card className="border-border p-4 dark:border-border">
+          <p className="text-[11px] uppercase tracking-wide text-muted">Invited</p>
+          <p className="mt-1 text-2xl font-semibold tabular-nums text-warning dark:text-warning">
             {stats.invited}
           </p>
         </Card>
       </div>
 
       <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by email, role, or status…"
-          className="w-full rounded-lg border border-zinc-200 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-teal-600 dark:border-zinc-800 dark:bg-zinc-950"
+          className="w-full rounded-lg border border-border bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-accent dark:border-border dark:bg-canvas"
         />
       </div>
 
       {isLoading ? (
-        <p className="text-xs text-zinc-500">Loading team…</p>
+        <p className="text-xs text-muted">Loading team…</p>
       ) : filtered.length === 0 ? (
-        <Card className="flex flex-col items-center gap-3 border-dashed border-zinc-300 p-10 text-center dark:border-zinc-700">
-          <Users className="h-8 w-8 text-zinc-400" />
+        <Card className="flex flex-col items-center gap-3 border-dashed border-border p-10 text-center dark:border-border">
+          <Users className="h-8 w-8 text-muted" />
           <div>
             <p className="text-sm font-semibold">No team members yet</p>
-            <p className="mt-1 text-xs text-zinc-500">
+            <p className="mt-1 text-xs text-muted">
               Invite a manager or support agent and share the accept link.
             </p>
           </div>
@@ -332,9 +332,9 @@ function TeamPageContent() {
           </Button>
         </Card>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800">
+        <div className="overflow-hidden rounded-xl border border-border dark:border-border">
           <table className="w-full text-left text-sm">
-            <thead className="bg-zinc-50 text-[11px] uppercase tracking-wide text-zinc-500 dark:bg-zinc-900/60">
+            <thead className="bg-card text-[11px] uppercase tracking-wide text-muted dark:bg-surface/60">
               <tr>
                 <th className="px-4 py-2.5 font-medium">Member</th>
                 <th className="px-4 py-2.5 font-medium">Role</th>
@@ -347,11 +347,11 @@ function TeamPageContent() {
               {filtered.map((m) => (
                 <tr
                   key={m.memberId}
-                  className="border-t border-zinc-100 dark:border-zinc-800/80"
+                  className="border-t border-border dark:border-border/80"
                 >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <Mail className="h-3.5 w-3.5 text-zinc-400" />
+                      <Mail className="h-3.5 w-3.5 text-muted" />
                       <span className="font-medium">{m.email}</span>
                     </div>
                   </td>
@@ -359,7 +359,7 @@ function TeamPageContent() {
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1">
                       {m.brandIds.length === 0 ? (
-                        <span className="text-xs text-zinc-400">—</span>
+                        <span className="text-xs text-muted">—</span>
                       ) : (
                         m.brandIds.slice(0, 3).map((id) => (
                           <Badge key={id} variant="slate" size="sm">
@@ -420,7 +420,7 @@ function TeamPageContent() {
       >
         <div className="space-y-4">
           <div>
-            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-muted">
               Email
             </label>
             <input
@@ -429,12 +429,12 @@ function TeamPageContent() {
               disabled={!!editing}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="teammate@company.com"
-              className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:border-teal-600 disabled:opacity-60 dark:border-zinc-800 dark:bg-zinc-950"
+              className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-accent disabled:opacity-60 dark:border-border dark:bg-canvas"
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-muted">
               Role
             </label>
             <div className="flex gap-2">
@@ -445,29 +445,29 @@ function TeamPageContent() {
                   onClick={() => { setRole(r); setPermissions(roleDefaults[r] ?? {}); }}
                   className={`rounded-lg border px-3 py-1.5 text-xs font-semibold capitalize ${
                     role === r
-                      ? "border-teal-700 bg-teal-50 text-teal-900 dark:border-teal-400 dark:bg-teal-950/40 dark:text-teal-200"
-                      : "border-zinc-200 dark:border-zinc-700"
+                      ? "border-accent bg-accent/10 text-accent dark:border-accent dark:bg-brand/40 dark:text-accent"
+                      : "border-border dark:border-border"
                   }`}
                 >
                   {r}
                 </button>
               ))}
             </div>
-            <p className="mt-1.5 text-[11px] text-zinc-500">{ROLE_HELP[role]}</p>
+            <p className="mt-1.5 text-[11px] text-muted">{ROLE_HELP[role]}</p>
           </div>
 
           <div>
-            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-muted">
               Allowed brands
             </label>
             {brands.length === 0 ? (
-              <p className="text-xs text-zinc-500">Create a brand first under Brands.</p>
+              <p className="text-xs text-muted">Create a brand first under Brands.</p>
             ) : (
-              <div className="max-h-40 space-y-1.5 overflow-y-auto rounded-lg border border-zinc-200 p-2 dark:border-zinc-800">
+              <div className="max-h-40 space-y-1.5 overflow-y-auto rounded-lg border border-border p-2 dark:border-border">
                 {brands.map((b) => (
                   <label
                     key={b.brandId}
-                    className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-900"
+                    className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-card dark:hover:bg-ink-solid"
                   >
                     <input
                       type="checkbox"
@@ -499,18 +499,18 @@ function TeamPageContent() {
               </fieldset>
             ))}
           </details>}
-          {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+          {error && <p role="alert" className="text-sm text-danger dark:text-danger">{error}</p>}
 
           {inviteUrl ? (
-            <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950/30">
-              <p className="text-[11px] font-medium text-amber-900 dark:text-amber-200">
+            <div className="space-y-2 rounded-lg border border-warning bg-warning/10 p-3 dark:border-warning dark:bg-warning/30">
+              <p className="text-[11px] font-medium text-warning dark:text-warning">
                 Copy this accept link and share it. Outbound email is not configured on this server.
               </p>
               <div className="flex gap-2">
                 <input
                   readOnly
                   value={inviteUrl}
-                  className="min-w-0 flex-1 truncate rounded border border-amber-200 bg-white px-2 py-1.5 text-[11px] dark:border-amber-900 dark:bg-zinc-950"
+                  className="min-w-0 flex-1 truncate rounded border border-warning bg-white px-2 py-1.5 text-[11px] dark:border-warning dark:bg-canvas"
                 />
                 <Button
                   size="sm"

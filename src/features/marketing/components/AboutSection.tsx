@@ -3,15 +3,15 @@ import { Badge } from "@/components/ui/badge";
 
 export const AboutSection: React.FC = () => {
   return (
-    <section id="about" className="border-t border-zinc-200 bg-white py-20 dark:border-zinc-800 dark:bg-zinc-950">
+    <section id="about" className="border-t border-border bg-white py-20 dark:border-border dark:bg-canvas">
       <div className="mx-auto max-w-3xl space-y-6 px-4 sm:px-6 lg:px-8">
         <Badge variant="emerald" className="font-mono text-[10px] uppercase">
           About
         </Badge>
-        <h2 className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-100">
+        <h2 className="text-3xl font-extrabold tracking-tight text-ink dark:text-ink">
           Why GressPay
         </h2>
-        <div className="space-y-4 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+        <div className="space-y-4 text-sm leading-relaxed text-muted dark:text-muted">
           <p>
             GressPay is a Bangladesh-first checkout and verification console. A customer pays a wallet you configured. The server marks that checkout complete only after evidence it can check: a paired Android companion SMS for bKash or Nagad, a Binance Pay order query for Binance Pay API payments, or a TRON transfer for USDT TRC-20.
           </p>

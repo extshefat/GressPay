@@ -16,7 +16,7 @@ export default function MyPaymentsPage() {
   return (
     <React.Suspense
       fallback={
-        <div className="mx-auto max-w-5xl py-10 text-xs text-zinc-500">
+        <div className="mx-auto max-w-5xl py-10 text-xs text-muted">
           Loading payment history…
         </div>
       }
@@ -91,12 +91,12 @@ function MyPaymentsContent() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <div className="flex flex-col gap-3 border-b border-zinc-200 pb-4 dark:border-zinc-800 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 border-b border-border pb-4 dark:border-border sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+          <h1 className="text-2xl font-bold tracking-tight text-ink dark:text-ink">
             Plans & billing
           </h1>
-          <p className="mt-1 text-xs text-zinc-500">
+          <p className="mt-1 text-xs text-muted">
             GressPay plan upgrades for your account — paid via platform owner gateways (not your brand checkout rails).
           </p>
         </div>
@@ -130,7 +130,7 @@ function MyPaymentsContent() {
 
       {plans.length > 0 && (
         <Card className="space-y-3 p-4">
-          <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">Upgrade plan</div>
+          <div className="text-xs font-semibold text-ink dark:text-ink">Upgrade plan</div>
           <div className="grid gap-2 sm:grid-cols-3">
             {plans.map((p) => (
               <button
@@ -138,11 +138,11 @@ function MyPaymentsContent() {
                 type="button"
                 disabled={!billingReady || busyId === p.code}
                 onClick={() => startCheckout(p.code)}
-                className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-left transition hover:border-zinc-900 disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-white"
+                className="rounded-xl border border-border bg-card p-3 text-left transition hover:border-border disabled:opacity-50 dark:border-border dark:bg-surface dark:hover:border-white"
               >
-                <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{p.name}</div>
+                <div className="text-sm font-bold text-ink dark:text-ink">{p.name}</div>
                 {searchParams.get("plan") === p.code && <span className="text-xs font-semibold">Your selection</span>}
-                <div className="mt-1 font-mono text-[11px] text-emerald-600 dark:text-emerald-400">
+                <div className="mt-1 font-mono text-[11px] text-success dark:text-success">
                   ৳{p.priceBdt} / {p.billingCycle}
                 </div>
               </button>
@@ -153,7 +153,7 @@ function MyPaymentsContent() {
 
       <Card className="overflow-x-auto p-0">
         <table className="min-w-full text-left text-xs">
-          <thead className="border-b border-zinc-200 bg-zinc-50 font-mono text-[10px] uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
+          <thead className="border-b border-border bg-card font-mono text-[10px] uppercase tracking-wide text-muted dark:border-border dark:bg-surface">
             <tr>
               <th className="px-3 py-2">Payment ID</th>
               <th className="px-3 py-2">TrxID</th>
@@ -166,13 +166,13 @@ function MyPaymentsContent() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={6} className="px-3 py-10 text-center text-zinc-500">
+                <td colSpan={6} className="px-3 py-10 text-center text-muted">
                   Loading…
                 </td>
               </tr>
             ) : payments.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-3 py-10 text-center text-zinc-500">
+                <td colSpan={6} className="px-3 py-10 text-center text-muted">
                   No plan payments yet. Choose a plan above to start checkout.
                 </td>
               </tr>
@@ -180,10 +180,10 @@ function MyPaymentsContent() {
               payments.map((row) => {
                 const checkout = row.checkoutUrl || (row.sessionId ? `/pay/${row.sessionId}` : null);
                 return (
-                  <tr key={row.orderId} className="border-b border-zinc-100 dark:border-zinc-900">
+                  <tr key={row.orderId} className="border-b border-border dark:border-border">
                     <td className="max-w-[140px] truncate px-3 py-2 font-mono text-[10px]">{row.orderId}</td>
-                    <td className="px-3 py-2 font-mono text-[10px] text-zinc-500">{row.trxId || "N/A"}</td>
-                    <td className="px-3 py-2 font-semibold text-emerald-600 dark:text-emerald-400">
+                    <td className="px-3 py-2 font-mono text-[10px] text-muted">{row.trxId || "N/A"}</td>
+                    <td className="px-3 py-2 font-semibold text-success dark:text-success">
                       {formatCurrency(Number(row.amount), row.currency as "BDT")}
                     </td>
                     <td className="px-3 py-2">
@@ -191,11 +191,11 @@ function MyPaymentsContent() {
                         {row.status}
                       </Badge>
                     </td>
-                    <td className="px-3 py-2 text-zinc-500">{row.createdAt ? formatDate(row.createdAt) : "—"}</td>
+                    <td className="px-3 py-2 text-muted">{row.createdAt ? formatDate(row.createdAt) : "—"}</td>
                     <td className="px-3 py-2 text-right">
                       {row.status === "PENDING" && checkout ? (
                         <Link href={checkout}>
-                          <Button size="sm" variant="primary" className="bg-rose-600 hover:bg-rose-700">
+                          <Button size="sm" variant="primary" className="bg-danger hover:bg-danger">
                             Pay <ExternalLink className="ml-1 h-3 w-3" />
                           </Button>
                         </Link>
@@ -206,7 +206,7 @@ function MyPaymentsContent() {
                           </Button>
                         </Link>
                       ) : (
-                        <span className="text-zinc-400">—</span>
+                        <span className="text-muted">—</span>
                       )}
                     </td>
                   </tr>
@@ -217,7 +217,7 @@ function MyPaymentsContent() {
         </table>
       </Card>
 
-      <div className="flex items-start gap-2 rounded-xl border border-zinc-200 p-3 text-[11px] text-zinc-500 dark:border-zinc-800">
+      <div className="flex items-start gap-2 rounded-xl border border-border p-3 text-[11px] text-muted dark:border-border">
         <CreditCard className="mt-0.5 h-4 w-4 shrink-0" />
         <p>
           Plan checkout uses the Super Admin billing brand wallets (bKash, Nagad, etc.). Your customer-facing gateways under{" "}

@@ -98,8 +98,8 @@ export default function WebhookSettingsPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Webhooks & delivery</h1>
-          <p className="mt-1 text-xs text-zinc-500">
+          <h1 className="text-2xl font-bold text-ink dark:text-ink">Webhooks & delivery</h1>
+          <p className="mt-1 text-xs text-muted">
             Recommended flow: create payment → buyer pays → signed webhook → server{" "}
             <code className="font-mono">POST /payment/verify</code> before fulfilling the order.
           </p>
@@ -109,9 +109,9 @@ export default function WebhookSettingsPage() {
         </Button>
       </div>
 
-      <Card className="border-zinc-200 p-5 dark:border-zinc-800">
-        <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Integration checklist</h2>
-        <ol className="mt-3 list-decimal space-y-1.5 pl-4 text-xs text-zinc-600 dark:text-zinc-400">
+      <Card className="border-border p-5 dark:border-border">
+        <h2 className="text-sm font-bold text-ink dark:text-ink">Integration checklist</h2>
+        <ol className="mt-3 list-decimal space-y-1.5 pl-4 text-xs text-muted dark:text-muted">
           <li>
             Create a checkout with your website API key (
             <Link href="/dashboard/api-keys" className="font-semibold underline">
@@ -131,10 +131,10 @@ export default function WebhookSettingsPage() {
         </Alert>
       )}
 
-      <Card className="border-zinc-200 p-6 dark:border-zinc-800">
+      <Card className="border-border p-6 dark:border-border">
         <div className="mb-4 flex items-center gap-2">
-          <WebhookIcon className="h-4 w-4 text-zinc-500" />
-          <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Endpoint URL</h2>
+          <WebhookIcon className="h-4 w-4 text-muted" />
+          <h2 className="text-sm font-bold text-ink dark:text-ink">Endpoint URL</h2>
         </div>
         <form onSubmit={saveUrl} className="space-y-3">
           <Input
@@ -143,7 +143,7 @@ export default function WebhookSettingsPage() {
             placeholder="https://yourstore.com/api/webhooks/gresspay"
             required
           />
-          <p className="text-[11px] text-zinc-500">
+          <p className="text-[11px] text-muted">
             Must be public HTTPS. Private IPs and non-TLS URLs are rejected server-side (SSRF-safe validation).
           </p>
           <div className="flex flex-wrap gap-2">
@@ -164,12 +164,12 @@ export default function WebhookSettingsPage() {
         </form>
       </Card>
 
-      <Card className="border-zinc-200 p-6 dark:border-zinc-800">
+      <Card className="border-border p-6 dark:border-border">
         <div className="mb-4 flex items-center gap-2">
-          <Shield className="h-4 w-4 text-zinc-500" />
-          <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Signing secret</h2>
+          <Shield className="h-4 w-4 text-muted" />
+          <h2 className="text-sm font-bold text-ink dark:text-ink">Signing secret</h2>
         </div>
-        <p className="mb-3 text-xs text-zinc-500">
+        <p className="mb-3 text-xs text-muted">
           Verify <code className="font-mono">X-GressPay-Signature</code> (HMAC-SHA256 of the raw JSON body). Retries use in-process
           backoff up to <code className="font-mono">WEBHOOK_MAX_RETRIES</code> — each attempt is logged.
         </p>
@@ -187,9 +187,9 @@ export default function WebhookSettingsPage() {
         </Button>
       </Card>
 
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-muted">
         Delivery log & retries:{" "}
-        <Link href="/dashboard/payment-events" className="font-semibold text-zinc-800 underline dark:text-zinc-200">
+        <Link href="/dashboard/payment-events" className="font-semibold text-ink underline dark:text-ink">
           Payment events
         </Link>
         . Website API key + code snippets:{" "}

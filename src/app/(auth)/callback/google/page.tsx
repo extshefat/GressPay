@@ -79,7 +79,7 @@ function GoogleCallbackContent() {
   }, [code, state, errorParam, errorDescription, router]);
 
   return (
-    <Card className="p-8 max-w-md w-full text-center space-y-4 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 shadow-xl">
+    <Card className="p-8 max-w-md w-full text-center space-y-4 bg-white dark:bg-surface border-border dark:border-border shadow-xl">
       <Link href="/" className="inline-flex items-center justify-center mb-2">
         <GressPayLogo variant="auto" size="md" />
       </Link>
@@ -87,10 +87,10 @@ function GoogleCallbackContent() {
       {status === "processing" && (
         <div className="py-8 space-y-3">
           <Spinner size="lg" className="mx-auto" />
-          <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+          <h2 className="text-base font-bold text-ink dark:text-ink">
             Verifying Google Account
           </h2>
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-muted">
             Completing OpenID Connect token exchange and linking your account…
           </p>
         </div>
@@ -98,13 +98,13 @@ function GoogleCallbackContent() {
 
       {status === "success" && (
         <div className="py-8 space-y-3">
-          <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 flex items-center justify-center mx-auto">
+          <div className="w-12 h-12 rounded-full bg-success/10 text-success dark:bg-success/60 dark:text-success flex items-center justify-center mx-auto">
             <CheckCircle2 className="w-6 h-6" />
           </div>
-          <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+          <h2 className="text-base font-bold text-ink dark:text-ink">
             Authenticated Successfully
           </h2>
-          <p className="text-xs text-zinc-500">Redirecting to your console…</p>
+          <p className="text-xs text-muted">Redirecting to your console…</p>
         </div>
       )}
 
@@ -128,10 +128,10 @@ function GoogleCallbackContent() {
 
 export default function GoogleCallbackPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-zinc-50 dark:bg-zinc-950">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-card dark:bg-canvas">
       <Suspense
         fallback={
-          <div className="text-center text-xs text-zinc-500">
+          <div className="text-center text-xs text-muted">
             <Spinner size="md" className="mx-auto mb-2" />
             Loading authentication handler…
           </div>

@@ -45,29 +45,29 @@ export default function HelpPage() {
         <Badge variant="cyan" dot>
           Help
         </Badge>
-        <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-zinc-900 dark:text-zinc-100 tracking-tight">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-ink dark:text-ink tracking-tight">
           Frequently asked questions
         </h1>
-        <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 leading-relaxed">
+        <p className="text-sm sm:text-base text-muted dark:text-muted leading-relaxed">
           Honest answers for the first-release rails — SMS companion, Binance Pay, and USDT TRC-20.
         </p>
       </div>
 
       <div className="space-y-4">
         {FAQS.map((faq) => (
-          <Card key={faq.question} className="p-6 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 space-y-2">
-            <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">{faq.question}</h3>
-            <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed pt-1">{faq.answer}</p>
+          <Card key={faq.question} className="p-6 border-border dark:border-border bg-white dark:bg-surface/60 space-y-2">
+            <h3 className="text-base font-semibold text-ink dark:text-ink">{faq.question}</h3>
+            <p className="text-xs sm:text-sm text-muted dark:text-muted leading-relaxed pt-1">{faq.answer}</p>
           </Card>
         ))}
       </div>
 
-      <Card className="p-8 border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 text-center space-y-4 max-w-2xl mx-auto">
-        <div className="w-12 h-12 rounded-2xl bg-teal-700/10 text-teal-800 dark:bg-teal-400/15 dark:text-teal-300 flex items-center justify-center mx-auto">
+      <Card className="p-8 border-border dark:border-border bg-card/50 dark:bg-surface/40 text-center space-y-4 max-w-2xl mx-auto">
+        <div className="w-12 h-12 rounded-2xl bg-brand/10 text-accent dark:bg-brand/15 dark:text-accent flex items-center justify-center mx-auto">
           <MessageSquare className="w-6 h-6" />
         </div>
-        <h3 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">Need the API reference?</h3>
-        <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+        <h3 className="text-xl font-bold text-ink dark:text-ink">Need the API reference?</h3>
+        <p className="text-xs text-muted dark:text-muted leading-relaxed">
           See the Developers page for endpoints, authentication, webhooks, and state transitions.
         </p>
         <div className="pt-2 flex items-center justify-center gap-3">

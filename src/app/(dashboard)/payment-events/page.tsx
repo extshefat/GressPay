@@ -73,20 +73,20 @@ export default function PaymentEventsPage() {
   const statusTone = (status: string, code?: number | null) => {
     const s = status.toLowerCase();
     if (s === "completed" || s === "delivered" || (code !== null && code !== undefined && code >= 200 && code < 300)) {
-      return "text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-300 dark:bg-emerald-950/40 dark:border-emerald-800";
+      return "text-success bg-success/10 border-success dark:text-success dark:bg-success/40 dark:border-success";
     }
     if (s === "pending") {
-      return "text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-300 dark:bg-amber-950/40 dark:border-amber-800";
+      return "text-warning bg-warning/10 border-warning dark:text-warning dark:bg-warning/40 dark:border-warning";
     }
-    return "text-red-700 bg-red-50 border-red-200 dark:text-red-300 dark:bg-red-950/40 dark:border-red-800";
+    return "text-danger bg-danger/10 border-danger dark:text-danger dark:bg-danger/40 dark:border-danger";
   };
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Payment events</h1>
-          <p className="mt-1 text-xs text-zinc-500">
+          <h1 className="text-2xl font-bold text-ink dark:text-ink">Payment events</h1>
+          <p className="mt-1 text-xs text-muted">
             Webhook delivery log for your active brand — queued asynchronously with exponential backoff (no in-process retry).
           </p>
         </div>
@@ -108,19 +108,19 @@ export default function PaymentEventsPage() {
         </Alert>
       )}
 
-      <Card className="overflow-hidden border-zinc-200 dark:border-zinc-800">
+      <Card className="overflow-hidden border-border dark:border-border">
         {loading ? (
-          <div className="py-16 text-center text-xs text-zinc-500">Loading delivery logs…</div>
+          <div className="py-16 text-center text-xs text-muted">Loading delivery logs…</div>
         ) : rows.length === 0 ? (
           <EmptyState
-            icon={<Activity className="h-8 w-8 text-zinc-400" />}
+            icon={<Activity className="h-8 w-8 text-muted" />}
             title="No webhook deliveries yet"
             description="Complete a payment or send a test ping from Webhooks to populate this log."
           />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="border-b border-zinc-200 bg-zinc-50 text-[11px] font-mono uppercase tracking-wider text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-400">
+              <thead className="border-b border-border bg-card text-[11px] font-mono uppercase tracking-wider text-muted dark:border-border dark:bg-surface/50 dark:text-muted">
                 <tr>
                   <th className="px-4 py-3">Time</th>
                   <th className="px-4 py-3">Event</th>
@@ -132,17 +132,17 @@ export default function PaymentEventsPage() {
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-900">
+              <tbody className="divide-y divide-border dark:divide-border">
                 {rows.map((row) => (
-                  <tr key={`${row.id}-${row.attempt}-${row.createdAt}`} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30">
-                    <td className="px-4 py-3 font-mono text-[11px] text-zinc-500">{formatDate(row.createdAt)}</td>
+                  <tr key={`${row.id}-${row.attempt}-${row.createdAt}`} className="hover:bg-card/50 dark:hover:bg-ink-solid/30">
+                    <td className="px-4 py-3 font-mono text-[11px] text-muted">{formatDate(row.createdAt)}</td>
                     <td className="px-4 py-3">
-                      <div className="font-semibold text-zinc-900 dark:text-zinc-100">{row.eventName}</div>
-                      <div className="font-mono text-[10px] text-zinc-500 truncate max-w-[12rem]" title={row.eventId}>
+                      <div className="font-semibold text-ink dark:text-ink">{row.eventName}</div>
+                      <div className="font-mono text-[10px] text-muted truncate max-w-[12rem]" title={row.eventId}>
                         {row.eventId}
                       </div>
                     </td>
-                    <td className="px-4 py-3 font-mono text-[11px] text-zinc-600 dark:text-zinc-400">
+                    <td className="px-4 py-3 font-mono text-[11px] text-muted dark:text-muted">
                       {row.sessionId || "—"}
                     </td>
                     <td className="px-4 py-3 font-mono">{row.httpCode ?? "—"}</td>
@@ -158,7 +158,7 @@ export default function PaymentEventsPage() {
                         ? `${row.queueAttemptCount}/${row.queueMaxAttempts ?? "—"}`
                         : row.attempt}
                     </td>
-                    <td className="px-4 py-3 font-mono text-[11px] text-zinc-500">
+                    <td className="px-4 py-3 font-mono text-[11px] text-muted">
                       {row.status === "blocked" && row.note
                         ? String(row.note).slice(0, 48)
                         : row.queueStatus === "pending" && row.nextAttemptAt

@@ -1,4 +1,5 @@
 "use client";
+import { QR_COLORS } from "@/lib/design/tokens";
 
 import React, { useCallback, useEffect, useState } from "react";
 import QRCode from "qrcode";
@@ -227,7 +228,7 @@ export default function CompanionDevicesPage() {
       const qr = await QRCode.toDataURL(payload, {
         width: 220,
         margin: 1,
-        color: { dark: "#09090b", light: "#ffffff" },
+        color: QR_COLORS,
       });
       setPairingQr(qr);
       success("Device registered — copy the Device API key anytime from the table.", "Device created");
@@ -285,19 +286,19 @@ export default function CompanionDevicesPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <div className="flex flex-col justify-between gap-4 border-b border-zinc-200 pb-4 dark:border-zinc-800 sm:flex-row sm:items-start">
+      <div className="flex flex-col justify-between gap-4 border-b border-border pb-4 dark:border-border sm:flex-row sm:items-start">
         <div>
           <div className="flex items-center gap-2">
-            <Smartphone className="h-6 w-6 text-sky-600 dark:text-sky-400" />
-            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">Manage Devices</h1>
+            <Smartphone className="h-6 w-6 text-info dark:text-info" />
+            <h1 className="text-2xl font-bold tracking-tight text-ink dark:text-ink">Manage Devices</h1>
           </div>
-          <p className="mt-1 max-w-xl text-xs leading-relaxed text-zinc-500">
+          <p className="mt-1 max-w-xl text-xs leading-relaxed text-muted">
             Pair Android phones per brand for bKash/Nagad SMS matching. In the Companion app, paste only the{" "}
-            <span className="font-mono font-semibold text-zinc-700 dark:text-zinc-300">Device API key (gpdev_…)</span>
+            <span className="font-mono font-semibold text-ink dark:text-ink">Device API key (gpdev_…)</span>
             . Do not paste your website key (<span className="font-mono">gp_live_…</span>) or Brand ID — the app
             links to your account automatically.
           </p>
-          <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-400/90">
+          <p className="mt-1 text-[11px] text-warning dark:text-warning/90">
             Having trouble pairing? Download the APK below, add a device, then paste the key from this table.
           </p>
         </div>
@@ -317,7 +318,7 @@ export default function CompanionDevicesPage() {
           </Button>
           <a
             href="/download/gresspay.apk"
-            className="inline-flex items-center gap-2 rounded-lg border border-zinc-900 bg-zinc-900 px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-zinc-800 dark:border-white dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-100"
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-ink-solid px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-ink-solid dark:border-white dark:bg-brand dark:text-on-brand dark:hover:bg-surface"
           >
             <Download className="h-3.5 w-3.5" />
             Direct Download
@@ -334,22 +335,22 @@ export default function CompanionDevicesPage() {
         </Alert>
       )}
 
-      <Card className="overflow-hidden border-zinc-200 bg-white shadow-xs dark:border-zinc-800 dark:bg-zinc-950">
-        <div className="flex items-center justify-between border-b border-zinc-100 p-4 dark:border-zinc-900">
-          <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Registered devices ({devices.length})</h3>
-          <span className="text-[11px] font-mono text-zinc-500">
+      <Card className="overflow-hidden border-border bg-white shadow-xs dark:border-border dark:bg-canvas">
+        <div className="flex items-center justify-between border-b border-border p-4 dark:border-border">
+          <h3 className="text-sm font-bold text-ink dark:text-ink">Registered devices ({devices.length})</h3>
+          <span className="text-[11px] font-mono text-muted">
             {devices.filter((d) => isOnline(d)).length} online
           </span>
         </div>
 
         {isLoading ? (
           <div className="py-20 text-center space-y-3">
-            <div className="w-8 h-8 border-2 border-zinc-900 dark:border-white border-t-transparent rounded-full animate-spin mx-auto" />
-            <p className="text-xs font-mono text-zinc-500">Loading devices…</p>
+            <div className="w-8 h-8 border-2 border-border dark:border-white border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="text-xs font-mono text-muted">Loading devices…</p>
           </div>
         ) : devices.length === 0 ? (
           <EmptyState
-            icon={<Smartphone className="w-8 h-8 text-zinc-400" />}
+            icon={<Smartphone className="w-8 h-8 text-muted" />}
             title="No devices yet"
             description="Add a device, choose a brand, and copy the Device API key into the Companion app."
             action={
@@ -361,7 +362,7 @@ export default function CompanionDevicesPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="border-b border-zinc-200 bg-zinc-50 text-[10px] font-mono uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
+              <thead className="border-b border-border bg-card text-[10px] font-mono uppercase tracking-wide text-muted dark:border-border dark:bg-surface">
                 <tr>
                   <th className="px-4 py-3">Device Name</th>
                   <th className="px-4 py-3">Device API Key (For App)</th>
@@ -371,26 +372,26 @@ export default function CompanionDevicesPage() {
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-900">
+              <tbody className="divide-y divide-border dark:divide-border">
                 {devices.map((device) => {
                   const online = isOnline(device);
                   const lastTouch = device.updatedAt || device.lastSeenAt || device.createdAt;
                   return (
-                    <tr key={device.deviceId} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30">
+                    <tr key={device.deviceId} className="hover:bg-card/50 dark:hover:bg-ink-solid/30">
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-2">
-                          <Smartphone className="h-3.5 w-3.5 shrink-0 text-zinc-400" />
+                          <Smartphone className="h-3.5 w-3.5 shrink-0 text-muted" />
                           <div>
-                            <div className="font-semibold text-zinc-900 dark:text-zinc-100">
+                            <div className="font-semibold text-ink dark:text-ink">
                               {device.label || "Android device"}
                             </div>
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="text-[10px] font-mono text-zinc-500">{device.deviceId}</span>
+                              <span className="text-[10px] font-mono text-muted">{device.deviceId}</span>
                               <span
                                 className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-mono font-bold uppercase ${
                                   online
-                                    ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
-                                    : "border-zinc-200 bg-zinc-100 text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800"
+                                    ? "border-success bg-success/10 text-success dark:border-success dark:bg-success/40 dark:text-success"
+                                    : "border-border bg-surface text-muted dark:border-border dark:bg-surface-muted"
                                 }`}
                               >
                                 {online ? "Online" : "Offline"}
@@ -401,12 +402,12 @@ export default function CompanionDevicesPage() {
                       </td>
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-2">
-                          <code className="font-mono text-[11px] tracking-wider text-zinc-700 dark:text-zinc-300">
+                          <code className="font-mono text-[11px] tracking-wider text-ink dark:text-ink">
                             {device.deviceAppKeyMasked || "**********"}
                           </code>
                           <button
                             type="button"
-                            className="inline-flex items-center justify-center rounded-md border border-zinc-200 p-1.5 text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                            className="inline-flex items-center justify-center rounded-md border border-border p-1.5 text-muted hover:bg-surface dark:border-border dark:text-ink dark:hover:bg-ink-solid"
                             aria-label={`Copy device API key for ${device.label}`}
                             title="Copy device key"
                             onClick={() => copyDeviceKey(device)}
@@ -417,7 +418,7 @@ export default function CompanionDevicesPage() {
                       </td>
                       <td className="px-4 py-3.5">
                         {device.brandName ? (
-                          <span className="inline-flex rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1 text-[11px] font-semibold text-sky-800 dark:border-sky-900 dark:bg-sky-950/50 dark:text-sky-200">
+                          <span className="inline-flex rounded-lg border border-info bg-info/10 px-2.5 py-1 text-[11px] font-semibold text-info dark:border-info dark:bg-info/50 dark:text-info">
                             {device.brandName}
                           </span>
                         ) : (
@@ -426,14 +427,14 @@ export default function CompanionDevicesPage() {
                       </td>
                       <td className="px-4 py-3.5 min-w-[200px]">
                         {device.brandId && activeBrandId && device.brandId !== activeBrandId ? (
-                          <p className="text-[10px] text-zinc-500">
+                          <p className="text-[10px] text-muted">
                             Switch to this brand to bind a wallet
                             {device.boundGatewayAccount ? ` (current: ${device.boundGatewayAccount})` : ""}.
                           </p>
                         ) : (
                           <>
                             <select
-                              className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1.5 text-[11px] font-mono"
+                              className="w-full rounded-lg border border-border dark:border-border bg-white dark:bg-surface px-2 py-1.5 text-[11px] font-mono"
                               value={device.boundGatewayId || ""}
                               disabled={bindingDeviceId === device.deviceId}
                               onChange={async (e) => {
@@ -466,21 +467,21 @@ export default function CompanionDevicesPage() {
                               ))}
                             </select>
                             {device.boundGatewayAccount && (
-                              <p className="mt-1 text-[10px] text-zinc-500">
+                              <p className="mt-1 text-[10px] text-muted">
                                 Matches SMS to {device.boundGatewayAccount}
                               </p>
                             )}
                           </>
                         )}
                       </td>
-                      <td className="px-4 py-3.5 font-mono text-[11px] text-zinc-500">
+                      <td className="px-4 py-3.5 font-mono text-[11px] text-muted">
                         {lastTouch ? formatDate(lastTouch) : "—"}
                       </td>
                       <td className="px-4 py-3.5 text-right">
                         <div className="inline-flex items-center justify-end gap-1">
                           <button
                             type="button"
-                            className="inline-flex rounded-lg p-2 text-sky-700 hover:bg-sky-50 dark:text-sky-300 dark:hover:bg-sky-950/40"
+                            className="inline-flex rounded-lg p-2 text-info hover:bg-info/10 dark:text-info dark:hover:bg-info/40"
                             aria-label={`Rotate device key for ${device.label}`}
                             title="Rotate device key"
                             disabled={rotatingId === device.deviceId}
@@ -492,7 +493,7 @@ export default function CompanionDevicesPage() {
                           </button>
                           <button
                             type="button"
-                            className="inline-flex rounded-lg p-2 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+                            className="inline-flex rounded-lg p-2 text-danger hover:bg-danger/10 dark:text-danger dark:hover:bg-danger/30"
                             aria-label={`Remove device ${device.label}`}
                             title="Remove device"
                             onClick={() => setRevokeDevice(device)}
@@ -510,11 +511,11 @@ export default function CompanionDevicesPage() {
         )}
       </Card>
 
-      <Card className="bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-xs">
-        <div className="p-4 border-b border-zinc-100 dark:border-zinc-900 flex items-center justify-between">
+      <Card className="bg-white dark:bg-canvas border-border dark:border-border overflow-hidden shadow-xs">
+        <div className="p-4 border-b border-border dark:border-border flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Recent Synced SMS Feed</h3>
-            <p className="text-xs text-zinc-500">SMS captured for your active brand context.</p>
+            <h3 className="text-sm font-bold text-ink dark:text-ink">Recent Synced SMS Feed</h3>
+            <p className="text-xs text-muted">SMS captured for your active brand context.</p>
           </div>
           <Button
             size="sm"
@@ -528,13 +529,13 @@ export default function CompanionDevicesPage() {
         </div>
 
         {smsLogs.length === 0 ? (
-          <div className="py-12 text-center text-xs text-zinc-500">
+          <div className="py-12 text-center text-xs text-muted">
             No SMS messages ingested yet. Once customer payments are received on your paired phones, they will appear here.
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-zinc-600 dark:text-zinc-400">
-              <thead className="bg-zinc-50 dark:bg-zinc-900/50 text-[11px] font-mono uppercase tracking-wider text-zinc-700 dark:text-zinc-300 border-b border-zinc-200 dark:border-zinc-800">
+            <table className="w-full text-left text-xs text-muted dark:text-muted">
+              <thead className="bg-card dark:bg-surface/50 text-[11px] font-mono uppercase tracking-wider text-ink dark:text-ink border-b border-border dark:border-border">
                 <tr>
                   <th className="py-2.5 px-4">Time</th>
                   <th className="py-2.5 px-4">Provider</th>
@@ -545,29 +546,29 @@ export default function CompanionDevicesPage() {
                   <th className="py-2.5 px-4">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-900">
+              <tbody className="divide-y divide-border dark:divide-border">
                 {smsLogs.map((sms) => {
                   const isMatched = sms.status === "used";
                   return (
-                    <tr key={sms.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30">
-                      <td className="py-3 px-4 font-mono text-[11px] text-zinc-500">{formatDate(sms.created_at)}</td>
+                    <tr key={sms.id} className="hover:bg-card/50 dark:hover:bg-ink-solid/30">
+                      <td className="py-3 px-4 font-mono text-[11px] text-muted">{formatDate(sms.created_at)}</td>
                       <td className="py-3 px-4">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-zinc-900 text-white dark:bg-white dark:text-zinc-950">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-ink-solid text-white dark:bg-brand dark:text-on-brand">
                           {sms.sender_key}
                         </span>
                       </td>
-                      <td className="py-3 px-4 font-mono font-bold text-zinc-900 dark:text-zinc-100">
+                      <td className="py-3 px-4 font-mono font-bold text-ink dark:text-ink">
                         ৳{Number(sms.amount).toFixed(2)}
                       </td>
-                      <td className="py-3 px-4 font-mono font-semibold text-zinc-900 dark:text-zinc-100">{sms.trx_id}</td>
-                      <td className="py-3 px-4 font-mono text-zinc-500">{sms.number || "—"}</td>
-                      <td className="py-3 px-4 text-zinc-500 font-mono text-[11px]">{sms.device_label || "Android Device"}</td>
+                      <td className="py-3 px-4 font-mono font-semibold text-ink dark:text-ink">{sms.trx_id}</td>
+                      <td className="py-3 px-4 font-mono text-muted">{sms.number || "—"}</td>
+                      <td className="py-3 px-4 text-muted font-mono text-[11px]">{sms.device_label || "Android Device"}</td>
                       <td className="py-3 px-4">
                         <span
                           className={`px-2 py-0.5 text-[10px] font-mono uppercase font-bold rounded border ${
                             isMatched
-                              ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800"
-                              : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800"
+                              ? "bg-success/10 dark:bg-success/40 text-success dark:text-success border-success dark:border-success"
+                              : "bg-warning/10 dark:bg-warning/40 text-warning dark:text-warning border-warning dark:border-warning"
                           }`}
                         >
                           {isMatched ? "MATCHED (PAID)" : "READY"}
@@ -597,13 +598,13 @@ export default function CompanionDevicesPage() {
         {!generatedToken ? (
           addDeviceStep === 1 ? (
             <div className="space-y-4 text-xs">
-              <p className="leading-relaxed text-zinc-500">
+              <p className="leading-relaxed text-muted">
                 Select a brand to associate with the new device. SMS from this phone will match payments for that brand.
               </p>
               <div>
-                <label className="mb-1 block text-xs font-semibold text-zinc-700 dark:text-zinc-300">Select a brand…</label>
+                <label className="mb-1 block text-xs font-semibold text-ink dark:text-ink">Select a brand…</label>
                 <select
-                  className="w-full rounded-lg border border-sky-500/50 bg-white px-3 py-2.5 text-sm dark:border-sky-700 dark:bg-zinc-950"
+                  className="w-full rounded-lg border border-info/50 bg-white px-3 py-2.5 text-sm dark:border-info dark:bg-canvas"
                   value={selectedBrandId}
                   onChange={(e) => setSelectedBrandId(e.target.value)}
                   required
@@ -618,7 +619,7 @@ export default function CompanionDevicesPage() {
                   ))}
                 </select>
                 {brands.length === 0 && (
-                  <p className="mt-2 text-[11px] text-amber-700 dark:text-amber-400">
+                  <p className="mt-2 text-[11px] text-warning dark:text-warning">
                     Create a brand first under{" "}
                     <Link href="/dashboard/brands" className="underline">
                       My Brands
@@ -627,7 +628,7 @@ export default function CompanionDevicesPage() {
                   </p>
                 )}
               </div>
-              <div className="flex justify-end gap-2 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+              <div className="flex justify-end gap-2 border-t border-border pt-3 dark:border-border">
                 <Button type="button" variant="outline" onClick={() => setIsPairModalOpen(false)}>
                   Cancel
                 </Button>
@@ -643,14 +644,14 @@ export default function CompanionDevicesPage() {
             </div>
           ) : (
             <form onSubmit={handleCreateDevice} className="space-y-4 text-xs">
-              <p className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-[11px] text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-400">
+              <p className="rounded-lg border border-border bg-card px-3 py-2 text-[11px] text-muted dark:border-border dark:bg-surface/50 dark:text-muted">
                 Brand:{" "}
-                <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                <span className="font-semibold text-ink dark:text-ink">
                   {brands.find((b) => b.brandId === selectedBrandId)?.name || selectedBrandId}
                 </span>
               </p>
               <div>
-                <label className="mb-1 block text-xs font-semibold text-zinc-700 dark:text-zinc-300">Device name</label>
+                <label className="mb-1 block text-xs font-semibold text-ink dark:text-ink">Device name</label>
                 <Input
                   value={deviceLabel}
                   onChange={(e) => setDeviceLabel(e.target.value)}
@@ -659,7 +660,7 @@ export default function CompanionDevicesPage() {
                   autoFocus
                 />
               </div>
-              <div className="flex justify-end gap-2 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+              <div className="flex justify-end gap-2 border-t border-border pt-3 dark:border-border">
                 <Button type="button" variant="outline" onClick={() => setAddDeviceStep(1)}>
                   Back
                 </Button>
@@ -671,7 +672,7 @@ export default function CompanionDevicesPage() {
           )
         ) : (
           <div className="space-y-4 text-xs">
-            <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl text-emerald-800 dark:text-emerald-300 space-y-1">
+            <div className="p-3 bg-success/10 dark:bg-success/40 border border-success dark:border-success rounded-xl text-success dark:text-success space-y-1">
               <span className="font-bold">Device created</span>
               <p className="text-[11px]">
                 Open Companion → Setup, paste the Device API key below, and tap Save &amp; verify. Server URL and account
@@ -680,14 +681,14 @@ export default function CompanionDevicesPage() {
             </div>
 
             {registeredBrandName ? (
-              <p className="text-[11px] text-zinc-500">
+              <p className="text-[11px] text-muted">
                 Linked brand:{" "}
-                <span className="font-semibold text-zinc-800 dark:text-zinc-200">{registeredBrandName}</span>
+                <span className="font-semibold text-ink dark:text-ink">{registeredBrandName}</span>
               </p>
             ) : null}
             <CopyField label="Device API key (paste into Companion app)" value={generatedToken} />
-            <details className="rounded-lg border border-zinc-200 p-2 dark:border-zinc-800">
-              <summary className="cursor-pointer text-[11px] font-medium text-zinc-600 dark:text-zinc-400">
+            <details className="rounded-lg border border-border p-2 dark:border-border">
+              <summary className="cursor-pointer text-[11px] font-medium text-muted dark:text-muted">
                 Advanced (optional)
               </summary>
               <div className="mt-2 space-y-2">
@@ -697,22 +698,22 @@ export default function CompanionDevicesPage() {
             </details>
 
             {pairingQr && (
-              <div className="flex flex-col items-center gap-2 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
+              <div className="flex flex-col items-center gap-2 p-4 rounded-xl border border-border dark:border-border bg-white dark:bg-canvas">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={pairingQr} alt="Device pairing QR" className="w-44 h-44" />
-                <p className="text-[11px] text-zinc-500 text-center">Scan in the Companion APK for instant pairing</p>
+                <p className="text-[11px] text-muted text-center">Scan in the Companion APK for instant pairing</p>
               </div>
             )}
 
             <a
               href="/download/gresspay.apk"
-              className="inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-xl text-xs font-semibold bg-zinc-900 text-white dark:bg-white dark:text-zinc-950"
+              className="inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-xl text-xs font-semibold bg-ink-solid text-white dark:bg-brand dark:text-on-brand"
             >
               <Download className="w-3.5 h-3.5" />
               Download Companion APK
             </a>
 
-            <div className="flex justify-end pt-2 border-t border-zinc-100 dark:border-zinc-800">
+            <div className="flex justify-end pt-2 border-t border-border dark:border-border">
               <Button size="sm" variant="primary" onClick={() => setIsPairModalOpen(false)}>
                 Done
               </Button>

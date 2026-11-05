@@ -32,7 +32,7 @@ export default function TransactionsPage() {
   return (
     <React.Suspense
       fallback={
-        <div className="mx-auto max-w-7xl py-10 text-xs text-zinc-500">
+        <div className="mx-auto max-w-7xl py-10 text-xs text-muted">
           Loading transactions…
         </div>
       }
@@ -220,14 +220,14 @@ function TransactionsContent() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+            <h1 className="text-2xl font-bold tracking-tight text-ink dark:text-ink">
               Transactions
             </h1>
             <Badge variant={ledgerMode === "test" ? "amber" : "emerald"} size="sm" dot>
               {ledgerMode === "test" ? "Test ledger" : "Live ledger"}
             </Badge>
           </div>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+          <p className="text-xs text-muted dark:text-muted mt-1">
             Settled, pending, and refunded payments for the active{" "}
             {ledgerMode === "test" ? "test" : "live"} ledger — test rows are never live money.
           </p>
@@ -253,7 +253,7 @@ function TransactionsContent() {
       )}
 
       {/* Filter Bar */}
-      <Card className="p-4 bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 shadow-xs">
+      <Card className="p-4 bg-white dark:bg-canvas border-border dark:border-border shadow-xs">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           {/* Search Box */}
           <div className="flex-1 max-w-md">
@@ -274,8 +274,8 @@ function TransactionsContent() {
                 onClick={() => setStatusFilter(st)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-colors ${
                   statusFilter === st
-                    ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950"
-                    : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-900 dark:text-zinc-400"
+                    ? "bg-ink-solid text-white dark:bg-surface-muted dark:text-muted"
+                    : "bg-surface text-muted hover:bg-surface-muted dark:bg-surface dark:text-muted"
                 }`}
               >
                 {st}
@@ -286,11 +286,11 @@ function TransactionsContent() {
       </Card>
 
       {/* Transactions List */}
-      <Card className="bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-xs">
+      <Card className="bg-white dark:bg-canvas border-border dark:border-border overflow-hidden shadow-xs">
         {isLoading ? (
           <div className="py-20 text-center space-y-3">
-            <div className="w-8 h-8 border-2 border-zinc-900 dark:border-zinc-100 border-t-transparent rounded-full animate-spin mx-auto" />
-            <p className="text-xs font-mono text-zinc-500">Querying ledger records…</p>
+            <div className="w-8 h-8 border-2 border-border dark:border-border border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="text-xs font-mono text-muted">Querying ledger records…</p>
           </div>
         ) : filteredTransactions.length === 0 ? (
           <EmptyState
@@ -316,7 +316,7 @@ function TransactionsContent() {
             }
           />
         ) : (
-          <div className="divide-y divide-zinc-100 dark:divide-zinc-900">
+          <div className="divide-y divide-border dark:divide-border">
             {filteredTransactions.map((tx) => {
               // BUG TXN-05: live BD MFS cannot be manually confirmed (SMS evidence required).
               const liveMfs = ["bkash", "nagad", "rocket", "upay", "cellfin"].includes(
@@ -332,11 +332,11 @@ function TransactionsContent() {
                 <div
                   key={tx.id}
                   onClick={() => setSelectedTx(tx)}
-                  className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-zinc-50/60 dark:hover:bg-zinc-900/40 cursor-pointer transition-colors"
+                  className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-card/60 dark:hover:bg-ink-solid/40 cursor-pointer transition-colors"
                 >
                   <div className="space-y-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-semibold text-xs text-zinc-900 dark:text-zinc-100">
+                      <span className="font-semibold text-xs text-ink dark:text-ink">
                         {tx.paymentMethodTitle || tx.paymentMethod}
                       </span>
                       <Badge
@@ -353,25 +353,25 @@ function TransactionsContent() {
                         {tx.status}
                       </Badge>
                       {tx.ledgerMode && (
-                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500">
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface dark:bg-surface-muted text-muted">
                           {tx.ledgerMode}
                         </span>
                       )}
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-zinc-500">
-                      <span className="text-zinc-700 dark:text-zinc-300 font-medium truncate">
+                    <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-muted">
+                      <span className="text-ink dark:text-ink font-medium truncate">
                         {tx.id}
                       </span>
                       {tx.txid && (
                         <>
                           <span>•</span>
-                          <span className="text-zinc-500 truncate">TxID: {tx.txid}</span>
+                          <span className="text-muted truncate">TxID: {tx.txid}</span>
                         </>
                       )}
                     </div>
 
-                    <p className="text-[11px] text-zinc-400">
+                    <p className="text-[11px] text-muted">
                       {tx.customerEmail || tx.customerName || "Anonymous Customer"} •{" "}
                       {formatDate(tx.createdAt)}
                     </p>
@@ -379,10 +379,10 @@ function TransactionsContent() {
 
                   <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
                     <div className="text-right">
-                      <div className="font-mono font-bold text-sm text-zinc-900 dark:text-zinc-100">
+                      <div className="font-mono font-bold text-sm text-ink dark:text-ink">
                         {formatCurrency(tx.amount, tx.currency)}
                       </div>
-                      <div className="text-[11px] font-mono text-zinc-400">
+                      <div className="text-[11px] font-mono text-muted">
                         fee {formatCurrency(tx.fee, tx.currency)}
                       </div>
                     </div>
@@ -405,7 +405,7 @@ function TransactionsContent() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 border-rose-200 dark:border-rose-900"
+                          className="text-danger dark:text-danger hover:bg-danger/10 dark:hover:bg-danger/30 border-danger dark:border-danger"
                           onClick={(e) => {
                             e.stopPropagation();
                             setCancelModalTx(tx);
@@ -441,10 +441,10 @@ function TransactionsContent() {
         {selectedTx && (
           <div className="space-y-6">
             {/* Amount card */}
-            <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 flex items-center justify-between">
+            <div className="p-4 rounded-xl border border-border dark:border-border bg-card/50 dark:bg-surface/50 flex items-center justify-between">
               <div>
-                <span className="text-xs text-zinc-500">Amount Charged</span>
-                <div className="text-xl font-bold font-mono text-zinc-900 dark:text-zinc-100">
+                <span className="text-xs text-muted">Amount Charged</span>
+                <div className="text-xl font-bold font-mono text-ink dark:text-ink">
                   {formatCurrency(selectedTx.amount, selectedTx.currency)}
                 </div>
               </div>
@@ -472,28 +472,28 @@ function TransactionsContent() {
             </div>
 
             {/* Customer & Breakdown */}
-            <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 space-y-2 text-xs">
-              <div className="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-900">
-                <span className="text-zinc-500">Customer:</span>
-                <span className="font-medium text-zinc-900 dark:text-zinc-100">
+            <div className="rounded-xl border border-border dark:border-border p-4 space-y-2 text-xs">
+              <div className="flex justify-between py-1 border-b border-border dark:border-border">
+                <span className="text-muted">Customer:</span>
+                <span className="font-medium text-ink dark:text-ink">
                   {selectedTx.customerName || selectedTx.customerEmail || "N/A"}
                 </span>
               </div>
-              <div className="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-900">
-                <span className="text-zinc-500">Settlement Currency:</span>
-                <span className="font-mono font-medium text-zinc-900 dark:text-zinc-100">
+              <div className="flex justify-between py-1 border-b border-border dark:border-border">
+                <span className="text-muted">Settlement Currency:</span>
+                <span className="font-mono font-medium text-ink dark:text-ink">
                   {selectedTx.currency}
                 </span>
               </div>
-              <div className="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-900">
-                <span className="text-zinc-500">Gateway Fee:</span>
-                <span className="font-mono text-zinc-900 dark:text-zinc-100">
+              <div className="flex justify-between py-1 border-b border-border dark:border-border">
+                <span className="text-muted">Gateway Fee:</span>
+                <span className="font-mono text-ink dark:text-ink">
                   {formatCurrency(selectedTx.fee, selectedTx.currency)}
                 </span>
               </div>
               <div className="flex justify-between py-1">
-                <span className="text-zinc-500">Net settlement to you:</span>
-                <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                <span className="text-muted">Net settlement to you:</span>
+                <span className="font-mono font-bold text-success dark:text-success">
                   {formatCurrency(
                     typeof selectedTx.netAmount === "number"
                       ? selectedTx.netAmount
@@ -506,7 +506,7 @@ function TransactionsContent() {
 
             {/* Audit Status Timeline */}
             <div>
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-3">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted mb-3">
                 Evidence Audit Trail
               </h4>
               <StatusTimeline events={getTimelineEvents(selectedTx)} />
@@ -526,7 +526,7 @@ function TransactionsContent() {
                   </Button>
                 )}
                 <Button
-                  className="flex-1 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 border-rose-200 dark:border-rose-900"
+                  className="flex-1 text-danger dark:text-danger hover:bg-danger/10 dark:hover:bg-danger/30 border-danger dark:border-danger"
                   variant="outline"
                   onClick={() => setCancelModalTx(selectedTx)}
                   leftIcon={<XCircle className="w-4 h-4" />}
@@ -562,9 +562,9 @@ function TransactionsContent() {
         title="Manual Audit Confirmation"
       >
         <form onSubmit={handleManualConfirm} className="space-y-4">
-          <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+          <p className="text-xs text-muted dark:text-muted leading-relaxed">
             You are manually settling transaction{" "}
-            <code className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
+            <code className="font-mono font-bold text-ink dark:text-ink">
               {confirmModalTx?.id}
             </code>
             . A permanent audit log reason is required for compliance (minimum 8 characters).
@@ -585,7 +585,7 @@ function TransactionsContent() {
             required
           />
 
-          <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+          <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-border dark:border-border">
             <Button
               type="button"
               variant="outline"
@@ -622,12 +622,12 @@ function TransactionsContent() {
         title="Reject / Cancel Transaction"
       >
         <form onSubmit={handleManualCancel} className="space-y-4">
-          <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+          <p className="text-xs text-muted dark:text-muted leading-relaxed">
             Are you sure you want to reject transaction{" "}
-            <code className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
+            <code className="font-mono font-bold text-ink dark:text-ink">
               {cancelModalTx?.id}
             </code>
-            ? This will transition its state to <span className="font-semibold text-rose-500">FAILED</span>.
+            ? This will transition its state to <span className="font-semibold text-danger">FAILED</span>.
           </p>
 
           {cancelError && (
@@ -644,7 +644,7 @@ function TransactionsContent() {
             rows={3}
           />
 
-          <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+          <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-border dark:border-border">
             <Button
               type="button"
               variant="outline"
@@ -662,7 +662,7 @@ function TransactionsContent() {
               variant="outline"
               size="sm"
               isLoading={isCancelling}
-              className="bg-rose-600 text-white hover:bg-rose-700 border-rose-600"
+              className="bg-danger text-white hover:bg-danger border-danger"
               leftIcon={<XCircle className="w-4 h-4" />}
             >
               Reject Transaction

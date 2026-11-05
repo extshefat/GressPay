@@ -33,9 +33,9 @@ function FieldTable({
   rows: { name: string; type: string; required?: boolean; description: string }[];
 }) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
+    <div className="overflow-x-auto rounded-xl border border-border dark:border-border">
       <table className="w-full min-w-[520px] text-left text-sm">
-        <thead className="bg-zinc-50 text-[11px] uppercase tracking-wide text-zinc-500 dark:bg-zinc-950">
+        <thead className="bg-card text-[11px] uppercase tracking-wide text-muted dark:bg-canvas">
           <tr>
             <th className="px-4 py-2.5 font-semibold">Field</th>
             <th className="px-4 py-2.5 font-semibold">Type</th>
@@ -43,17 +43,17 @@ function FieldTable({
             <th className="px-4 py-2.5 font-semibold">Description</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-zinc-100 dark:divide-zinc-900">
+        <tbody className="divide-y divide-border dark:divide-border">
           {rows.map((row) => (
-            <tr key={row.name} className="bg-white dark:bg-zinc-950/40">
-              <td className="px-4 py-2.5 font-mono text-xs text-zinc-900 dark:text-zinc-100">
+            <tr key={row.name} className="bg-white dark:bg-canvas/40">
+              <td className="px-4 py-2.5 font-mono text-xs text-ink dark:text-ink">
                 {row.name}
               </td>
-              <td className="px-4 py-2.5 font-mono text-xs text-zinc-500">{row.type}</td>
-              <td className="px-4 py-2.5 text-xs text-zinc-600 dark:text-zinc-400">
+              <td className="px-4 py-2.5 font-mono text-xs text-muted">{row.type}</td>
+              <td className="px-4 py-2.5 text-xs text-muted dark:text-muted">
                 {row.required ? "Yes" : "No"}
               </td>
-              <td className="px-4 py-2.5 text-xs text-zinc-600 dark:text-zinc-400">
+              <td className="px-4 py-2.5 text-xs text-muted dark:text-muted">
                 {row.description}
               </td>
             </tr>
@@ -67,14 +67,14 @@ function FieldTable({
 function EndpointBadge({ method, path }: { method: string; path: string }) {
   const color =
     method === "GET"
-      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-      : "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950";
+      ? "bg-success/10 text-success dark:bg-brand dark:text-success"
+      : "bg-ink-solid text-white dark:bg-brand dark:text-on-brand";
   return (
     <div className="flex flex-wrap items-center gap-2 font-mono text-sm">
       <span className={`rounded-md px-2 py-0.5 text-[11px] font-bold uppercase ${color}`}>
         {method}
       </span>
-      <code className="min-w-0 break-all text-zinc-800 dark:text-zinc-200">{path}</code>
+      <code className="min-w-0 break-all text-ink dark:text-ink">{path}</code>
     </div>
   );
 }
@@ -92,10 +92,10 @@ export default function DevelopersPage() {
           <Badge variant="slate">REST API v1</Badge>
           <Badge variant="slate">Production</Badge>
         </div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-4xl">
+        <h1 className="text-3xl font-extrabold tracking-tight text-ink dark:text-ink sm:text-4xl">
           Build with GressPay
         </h1>
-        <p className="max-w-3xl text-sm leading-relaxed text-zinc-600 dark:text-zinc-400 sm:text-base">
+        <p className="max-w-3xl text-sm leading-relaxed text-muted dark:text-muted sm:text-base">
           Create hosted checkout sessions, verify payments server-to-server, and receive
           HMAC-signed webhooks. Production base URL is fixed below — copy-paste ready for
           cURL, PHP, Laravel, Node/Next.js, and WordPress.
@@ -103,26 +103,26 @@ export default function DevelopersPage() {
         <div className="flex flex-wrap gap-3">
           <Link
             href="/register"
-            className="inline-flex items-center rounded-xl bg-zinc-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
+            className="inline-flex items-center rounded-xl bg-ink-solid px-4 py-2.5 text-sm font-semibold text-white hover:bg-ink-solid dark:bg-brand dark:text-on-brand dark:hover:bg-surface-muted"
           >
             Get API keys
             <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
           <a
             href="#snippets"
-            className="inline-flex items-center rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-900 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-900"
+            className="inline-flex items-center rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-semibold text-ink hover:bg-card dark:border-border dark:bg-canvas dark:text-ink dark:hover:bg-ink-solid"
           >
             <Code2 className="mr-2 h-4 w-4" />
             View examples
           </a>
           <a
             href="/download/gresspay-psp-example.zip"
-            className="inline-flex items-center rounded-xl border border-teal-600/30 bg-teal-50 px-4 py-2.5 text-sm font-semibold text-teal-900 hover:bg-teal-100 dark:border-teal-500/30 dark:bg-teal-950/40 dark:text-teal-100 dark:hover:bg-teal-950/60"
+            className="inline-flex items-center rounded-xl border border-accent/30 bg-accent/10 px-4 py-2.5 text-sm font-semibold text-accent hover:bg-accent/10 dark:border-accent/30 dark:bg-brand/40 dark:text-accent dark:hover:bg-brand/60"
           >
             Download PSP minimal sample
           </a>
         </div>
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-muted">
           Full walkthrough + source:{" "}
           <a
             href="https://github.com/extshefat/gresspay/tree/main/sdk/examples/psp-minimal"
@@ -146,8 +146,8 @@ export default function DevelopersPage() {
       </div>
 
       <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-12">
-        <aside className="lg:sticky lg:top-20 space-y-1 rounded-2xl border border-zinc-200 bg-white p-3 text-xs font-medium dark:border-zinc-800 dark:bg-zinc-950 lg:col-span-3">
-          <span className="block px-3 py-1 font-mono text-[10px] uppercase text-zinc-400">
+        <aside className="lg:sticky lg:top-20 space-y-1 rounded-2xl border border-border bg-white p-3 text-xs font-medium dark:border-border dark:bg-canvas lg:col-span-3">
+          <span className="block px-3 py-1 font-mono text-[10px] uppercase text-muted">
             On this page
           </span>
           {NAV.map((item) => (
@@ -157,8 +157,8 @@ export default function DevelopersPage() {
               onClick={() => setActive(item.id)}
               className={`block rounded-lg px-3 py-2 transition ${
                 active === item.id
-                  ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950"
-                  : "text-zinc-600 hover:bg-zinc-50 dark:text-zinc-400 dark:hover:bg-zinc-900"
+                  ? "bg-ink-solid text-white dark:bg-brand dark:text-on-brand"
+                  : "text-muted hover:bg-card dark:text-muted dark:hover:bg-ink-solid"
               }`}
             >
               {item.label}
@@ -169,18 +169,18 @@ export default function DevelopersPage() {
         <div className="min-w-0 space-y-16 [overflow-wrap:anywhere] lg:col-span-9">
           <section id="base" className="space-y-4">
             <div className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5 text-zinc-900 dark:text-zinc-100" />
-              <h2 className="text-xl font-semibold tracking-tight text-zinc-950 dark:text-white">
+              <BookOpen className="h-5 w-5 text-ink dark:text-ink" />
+              <h2 className="text-xl font-semibold tracking-tight text-ink dark:text-white">
                 API base
               </h2>
             </div>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="text-sm text-muted dark:text-muted">
               All authenticated API routes live under this production host. Prefer the{" "}
               <code className="font-mono text-xs">/payment/*</code> aliases (they map to the
               same checkout handlers).
             </p>
             <CopyField value={API_BASE} label="Production API base" />
-            <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">
+            <div className="rounded-xl border border-border bg-card p-4 text-xs text-muted dark:border-border dark:bg-canvas dark:text-muted">
               Aliases: <code className="font-mono">POST /payment/create</code> →{" "}
               <code className="font-mono">POST /checkout/create</code>,{" "}
               <code className="font-mono">POST /payment/verify</code> → server-side verify,{" "}
@@ -191,35 +191,35 @@ export default function DevelopersPage() {
 
           <section id="auth" className="space-y-4">
             <div className="flex items-center gap-2">
-              <Lock className="h-5 w-5 text-zinc-900 dark:text-zinc-100" />
-              <h2 className="text-xl font-semibold tracking-tight text-zinc-950 dark:text-white">
+              <Lock className="h-5 w-5 text-ink dark:text-ink" />
+              <h2 className="text-xl font-semibold tracking-tight text-ink dark:text-white">
                 Authentication
               </h2>
             </div>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="text-sm text-muted dark:text-muted">
               Authenticate every server-side call with your brand website API key (
               <code className="font-mono">gp_live_…</code>). Never expose secret keys in browser
               JavaScript.
             </p>
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
-                <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+              <div className="rounded-xl border border-border p-4 dark:border-border">
+                <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted">
                   Preferred
                 </div>
-                <code className="font-mono text-xs text-zinc-900 dark:text-zinc-100">
+                <code className="font-mono text-xs text-ink dark:text-ink">
                   Authorization: Bearer gp_live_…
                 </code>
               </div>
-              <div className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
-                <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+              <div className="rounded-xl border border-border p-4 dark:border-border">
+                <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted">
                   Alternates
                 </div>
-                <code className="font-mono text-xs text-zinc-900 dark:text-zinc-100">
+                <code className="font-mono text-xs text-ink dark:text-ink">
                   X-API-Key / X-GressPay-Key: gp_live_…
                 </code>
               </div>
             </div>
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-muted">
               Use the live website API key from{" "}
               <Link href="/dashboard/brands" className="font-semibold underline">
                 Dashboard → Brands
@@ -230,17 +230,17 @@ export default function DevelopersPage() {
 
           <section id="create" className="space-y-4">
             <div className="flex items-center gap-2">
-              <Code2 className="h-5 w-5 text-zinc-900 dark:text-zinc-100" />
-              <h2 className="text-xl font-semibold tracking-tight text-zinc-950 dark:text-white">
+              <Code2 className="h-5 w-5 text-ink dark:text-ink" />
+              <h2 className="text-xl font-semibold tracking-tight text-ink dark:text-white">
                 Create payment
               </h2>
             </div>
             <EndpointBadge method="POST" path={`${API_BASE}/payment/create`} />
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="text-sm text-muted dark:text-muted">
               Creates a hosted checkout session and returns a buyer URL. Scope required:{" "}
               <code className="font-mono text-xs">create_payment</code>.
             </p>
-            <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Request body</h3>
+            <h3 className="text-sm font-semibold text-ink dark:text-ink">Request body</h3>
             <FieldTable
               rows={[
                 { name: "amount", type: "string|number", required: true, description: "Positive amount (e.g. 500.00)." },
@@ -254,7 +254,7 @@ export default function DevelopersPage() {
                 { name: "metadata", type: "object", description: "Arbitrary JSON echoed on webhooks/status." },
               ]}
             />
-            <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Response 201</h3>
+            <h3 className="text-sm font-semibold text-ink dark:text-ink">Response 201</h3>
             <FieldTable
               rows={[
                 { name: "sessionId", type: "string", required: true, description: "Checkout session id (chs_…)." },
@@ -268,24 +268,24 @@ export default function DevelopersPage() {
 
           <section id="verify" className="space-y-4">
             <div className="flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5 text-zinc-900 dark:text-zinc-100" />
-              <h2 className="text-xl font-semibold tracking-tight text-zinc-950 dark:text-white">
+              <ShieldCheck className="h-5 w-5 text-ink dark:text-ink" />
+              <h2 className="text-xl font-semibold tracking-tight text-ink dark:text-white">
                 Verify & status
               </h2>
             </div>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="text-sm text-muted dark:text-muted">
               Never fulfill from the browser return URL alone. Confirm on your server before
               shipping. Scope: <code className="font-mono text-xs">verify_payment</code>.
             </p>
             <div className="space-y-3">
               <EndpointBadge method="POST" path={`${API_BASE}/payment/verify`} />
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-muted">
                 Body: <code className="font-mono">{"{ \"sessionId\": \"chs_…\" }"}</code> (alias{" "}
                 <code className="font-mono">session_id</code>).
               </p>
               <EndpointBadge method="GET" path={`${API_BASE}/payment/status/{session_id}`} />
             </div>
-            <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Status payload</h3>
+            <h3 className="text-sm font-semibold text-ink dark:text-ink">Status payload</h3>
             <FieldTable
               rows={[
                 { name: "sessionId", type: "string", required: true, description: "Session identifier." },
@@ -302,17 +302,17 @@ export default function DevelopersPage() {
 
           <section id="webhooks" className="space-y-4">
             <div className="flex items-center gap-2">
-              <Webhook className="h-5 w-5 text-zinc-900 dark:text-zinc-100" />
-              <h2 className="text-xl font-semibold tracking-tight text-zinc-950 dark:text-white">
+              <Webhook className="h-5 w-5 text-ink dark:text-ink" />
+              <h2 className="text-xl font-semibold tracking-tight text-ink dark:text-white">
                 Webhooks
               </h2>
             </div>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="text-sm text-muted dark:text-muted">
               When a session completes, GressPay POSTs JSON to your{" "}
               <code className="font-mono text-xs">webhook_url</code>. Verify the signature before
               trusting the body.
             </p>
-            <ol className="list-decimal space-y-2 pl-5 text-sm text-zinc-600 dark:text-zinc-400">
+            <ol className="list-decimal space-y-2 pl-5 text-sm text-muted dark:text-muted">
               <li>
                 Read the raw request body bytes (do not re-serialize JSON before verifying).
               </li>
@@ -327,7 +327,7 @@ export default function DevelopersPage() {
               <li>Only then parse JSON and fulfill if <code className="font-mono text-xs">status</code> is COMPLETED.</li>
               <li>Respond with HTTP 2xx quickly; retries are best-effort.</li>
             </ol>
-            <pre className="overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-950 p-4 text-xs text-zinc-100">
+            <pre className="overflow-x-auto rounded-xl border border-border bg-ink-solid p-4 text-xs text-on-ink">
               <code>{`// Node.js
 import crypto from "node:crypto";
 
@@ -345,12 +345,12 @@ export function verifyGressPayWebhook(rawBody, signatureHeader, secret) {
 
           <section id="go-live" className="space-y-4">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-zinc-900 dark:text-zinc-100" />
-              <h2 className="text-xl font-semibold tracking-tight text-zinc-950 dark:text-white">
+              <CheckCircle2 className="h-5 w-5 text-ink dark:text-ink" />
+              <h2 className="text-xl font-semibold tracking-tight text-ink dark:text-white">
                 Go-live checklist
               </h2>
             </div>
-            <ul className="space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
+            <ul className="space-y-2 text-sm text-muted dark:text-muted">
               {[
                 "Copy the live brand website API key from Dashboard → Brands (server-side only).",
                 "Configure bKash/Nagad wallets and companion devices for SMS matching.",
@@ -359,7 +359,7 @@ export function verifyGressPayWebhook(rawBody, signatureHeader, secret) {
                 "Enable crypto rails only after Binance / USDT credentials are encrypted in Methods.",
               ].map((item) => (
                 <li key={item} className="flex gap-2">
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-zinc-900 dark:text-zinc-100" />
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-ink dark:text-ink" />
                   <span>{item}</span>
                 </li>
               ))}

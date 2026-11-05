@@ -24,7 +24,7 @@ export default function VerifyEmailPage() {
     } catch { setMessage("Could not reach the server. Please try again."); }
     finally { setBusy(false); }
   }
-  return <main className="mx-auto w-full max-w-md px-4 py-16 text-zinc-900 dark:text-zinc-100">
+  return <main className="mx-auto w-full max-w-md px-4 py-16 text-ink dark:text-ink">
     <h1 className="text-2xl font-semibold">Verify your email</h1>
     <p className="my-4 text-sm leading-relaxed">Confirm the email address for the GressPay account you created. Only continue if you requested this verification.</p>
     {!done && <Button onClick={verify} disabled={busy || !token}>{busy ? "Verifying…" : "Verify email"}</Button>}

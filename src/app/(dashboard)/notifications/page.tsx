@@ -72,8 +72,8 @@ export default function NotificationsPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Notifications</h1>
-          <p className="mt-1 text-xs text-zinc-500">Choose how GressPay should alert you about payments and webhooks.</p>
+          <h1 className="text-2xl font-bold text-ink dark:text-ink">Notifications</h1>
+          <p className="mt-1 text-xs text-muted">Choose how GressPay should alert you about payments and webhooks.</p>
         </div>
         <Button size="sm" variant="outline" onClick={load} isLoading={loading} leftIcon={<RefreshCw className="h-3.5 w-3.5" />}>
           Refresh
@@ -86,15 +86,15 @@ export default function NotificationsPage() {
         </Alert>
       )}
 
-      <Card className="border-zinc-200 p-6 dark:border-zinc-800">
+      <Card className="border-border p-6 dark:border-border">
         {!prefs ? (
-          <p className="text-sm text-zinc-500">{loading ? "Loading…" : "No preferences loaded."}</p>
+          <p className="text-sm text-muted">{loading ? "Loading…" : "No preferences loaded."}</p>
         ) : (
           <div className="space-y-4">
             {LABELS.map(({ key, title, hint }) => (
               <label
                 key={key}
-                className="flex cursor-pointer items-start gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
+                className="flex cursor-pointer items-start gap-3 rounded-xl border border-border p-4 dark:border-border"
               >
                 <input
                   type="checkbox"
@@ -103,11 +103,11 @@ export default function NotificationsPage() {
                   onChange={() => toggle(key)}
                 />
                 <span>
-                  <span className="flex items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                    <Bell className="h-3.5 w-3.5 text-zinc-400" />
+                  <span className="flex items-center gap-2 text-sm font-semibold text-ink dark:text-ink">
+                    <Bell className="h-3.5 w-3.5 text-muted" />
                     {title}
                   </span>
-                  <span className="mt-1 block text-xs text-zinc-500">{hint}</span>
+                  <span className="mt-1 block text-xs text-muted">{hint}</span>
                 </span>
               </label>
             ))}
@@ -118,7 +118,7 @@ export default function NotificationsPage() {
         )}
       </Card>
 
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-muted">
         Telegram / Discord instant alerts are configured under{" "}
         <Link href="/dashboard/settings" className="font-semibold underline">
           Settings → Instant alerts

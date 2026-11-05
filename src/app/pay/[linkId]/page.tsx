@@ -55,22 +55,22 @@ export default function CheckoutPage() {
 
       {loading && (
         <div className="space-y-3 py-20 text-center" role="status" aria-live="polite">
-          <div className="mx-auto h-9 w-9 animate-spin rounded-full border-2 border-teal-700 border-t-transparent dark:border-teal-400 dark:border-t-transparent" />
-          <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Preparing secure checkout…</p>
-          <p className="text-[11px] text-zinc-500">
+          <div className="mx-auto h-9 w-9 animate-spin rounded-full border-2 border-accent border-t-transparent dark:border-accent dark:border-t-transparent" />
+          <p className="text-sm font-medium text-ink dark:text-ink">Preparing secure checkout…</p>
+          <p className="text-[11px] text-muted">
             Payment is confirmed only after verification — not by this screen alone.
           </p>
         </div>
       )}
 
       {error && (
-        <div className="w-full max-w-lg space-y-4 rounded-3xl border border-zinc-200/80 bg-white/95 p-8 text-center shadow-xl backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-rose-100 bg-rose-50 text-rose-600 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-400">
+        <div className="w-full max-w-lg space-y-4 rounded-3xl border border-border/80 bg-white/95 p-8 text-center shadow-xl  dark:border-border dark:bg-canvas/95">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-danger bg-danger/10 text-danger dark:border-danger dark:bg-danger/40 dark:text-danger">
             <AlertCircle className="h-6 w-6" aria-hidden />
           </div>
           <div className="space-y-1">
-            <h1 className="text-base font-bold text-zinc-900 dark:text-zinc-100">Unable to open checkout</h1>
-            <p className="mx-auto max-w-sm text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">{error}</p>
+            <h1 className="text-base font-bold text-ink dark:text-ink">Unable to open checkout</h1>
+            <p className="mx-auto max-w-sm text-sm leading-relaxed text-muted dark:text-muted">{error}</p>
           </div>
           <Button variant="primary" size="sm" className="w-full" onClick={() => window.location.reload()}>
             Retry

@@ -63,30 +63,30 @@ export default function SupportPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Support</h1>
-        <p className="mt-1 text-xs text-zinc-500">Documentation, contact options, and support tickets for your account.</p>
+        <h1 className="text-2xl font-bold text-ink dark:text-ink">Support</h1>
+        <p className="mt-1 text-xs text-muted">Documentation, contact options, and support tickets for your account.</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Card className="border-zinc-200 p-5 dark:border-zinc-800">
-          <BookOpen className="h-5 w-5 text-teal-700 dark:text-teal-400" />
-          <h2 className="mt-2 text-sm font-bold text-zinc-900 dark:text-zinc-100">Developers</h2>
-          <p className="mt-1 text-xs text-zinc-500">REST reference, auth headers, and integration snippets.</p>
-          <Link href="/developers" className="mt-3 inline-block text-xs font-semibold text-teal-700 dark:text-teal-400 underline">
+        <Card className="border-border p-5 dark:border-border">
+          <BookOpen className="h-5 w-5 text-accent dark:text-accent" />
+          <h2 className="mt-2 text-sm font-bold text-ink dark:text-ink">Developers</h2>
+          <p className="mt-1 text-xs text-muted">REST reference, auth headers, and integration snippets.</p>
+          <Link href="/developers" className="mt-3 inline-block text-xs font-semibold text-accent dark:text-accent underline">
             Open API docs
           </Link>
         </Card>
-        <Card className="border-zinc-200 p-5 dark:border-zinc-800">
-          <Mail className="h-5 w-5 text-zinc-600" />
-          <h2 className="mt-2 text-sm font-bold text-zinc-900 dark:text-zinc-100">Help center</h2>
-          <p className="mt-1 text-xs text-zinc-500">Hosted checkout, companion devices, and verification flows.</p>
+        <Card className="border-border p-5 dark:border-border">
+          <Mail className="h-5 w-5 text-muted" />
+          <h2 className="mt-2 text-sm font-bold text-ink dark:text-ink">Help center</h2>
+          <p className="mt-1 text-xs text-muted">Hosted checkout, companion devices, and verification flows.</p>
           <Link href="/help" className="mt-3 inline-block text-xs font-semibold underline">
             Browse help articles
           </Link>
         </Card>
       </div>
 
-      <Card className="border-zinc-200 p-6 dark:border-zinc-800">
+      <Card className="border-border p-6 dark:border-border">
         <div className="mb-4 flex items-center gap-2">
           <MessageSquare className="h-4 w-4" />
           <h2 className="text-sm font-bold">Submit a ticket</h2>
@@ -100,7 +100,7 @@ export default function SupportPage() {
           />
           <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject" required />
           <textarea
-            className="min-h-[120px] w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+            className="min-h-[120px] w-full rounded-lg border border-border bg-white px-3 py-2 text-sm dark:border-border dark:bg-canvas"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Describe the issue, order ID, or integration question…"
@@ -112,7 +112,7 @@ export default function SupportPage() {
         </form>
       </Card>
 
-      <Card className="border-zinc-200 p-6 dark:border-zinc-800">
+      <Card className="border-border p-6 dark:border-border">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-bold">Your recent tickets</h2>
           <Button size="sm" variant="ghost" onClick={loadTickets} isLoading={loadingTickets}>
@@ -120,20 +120,20 @@ export default function SupportPage() {
           </Button>
         </div>
         {ticketError ? <p role="alert">{ticketError}</p> : loadingTickets ? <p>Loading tickets…</p> : tickets.length === 0 ? (
-          <p className="text-xs text-zinc-500">No tickets yet.</p>
+          <p className="text-xs text-muted">No tickets yet.</p>
         ) : (
-          <ul className="divide-y divide-zinc-100 dark:divide-zinc-900">
+          <ul className="divide-y divide-border dark:divide-border">
             {tickets.map((t) => (
               <li key={t.ticketId} className="grid min-w-0 gap-2 py-4 text-sm [overflow-wrap:anywhere]">
                 <div>
-                  <div className="font-semibold text-zinc-900 dark:text-zinc-100">{t.subject}</div>
+                  <div className="font-semibold text-ink dark:text-ink">{t.subject}</div>
                   <p className="my-2 whitespace-pre-wrap">{t.message}</p>
-                  {t.reply && <div className="my-3 border-l-2 border-blue-500 pl-3"><strong>GressPay support</strong><p className="whitespace-pre-wrap">{t.reply}</p></div>}
-                  <div className="font-mono text-[10px] text-zinc-500">
+                  {t.reply && <div className="my-3 border-l-2 border-info pl-3"><strong>GressPay support</strong><p className="whitespace-pre-wrap">{t.reply}</p></div>}
+                  <div className="font-mono text-[10px] text-muted">
                     {t.ticketId} · {formatDate(t.createdAt)}
                   </div>
                 </div>
-                <span className="rounded bg-zinc-100 px-2 py-0.5 font-mono text-[10px] uppercase dark:bg-zinc-800">
+                <span className="rounded bg-surface px-2 py-0.5 font-mono text-[10px] uppercase dark:bg-surface-muted">
                   {t.status}
                 </span>
               </li>
