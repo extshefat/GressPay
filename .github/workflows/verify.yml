@@ -86,6 +86,7 @@ jobs:
           cache-dependency-path: package-lock.json
       - run: npm ci
       - run: npm run lint
+      - run: npm run check:design
       - run: npx tsc --noEmit
       - run: npm run build
         env:
@@ -99,6 +100,7 @@ jobs:
           for attempt in $(seq 1 30); do curl -fsS http://127.0.0.1:3100/api/auth/session > /dev/null && break || sleep 1; done
           curl -fsS http://127.0.0.1:3100/api/auth/session > /dev/null
           node scripts/check-security-web.mjs
+          node scripts/check-design-access.mjs
       - name: Capture checkout preview on desktop and mobile
         run: |
           npm run start > /tmp/gresspay-preview.log 2>&1 &

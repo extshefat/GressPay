@@ -9,7 +9,7 @@ function visit(dir) {
   else if(/\.(tsx?|css)$/.test(path) && !allowed.has(path)) {
    const source = readFileSync(path,'utf8');
    // Color literals, not order numbers, fragment identifiers or HTML entities.
-   if(/(?:["'`:(])#[\da-f]{3,8}(?=["'`);\s}\]])/i.test(source) || /\b(?:void\.|brand\.cyan|cyanGlow|emerald-glow)\b/.test(source)) failures.push(path);
+   if(/(?:["'`:(\[])\s*#[\da-f]{3,8}(?=["'`);,\s}\]])/i.test(source) || /\b(?:void\.|brand\.cyan|cyanGlow|emerald-glow)\b/.test(source)) failures.push(path);
   }
  }
 }

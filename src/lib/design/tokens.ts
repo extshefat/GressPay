@@ -27,4 +27,3 @@ export const FALLBACK: MethodTheme = {
   button: "#077C73",
   buttonText: "#FBFAF7",
 };
-

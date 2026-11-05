@@ -39,6 +39,7 @@ const nextConfig: NextConfig = {
     // Public /pay and /store pages remain embeddable for merchant integrations.
     // CSP is report-only until Next hydration and merchant/provider origins are reviewed.
     return [
+      { source: "/design-system", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
       { source: "/:path*", headers: [
         { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
         { key: "X-Content-Type-Options", value: "nosniff" },
