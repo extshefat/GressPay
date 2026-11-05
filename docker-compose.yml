@@ -30,7 +30,8 @@ services:
       - "3000"
     restart: unless-stopped
     depends_on:
-      - php
+      php:
+        condition: service_healthy
 
   php:
     volumes:

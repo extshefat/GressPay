@@ -71,6 +71,8 @@ class ApiClient {
   private rememberMe = false;
   /** Client-side mirror that an HttpOnly session was established (not the JWT). */
   private sessionActive = false;
+  /** Deduplicate concurrent identical GET requests (same path + mode + brand). */
+  private inflightGets = new Map<string, Promise<unknown>>();
 
   constructor() {
     if (typeof window !== "undefined") {
@@ -240,6 +242,27 @@ class ApiClient {
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    const method = (options.method || "GET").toUpperCase();
+    const dedupeKey =
+      method === "GET" && !options.signal
+        ? `${method}:${endpoint}:${this.ledgerMode}:${this.brandId || ""}`
+        : null;
+    if (dedupeKey) {
+      const existing = this.inflightGets.get(dedupeKey);
+      if (existing) return existing as Promise<T>;
+    }
+
+    const run = this.executeRequest<T>(endpoint, options);
+    if (dedupeKey) {
+      this.inflightGets.set(dedupeKey, run);
+      run.finally(() => {
+        if (this.inflightGets.get(dedupeKey) === run) this.inflightGets.delete(dedupeKey);
+      });
+    }
+    return run;
+  }
+
+  private async executeRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const headers = new Headers(options.headers || {});
     headers.set("Content-Type", "application/json");
     headers.set("X-GressPay-Mode", this.ledgerMode);
@@ -267,9 +290,22 @@ class ApiClient {
       });
 
       if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
+        const rawText = await res.text().catch(() => "");
+        let errData: { error?: { code?: string; message?: string }; message?: string; code?: string } = {};
+        try {
+          errData = rawText ? JSON.parse(rawText) : {};
+        } catch {
+          errData = {};
+        }
         const message =
-          errData?.error?.message || errData?.message || `API Error: ${res.status}`;
+          errData?.error?.message ||
+          errData?.message ||
+          (res.status === 502
+            ? "GressPay API is temporarily unreachable (502). If Google login just failed, the PHP service may be restarting — wait a few seconds and try again."
+            : rawText && rawText.length < 240 && !rawText.trim().startsWith("<")
+              ? rawText
+              : `API Error: ${res.status}`);
+        const code = errData?.error?.code || errData?.code;
         // BUG AUTH-02: authenticated dashboard 401s clear session (not only /me).
         // Never bounce public checkout/pay/store buyers to /login.
         if (res.status === 401 && this.hasToken() && !endpoint.startsWith("/api/v1/auth/")) {
@@ -290,10 +326,14 @@ class ApiClient {
             window.location.assign(`/login?next=${next}`);
           }
         }
-        throw Object.assign(new Error(message), { status: res.status });
+        throw Object.assign(new Error(message), { status: res.status, code });
       }
 
-      return res.json();
+      if (res.status === 204) {
+        return undefined as T;
+      }
+      const text = await res.text();
+      return (text ? JSON.parse(text) : {}) as T;
     } catch (err: unknown) {
       if (err instanceof Error && err.name === "AbortError") {
         throw new Error("Request timed out. Please check your network or try again.");
@@ -1139,8 +1179,21 @@ class ApiClient {
     return this.request<AdminStats>("/api/v1/admin/stats");
   }
 
-  async getAdminMerchants(): Promise<{ merchants: AdminMerchant[] }> {
-    return this.request<{ merchants: AdminMerchant[] }>("/api/v1/admin/merchants");
+  async getAdminMerchants(params?: {
+    q?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{ merchants: AdminMerchant[]; total?: number; page?: number; limit?: number }> {
+    const qs = new URLSearchParams();
+    if (params?.q) qs.set("q", params.q);
+    if (params?.search) qs.set("search", params.search);
+    if (params?.page) qs.set("page", String(params.page));
+    if (params?.limit) qs.set("limit", String(params.limit));
+    const suffix = qs.toString() ? `?${qs}` : "";
+    return this.request<{ merchants: AdminMerchant[]; total?: number; page?: number; limit?: number }>(
+      `/api/v1/admin/merchants${suffix}`
+    );
   }
 
   async adjustAdminCredit(

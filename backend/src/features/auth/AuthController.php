@@ -70,9 +70,19 @@ final class AuthController
 
     public static function googleUrl(GpRequest $req): never
     {
-        $redirect = (string) $req->query('redirect_uri', '');
-        $data = GoogleOAuthClient::getAuthUrl($redirect !== '' ? $redirect : null);
-        GpJson::send($data);
+        try {
+            GpRateLimiter::guard('oauth-url:' . GpRateLimiter::ip(), 30, 300);
+            $redirect = (string) $req->query('redirect_uri', '');
+            $data = GoogleOAuthClient::getAuthUrl($redirect !== '' ? $redirect : null);
+            GpJson::send($data);
+        } catch (Throwable $e) {
+            error_log('Google OAuth URL error: ' . $e->getMessage());
+            GpJson::error(
+                'GOOGLE_URL_FAILED',
+                'Google sign-in could not start. Please try again in a moment.',
+                503
+            );
+        }
     }
 
     public static function googleCallback(GpRequest $req): never
