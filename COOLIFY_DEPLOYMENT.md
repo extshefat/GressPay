@@ -94,15 +94,21 @@ R2_MAX_UPLOAD_BYTES=5242880
 R2_PUBLIC_BASE_URL=
 ```
 
-Web service:
+Web / shared Coolify env (root `docker-compose`):
 
 ```
 HOSTNAME=0.0.0.0
 PORT=3000
+APP_URL=https://gresspay.extxcheats.com
+NEXT_PUBLIC_APP_URL=https://gresspay.extxcheats.com
 NEXT_PUBLIC_DATA_SOURCE=live
-GRESSPAY_PHP_URL=http://<api-service-name>:8080
+GRESSPAY_PHP_URL=http://php:8080
 NEXT_PUBLIC_API_URL=
 ```
+
+**Critical Coolify gotcha:** if `PORT=3000` is a *shared* stack variable, older PHP images could bind nginx to 3000 while web still calls `http://php:8080` → Google 502 and **Degraded**. Current images force `API_PORT=8080` on the php service. After deploy, open `/api/ops/php-reachability` and confirm `ok: true`.
+
+Do **not** set `GRESSPAY_PHP_URL` to `http://0.0.0.0:8080`, `localhost`, or the public site URL.
 
 ### Never put in Coolify env
 

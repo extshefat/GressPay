@@ -14,6 +14,7 @@ RUN mkdir -p storage /tmp/nginx /tmp/php \
     && chmod +x /usr/local/bin/gresspay-entrypoint \
     && printf '[www]\nlisten = 127.0.0.1:9000\nclear_env = no\npm = dynamic\npm.max_children = 12\npm.start_servers = 2\npm.min_spare_servers = 2\npm.max_spare_servers = 4\nrequest_terminate_timeout = 60s\n' > /usr/local/etc/php-fpm.d/zz-gresspay.conf
 ENV PORT=8080
+ENV API_PORT=8080
 EXPOSE 8080
 USER www-data
 ENTRYPOINT ["gresspay-entrypoint"]

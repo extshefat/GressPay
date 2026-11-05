@@ -41,7 +41,15 @@ export function phpOriginCandidates(): string[] {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-  const defaults = ["http://php:8080", "http://gresspay-api:8080", "http://api:8080"];
+  // Include :3000 fallbacks in case an older php container inherited Coolify PORT=3000.
+  const defaults = [
+    "http://php:8080",
+    "http://php:3000",
+    "http://gresspay-api:8080",
+    "http://gresspay-api:3000",
+    "http://api:8080",
+    "http://api:3000",
+  ];
   const ordered = [envRaw, ...extras, ...defaults]
     .map(normalizeOrigin)
     .filter(isUsableOrigin);
