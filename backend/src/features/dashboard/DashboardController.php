@@ -157,7 +157,12 @@ final class DashboardController
             ]);
         }
 
-        $rows = GpDb::all('SELECT * FROM gp_transactions WHERE brand_id = ?', [$actor['brand_id']]);
+        // BUG MET-01: metrics must respect Live/Test ledger mode like the transactions list.
+        $mode = (($actor['mode'] ?? 'live') === 'test') ? 'test' : 'live';
+        $rows = GpDb::all(
+            'SELECT * FROM gp_transactions WHERE brand_id = ? AND ledger_mode = ?',
+            [$actor['brand_id'], $mode]
+        );
         $completed = array_values(array_filter($rows, static fn ($r) => $r['status'] === 'completed'));
         $today = gmdate('Y-m-d');
         $todayCount = 0;

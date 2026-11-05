@@ -104,20 +104,21 @@ final class GpRatesEngine
         ];
     }
 
-    /** Brand-only BDT per 1 USDT override stored on a method options row. */
+    /** Brand-only BDT per 1 USDT override — only from usdt_trc20 method options (BUG GW-01). */
     public static function customRateBdt(string $brandId): ?float
     {
-        $rows = GpDb::all('SELECT options FROM gp_methods WHERE brand_id = ?', [$brandId]);
-        foreach ($rows as $row) {
-            $opts = json_decode((string) ($row['options'] ?? ''), true);
-            if (!is_array($opts) || !isset($opts['custom_rate_bdt']) || $opts['custom_rate_bdt'] === '') {
-                continue;
-            }
-            $rate = (float) $opts['custom_rate_bdt'];
-            if ($rate > 0) {
-                return $rate;
-            }
+        $row = GpDb::one(
+            "SELECT options FROM gp_methods WHERE brand_id = ? AND code = 'usdt_trc20' LIMIT 1",
+            [$brandId]
+        );
+        if ($row === null) {
+            return null;
         }
-        return null;
+        $opts = json_decode((string) ($row['options'] ?? ''), true);
+        if (!is_array($opts) || !isset($opts['custom_rate_bdt']) || $opts['custom_rate_bdt'] === '') {
+            return null;
+        }
+        $rate = (float) $opts['custom_rate_bdt'];
+        return $rate > 0 ? $rate : null;
     }
 }

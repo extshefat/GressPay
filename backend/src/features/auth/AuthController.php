@@ -250,7 +250,11 @@ final class AuthController
             GpJson::error('METHOD_NOT_ALLOWED', 'GET only.', 405);
         }
         $actor = GpAuth::requireActor($req);
-        $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$actor['merchant_id']]);
+        // BUG TEAM-01: for team staff, merchant_id is rewritten to workspace owner —
+        // profile identity must come from the signed-in subject, not the owner.
+        $profileMerchantId = (string) ($actor['staff_user_merchant_id'] ?? $actor['merchant_id'] ?? '');
+        $workspaceMerchantId = (string) ($actor['workspace_merchant_id'] ?? $actor['merchant_id'] ?? '');
+        $merchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$profileMerchantId]);
         if ($merchant) {
             $email = strtolower(trim((string) ($merchant['email'] ?? '')));
             $isAdmin = GpConfig::isAdmin($email) || (!empty($merchant['email_verified']) && ($merchant['role'] ?? '') === 'admin');
@@ -262,11 +266,18 @@ final class AuthController
         }
         $brand = null;
         if (GpAuth::activeBrandId($actor) !== '') {
-            $brand = GpDb::one('SELECT * FROM gp_brands WHERE brand_id = ? AND merchant_id = ?', [$actor['brand_id'], $actor['merchant_id']]);
+            $brand = GpDb::one('SELECT * FROM gp_brands WHERE brand_id = ? AND merchant_id = ?', [$actor['brand_id'], $workspaceMerchantId]);
         }
-        if ($brand === null) {
-            $brand = GpDb::one('SELECT * FROM gp_brands WHERE merchant_id = ? ORDER BY id ASC', [$actor['merchant_id']]);
+        if ($brand === null && $workspaceMerchantId !== '') {
+            $brand = GpDb::one('SELECT * FROM gp_brands WHERE merchant_id = ? ORDER BY id ASC', [$workspaceMerchantId]);
         }
-        GpJson::send(['user' => GpPresenters::user($merchant, is_array($brand) ? $brand : ['name' => '', 'brand_id' => ''])]);
+        $user = GpPresenters::user($merchant ?: [], is_array($brand) ? $brand : ['name' => '', 'brand_id' => '']);
+        if (!empty($actor['team_member_id'])) {
+            $user['teamRole'] = $actor['team_role'] ?? null;
+            $user['isTeamStaff'] = true;
+            $user['workspaceMerchantId'] = $workspaceMerchantId;
+        }
+        GpJson::send(['user' => $user]);
+
     }
 }

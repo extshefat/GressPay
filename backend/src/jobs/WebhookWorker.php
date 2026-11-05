@@ -20,8 +20,9 @@ final class GpWebhookWorker
                 if (time() >= $nextExpirySweep) {
                     GpRateLimiter::cleanup();
                     $now = gmdate('Y-m-d\TH:i:s\Z');
+                    // BUG CHK-03: expire all currencies (not only BDT).
                     GpDb::exec(
-                        "UPDATE gp_transactions SET status = 'expired', updated_at = ? WHERE currency = 'BDT' AND status IN ('initiated','pending') AND expires_at IS NOT NULL AND expires_at <> '' AND expires_at <= ?",
+                        "UPDATE gp_transactions SET status = 'expired', updated_at = ? WHERE status IN ('initiated','pending') AND expires_at IS NOT NULL AND expires_at <> '' AND expires_at <= ?",
                         [GpIds::now(), $now]
                     );
                     $nextExpirySweep = time() + 30;

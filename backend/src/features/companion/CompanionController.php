@@ -545,12 +545,16 @@ final class CompanionController
             );
             GpJson::send(['ok' => true, 'deviceId' => $deviceId, 'boundGatewayId' => null]);
         }
+        // BUG DEV-02: SMS matching requires an active bound gateway.
         $gw = GpDb::one(
-            'SELECT gateway_id, account, method_code, display_name FROM gp_gateways WHERE brand_id = ? AND gateway_id = ?',
+            "SELECT gateway_id, account, method_code, display_name, status FROM gp_gateways WHERE brand_id = ? AND gateway_id = ?",
             [(string) $dev['brand_id'], $gatewayId]
         );
         if ($gw === null) {
             GpJson::error('NOT_FOUND', 'Gateway not found for this device brand.', 404);
+        }
+        if (strtolower((string) ($gw['status'] ?? '')) !== 'active') {
+            GpJson::error('GATEWAY_INACTIVE', 'Bind the device to an active gateway only.', 409);
         }
         GpDb::exec(
             'UPDATE gp_devices SET bound_gateway_id = ?, updated_at = ? WHERE device_id = ?',

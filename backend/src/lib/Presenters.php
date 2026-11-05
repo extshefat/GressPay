@@ -221,7 +221,12 @@ final class GpPresenters
             'amount' => $amount,
             'currency' => $row['currency'],
             'fee' => $fee,
-            'netAmount' => round($amount + $fee, 2),
+            // BUG MONEY-01: net is amount − fee (FeeEngine local_net), never amount + fee.
+            'netAmount' => (float) GpMoney::round(
+                (string) (($row['local_net'] ?? '') !== '' && ($row['local_net'] ?? null) !== null
+                    ? $row['local_net']
+                    : GpMoney::sub((string) $amount, (string) $fee))
+            ),
             'paymentMethod' => $code,
             'paymentMethodTitle' => $cat['title'] ?? $code,
             'senderAccountOrAddress' => $customer['mobile'] ?? null,

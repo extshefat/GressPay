@@ -242,10 +242,10 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
     setErrorMessage(null);
     try {
       const res = await api.cancelCheckout(session.sessionId);
+      // BUG CHK-01: canceled checkouts must not render as "Payment unsuccessful".
       setCancelMessage(res.message || "Invoice canceled successfully.");
       const target = res.redirectUrl || "/";
       setCancelRedirectUrl(target);
-      setCheckoutStatus("FAILED");
     } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : "Could not cancel checkout.");
     } finally {

@@ -121,7 +121,8 @@ export default function SettingsPage() {
     setIsSaving(true);
     setErrorMessage(null);
     try {
-      await api.updateSettings({ businessName, webhookUrl, cryptoEnabled });
+      // BUG SET-01: do not send businessName from General — Branding tab owns brand display name.
+      await api.updateSettings({ webhookUrl, cryptoEnabled });
       success("Store settings updated.", "Saved Successfully");
       await loadSettings();
     } catch (err: unknown) {
