@@ -11,6 +11,7 @@ final class DashboardController
             ['label' => 'Create your brand', 'href' => '/dashboard/brands', 'complete' => $brand !== ''],
             ['label' => 'Add a receiving wallet', 'href' => '/dashboard/methods', 'complete' => $count("SELECT COUNT(*) AS c FROM gp_gateways WHERE brand_id = ? AND status = 'active' AND account <> ''")],
             ['label' => 'Pair and bind your phone', 'href' => '/dashboard/devices', 'complete' => $count("SELECT COUNT(*) AS c FROM gp_devices WHERE brand_id = ? AND status = 'active' AND bound_gateway_id IS NOT NULL AND bound_gateway_id <> '' AND last_seen_at IS NOT NULL")],
+            ['label' => 'Send a test credit SMS to your device', 'href' => '/dashboard/devices', 'complete' => $count("SELECT COUNT(*) AS c FROM gp_sms_data WHERE brand_id = ?")],
             ['label' => 'Create a website API key', 'href' => '/dashboard/api-keys', 'complete' => $count("SELECT COUNT(*) AS c FROM gp_api_keys WHERE brand_id = ? AND status = 'active'")],
             ['label' => 'Complete a test checkout', 'href' => '/dashboard/payment-links', 'complete' => $count("SELECT COUNT(*) AS c FROM gp_transactions WHERE brand_id = ? AND ledger_mode = 'test' AND status = 'completed'")],
             ['label' => 'Check signed webhook delivery', 'href' => '/dashboard/webhooks', 'complete' => $count("SELECT COUNT(*) AS c FROM gp_webhook_deliveries WHERE brand_id = ? AND status = 'completed'")],
