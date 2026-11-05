@@ -980,6 +980,52 @@ $tokenRem = GpJwt::encode(['sub' => 'm_test'], GpJwt::TTL_REMEMBER);
 $payloadRem = GpJwt::decode($tokenRem);
 assert_true(is_array($payloadRem) && (($payloadRem['exp'] - $payloadRem['iat']) === GpJwt::TTL_REMEMBER), 'Remember-me JWT TTL is 7 days');
 
+// —— Device ↔ gateway bind ownership + DEVICE_RAIL_MISMATCH ——
+$railBrand = GpIds::make('brd', 6);
+GpDb::exec(
+    'INSERT INTO gp_brands (brand_id, merchant_id, name, currency_code, timezone, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    [$railBrand, $merchantId, 'Rail bind brand', 'BDT', 'Asia/Dhaka', $now, $now]
+);
+$gwNagad = GpIds::make('gw', 4);
+$gwBkashRail = GpIds::make('gw', 4);
+GpDb::exec(
+    'INSERT INTO gp_gateways (gateway_id, brand_id, method_code, display_name, account, currency, country, display_order, status, qr_status, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+    [$gwNagad, $railBrand, 'nagad', 'Nagad wallet', '01811111111', 'BDT', 'BD', 1, 'active', 'none', $now, $now]
+);
+GpDb::exec(
+    'INSERT INTO gp_gateways (gateway_id, brand_id, method_code, display_name, account, currency, country, display_order, status, qr_status, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+    [$gwBkashRail, $railBrand, 'bkash', 'bKash wallet', '01722222222', 'BDT', 'BD', 2, 'active', 'none', $now, $now]
+);
+$railDev = GpIds::make('dev', 4);
+GpDb::exec(
+    'INSERT INTO gp_devices (device_id, brand_id, token_hash, status, bound_gateway_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    [$railDev, $railBrand, password_hash('gpdev_railtest', PASSWORD_BCRYPT), 'active', $gwNagad, $now, $now]
+);
+$boundForBkashSms = GpDb::one(
+    'SELECT method_code FROM gp_gateways WHERE brand_id = ? AND gateway_id = ? AND status = ?',
+    [$railBrand, $gwNagad, 'active']
+);
+assert_true(
+    is_array($boundForBkashSms) && GpCatalog::publicCode((string) $boundForBkashSms['method_code']) !== 'bkash',
+    'DEVICE_RAIL_MISMATCH: device bound to nagad rejects bkash SMS rail'
+);
+assert_true(
+    GpCatalog::publicCode((string) $boundForBkashSms['method_code']) === 'nagad',
+    'DEVICE_RAIL_MISMATCH: matching nagad rail allowed for nagad-bound device'
+);
+$foreignBind = GpDb::one(
+    'SELECT gateway_id FROM gp_gateways WHERE brand_id = ? AND gateway_id = ?',
+    [$railBrand, $gwA1]
+);
+assert_true($foreignBind === null, 'Bind ownership: gateway from another brand is not visible on this brand');
+$ownedBind = GpDb::one(
+    'SELECT gateway_id FROM gp_gateways WHERE brand_id = ? AND gateway_id = ?',
+    [$railBrand, $gwBkashRail]
+);
+assert_true(is_array($ownedBind), 'Bind ownership: same-brand gateway can be bound');
+
 // —— Match-time SMS window (received_at vs checkout open/expiry) ——
 $sessionWin = [
     'created_at' => gmdate('Y-m-d\TH:i:s\Z', time() - 600),
