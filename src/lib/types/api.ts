@@ -423,6 +423,7 @@ export interface MerchantSettings {
   telegramBotTokenSet?: boolean;
   telegramChatId?: string;
   discordWebhookUrl?: string;
+  discordWebhookUrlSet?: boolean;
   webhookUrl: string;
   currency: Currency;
   cryptoEnabled?: boolean;

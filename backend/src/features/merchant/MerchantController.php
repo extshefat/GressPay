@@ -195,9 +195,10 @@ final class MerchantController
             'r2Configured' => R2Client::isConfigured(),
             'supportContact' => $merchant['support_contact'] ?? '',
             'receiptFooter' => $merchant['receipt_footer'] ?? '',
-            'telegramBotTokenSet' => trim((string) ($merchant['telegram_bot_token'] ?? '')) !== '',
+            'telegramBotTokenSet' => GpMerchantSecrets::read($merchant, 'telegram_bot_token') !== '',
             'telegramChatId' => $merchant['telegram_chat_id'] ?? '',
-            'discordWebhookUrl' => $merchant['discord_webhook_url'] ?? '',
+            'discordWebhookUrl' => '', // Legacy field retained empty; credential is write-only.
+            'discordWebhookUrlSet' => GpMerchantSecrets::read($merchant, 'discord_webhook_url') !== '',
             'webhookUrl' => $brand['webhook_url'] ?? '',
             'currency' => $brand['currency_code'] ?? 'BDT',
             'cryptoEnabled' => !empty($brand['crypto_enabled']),
@@ -254,9 +255,9 @@ final class MerchantController
         $support = trim((string) $req->input('supportContact', $req->input('support_contact', $merchant['support_contact'] ?? '')));
         $receiptFooter = trim((string) $req->input('receiptFooter', $req->input('receipt_footer', $merchant['receipt_footer'] ?? '')));
         $telegramChatId = trim((string) $req->input('telegramChatId', $req->input('telegram_chat_id', $merchant['telegram_chat_id'] ?? '')));
-        $discordWebhook = trim((string) $req->input('discordWebhookUrl', $req->input('discord_webhook_url', $merchant['discord_webhook_url'] ?? '')));
+        $discordWebhook = trim((string) $req->input('discordWebhookUrl', $req->input('discord_webhook_url', GpMerchantSecrets::read($merchant, 'discord_webhook_url'))));
         $telegramTokenIn = $req->input('telegramBotToken', $req->input('telegram_bot_token', null));
-        $telegramToken = $merchant['telegram_bot_token'] ?? null;
+        $telegramToken = GpMerchantSecrets::read($merchant, 'telegram_bot_token');
         if ($telegramTokenIn !== null && trim((string) $telegramTokenIn) !== '') {
             $telegramToken = trim((string) $telegramTokenIn);
         }
@@ -289,9 +290,9 @@ final class MerchantController
                 $brandName !== '' ? $brandName : null,
                 $support !== '' ? $support : null,
                 $receiptFooter !== '' ? $receiptFooter : null,
-                $telegramToken,
+                GpMerchantSecrets::seal('telegram_bot_token', (string) $telegramToken),
                 $telegramChatId !== '' ? $telegramChatId : null,
-                $discordWebhook !== '' ? $discordWebhook : null,
+                GpMerchantSecrets::seal('discord_webhook_url', $discordWebhook),
                 GpIds::now(),
                 $actor['merchant_id'],
             ]
@@ -426,7 +427,7 @@ final class MerchantController
         $results = ['telegram' => null, 'discord' => null];
 
         if ($channel === 'telegram' || $channel === 'all') {
-            $token = trim((string) ($merchant['telegram_bot_token'] ?? ''));
+            $token = GpMerchantSecrets::read($merchant, 'telegram_bot_token');
             $chatId = trim((string) ($merchant['telegram_chat_id'] ?? ''));
             if ($token === '' || $chatId === '') {
                 $results['telegram'] = ['ok' => false, 'error' => 'Telegram bot token or chat ID is not configured.'];
@@ -440,7 +441,7 @@ final class MerchantController
         }
 
         if ($channel === 'discord' || $channel === 'all') {
-            $hook = trim((string) ($merchant['discord_webhook_url'] ?? ''));
+            $hook = GpMerchantSecrets::read($merchant, 'discord_webhook_url');
             if ($hook === '') {
                 $results['discord'] = ['ok' => false, 'error' => 'Discord webhook URL is not configured.'];
             } else {

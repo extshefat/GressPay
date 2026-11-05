@@ -102,7 +102,7 @@ export default function SettingsPage() {
       await api.updateSettings({
         telegramBotToken: telegramBotToken.trim() || undefined,
         telegramChatId,
-        discordWebhookUrl,
+        discordWebhookUrl: discordWebhookUrl.trim() || undefined,
       });
       setTelegramBotToken("");
       success("Instant alert channels saved.", "Saved");
@@ -258,7 +258,7 @@ export default function SettingsPage() {
               label="Discord Webhook URL"
               value={discordWebhookUrl}
               onChange={(e) => setDiscordWebhookUrl(e.target.value)}
-              placeholder="https://discord.com/api/webhooks/..."
+              placeholder={settings?.discordWebhookUrlSet ? "Configured — paste to replace" : "https://discord.com/api/webhooks/..."}
             />
             <div className="flex flex-wrap justify-end gap-2 pt-2">
               <Button

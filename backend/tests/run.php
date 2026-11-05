@@ -1218,6 +1218,16 @@ assert_true(GpSafeHttp::discordUrl('https://discord.com/api/webhooks/123/abc_DEF
 assert_true(!GpSafeHttp::discordUrl('https://discord.com.evil.test/api/webhooks/123/abc'), 'Discord suffix impostor rejected');
 assert_true(!GpSafeHttp::discordUrl('https://discord.com/channels/123'), 'Discord non-webhook rejected');
 
+// Alert secrets migrate lazily, with purpose binding and no plaintext replacement.
+GpDb::exec('UPDATE gp_merchants SET telegram_bot_token = ?, discord_webhook_url = ? WHERE merchant_id = ?', ['test-token','https://discord.com/api/webhooks/123/test',$merchantId]);
+$secretMerchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$merchantId]);
+assert_true(GpMerchantSecrets::read($secretMerchant, 'telegram_bot_token') === 'test-token', 'Legacy Telegram token opens and migrates');
+assert_true(GpMerchantSecrets::read($secretMerchant, 'discord_webhook_url') === 'https://discord.com/api/webhooks/123/test', 'Legacy Discord URL opens and migrates');
+$secretMerchant = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$merchantId]);
+assert_true(str_starts_with($secretMerchant['telegram_bot_token'], 'v1:') && !str_contains($secretMerchant['telegram_bot_token'],'test-token'), 'Telegram token sealed at rest');
+assert_true(GpCrypto::open($secretMerchant['telegram_bot_token'], 'gresspay/merchant/discord_webhook_url') === null, 'Alert credential purposes cannot be swapped');
+assert_true(GpMerchantSecrets::read($secretMerchant, 'telegram_bot_token') === 'test-token', 'Sealed alert credential round trip');
+
 // Versioned migrations preserve existing data and skip already-applied work.
 $versions = GpDb::all('SELECT * FROM gp_schema_version ORDER BY version');
 GpMigrations::run();
