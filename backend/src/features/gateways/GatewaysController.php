@@ -1204,8 +1204,11 @@ final class GatewaysController
             $prev = is_array($decoded) ? $decoded : [];
         }
         self::applyFeeToOptions($prev, $fee, $feeType);
-        if ($exchangeRate !== null && $exchangeRate !== '' && (float) $exchangeRate > 0) {
+        // BUG GW-01: only USDT method options may carry custom_rate_bdt (Binance FX must not bleed).
+        if ($methodCode === 'usdt_trc20' && $exchangeRate !== null && $exchangeRate !== '' && (float) $exchangeRate > 0) {
             $prev['custom_rate_bdt'] = (float) $exchangeRate;
+        } elseif ($methodCode !== 'usdt_trc20' && isset($prev['custom_rate_bdt'])) {
+            unset($prev['custom_rate_bdt']);
         }
         $json = GpDb::storedWalletValue($methodCode, 'options', json_encode($prev, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
         $now = GpIds::now();

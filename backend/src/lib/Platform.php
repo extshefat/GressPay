@@ -80,11 +80,15 @@ final class GpPlatform
             return ['deviceLimit' => 1, 'methodLimit' => 2, 'planId' => 'starter'];
         }
         $merchant = GpDb::one(
-            'SELECT plan_id, role FROM gp_merchants WHERE merchant_id = ?',
+            'SELECT * FROM gp_merchants WHERE merchant_id = ?',
             [(string) $brand['merchant_id']]
         );
-        $planId = strtolower(trim((string) ($merchant['plan_id'] ?? 'starter')));
-        if (($merchant['role'] ?? '') === 'admin') {
+        if (!is_array($merchant)) {
+            return ['deviceLimit' => 1, 'methodLimit' => 2, 'planId' => 'starter'];
+        }
+        // BUG BILL-01: honor plan_expires_at the same way checkout quotas do.
+        $planId = GpPlanLimits::effectivePlanCode($merchant);
+        if ($planId === 'lifetime') {
             return ['deviceLimit' => 999, 'methodLimit' => 999, 'planId' => 'lifetime'];
         }
         $planRow = GpDb::one(
