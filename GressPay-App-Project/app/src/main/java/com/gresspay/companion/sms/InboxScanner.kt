@@ -23,10 +23,13 @@ data class InboxScanResult(
  */
 object InboxScanner {
     private const val DEFAULT_WINDOW_MS = 24L * 60L * 60L * 1000L
+    /** Hard cap so inbox replay cannot walk an unbounded cursor. */
+    const val MAX_ROWS = 200
 
     fun scanAndEnqueue(
         context: Context,
-        windowMs: Long = DEFAULT_WINDOW_MS
+        windowMs: Long = DEFAULT_WINDOW_MS,
+        maxRows: Int = MAX_ROWS
     ): InboxScanResult {
         val cutoff = System.currentTimeMillis() - windowMs
         val uri = Telephony.Sms.Inbox.CONTENT_URI
@@ -38,6 +41,7 @@ object InboxScanner {
         var scanned = 0
         var enqueued = 0
         var skipped = 0
+        val limit = maxRows.coerceAtLeast(1).coerceAtMost(MAX_ROWS)
 
         context.contentResolver.query(
             uri,
@@ -49,7 +53,7 @@ object InboxScanner {
             val idxAddr = cursor.getColumnIndex(Telephony.Sms.ADDRESS)
             val idxBody = cursor.getColumnIndex(Telephony.Sms.BODY)
             val idxDate = cursor.getColumnIndex(Telephony.Sms.DATE)
-            while (cursor.moveToNext()) {
+            while (scanned < limit && cursor.moveToNext()) {
                 scanned++
                 val from = if (idxAddr >= 0) cursor.getString(idxAddr).orEmpty() else ""
                 val body = if (idxBody >= 0) cursor.getString(idxBody).orEmpty() else ""
