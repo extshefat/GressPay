@@ -19,11 +19,11 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
         placeholder={placeholder}
         leftIcon={<Search className="w-4 h-4" />}
         rightIcon={
-          hasValue ? (
+          hasValue && onClear ? (
             <button
               type="button"
               onClick={onClear}
-              className="p-1 rounded text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+              className="p-1 rounded text-muted hover:text-ink dark:hover:text-on-ink"
               aria-label="Clear search"
             >
               <X className="w-3.5 h-3.5" />

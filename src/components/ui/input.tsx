@@ -4,6 +4,7 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   label?: string;
   error?: string;
   helperText?: string;
+  hint?: string;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
 }
@@ -14,7 +15,8 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
       className = "",
       label,
       error,
-      helperText,
+      hint,
+      helperText = hint,
       leftIcon,
       rightIcon,
       id,
@@ -31,16 +33,16 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         {label ? (
           <label
             htmlFor={inputId}
-            className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300"
+            className="block text-xs font-semibold text-ink dark:text-ink"
           >
             {label}
-            {props.required && <span className="text-red-500 ml-0.5">*</span>}
+            {props.required && <span className="text-danger ml-0.5">*</span>}
           </label>
         ) : null}
 
         <div className="relative flex items-center">
           {leftIcon && (
-            <div className="absolute left-3 flex items-center pointer-events-none text-zinc-400 dark:text-zinc-500">
+            <div className="absolute left-3 flex items-center pointer-events-none text-muted dark:text-muted">
               {leftIcon}
             </div>
           )}
@@ -51,29 +53,23 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             disabled={disabled}
             aria-invalid={Boolean(error)}
             aria-describedby={error ? `${inputId}-error` : helperText ? `${inputId}-helper` : undefined}
-            className={`flex h-11 w-full rounded-xl border bg-white dark:bg-[#161616] px-3.5 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 shadow-[0_1px_2px_rgba(16,24,40,0.03)] outline-none transition placeholder:text-zinc-400 dark:placeholder:text-zinc-600 focus:border-neutral-600 dark:focus:border-neutral-400 focus:ring-2 focus:ring-neutral-600/10 dark:focus:ring-neutral-400/10 disabled:cursor-not-allowed disabled:opacity-50 ${
-              leftIcon ? "pl-9" : ""
-            } ${rightIcon ? "pr-9" : ""} ${
-              error
-                ? "border-red-500 focus:border-red-500 focus:ring-red-500/20 dark:border-red-600"
-                : "border-zinc-200 dark:border-[#414141]"
-            } ${className}`}
+            className={`gp-control ${leftIcon ? "!pl-10" : ""} ${rightIcon ? "!pr-10" : ""} ${className}`}
             {...props}
           />
 
           {rightIcon && (
-            <div className="absolute right-3 flex items-center text-zinc-400 dark:text-zinc-500">
+            <div className="absolute right-3 flex items-center text-muted dark:text-muted">
               {rightIcon}
             </div>
           )}
         </div>
 
         {error ? (
-          <p id={`${inputId}-error`} role="alert" className="text-xs text-red-600 dark:text-red-400">
+          <p id={`${inputId}-error`} role="alert" className="text-xs text-danger dark:text-danger">
             {error}
           </p>
         ) : helperText ? (
-          <p id={`${inputId}-helper`} className="text-[11px] text-zinc-500">
+          <p id={`${inputId}-helper`} className="text-[11px] text-muted">
             {helperText}
           </p>
         ) : null}

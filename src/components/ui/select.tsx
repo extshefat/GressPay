@@ -11,11 +11,12 @@ export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElemen
   label?: string;
   error?: string;
   helperText?: string;
+  hint?: string;
   options?: SelectOption[];
 }
 
 export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
-  ({ className = "", label, error, helperText, options, children, id, disabled, ...props }, ref) => {
+  ({ className = "", label, error, hint, helperText = hint, options, children, id, disabled, ...props }, ref) => {
     const generatedId = React.useId();
     const selectId = id || props.name || generatedId;
 
@@ -24,10 +25,10 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
         {label ? (
           <label
             htmlFor={selectId}
-            className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300"
+            className="block text-xs font-semibold text-ink dark:text-ink"
           >
             {label}
-            {props.required && <span className="text-red-500 ml-0.5">*</span>}
+            {props.required && <span className="text-danger ml-0.5">*</span>}
           </label>
         ) : null}
 
@@ -37,11 +38,8 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
             ref={ref}
             disabled={disabled}
             aria-invalid={Boolean(error)}
-            className={`flex h-11 w-full appearance-none rounded-xl border bg-white dark:bg-[#161616] px-3.5 py-2.5 pr-9 text-sm text-zinc-900 dark:text-zinc-100 shadow-[0_1px_2px_rgba(16,24,40,0.03)] outline-none transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 focus:border-neutral-600 dark:focus:border-neutral-400 focus:ring-2 focus:ring-neutral-600/10 dark:focus:ring-neutral-400/10 ${
-              error
-                ? "border-red-500 focus:border-red-500 focus:ring-red-500/20 dark:border-red-600"
-                : "border-zinc-200 dark:border-[#414141]"
-            } ${className}`}
+            aria-describedby={error ? `${selectId}-error` : helperText ? `${selectId}-helper` : undefined}
+            className={`gp-control appearance-none !pr-10 ${className}`}
             {...props}
           >
             {options
@@ -53,15 +51,15 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
               : children}
           </select>
 
-          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
         </div>
 
         {error ? (
-          <p role="alert" className="text-xs text-red-600 dark:text-red-400">
+          <p id={`${selectId}-error`} role="alert" className="text-xs text-danger dark:text-danger">
             {error}
           </p>
         ) : helperText ? (
-          <p className="text-[11px] text-zinc-500">{helperText}</p>
+          <p id={`${selectId}-helper`} className="text-xs text-muted">{helperText}</p>
         ) : null}
       </div>
     );

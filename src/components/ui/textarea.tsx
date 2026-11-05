@@ -4,10 +4,11 @@ export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextArea
   label?: string;
   error?: string;
   helperText?: string;
+  hint?: string;
 }
 
 export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
-  ({ className = "", label, error, helperText, id, disabled, rows = 3, ...props }, ref) => {
+  ({ className = "", label, error, hint, helperText = hint, id, disabled, rows = 3, ...props }, ref) => {
     const generatedId = React.useId();
     const areaId = id || props.name || generatedId;
 
@@ -16,10 +17,10 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
         {label ? (
           <label
             htmlFor={areaId}
-            className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 tracking-wide"
+            className="block text-xs font-semibold text-ink dark:text-ink tracking-wide"
           >
             {label}
-            {props.required && <span className="text-red-500 ml-0.5">*</span>}
+            {props.required && <span className="text-danger ml-0.5">*</span>}
           </label>
         ) : null}
 
@@ -29,20 +30,17 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           rows={rows}
           disabled={disabled}
           aria-invalid={Boolean(error)}
-          className={`flex w-full rounded-xl border bg-white dark:bg-zinc-950 p-3 text-sm text-zinc-900 dark:text-zinc-100 outline-none transition placeholder:text-zinc-400 dark:placeholder:text-zinc-600 focus:border-teal-600 dark:focus:border-teal-400 focus:ring-2 focus:ring-teal-600/20 dark:focus:ring-teal-400/20 disabled:cursor-not-allowed disabled:opacity-50 ${
-            error
-              ? "border-red-500 focus:border-red-500 focus:ring-red-500/20 dark:border-red-600"
-              : "border-zinc-200 dark:border-zinc-800"
-          } ${className}`}
+            aria-describedby={error ? `${areaId}-error` : helperText ? `${areaId}-helper` : undefined}
+          className={`gp-control resize-y ${className}`}
           {...props}
         />
 
         {error ? (
-          <p role="alert" className="text-xs text-red-600 dark:text-red-400">
+          <p id={`${areaId}-error`} role="alert" className="text-xs text-danger dark:text-danger">
             {error}
           </p>
         ) : helperText ? (
-          <p className="text-[11px] text-zinc-500">{helperText}</p>
+          <p id={`${areaId}-helper`} className="text-xs text-muted">{helperText}</p>
         ) : null}
       </div>
     );

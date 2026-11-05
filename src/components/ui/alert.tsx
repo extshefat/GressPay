@@ -20,28 +20,28 @@ export const Alert: React.FC<AlertProps> = ({
 }) => {
   const config = {
     info: {
-      icon: <Info className="w-4 h-4 text-teal-700 dark:text-teal-400 shrink-0 mt-0.5" />,
+      icon: <Info className="w-4 h-4 text-accent dark:text-accent shrink-0 mt-0.5" />,
       style:
-        "bg-teal-50/70 border-teal-200 dark:bg-teal-950/30 dark:border-teal-900/50 text-teal-950 dark:text-teal-100",
-      titleColor: "text-teal-900 dark:text-teal-200",
+        "bg-accent/10 border-accent dark:bg-brand/30 dark:border-accent/50 text-accent dark:text-accent",
+      titleColor: "text-accent dark:text-accent",
     },
     success: {
-      icon: <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />,
+      icon: <CheckCircle2 className="w-4 h-4 text-success dark:text-success shrink-0 mt-0.5" />,
       style:
-        "bg-emerald-50/70 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-900/50 text-emerald-950 dark:text-emerald-100",
-      titleColor: "text-emerald-900 dark:text-emerald-200",
+        "bg-success/10 border-success dark:bg-success/30 dark:border-success/50 text-success dark:text-success",
+      titleColor: "text-success dark:text-success",
     },
     warning: {
-      icon: <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />,
+      icon: <AlertTriangle className="w-4 h-4 text-warning dark:text-warning shrink-0 mt-0.5" />,
       style:
-        "bg-amber-50/70 border-amber-200 dark:bg-amber-950/30 dark:border-amber-900/50 text-amber-950 dark:text-amber-100",
-      titleColor: "text-amber-900 dark:text-amber-200",
+        "bg-warning/10 border-warning dark:bg-warning/30 dark:border-warning/50 text-warning dark:text-warning",
+      titleColor: "text-warning dark:text-warning",
     },
     danger: {
-      icon: <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />,
+      icon: <AlertCircle className="w-4 h-4 text-danger dark:text-danger shrink-0 mt-0.5" />,
       style:
-        "bg-red-50/70 border-red-200 dark:bg-red-950/30 dark:border-red-900/50 text-red-950 dark:text-red-100",
-      titleColor: "text-red-900 dark:text-red-200",
+        "bg-danger/10 border-danger dark:bg-danger/30 dark:border-danger/50 text-danger dark:text-danger",
+      titleColor: "text-danger dark:text-danger",
     },
   };
 

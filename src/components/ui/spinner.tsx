@@ -1,29 +1,4 @@
-import React from "react";
+import * as React from "react";
 import { Loader2 } from "lucide-react";
-
-export interface SpinnerProps {
-  size?: "xs" | "sm" | "md" | "lg";
-  className?: string;
-  label?: string;
-}
-
-export function Spinner({ size = "md", className = "", label }: SpinnerProps) {
-  const sizeMap = {
-    xs: "w-3 h-3",
-    sm: "w-4 h-4",
-    md: "w-6 h-6",
-    lg: "w-8 h-8",
-  };
-
-  return (
-    <div className="inline-flex items-center gap-2" role="status" aria-live="polite">
-      <Loader2
-        className={`animate-spin text-[#077C74] dark:text-[#1BD1C0] ${sizeMap[size]} ${className}`}
-      />
-      {label && (
-        <span className="text-xs text-zinc-500 dark:text-zinc-400">{label}</span>
-      )}
-      <span className="sr-only">Loading...</span>
-    </div>
-  );
-}
+export interface SpinnerProps {size?:"xs"|"sm"|"md"|"lg";className?:string;label?:string;}
+export function Spinner({size="md",className="",label="Loading"}:SpinnerProps){return <span className="inline-flex items-center gap-2" role="status"><Loader2 aria-hidden="true" className={`animate-spin ${{xs:"h-3 w-3",sm:"h-4 w-4",md:"h-6 w-6",lg:"h-8 w-8"}[size]} ${className}`}/><span className={label?"text-xs":"sr-only"}>{label||"Loading"}</span></span>;}

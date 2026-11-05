@@ -84,16 +84,17 @@ export function CountryRailSelector({
   return (
     <div className={`space-y-4 ${className}`}>
       {/* Country Filter Pills */}
-      <div className="flex flex-wrap items-center gap-1.5 pb-1 border-b border-zinc-200 dark:border-zinc-800">
+      <div className="flex flex-wrap items-center gap-1.5 pb-1 border-b border-border dark:border-border">
         {countries.map((c) => (
           <button
             key={c}
             type="button"
+            aria-pressed={selectedCountry === c}
             onClick={() => setSelectedCountry(c)}
             className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
               selectedCountry === c
-                ? "bg-[#077C74] text-white dark:bg-[#1BD1C0] dark:text-zinc-950 font-semibold"
-                : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                ? "bg-brand text-white dark:bg-brand dark:text-on-brand font-semibold"
+                : "text-muted hover:bg-surface dark:text-muted dark:hover:bg-ink-solid"
             }`}
           >
             {c}
@@ -108,24 +109,27 @@ export function CountryRailSelector({
           const isDisabled = !rail.isFirstRelease;
 
           return (
-            <div
+            <button
+              type="button"
+              aria-pressed={isSelected}
+              disabled={readOnly || isDisabled}
               key={rail.code}
               onClick={() => toggleRail(rail.code, rail.isFirstRelease)}
               className={`flex items-start justify-between p-3 rounded-xl border transition-all ${
                 isDisabled
-                  ? "bg-zinc-50/50 dark:bg-zinc-900/30 border-dashed border-zinc-200 dark:border-zinc-800 opacity-60 cursor-not-allowed"
+                  ? "bg-card/50 dark:bg-surface/30 border-dashed border-border dark:border-border opacity-60 cursor-not-allowed"
                   : isSelected
-                  ? "bg-teal-50/50 dark:bg-teal-950/20 border-[#077C74] dark:border-[#1BD1C0] cursor-pointer shadow-xs"
-                  : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 cursor-pointer"
+                  ? "bg-accent/10 dark:bg-brand/20 border-accent dark:border-accent cursor-pointer shadow-xs"
+                  : "bg-white dark:bg-surface border-border dark:border-border hover:border-border dark:hover:border-border cursor-pointer"
               }`}
             >
               <div className="space-y-1 pr-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                  <span className="text-xs font-semibold text-ink dark:text-ink">
                     {rail.name}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 text-[11px] text-zinc-500 dark:text-zinc-400">
+                <div className="flex items-center gap-2 text-[11px] text-muted dark:text-muted">
                   <span>{rail.country}</span>
                   <span>•</span>
                   <span className="font-mono font-medium">{rail.currency}</span>
@@ -147,15 +151,15 @@ export function CountryRailSelector({
                   <div
                     className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
                       isSelected
-                        ? "bg-[#077C74] border-[#077C74] text-white dark:bg-[#1BD1C0] dark:border-[#1BD1C0] dark:text-zinc-950"
-                        : "border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800"
+                        ? "bg-brand border-accent text-white dark:bg-brand dark:border-accent dark:text-on-brand"
+                        : "border-border dark:border-border bg-white dark:bg-surface-muted"
                     }`}
                   >
                     {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
                   </div>
                 )}
               </div>
-            </div>
+            </button>
           );
         })}
       </div>

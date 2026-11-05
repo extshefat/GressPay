@@ -1,44 +1,10 @@
-import React from "react";
-import { FolderOpen } from "lucide-react";
-
+import * as React from "react";
 export interface EmptyStateProps {
-  icon?: React.ReactNode;
-  title: string;
-  description?: string;
-  action?: React.ReactNode;
-  secondaryAction?: React.ReactNode;
-  className?: string;
+    icon?: React.ReactNode;
+    title: string;
+    description?: string;
+    action?: React.ReactNode;
+    secondaryAction?: React.ReactNode;
+    className?: string;
 }
-
-export function EmptyState({
-  icon,
-  title,
-  description,
-  action,
-  secondaryAction,
-  className = "",
-}: EmptyStateProps) {
-  return (
-    <div
-      className={`flex flex-col items-center justify-center p-8 sm:p-12 text-center rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30 ${className}`}
-    >
-      <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-800/80 flex items-center justify-center text-zinc-400 dark:text-zinc-500 mb-4 shadow-xs">
-        {icon || <FolderOpen className="w-6 h-6" />}
-      </div>
-      <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-1">
-        {title}
-      </h3>
-      {description && (
-        <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-sm mb-5 leading-relaxed">
-          {description}
-        </p>
-      )}
-      {(action || secondaryAction) && (
-        <div className="flex items-center gap-3">
-          {action}
-          {secondaryAction}
-        </div>
-      )}
-    </div>
-  );
-}
+export function EmptyState({ icon, title, description, action, secondaryAction, className = "" }: EmptyStateProps) { return <div className={`flex flex-col items-center rounded-lg border border-dashed border-border-strong bg-surface p-6 text-center sm:p-10 ${className}`}><div className="mb-4 text-accent">{icon || <svg width="96" height="64" viewBox="0 0 96 64" fill="none" aria-hidden="true"><path d="M18 17h54l9 13v25H9V30l9-13Z" fill="var(--bg-card)" stroke="currentColor" strokeWidth="1.5"/><path d="M9 30h23l5 9h22l5-9h17M24 10h48M30 4h36" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><path d="M17 58h62" stroke="var(--border-color)" strokeWidth="3" strokeLinecap="round"/></svg>}</div><h3 className="text-lg font-semibold">{title}</h3>{description && <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted">{description}</p>}{(action || secondaryAction) && <div className="mt-5 flex flex-wrap justify-center gap-3">{action}{secondaryAction}</div>}</div>; }

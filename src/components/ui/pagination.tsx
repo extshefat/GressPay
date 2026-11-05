@@ -38,20 +38,20 @@ export function Pagination({
 
   return (
     <div
-      className={`flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-zinc-500 dark:text-zinc-400 ${className}`}
+      className={`flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted dark:text-muted ${className}`}
     >
       {totalItems !== undefined && pageSize !== undefined ? (
         <div>
           Showing{" "}
-          <span className="font-medium text-zinc-900 dark:text-zinc-100">
+          <span className="font-medium text-ink dark:text-ink">
             {Math.min((currentPage - 1) * pageSize + 1, totalItems)}
           </span>{" "}
           to{" "}
-          <span className="font-medium text-zinc-900 dark:text-zinc-100">
+          <span className="font-medium text-ink dark:text-ink">
             {Math.min(currentPage * pageSize, totalItems)}
           </span>{" "}
           of{" "}
-          <span className="font-medium text-zinc-900 dark:text-zinc-100">
+          <span className="font-medium text-ink dark:text-ink">
             {totalItems}
           </span>{" "}
           results
@@ -66,7 +66,8 @@ export function Pagination({
           size="sm"
           disabled={currentPage <= 1}
           onClick={() => onPageChange(currentPage - 1)}
-          className="h-8 px-2"
+          className="h-9 px-2"
+          aria-label="Previous page"
         >
           <ChevronLeft className="w-4 h-4" />
         </Button>
@@ -74,7 +75,7 @@ export function Pagination({
         {pages.map((p, idx) => {
           if (p === "...") {
             return (
-              <span key={`dots-${idx}`} className="px-2 py-1 text-zinc-400">
+              <span key={`dots-${idx}`} className="px-2 py-1 text-muted">
                 ...
               </span>
             );
@@ -82,12 +83,14 @@ export function Pagination({
           return (
             <button
               key={`page-${p}`}
+              aria-label={`Page ${p}`}
+              aria-current={currentPage === p ? "page" : undefined}
               type="button"
               onClick={() => onPageChange(p)}
               className={`h-8 w-8 rounded-lg text-xs font-medium transition-colors ${
                 currentPage === p
-                  ? "bg-[#077C74] text-white dark:bg-[#1BD1C0] dark:text-zinc-950 font-semibold"
-                  : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                  ? "bg-brand text-white dark:bg-brand dark:text-on-brand font-semibold"
+                  : "text-muted hover:bg-surface dark:text-muted dark:hover:bg-ink-solid"
               }`}
             >
               {p}
@@ -100,7 +103,8 @@ export function Pagination({
           size="sm"
           disabled={currentPage >= totalPages}
           onClick={() => onPageChange(currentPage + 1)}
-          className="h-8 px-2"
+          className="h-9 px-2"
+          aria-label="Next page"
         >
           <ChevronRight className="w-4 h-4" />
         </Button>

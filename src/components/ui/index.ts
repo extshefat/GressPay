@@ -31,3 +31,6 @@ export * from "./textarea";
 export * from "./toast";
 export * from "./toggle";
 export * from "./tooltip";
+export * from "./tilt-3d";
+export * from "./rail-chip-3d";
+export * from "./layout";

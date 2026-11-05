@@ -1,54 +1,9 @@
 import * as React from "react";
-import { Check } from "lucide-react";
-
 export interface CheckboxProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "type"> {
-  label?: React.ReactNode;
-  description?: string;
+    label?: React.ReactNode;
+    description?: string;
+    error?: string;
+    hint?: string;
 }
-
-export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
-  ({ className = "", label, description, id, checked, disabled, onChange, ...props }, ref) => {
-    const generatedId = React.useId();
-    const checkId = id || props.name || generatedId;
-
-    return (
-      <label
-        htmlFor={checkId}
-        className={`inline-flex items-start gap-2.5 cursor-pointer select-none text-left ${
-          disabled ? "opacity-50 cursor-not-allowed" : ""
-        } ${className}`}
-      >
-        <div className="relative flex items-center justify-center mt-0.5">
-          <input
-            id={checkId}
-            ref={ref}
-            type="checkbox"
-            checked={checked}
-            disabled={disabled}
-            onChange={onChange}
-            className="peer sr-only"
-            {...props}
-          />
-          <div
-            className={`w-4 h-4 rounded-md border transition-all flex items-center justify-center ${
-              checked
-                ? "bg-teal-700 dark:bg-teal-500 border-teal-700 dark:border-teal-500 text-white dark:text-zinc-950"
-                : "border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 peer-focus-visible:ring-2 peer-focus-visible:ring-teal-500"
-            }`}
-          >
-            {checked && <Check className="w-3 h-3 stroke-[3]" />}
-          </div>
-        </div>
-
-        {(label || description) && (
-          <div className="text-xs">
-            {label && <div className="font-medium text-zinc-900 dark:text-zinc-100">{label}</div>}
-            {description && <div className="text-[11px] text-zinc-500 mt-0.5">{description}</div>}
-          </div>
-        )}
-      </label>
-    );
-  }
-);
-
+export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(({ label, description, error, hint, id, className = "", ...props }, ref) => { const generated = React.useId(); const inputId = id || generated; const help = error || hint || description; return <div className={className}><label htmlFor={inputId} className={`inline-flex items-start gap-3 text-sm leading-relaxed ${props.disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}><input {...props} ref={ref} id={inputId} type="checkbox" aria-invalid={!!error} aria-describedby={help ? `${inputId}-hint` : undefined} className="mt-1 h-4 w-4 shrink-0 accent-brand"/>{label}</label>{help && <p id={`${inputId}-hint`} role={error ? "alert" : undefined} className={`ml-7 text-xs ${error ? "text-danger" : "text-muted"}`}>{help}</p>}</div>; });
 Checkbox.displayName = "Checkbox";

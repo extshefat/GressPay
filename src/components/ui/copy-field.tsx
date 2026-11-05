@@ -1,95 +1,36 @@
 "use client";
-
-import React, { useState } from "react";
+import * as React from "react";
 import { Copy, Check, Eye, EyeOff } from "lucide-react";
 import { IconButton } from "./icon-button";
-
 export interface CopyFieldProps {
-  value: string;
-  label?: string;
-  masked?: boolean;
-  canUnmask?: boolean;
-  className?: string;
+    value: string;
+    label?: string;
+    masked?: boolean;
+    canUnmask?: boolean;
+    className?: string;
 }
-
-export function CopyField({
-  value,
-  label,
-  masked = false,
-  canUnmask = false,
-  className = "",
-}: CopyFieldProps) {
-  const [copied, setCopied] = useState(false);
-  const [isMasked, setIsMasked] = useState(masked);
-
-  const handleCopy = async () => {
+export function CopyField({ value, label, masked = false, canUnmask = false, className = "" }: CopyFieldProps) { const [copied, setCopied] = React.useState(false); const [isMasked, setMasked] = React.useState(masked); const [error, setError] = React.useState(""); const timer = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined); React.useEffect(() => () => clearTimeout(timer.current), []); React.useEffect(() => setMasked(masked), [masked]); async function copy() { setError(""); try {
+    await navigator.clipboard.writeText(value);
+    setCopied(true);
+}
+catch {
+    const field = document.createElement('textarea');
+    field.value = value;
+    field.style.position = 'fixed';
+    field.style.opacity = '0';
+    document.body.appendChild(field);
+    field.select();
+    let ok = false;
     try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Fallback
-      const ta = document.createElement("textarea");
-      ta.value = value;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+        ok = document.execCommand('copy');
     }
-  };
-
-  const displayValue = isMasked ? "•".repeat(Math.min(value.length, 28)) : value;
-
-  return (
-    <div className={`space-y-1.5 ${className}`}>
-      {label && (
-        <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
-          {label}
-        </label>
-      )}
-      <div className="relative flex items-center rounded-xl border border-zinc-200 bg-zinc-50/60 dark:border-zinc-800 dark:bg-zinc-900/60 px-3 py-2">
-        <span className="flex-1 font-mono text-xs text-zinc-800 dark:text-zinc-200 truncate select-all">
-          {displayValue}
-        </span>
-
-        <div className="flex items-center gap-1 pl-2">
-          {canUnmask && (
-            <IconButton
-              size="xs"
-              variant="ghost"
-              label={isMasked ? "Show secret" : "Hide secret"}
-              aria-label={isMasked ? "Show secret" : "Hide secret"}
-              onClick={() => setIsMasked(!isMasked)}
-            >
-              {isMasked ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-            </IconButton>
-          )}
-
-          <button
-            type="button"
-            onClick={handleCopy}
-            className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-mono font-medium transition-colors ${
-              copied
-                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400"
-                : "bg-white text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 shadow-2xs"
-            }`}
-          >
-            {copied ? (
-              <>
-                <Check className="w-3.5 h-3.5" />
-                <span>Copied</span>
-              </>
-            ) : (
-              <>
-                <Copy className="w-3.5 h-3.5" />
-                <span>Copy</span>
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+    catch { /* Fall back to manual copy. */ }
+    finally {
+        field.remove();
+    }
+    if (!ok) {
+        setError('Copy unavailable. Select the value and copy manually.');
+        return;
+    }
+    setCopied(true);
+} clearTimeout(timer.current); timer.current = setTimeout(() => setCopied(false), 2000); } return <div className={className}>{label && <p className="mb-2 text-sm font-medium">{label}</p>}<div className="flex min-w-0 items-center gap-2 rounded-md border border-border-strong bg-surface p-2"><code className="min-w-0 flex-1 truncate px-1 text-xs select-all">{isMasked ? "•".repeat(Math.min(value.length, 28)) : value}</code>{canUnmask && <IconButton label={isMasked ? "Show value" : "Hide value"} size="sm" onClick={() => setMasked(v => !v)}>{isMasked ? <Eye size={16}/> : <EyeOff size={16}/>}</IconButton>}<IconButton label={copied ? "Copied" : "Copy value"} size="sm" onClick={copy}>{copied ? <Check size={16}/> : <Copy size={16}/>}</IconButton></div><p role="status" className={`mt-1 min-h-4 text-xs ${error ? "text-danger" : "text-muted"}`}>{error || (copied ? "Copied to clipboard." : "")}</p></div>; }

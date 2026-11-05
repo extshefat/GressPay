@@ -1,39 +1,9 @@
-import React from "react";
-
+"use client";
+import * as React from "react";
 export interface AvatarProps {
-  name?: string;
-  src?: string;
-  size?: "xs" | "sm" | "md" | "lg" | "xl";
-  className?: string;
+    name?: string;
+    src?: string;
+    size?: "xs" | "sm" | "md" | "lg" | "xl";
+    className?: string;
 }
-
-export function Avatar({ name = "", src, size = "md", className = "" }: AvatarProps) {
-  const getInitials = (n: string) => {
-    const parts = n.trim().split(" ");
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[1][0]).toUpperCase();
-    }
-    return n.substring(0, 2).toUpperCase() || "GP";
-  };
-
-  const sizeClasses = {
-    xs: "w-6 h-6 text-[10px]",
-    sm: "w-8 h-8 text-xs",
-    md: "w-10 h-10 text-sm",
-    lg: "w-12 h-12 text-base",
-    xl: "w-16 h-16 text-lg",
-  };
-
-  return (
-    <div
-      className={`relative inline-flex items-center justify-center rounded-full font-medium overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-[#077C74]/10 text-[#077C74] dark:bg-[#1BD1C0]/15 dark:text-[#1BD1C0] shrink-0 select-none ${sizeClasses[size]} ${className}`}
-    >
-      {src ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt={name || "Avatar"} className="w-full h-full object-cover" />
-      ) : (
-        <span>{getInitials(name)}</span>
-      )}
-    </div>
-  );
-}
+export function Avatar({ name = "", src, size = "md", className = "" }: AvatarProps) { const [failed, setFailed] = React.useState(false); React.useEffect(() => setFailed(false), [src]); const words = name.trim().split(/\s+/); const initials = words.length > 1 ? words.slice(0, 2).map(word => Array.from(word)[0]).join("") : Array.from(name).slice(0, 2).join(""); const sizes = { xs: "h-6 w-6 text-xs", sm: "h-8 w-8 text-xs", md: "h-10 w-10 text-sm", lg: "h-12 w-12 text-base", xl: "h-16 w-16 text-xl" }; return <span className={`inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-accent/10 font-medium text-accent ${sizes[size]} ${className}`} aria-label={name || "Account"}>{src && !failed ? <img src={src} onError={() => setFailed(true)} alt="" className="h-full w-full object-cover"/> : <span aria-hidden>{initials.toUpperCase() || "GP"}</span>}</span>; }

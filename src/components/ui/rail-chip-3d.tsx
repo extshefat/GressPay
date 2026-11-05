@@ -1,0 +1,3 @@
+import * as React from "react";
+const logos:Record<string,string>={bkash:"bkash.svg",nagad:"nagad.svg",rocket:"rocket.svg",upay:"upay.svg",cellfin:"cellfin.png",binance_pay:"binance_pay.png",bybit_pay:"bybit_pay.png",usdt_trc20:"usdt_trc20.png"};
+export function RailChip3D({code,name,isometric=false,className=""}:{code:string;name:string;isometric?:boolean;className?:string}){const logo=logos[code];return <div className={`gp-rail-tile ${className}`} data-isometric={isometric}>{logo&&<img src={`/methods/${logo}`} alt="" width={56} height={32}/>}<span className="text-sm font-medium">{name}</span></div>;}

@@ -35,16 +35,20 @@ export function Stepper({
               className={`flex items-start gap-3 group ${
                 onStepClick && isDone ? "cursor-pointer" : ""
               }`}
+              role={onStepClick && isDone ? "button" : undefined}
+              tabIndex={onStepClick && isDone ? 0 : undefined}
+              aria-current={isActive ? "step" : undefined}
+              onKeyDown={e => { if (onStepClick && isDone && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onStepClick(idx); } }}
               onClick={() => onStepClick && isDone && onStepClick(idx)}
             >
               <div className="flex flex-col items-center">
                 <div
                   className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-colors ${
                     isDone
-                      ? "bg-emerald-500 text-white"
+                      ? "bg-brand text-white"
                       : isActive
-                      ? "bg-[#077C74] text-white dark:bg-[#1BD1C0] dark:text-zinc-950 ring-4 ring-teal-50 dark:ring-teal-950/30"
-                      : "bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500"
+                      ? "bg-brand text-white dark:bg-brand dark:text-on-brand ring-4 ring-accent dark:ring-accent/30"
+                      : "bg-surface text-muted dark:bg-surface-muted dark:text-muted"
                   }`}
                 >
                   {isDone ? <Check className="w-3.5 h-3.5" /> : idx + 1}
@@ -53,8 +57,8 @@ export function Stepper({
                   <div
                     className={`w-0.5 h-8 my-1 ${
                       idx < activeStep
-                        ? "bg-emerald-500"
-                        : "bg-zinc-200 dark:bg-zinc-800"
+                        ? "bg-brand"
+                        : "bg-surface-muted dark:bg-surface-muted"
                     }`}
                   />
                 )}
@@ -63,16 +67,16 @@ export function Stepper({
                 <div
                   className={`text-xs font-medium ${
                     isActive
-                      ? "text-zinc-900 dark:text-zinc-100 font-semibold"
+                      ? "text-ink dark:text-ink font-semibold"
                       : isDone
-                      ? "text-zinc-700 dark:text-zinc-300"
-                      : "text-zinc-400 dark:text-zinc-500"
+                      ? "text-ink dark:text-ink"
+                      : "text-muted dark:text-muted"
                   }`}
                 >
                   {step.title}
                 </div>
                 {step.description && (
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+                  <p className="text-[11px] text-muted dark:text-muted mt-0.5">
                     {step.description}
                   </p>
                 )}
@@ -97,15 +101,19 @@ export function Stepper({
               className={`flex flex-col items-center text-center ${
                 onStepClick && isDone ? "cursor-pointer" : ""
               }`}
+              role={onStepClick && isDone ? "button" : undefined}
+              tabIndex={onStepClick && isDone ? 0 : undefined}
+              aria-current={isActive ? "step" : undefined}
+              onKeyDown={e => { if (onStepClick && isDone && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onStepClick(idx); } }}
               onClick={() => onStepClick && isDone && onStepClick(idx)}
             >
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold transition-colors ${
                   isDone
-                    ? "bg-emerald-500 text-white"
+                    ? "bg-brand text-white"
                     : isActive
-                    ? "bg-[#077C74] text-white dark:bg-[#1BD1C0] dark:text-zinc-950 ring-4 ring-teal-100 dark:ring-teal-950/40"
-                    : "bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500"
+                    ? "bg-brand text-white dark:bg-brand dark:text-on-brand ring-4 ring-accent dark:ring-accent/40"
+                    : "bg-surface text-muted dark:bg-surface-muted dark:text-muted"
                 }`}
               >
                 {isDone ? <Check className="w-4 h-4" /> : idx + 1}
@@ -113,10 +121,10 @@ export function Stepper({
               <span
                 className={`mt-1.5 text-xs font-medium ${
                   isActive
-                    ? "text-zinc-900 dark:text-zinc-100 font-semibold"
+                    ? "text-ink dark:text-ink font-semibold"
                     : isDone
-                    ? "text-zinc-700 dark:text-zinc-300"
-                    : "text-zinc-400 dark:text-zinc-500"
+                    ? "text-ink dark:text-ink"
+                    : "text-muted dark:text-muted"
                 }`}
               >
                 {step.title}
@@ -127,8 +135,8 @@ export function Stepper({
               <div
                 className={`flex-1 h-0.5 mx-2 -mt-5 ${
                   idx < activeStep
-                    ? "bg-emerald-500"
-                    : "bg-zinc-200 dark:bg-zinc-800"
+                    ? "bg-brand"
+                    : "bg-surface-muted dark:bg-surface-muted"
                 }`}
               />
             )}

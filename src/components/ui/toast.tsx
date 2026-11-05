@@ -61,7 +61,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {children}
       <div
         aria-live="polite"
-        className="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2.5 max-w-sm w-full pointer-events-none p-2 sm:p-0"
+        className="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2.5 max-w-sm w-[calc(100%_-_32px)] pointer-events-none p-2 sm:p-0"
       >
         {toasts.map((item) => (
           <ToastItem key={item.id} item={item} onDismiss={dismiss} />
@@ -71,57 +71,59 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ToastItem({
+export function ToastItem({
   item,
   onDismiss,
 }: {
   item: ToastMessage;
   onDismiss: (id: string) => void;
 }) {
+  const [paused, setPaused] = useState(false);
   useEffect(() => {
-    if (!item.duration || item.duration <= 0) return;
+    if (paused || !item.duration || item.duration <= 0) return;
     const timer = setTimeout(() => {
       onDismiss(item.id);
     }, item.duration);
     return () => clearTimeout(timer);
-  }, [item, onDismiss]);
+  }, [item, onDismiss, paused]);
 
   const icons = {
-    success: <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />,
-    error: <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0" />,
-    warning: <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />,
-    info: <Info className="w-5 h-5 text-[#077C74] dark:text-[#1BD1C0] shrink-0" />,
+    success: <CheckCircle2 className="w-5 h-5 text-success dark:text-success shrink-0" />,
+    error: <AlertCircle className="w-5 h-5 text-danger dark:text-danger shrink-0" />,
+    warning: <AlertTriangle className="w-5 h-5 text-warning dark:text-warning shrink-0" />,
+    info: <Info className="w-5 h-5 text-accent dark:text-accent shrink-0" />,
   };
 
   const borders = {
-    success: "border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/90 dark:bg-zinc-950/90",
-    error: "border-rose-200 dark:border-rose-900/60 bg-rose-50/90 dark:bg-zinc-950/90",
-    warning: "border-amber-200 dark:border-amber-900/60 bg-amber-50/90 dark:bg-zinc-950/90",
-    info: "border-teal-200 dark:border-teal-900/60 bg-teal-50/90 dark:bg-zinc-950/90",
+    success: "border-success dark:border-success/60 bg-success/10 dark:bg-canvas/90",
+    error: "border-danger dark:border-danger/60 bg-danger/10 dark:bg-canvas/90",
+    warning: "border-warning dark:border-warning/60 bg-warning/10 dark:bg-canvas/90",
+    info: "border-accent dark:border-accent/60 bg-accent/10 dark:bg-canvas/90",
   };
 
   const currentType = item.type || "info";
 
   return (
     <div
-      role="status"
-      className={`pointer-events-auto flex items-start gap-3 rounded-xl border p-3.5 shadow-lg backdrop-blur-md transition-all animate-in fade-in slide-in-from-bottom-2 ${borders[currentType]}`}
+      onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}
+      role={item.type === "error" ? "alert" : "status"}
+      className={`pointer-events-auto flex items-start gap-3 rounded-xl border p-3.5 shadow-floating  transition-all ${borders[currentType]}`}
     >
       {icons[currentType]}
       <div className="flex-1 min-w-0 pt-0.5">
         {item.title && (
-          <h4 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 mb-0.5">
+          <h4 className="text-xs font-semibold text-ink dark:text-ink mb-0.5">
             {item.title}
           </h4>
         )}
-        <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed break-words">
+        <p className="text-xs text-ink dark:text-ink leading-relaxed break-words">
           {item.message}
         </p>
       </div>
       <button
         type="button"
         onClick={() => onDismiss(item.id)}
-        className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors p-0.5 rounded"
+        className="text-muted hover:text-muted dark:hover:text-on-ink transition-colors p-0.5 rounded"
         aria-label="Dismiss toast"
       >
         <X className="w-4 h-4" />

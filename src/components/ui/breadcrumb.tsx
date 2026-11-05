@@ -15,20 +15,20 @@ export interface BreadcrumbProps {
 export function Breadcrumb({ items, className = "" }: BreadcrumbProps) {
   return (
     <nav aria-label="Breadcrumb" className={`flex items-center text-xs ${className}`}>
-      <ol className="flex items-center gap-1.5 text-zinc-500 dark:text-zinc-400">
+      <ol className="flex items-center gap-1.5 text-muted dark:text-muted">
         {items.map((item, idx) => {
           const isLast = idx === items.length - 1;
 
           return (
             <React.Fragment key={idx}>
-              {idx > 0 && <ChevronRight className="w-3.5 h-3.5 text-zinc-400 shrink-0" />}
+              {idx > 0 && <ChevronRight className="w-3.5 h-3.5 text-muted shrink-0" />}
               <li className="flex items-center">
                 {isLast || !item.href ? (
                   <span
                     className={`font-medium ${
                       isLast
-                        ? "text-zinc-900 dark:text-zinc-100"
-                        : "text-zinc-500 dark:text-zinc-400"
+                        ? "text-ink dark:text-ink"
+                        : "text-muted dark:text-muted"
                     }`}
                     aria-current={isLast ? "page" : undefined}
                   >
@@ -37,7 +37,7 @@ export function Breadcrumb({ items, className = "" }: BreadcrumbProps) {
                 ) : (
                   <Link
                     href={item.href}
-                    className="hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors"
+                    className="hover:text-ink dark:hover:text-on-ink transition-colors"
                   >
                     {item.label}
                   </Link>
