@@ -46,7 +46,9 @@ final class GpConfig
             'GRESSPAY_CRYPTO_ALLOWED', 'GRESSPAY_SMS_AUTO_ALLOWED', 'ADMIN_EMAIL', 'ADMIN_EMAILS',
             'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI',
             'R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY',
-            'R2_BUCKET_NAME', 'R2_ENDPOINT', 'R2_PUBLIC_BASE_URL'
+            'R2_BUCKET_NAME', 'R2_ENDPOINT', 'R2_PUBLIC_BASE_URL',
+            'TRUSTED_PROXIES', 'TRUSTED_PROXY_HOPS',
+            'MAIL_DRIVER', 'SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS', 'SMTP_FROM',
         ] as $k) {
             $g = getenv($k);
             if ($g !== false && $g !== '') {

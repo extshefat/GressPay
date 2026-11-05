@@ -39,14 +39,15 @@ final class CompanionController
             $plain = 'gpdev_' . bin2hex(random_bytes(20));
             $label = trim((string) $req->input('label', 'Android companion'));
             GpDb::exec(
-                'INSERT INTO gp_devices (device_id, brand_id, label, token_hash, token_sealed, status, created_at, updated_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                'INSERT INTO gp_devices (device_id, brand_id, label, token_hash, token_sealed, token_prefix, status, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 [
                     $deviceId,
                     $brandId,
                     $label,
                     password_hash($plain, PASSWORD_BCRYPT),
                     GpCrypto::seal($plain),
+                    substr($plain, 0, 12),
                     'active',
                     $now,
                     $now,
@@ -92,8 +93,8 @@ final class CompanionController
             }
             $plain = 'gpdev_' . bin2hex(random_bytes(20));
             GpDb::exec(
-                'UPDATE gp_devices SET token_hash = ?, token_sealed = ?, status = ?, updated_at = ? WHERE device_id = ?',
-                [password_hash($plain, PASSWORD_BCRYPT), GpCrypto::seal($plain), 'active', GpIds::now(), $devicePart]
+                'UPDATE gp_devices SET token_hash = ?, token_sealed = ?, token_prefix = ?, status = ?, updated_at = ? WHERE device_id = ?',
+                [password_hash($plain, PASSWORD_BCRYPT), GpCrypto::seal($plain), substr($plain, 0, 12), 'active', GpIds::now(), $devicePart]
             );
             GpJson::send([
                 'deviceId' => $devicePart,
@@ -158,6 +159,7 @@ final class CompanionController
             if ($plugin) {
                 $trxId = $plugin->normalizeTrx($trxId);
             }
+            $trxId = strtoupper($trxId);
             $amount = GpMoney::sanitize((string) $req->input('amount', '0'));
             $receivedAtMs = filter_var($req->input('received_at_ms', null), FILTER_VALIDATE_INT);
             if ($receivedAtMs === false || $receivedAtMs === null || $receivedAtMs <= 0
@@ -200,26 +202,26 @@ final class CompanionController
                 }
             }
 
-            // Anti-Fraud: Strict uniqueness check against completed orders and used SMS
+            // Anti-Fraud: brand-scoped uniqueness (generic errors — no cross-tenant oracle).
             $alreadyCompleted = GpDb::one(
-                'SELECT session_id FROM gp_transactions WHERE (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND status = ?',
-                [$trxId, strtoupper($trxId), strtolower($trxId), 'completed']
+                'SELECT session_id FROM gp_transactions WHERE brand_id = ? AND UPPER(trx_id) = ? AND status = ?',
+                [$device['brand_id'], $trxId, 'completed']
             );
             if ($alreadyCompleted) {
-                GpJson::error('DUPLICATE_TRX', 'This Transaction ID has already been used.', 409);
+                GpJson::error('DUPLICATE_TRX', 'This Transaction ID cannot be used.', 409);
             }
 
             $used = GpDb::one(
-                'SELECT id FROM gp_sms_data WHERE (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND status = ?',
-                [$trxId, strtoupper($trxId), strtolower($trxId), 'used']
+                'SELECT id FROM gp_sms_data WHERE brand_id = ? AND UPPER(trx_id) = ? AND status = ?',
+                [$device['brand_id'], $trxId, 'used']
             );
             if ($used) {
-                GpJson::error('DUPLICATE_SMS', 'This Transaction ID has already been used.', 409);
+                GpJson::error('DUPLICATE_SMS', 'This Transaction ID cannot be used.', 409);
             }
 
             $existingApproved = GpDb::one(
                 'SELECT * FROM gp_sms_data WHERE brand_id = ? AND UPPER(trx_id) = ? AND status = ?',
-                [$device['brand_id'], strtoupper($trxId), 'approved']
+                [$device['brand_id'], $trxId, 'approved']
             );
             $now = GpIds::now();
             // Prefer device-bound wallet digits for matching (APK still sends SMS shortcode as number).
@@ -373,6 +375,9 @@ final class CompanionController
     public static function authenticateActiveDevice(GpRequest $req): array
     {
         $token = $req->bearer() ?? ($req->deviceToken() ?? '');
+        $ip = GpRateLimiter::ip();
+        GpRateLimiter::guard('companion:ip:' . $ip, 120, 60);
+        GpRateLimiter::guardIfLimited('companion:fail:' . $ip, 20, 300);
         if (!is_string($token) || $token === '') {
             GpJson::error('UNAUTHORIZED', 'Device API key required (gpdev_…).', 401);
         }
@@ -383,9 +388,13 @@ final class CompanionController
                 401
             );
         }
+        $prefix = substr($token, 0, 12);
+        GpRateLimiter::guardIfLimited('companion:fail:pfx:' . $prefix, 10, 300);
         $brandHint = trim((string) ($_SERVER['HTTP_X_GRESSPAY_BRAND'] ?? ''));
         $device = self::resolveActiveDevice($brandHint, $token);
         if ($device === null) {
+            GpRateLimiter::hit('companion:fail:' . $ip, 20, 300);
+            GpRateLimiter::hit('companion:fail:pfx:' . $prefix, 10, 300);
             GpJson::error('UNAUTHORIZED', 'Invalid or revoked device API key.', 401);
         }
         return $device;
@@ -456,12 +465,21 @@ final class CompanionController
         if ($brandId === '' || $token === '') {
             return null;
         }
+        $prefix = substr($token, 0, 12);
         $devices = GpDb::all(
-            'SELECT * FROM gp_devices WHERE brand_id = ? AND status = ?',
-            [$brandId, 'active']
+            'SELECT * FROM gp_devices WHERE brand_id = ? AND status = ? AND token_prefix = ?',
+            [$brandId, 'active', $prefix]
         );
+        // Legacy rows without prefix: narrow scan only for this brand.
+        if ($devices === []) {
+            $devices = GpDb::all(
+                'SELECT * FROM gp_devices WHERE brand_id = ? AND status = ? AND (token_prefix IS NULL OR token_prefix = ?)',
+                [$brandId, 'active', '']
+            );
+        }
         foreach ($devices as $row) {
             if (password_verify($token, $row['token_hash'])) {
+                self::backfillTokenPrefix($row, $token);
                 return $row;
             }
         }
@@ -469,7 +487,7 @@ final class CompanionController
     }
 
     /**
-     * Token-only lookup (brand chosen when the device was created in the dashboard).
+     * Token-only lookup via indexed prefix (no LIMIT 500 full-table bcrypt scan).
      *
      * @return array<string,mixed>|null
      */
@@ -478,15 +496,54 @@ final class CompanionController
         if ($token === '') {
             return null;
         }
+        $prefix = substr($token, 0, 12);
         $devices = GpDb::all(
-            "SELECT * FROM gp_devices WHERE status = 'active' ORDER BY id DESC LIMIT 500"
+            "SELECT * FROM gp_devices WHERE status = 'active' AND token_prefix = ?",
+            [$prefix]
         );
         foreach ($devices as $row) {
             if (password_verify($token, (string) ($row['token_hash'] ?? ''))) {
                 return $row;
             }
         }
+        // One-time legacy backfill path: sealed tokens without prefix.
+        $legacy = GpDb::all(
+            "SELECT * FROM gp_devices WHERE status = 'active' AND (token_prefix IS NULL OR token_prefix = '') ORDER BY id DESC LIMIT 200"
+        );
+        foreach ($legacy as $row) {
+            $plain = '';
+            try {
+                $plain = (string) GpCrypto::open((string) ($row['token_sealed'] ?? ''));
+            } catch (Throwable $e) {
+                $plain = '';
+            }
+            if ($plain !== '' && hash_equals($plain, $token) && password_verify($token, (string) ($row['token_hash'] ?? ''))) {
+                self::backfillTokenPrefix($row, $token);
+                return $row;
+            }
+            if (password_verify($token, (string) ($row['token_hash'] ?? ''))) {
+                self::backfillTokenPrefix($row, $token);
+                return $row;
+            }
+        }
         return null;
+    }
+
+    /** @param array<string,mixed> $row */
+    private static function backfillTokenPrefix(array $row, string $token): void
+    {
+        $prefix = substr($token, 0, 12);
+        if ($prefix === '' || (string) ($row['token_prefix'] ?? '') === $prefix) {
+            return;
+        }
+        try {
+            GpDb::exec(
+                'UPDATE gp_devices SET token_prefix = ?, updated_at = ? WHERE device_id = ?',
+                [$prefix, GpIds::now(), $row['device_id']]
+            );
+        } catch (Throwable $e) {
+            error_log('token_prefix backfill failed: ' . $e->getMessage());
+        }
     }
 
     /**

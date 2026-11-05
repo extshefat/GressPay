@@ -63,6 +63,20 @@ WEBHOOK_TIMEOUT_SECONDS=8
 WEBHOOK_MAX_RETRIES=5
 PORT=8080
 
+# Trusted reverse proxies (Coolify/Traefik). Client IP uses X-GressPay-Client-IP
+# from the Next BFF (rightmost public hop of X-Forwarded-For). When unset,
+# private Docker/Coolify CIDRs are trusted by default.
+TRUSTED_PROXIES=10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+TRUSTED_PROXY_HOPS=1
+
+# Email verification (required for live API keys / admin after verify)
+MAIL_DRIVER=smtp
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_USER=
+SMTP_PASS=
+SMTP_FROM=noreply@your-domain.com
+
 # Google OAuth 2.0 / OpenID Connect (Optional)
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
