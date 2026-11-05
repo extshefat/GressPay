@@ -41,6 +41,9 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    # Internal-only; web reaches this via Docker DNS http://php:8080
+    expose:
+      - "8080"
     healthcheck:
       # Liveness only: any HTTP response (200 or 503) means nginx+FPM is up.
       # file_get_contents returns false on 503 without ignore_errors, which
@@ -57,6 +60,8 @@ services:
       start_period: 90s
       retries: 5
     environment: &php_environment
+      # Force API bind port — do not inherit Coolify/web PORT=3000.
+      API_PORT: "8080"
       PORT: "8080"
       TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
       TRUSTED_NEXT_PROXIES: ${TRUSTED_NEXT_PROXIES:-}
