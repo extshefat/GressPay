@@ -20,7 +20,7 @@ final class GpMigrations
             $migrations = [
                 1 => static function (): void { GpDb::installLegacySchema(); },
                 2 => [self::class, 'securityColumns'],
-                3 => [GpQrStorage::class, 'migrateLegacy'],
+                3 => [self::class, 'qrAssets'],
                 4 => [self::class, 'transactionClaims'],
             ];
             foreach ($migrations as $version => $apply) {
@@ -85,6 +85,17 @@ final class GpMigrations
         GpDb::pdo()->exec('CREATE TABLE IF NOT EXISTS gp_login_failures (account_hash VARCHAR(64) PRIMARY KEY, failures INTEGER NOT NULL, window_start INTEGER NOT NULL, next_attempt INTEGER NOT NULL)');
         self::index('idx_gp_login_expiry','gp_login_failures','window_start');
         self::index('idx_gp_email_expiry','gp_email_verifications','expires_at');
+    }
+
+    private static function qrAssets(): void
+    {
+        GpQrStorage::migrateLegacy();
+        if (GpDb::driver() === 'mysql') {
+            // Bounded prefix also supports legacy TEXT columns without indexing data URLs.
+            self::index('idx_gp_qr_asset', 'gp_gateways', 'qr_status, qr_object_key(128)');
+        } else {
+            GpDb::pdo()->exec("CREATE INDEX IF NOT EXISTS idx_gp_qr_asset ON gp_gateways (qr_object_key) WHERE qr_status = 'ready'");
+        }
     }
 
     private static function transactionClaims(): void
