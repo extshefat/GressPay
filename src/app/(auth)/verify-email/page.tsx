@@ -5,17 +5,20 @@ import { Button } from "@/components/ui/button";
 
 export default function VerifyEmailPage() {
   const [token, setToken] = useState("");
+  const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [message, setMessage] = useState("");
   useEffect(() => {
-    setToken(new URLSearchParams(window.location.hash.slice(1)).get("token") || "");
+    const query = new URLSearchParams(window.location.search);
+    setToken(new URLSearchParams(window.location.hash.slice(1)).get("token") || query.get("token") || "");
+    setEmail(query.get("email") || "");
     window.history.replaceState(null, "", window.location.pathname);
   }, []);
   async function verify() {
     setBusy(true);
     try {
-      const response = await fetch("/api/v1/auth/verify-email", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }) });
+      const response = await fetch("/api/v1/auth/verify-email", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, email }) });
       setDone(response.ok);
       setMessage(response.ok ? "Email verified. Sign in again to continue." : "This link is invalid or expired. Request another email from your dashboard.");
     } catch { setMessage("Could not reach the server. Please try again."); }

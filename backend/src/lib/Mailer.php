@@ -38,10 +38,10 @@ final class GpMailer
                 if (!stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) throw new RuntimeException('SMTP TLS failed.');
                 $command('EHLO gresspay', [250]);
             }
-            if (GpConfig::get('SMTP_USERNAME') !== '') {
+            if (GpConfig::get('SMTP_USERNAME', GpConfig::get('SMTP_USER')) !== '') {
                 $command('AUTH LOGIN', [334]);
-                $command(base64_encode(GpConfig::get('SMTP_USERNAME')), [334]);
-                $command(base64_encode(GpConfig::get('SMTP_PASSWORD')), [235]);
+                $command(base64_encode(GpConfig::get('SMTP_USERNAME', GpConfig::get('SMTP_USER'))), [334]);
+                $command(base64_encode(GpConfig::get('SMTP_PASSWORD', GpConfig::get('SMTP_PASS'))), [235]);
             }
             $command('MAIL FROM:<' . $from . '>', [250]);
             $command('RCPT TO:<' . $recipient . '>', [250,251]);

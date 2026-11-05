@@ -95,6 +95,8 @@ final class GpRateLimiter
             || ((int) $row['failures'] < 5 && (int) $row['next_attempt'] <= time());
     }
 
+    public static function emailBucket(string $email): string { return self::accountHash($email); }
+
     public static function accountHash(string $email): string
     {
         return hash('sha256', strtolower(trim($email)));

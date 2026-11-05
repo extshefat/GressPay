@@ -6,9 +6,9 @@ function mysql_check(bool $ok, string $name): void {
     echo "PASS {$name}\n";
 }
 mysql_check(GpDb::driver()==='mysql','MySQL security checks use real MySQL');
-$versions=GpDb::all('SELECT * FROM gp_schema_version ORDER BY version');
+$versions=GpDb::all('SELECT * FROM gp_security_migrations ORDER BY version');
 GpMigrations::run();
-mysql_check($versions===GpDb::all('SELECT * FROM gp_schema_version ORDER BY version'),'MySQL migration runner is repeatable');
+mysql_check($versions===GpDb::all('SELECT * FROM gp_security_migrations ORDER BY version'),'MySQL migration runner is repeatable');
 $bucket='mysql-'.bin2hex(random_bytes(8));
 for ($n=0;$n<5;$n++) mysql_check(GpRateLimiter::hit($bucket,5,900),'MySQL upsert admits within limit');
 mysql_check(!GpRateLimiter::hit($bucket,5,900),'MySQL upsert rejects excess');

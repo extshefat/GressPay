@@ -44,6 +44,31 @@ final class GpJwt
         return $payload;
     }
 
+    /** Issue a merchant session JWT including token_version. */
+    public static function issueForMerchant(array $merchant, array $extra = [], int $ttl = self::TTL_DEFAULT): string
+    {
+        $email = strtolower(trim((string) ($merchant['email'] ?? '')));
+        $verified = !empty($merchant['email_verified']);
+        $isAdmin = $verified && (GpConfig::isAdmin($email) || (($merchant['role'] ?? '') === 'admin'));
+        $payload = array_merge([
+            'sub' => $merchant['merchant_id'],
+            'brand' => '',
+            'email' => $merchant['email'] ?? '',
+            'role' => $isAdmin ? 'admin' : ($merchant['role'] ?? 'merchant'),
+            'is_admin' => $isAdmin,
+            'plan_id' => $isAdmin ? 'lifetime' : ($merchant['plan_id'] ?? 'starter'),
+            'tv' => (int) ($merchant['token_version'] ?? 0),
+            'jti' => bin2hex(random_bytes(16)),
+        ], $extra);
+        return self::encode($payload, $ttl);
+    }
+
+    public static function bumpTokenVersion(string $merchantId): int
+    {
+        GpAuth::revokeSessions($merchantId);
+        return (int) (GpDb::one('SELECT token_version FROM gp_merchants WHERE merchant_id = ?', [$merchantId])['token_version'] ?? 0);
+    }
+
     private static function b64(string $data): string
     {
         return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');

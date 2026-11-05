@@ -18,7 +18,11 @@ final class GpMerchantSecrets
         if ($stored === '') return '';
         if (str_starts_with($stored, 'v1:')) {
             $value = GpCrypto::open($stored, 'gresspay/merchant/' . $field);
-            if ($value === null) throw new RuntimeException('Alert credential could not be opened.');
+            if ($value === null) {
+                $value = GpCrypto::open($stored);
+                if ($value === null) throw new RuntimeException('Alert credential could not be opened.');
+                GpDb::exec('UPDATE gp_merchants SET ' . $field . ' = ? WHERE merchant_id = ? AND ' . $field . ' = ?', [self::seal($field,$value), $merchant['merchant_id'], $stored]);
+            }
             return $value;
         }
         GpDb::exec('UPDATE gp_merchants SET ' . $field . ' = ? WHERE merchant_id = ? AND ' . $field . ' = ?', [self::seal($field, $stored), $merchant['merchant_id'], $stored]);

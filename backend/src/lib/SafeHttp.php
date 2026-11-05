@@ -4,6 +4,20 @@ declare(strict_types=1);
 /** Merchant-controlled HTTPS destinations. Resolve once, validate all answers, pin one. */
 final class GpSafeHttp
 {
+    public static function validateUrl(string $url, ?array $hostAllowlist = null): array {
+        if ($hostAllowlist !== null && !in_array(strtolower((string)parse_url($url,PHP_URL_HOST)), $hostAllowlist, true)) return ['ok'=>false,'error'=>'host_not_allowed'];
+        return self::destination($url);
+    }
+    public static function validateDiscordWebhook(string $url): array {
+        return self::discordUrl($url) ? self::destination($url) : ['ok'=>false,'error'=>'invalid_discord_webhook'];
+    }
+    public static function postJson(string $url,string $json,array $extraHeaders=[],?array $hostAllowlist=null): array {
+        $destination=self::validateUrl($url,$hostAllowlist);
+        $result=self::post($url,$json,$extraHeaders,8,$destination);
+        $code=(int)$result['code'];
+        return ['ok'=>$code>=200 && $code<300,'status'=>$code];
+    }
+
     public static function isBlockedIp(string $ip): bool
     {
         $bytes = @inet_pton($ip);

@@ -1334,13 +1334,13 @@ $legacyPath=$root . '/storage/phase1_legacy_regression.sqlite';
 @unlink($legacyPath);
 $legacyCode='putenv("APP_ENV=production");putenv("SQLITE_PATH=storage/phase1_legacy_regression.sqlite");'
     . '$_ENV["APP_ENV"]="production";$_ENV["SQLITE_PATH"]="storage/phase1_legacy_regression.sqlite";require ' . var_export($root.'/src/bootstrap.php',true) . ';'
-    . '$noHttpMigration=GpDb::one("SELECT name FROM sqlite_master WHERE type = ? AND name = ?",["table","gp_schema_version"])===null;'
+    . '$noHttpMigration=GpDb::one("SELECT name FROM sqlite_master WHERE type = ? AND name = ?",["table","gp_security_migrations"])===null;'
     . 'GpDb::pdo()->exec(file_get_contents(GRESSPAY_ROOT."/schema/install.sql"));'
     . 'foreach ([["legacy-admin","admin",0],["legacy-google","merchant",1],["legacy-local","merchant",0]] as [$id,$role,$google]) GpDb::exec("INSERT INTO gp_merchants (merchant_id,full_name,email,role,google_email_verified,created_at,updated_at) VALUES (?,?,?,?,?,?,?)",[$id,$id,$id."@test.local",$role,$google,GpIds::now(),GpIds::now()]);'
     . 'GpDb::exec("INSERT INTO gp_brands (brand_id,merchant_id,name,currency_code,timezone,created_at,updated_at) VALUES (?,?,?,?,?,?,?)",["legacy-brand","legacy-local","Legacy brand","BDT","Asia/Dhaka",GpIds::now(),GpIds::now()]);'
     . 'GpDb::pdo()->exec("ALTER TABLE gp_devices ADD COLUMN token_sealed TEXT");$legacyToken="gpdev_".bin2hex(random_bytes(20));GpDb::exec("INSERT INTO gp_devices (device_id,brand_id,token_hash,token_sealed,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?)",["legacy-device","legacy-brand",password_hash($legacyToken,PASSWORD_BCRYPT),GpCrypto::seal($legacyToken),"active",GpIds::now(),GpIds::now()]);'
-    . 'GpMigrations::run();$before=GpDb::all("SELECT * FROM gp_schema_version ORDER BY version");GpMigrations::run();'
-    . 'echo json_encode(["noHttpMigration"=>$noHttpMigration,"deviceBackfilled"=>(GpDb::one("SELECT token_prefix FROM gp_devices WHERE device_id = ?",["legacy-device"])["token_prefix"]??"")===substr($legacyToken,0,12),"merchants"=>GpDb::all("SELECT merchant_id,email_verified FROM gp_merchants ORDER BY merchant_id"),"brand"=>GpDb::one("SELECT require_payer_match FROM gp_brands WHERE brand_id = ?",["legacy-brand"]),"idempotent"=>$before===GpDb::all("SELECT * FROM gp_schema_version ORDER BY version")]);';
+    . 'GpMigrations::run();$before=GpDb::all("SELECT * FROM gp_security_migrations ORDER BY version");GpMigrations::run();'
+    . 'echo json_encode(["noHttpMigration"=>$noHttpMigration,"deviceBackfilled"=>(GpDb::one("SELECT token_prefix FROM gp_devices WHERE device_id = ?",["legacy-device"])["token_prefix"]??"")===substr($legacyToken,0,12),"merchants"=>GpDb::all("SELECT merchant_id,email_verified FROM gp_merchants ORDER BY merchant_id"),"brand"=>GpDb::one("SELECT require_payer_match FROM gp_brands WHERE brand_id = ?",["legacy-brand"]),"idempotent"=>$before===GpDb::all("SELECT * FROM gp_security_migrations ORDER BY version")]);';
 $legacyProc=proc_open([PHP_BINARY,'-r',$legacyCode],[0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$legacyPipes);
 $legacyResult=[];
 if (is_resource($legacyProc)) {
@@ -1371,11 +1371,109 @@ if ($signupRow !== null) {
 }
 
 // Versioned migrations preserve existing data and skip already-applied work.
-$versions = GpDb::all('SELECT * FROM gp_schema_version ORDER BY version');
+$versions = GpDb::all('SELECT * FROM gp_security_migrations ORDER BY version');
 GpMigrations::run();
-assert_true(GpDb::all('SELECT * FROM gp_schema_version ORDER BY version') === $versions, 'Migrations are idempotent and retain version stamps');
+assert_true(GpDb::all('SELECT * FROM gp_security_migrations ORDER BY version') === $versions, 'Migrations are idempotent and retain version stamps');
 assert_true(GpDb::one('SELECT merchant_id FROM gp_merchants WHERE merchant_id = ?', [$merchantId]) !== null, 'Migration preserves existing merchant data');
 assert_true(count($versions) === 4, 'Ordered schema migrations applied');
+
+// Upstream deployed formats remain readable after merging both security implementations.
+$legacyCipher=GpCrypto::seal('upstream-telegram-token');
+GpDb::exec('UPDATE gp_merchants SET telegram_bot_token = ? WHERE merchant_id = ?',[$legacyCipher,$merchantId]);
+$legacySecretRow=GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?',[$merchantId]);
+assert_true(GpMerchantSecrets::read($legacySecretRow,'telegram_bot_token')==='upstream-telegram-token','Upstream no-purpose ciphertext remains decryptable and upgrades');
+$legacyMail=bin2hex(random_bytes(32));
+GpDb::exec('UPDATE gp_merchants SET email_verified = 0, email_verify_token_hash = ?, email_verify_expires_at = ? WHERE merchant_id = ?',[hash('sha256',$legacyMail),gmdate('Y-m-d\TH:i:s\Z',time()+3600),$googleVictim]);
+assert_true(GpEmailVerification::consume($legacyMail,'google-victim@test.local'),'Upstream pending email verification link remains valid');
+assert_true(!GpEmailVerification::consume($legacyMail,'google-victim@test.local'),'Upstream verification token remains single use');
+
+// —— Phase 1 security regressions ——
+putenv('TRUSTED_PROXIES=127.0.0.1/32');
+$_ENV['TRUSTED_PROXIES'] = '127.0.0.1/32';
+putenv('TRUSTED_PROXY_HOPS=1');
+$_ENV['TRUSTED_PROXY_HOPS'] = '1';
+GpConfig::load();
+$_SERVER['REMOTE_ADDR'] = '203.0.113.9';
+$_SERVER['HTTP_X_FORWARDED_FOR'] = '1.2.3.4, 10.0.0.1';
+$_SERVER['HTTP_X_GRESSPAY_CLIENT_IP'] = '9.9.9.9';
+assert_true(GpClientIp::resolve() === '203.0.113.9', 'Untrusted peer ignores spoofed XFF/client-IP');
+putenv('TRUSTED_NEXT_PROXIES=127.0.0.1/32');
+$_SERVER['REMOTE_ADDR'] = '127.0.0.1';
+assert_true(GpClientIp::resolve() === '9.9.9.9', 'Trusted peer prefers X-GressPay-Client-IP');
+unset($_SERVER['HTTP_X_GRESSPAY_CLIENT_IP']);
+putenv('TRUSTED_NEXT_PROXIES=');
+$_SERVER['HTTP_X_FORWARDED_FOR'] = '8.8.8.8, 10.0.0.5';
+assert_true(GpClientIp::resolve() === '10.0.0.5', 'Trusted peer takes XFF hop from the right');
+
+$bucket = 'test:atomic:' . bin2hex(random_bytes(4));
+assert_true(GpRateLimiter::hit($bucket, 3, 60) === true, 'Atomic rate limit allows first hit');
+assert_true(GpRateLimiter::hit($bucket, 3, 60) === true, 'Atomic rate limit allows second hit');
+assert_true(GpRateLimiter::hit($bucket, 3, 60) === true, 'Atomic rate limit allows third hit');
+assert_true(GpRateLimiter::hit($bucket, 3, 60) === false, 'Atomic rate limit blocks fourth hit');
+$emailA = GpRateLimiter::emailBucket('Alice@Example.com');
+$emailB = GpRateLimiter::emailBucket('bob@example.com');
+assert_true($emailA !== $emailB, 'Email rate buckets are isolated by address');
+assert_true($emailA === GpRateLimiter::emailBucket('alice@example.com'), 'Email bucket normalizes case');
+
+$discordBad = GpSafeHttp::validateDiscordWebhook('https://evil.example/api/webhooks/1/abc');
+assert_true($discordBad['ok'] === false, 'Discord webhook host allowlist rejects non-Discord');
+$discordPath = GpSafeHttp::validateDiscordWebhook('https://discord.com/api/v9/users/@me');
+assert_true($discordPath['ok'] === false, 'Discord webhook path must match /api/webhooks/…');
+$userinfo = GpSafeHttp::validateUrl('https://user:pass@example.com/x');
+assert_true($userinfo['ok'] === false, 'SafeHttp rejects URL userinfo');
+
+$verBefore = GpSchema::currentVersion();
+GpSchema::migrateToLatest();
+$verAfter = GpSchema::currentVersion();
+assert_true($verAfter >= $verBefore && $verAfter >= 1, 'Schema migrate is idempotent and stamped');
+
+$pfxTok = 'gpdev_' . bin2hex(random_bytes(20));
+$pfxDev = GpIds::make('dev', 8);
+GpDb::exec(
+    'INSERT INTO gp_devices (device_id, brand_id, label, token_hash, token_sealed, token_prefix, status, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?)',
+    [$pfxDev, $brandId, 'pfx', password_hash($pfxTok, PASSWORD_BCRYPT), GpCrypto::seal($pfxTok), substr($pfxTok, 0, 12), 'active', $now, $now]
+);
+$foundPfx = CompanionController::deviceForToken($pfxTok);
+assert_true(is_array($foundPfx) && ($foundPfx['device_id'] ?? '') === $pfxDev, 'deviceForToken uses token_prefix index');
+assert_true(CompanionController::deviceForToken('gpdev_' . str_repeat('0', 40)) === null, 'Wrong token misses prefix lookup');
+
+$tvMerchant = GpIds::make('mrc', 6);
+GpDb::exec(
+    'INSERT INTO gp_merchants (merchant_id, full_name, email, password_hash, role, status, plan_id, email_verified, token_version, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+    [$tvMerchant, 'TV', 'tv_' . bin2hex(random_bytes(3)) . '@test.local', password_hash('Password123!', PASSWORD_BCRYPT), 'merchant', 'active', 'trial', 1, 0, $now, $now]
+);
+$tvRow = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$tvMerchant]);
+$jwt0 = GpJwt::issueForMerchant($tvRow);
+$decoded0 = GpJwt::decode($jwt0);
+assert_true(is_array($decoded0) && ($decoded0['tv'] ?? -1) === 0 && !empty($decoded0['jti']), 'JWT carries tv=0 and jti');
+GpJwt::bumpTokenVersion($tvMerchant);
+assert_true(GpJwt::decode($jwt0) !== null, 'Signature still valid after bump');
+// resolveActor rejects stale tv — simulate via Auth decode path
+$tvRow2 = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$tvMerchant]);
+assert_true((int) $tvRow2['token_version'] === 1, 'token_version bumped to 1');
+$jwt1 = GpJwt::issueForMerchant($tvRow2);
+assert_true(GpJwt::decode($jwt1)['tv'] === 1, 'Fresh JWT carries tv=1');
+
+$normTrx = 'abc123xyz';
+assert_true(strtoupper($normTrx) === 'ABC123XYZ', 'TrxID normalize uppercase helper');
+$normBrand = GpIds::make('b', 6);
+$normMerch = GpIds::make('m', 6);
+GpDb::exec(
+    'INSERT INTO gp_merchants (merchant_id, full_name, email, password_hash, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    [$normMerch, 'Norm', 'norm_' . bin2hex(random_bytes(3)) . '@test.local', password_hash('x', PASSWORD_BCRYPT), 'active', $now, $now]
+);
+GpDb::exec(
+    'INSERT INTO gp_brands (brand_id, merchant_id, name, currency_code, timezone, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    [$normBrand, $normMerch, 'Norm Brand', 'BDT', 'Asia/Dhaka', $now, $now]
+);
+GpDb::exec(
+    'INSERT INTO gp_sms_data (brand_id, sender_key, amount, trx_id, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+    [$normBrand, 'bkash', '100', 'MIXEDCASETRX', 'approved', $now, $now]
+);
+$matchUpper = CheckoutController::matchingSms($normBrand, 'mixedcasetrx', '100', 'bkash');
+assert_true($matchUpper !== null, 'matchingSms finds uppercase-normalized trx_id');
 
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

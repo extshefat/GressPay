@@ -10,7 +10,7 @@ final class AuthController
 
         if ($req->method === 'POST' && $action === 'verify-email') {
             GpRateLimiter::guard('email-verify:' . GpRateLimiter::ip(), 20, 300);
-            if (!GpEmailVerification::consume((string) $req->input('token', ''))) GpJson::error('INVALID_TOKEN', 'Verification link is invalid or expired.', 400);
+            if (!GpEmailVerification::consume((string) $req->input('token', ''), (string) $req->input('email', ''))) GpJson::error('INVALID_TOKEN', 'Verification link is invalid or expired.', 400);
             GpJson::send(['ok' => true, 'message' => 'Email verified. Sign in again.']);
         }
         if ($req->method === 'POST' && $action === 'resend-verification') {
@@ -211,7 +211,8 @@ final class AuthController
             GpJson::error('INVALID_CREDENTIALS', 'Email or password is incorrect.', 401);
         }
         GpRateLimiter::loginSucceeded($email);
-        if (password_needs_rehash($row['password_hash'], PASSWORD_BCRYPT, ['cost' => 12])) {
+        if ((password_get_info($row['password_hash'])['algoName'] ?? '') !== 'argon2id'
+            && password_needs_rehash($row['password_hash'], PASSWORD_BCRYPT, ['cost' => 12])) {
             GpDb::exec('UPDATE gp_merchants SET password_hash = ? WHERE merchant_id = ? AND password_hash = ?', [password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]), $row['merchant_id'], $row['password_hash']]);
         }
         if ($row['status'] !== 'active') {

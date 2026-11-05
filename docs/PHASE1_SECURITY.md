@@ -1,9 +1,9 @@
 # Phase 1 security review
 
-Branch: `phase-1-security`. No push or deployment was performed. Changes are
+Branch: `phase-1-security`. Deployment was not performed. Main is being merged without rewriting history. Changes are
 implemented for review; backend/runtime validation remains pending CI. The npm
-manifest is staged for Next 15.5.29 and ESLint, while package-lock.json and installed
-packages deliberately remain unchanged under the owner's instruction.
+manifest is staged for Next 15.5.29 and ESLint, and the refreshed package-lock.json from upstream main is retained. Installed
+packages remain unchanged under the owner's instruction.
 
 ## Findings and regressions
 
@@ -39,8 +39,8 @@ coverage is in `backend/tests/mysql.php`. None was executed by this phase agent.
 - PHP lint, SQLite/backend regression tests, PostgreSQL/MySQL checks, FPM/worker
   image startup, Android CI, SMTP delivery, browser accessibility/visual coverage,
   actual Traefik header topology and real provider payments: not run in this phase.
-- ESLint/new Next version: not installed or tested. CI's frozen npm install will
-  require the owner to refresh and commit the lockfile first.
+- ESLint/new Next version: not installed or tested. Upstream main supplied the matching lockfile; its resolved packages were not
+  installed or tested in this cloud checkout.
 
 ## Deployment and compatibility notes
 
@@ -87,12 +87,12 @@ Linux databases for backend checks. Never run the database integration suites
 against a production database. No secret values should be pasted into chat.
 
 ```sh
-# Repository root; required because the agent did not run installs.
-npm install
+# Owner-approved checkout/CI; upstream supplied the matching lockfile.
+npm ci
 npm run lint
 npx tsc --noEmit
 NEXT_PUBLIC_DATA_SOURCE=live npm run build
-# Review and commit package-lock.json changes on the phase branch.
+# Retain the reviewed upstream package-lock.json.
 
 # CI / PHP 8.2+ with bcmath, SQLite and GD:
 find backend -name '*.php' -print0 | xargs -0 -n1 php -l
@@ -177,3 +177,14 @@ origin. Never remove the API storage volume during rollout.
 - `src/features/checkout/components/HostedCheckoutModal.tsx`
 - `src/lib/theme-script.ts`
 - `src/lib/types/api.ts`
+
+## Main integration follow-up
+
+The remote main branch advanced independently with overlapping security work and a
+Next 15.5.29 lockfile refresh. The merge retains that history, lockfile/manifest
+alignment and React hook fixes. Security helpers use one implementation with
+compatibility entrypoints for upstream callers. Existing gp_schema_version
+singleton records are preserved; ordered branch upgrades use the additive
+gp_security_migrations ledger. Existing no-purpose encrypted alert credentials and
+pending email verification links remain readable. No package installation, PHP
+execution, force push or history rewrite was performed during integration.

@@ -63,6 +63,20 @@ WEBHOOK_TIMEOUT_SECONDS=8
 WEBHOOK_MAX_RETRIES=5
 PORT=8080
 
+# Trusted reverse proxies (Coolify/Traefik). Client IP uses X-GressPay-Client-IP
+# from the Next BFF (rightmost public hop of X-Forwarded-For). When unset,
+# private Docker/Coolify CIDRs are trusted by default.
+TRUSTED_PROXIES=10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+TRUSTED_PROXY_HOPS=1
+
+# Email verification (required for live API keys / admin after verify)
+MAIL_DRIVER=smtp
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_USER=
+SMTP_PASS=
+SMTP_FROM=noreply@your-domain.com
+
 # Google OAuth 2.0 / OpenID Connect (Optional)
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
@@ -171,17 +185,17 @@ that internal listener. Changing container addressing requires updating trust.
 
 ## Phase 1 security rollout (staging first)
 
-This branch changes installation and migration behavior. Do not deploy before the
-owner refreshes the intentionally unchanged npm lockfile and all CI jobs pass.
+This branch changes installation and migration behavior. Upstream main already supplied the matching refreshed npm lockfile. Do not deploy
+before all CI jobs pass; the merged dependency versions were not installed here.
 No PHP, Docker, Java or Android checks were run on the owner's Windows machine.
 
-1. On a development checkout, run `npm install` to refresh the lockfile for Next
-   15.5.29, ESLint 9 and matching eslint-config-next. Review the lockfile diff;
-   then run `npm run lint`, `npx tsc --noEmit`, and `npm run build`.
-2. Review/commit the refreshed lockfile on this phase branch. Run CI for PHP lint,
+1. On an approved development checkout or CI, run `npm ci` with the retained
+   upstream lockfile for Next 15.5.29, ESLint 9 and matching eslint-config-next.
+   Then run `npm run lint`, `npx tsc --noEmit`, and `npm run build`.
+2. The merge retains the refreshed lockfile on this phase branch. Run CI for PHP lint,
    the SQLite regression suite, PostgreSQL concurrency, MySQL upserts/migrations,
    non-root API/worker runtime, web security smoke, and the existing Android jobs.
-   The phase agent does not push. Trigger CI through the owner's normal workflow.
+   The owner subsequently authorized a normal push to main; CI must still pass.
 3. On the staging VPS/Coolify, configure SMTP_HOST, SMTP_PORT (587),
    SMTP_ENCRYPTION (`tls` for STARTTLS, `ssl` for implicit TLS), SMTP_FROM,
    SMTP_USERNAME and SMTP_PASSWORD in secure settings. Set APP_URL to the real

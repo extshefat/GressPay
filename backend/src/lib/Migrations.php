@@ -13,10 +13,11 @@ final class GpMigrations
                 throw new RuntimeException('Schema migration lock unavailable.');
             }
         } elseif ($driver === 'pgsql') {
-            $pdo->exec('SELECT pg_advisory_lock(74823001)');
+            $pdo->exec('SELECT pg_advisory_lock(728401)');
         }
         try {
-            $pdo->exec('CREATE TABLE IF NOT EXISTS gp_schema_version (version INTEGER PRIMARY KEY, applied_at VARCHAR(32) NOT NULL)');
+            $pdo->exec('CREATE TABLE IF NOT EXISTS gp_schema_version (id INTEGER PRIMARY KEY, version INTEGER NOT NULL DEFAULT 0, updated_at VARCHAR(32) NOT NULL)');
+            $pdo->exec('CREATE TABLE IF NOT EXISTS gp_security_migrations (version INTEGER PRIMARY KEY, applied_at VARCHAR(32) NOT NULL)');
             $migrations = [
                 1 => static function (): void { GpDb::installLegacySchema(); },
                 2 => [self::class, 'securityColumns'],
@@ -24,18 +25,18 @@ final class GpMigrations
                 4 => [self::class, 'transactionClaims'],
             ];
             foreach ($migrations as $version => $apply) {
-                if (GpDb::one('SELECT version FROM gp_schema_version WHERE version = ?', [$version]) !== null) {
+                if (GpDb::one('SELECT version FROM gp_security_migrations WHERE version = ?', [$version]) !== null) {
                     continue;
                 }
                 // MySQL DDL commits implicitly. Each operation must be idempotent on retry.
                 $apply();
-                GpDb::exec('INSERT INTO gp_schema_version (version, applied_at) VALUES (?, ?)', [$version, GpIds::now()]);
+                GpDb::exec('INSERT INTO gp_security_migrations (version, applied_at) VALUES (?, ?)', [$version, GpIds::now()]);
             }
         } finally {
             if ($driver === 'mysql') {
                 $pdo->exec("SELECT RELEASE_LOCK('gresspay_schema')");
             } elseif ($driver === 'pgsql') {
-                $pdo->exec('SELECT pg_advisory_unlock(74823001)');
+                $pdo->exec('SELECT pg_advisory_unlock(728401)');
             }
         }
     }
@@ -62,6 +63,9 @@ final class GpMigrations
         foreach ([
             ['gp_merchants', 'email_verified', 'INTEGER NOT NULL DEFAULT 0'],
             ['gp_merchants', 'verified_at', 'VARCHAR(32)'],
+            ['gp_merchants', 'email_verified_at', 'VARCHAR(32)'],
+            ['gp_merchants', 'email_verify_token_hash', 'VARCHAR(64)'],
+            ['gp_merchants', 'email_verify_expires_at', 'VARCHAR(32)'],
             ['gp_merchants', 'token_version', 'INTEGER NOT NULL DEFAULT 0'],
             ['gp_devices', 'token_prefix', 'VARCHAR(12)'],
             ['gp_brands', 'require_payer_match', 'INTEGER NOT NULL DEFAULT 1'],
@@ -73,6 +77,7 @@ final class GpMigrations
             }
         }
         GpDb::exec("UPDATE gp_merchants SET email_verified = 1, verified_at = COALESCE(verified_at, ?) WHERE google_email_verified = 1 OR role = 'admin'", [GpIds::now()]);
+        GpDb::exec('UPDATE gp_merchants SET verified_at = COALESCE(verified_at, email_verified_at, ?) WHERE email_verified = 1', [GpIds::now()]);
         GpDb::pdo()->exec('CREATE TABLE IF NOT EXISTS gp_email_verifications (token_hash VARCHAR(64) PRIMARY KEY, merchant_id VARCHAR(24) NOT NULL, expires_at INTEGER NOT NULL, used_at VARCHAR(32))');
         foreach (GpDb::all("SELECT id, token_sealed FROM gp_devices WHERE token_prefix IS NULL AND token_sealed IS NOT NULL") as $row) {
             $token = GpCrypto::open((string) $row['token_sealed']);
