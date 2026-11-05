@@ -1157,8 +1157,8 @@ assert_true(!in_array('manage_methods', $scopeActorKey['scopes'], true), 'Limite
 $jwtActor = ['auth' => 'jwt', 'scopes' => GpAuth::allScopes()];
 assert_true(in_array('manage_methods', $jwtActor['scopes'], true), 'JWT actor retains manage_methods');
 
-// Upgrading a database with legacy USDT accounts must preserve checkout destinations.
-GpDb::boot();
+// Explicit legacy upgrade (HTTP boot no longer runs data backfills).
+GpDb::installLegacySchema();
 $walletQuery = GpDb::pdo()->prepare("SELECT account FROM gp_gateways WHERE brand_id = ? AND method_code = 'usdt_trc20'");
 $walletQuery->execute([$brandId]);
 $stored = $walletQuery->fetchColumn();
@@ -1170,6 +1170,13 @@ assert_true(GpDb::one("SELECT account FROM gp_gateways WHERE brand_id = ? AND me
 GpDb::boot();
 $walletQuery->execute([$brandId]);
 assert_true($walletQuery->fetchColumn() === $stored, 'Repeated boot preserves the sealed wallet');
+
+// Versioned migrations preserve existing data and skip already-applied work.
+$versions = GpDb::all('SELECT * FROM gp_schema_version ORDER BY version');
+GpMigrations::run();
+assert_true(GpDb::all('SELECT * FROM gp_schema_version ORDER BY version') === $versions, 'Migrations are idempotent and retain version stamps');
+assert_true(GpDb::one('SELECT merchant_id FROM gp_merchants WHERE merchant_id = ?', [$merchantId]) !== null, 'Migration preserves existing merchant data');
+assert_true(count($versions) === 2, 'Ordered schema migrations applied');
 
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

@@ -7,6 +7,7 @@ define('GRESSPAY_SRC', GRESSPAY_ROOT . '/src');
 spl_autoload_register(static function (string $class): void {
     $map = [
         'GpConfig' => GRESSPAY_SRC . '/lib/Config.php',
+        'GpMigrations' => GRESSPAY_SRC . '/lib/Migrations.php',
         'GpDb' => GRESSPAY_SRC . '/lib/Db.php',
         'GpJson' => GRESSPAY_SRC . '/lib/Json.php',
         'GpRequest' => GRESSPAY_SRC . '/lib/Request.php',

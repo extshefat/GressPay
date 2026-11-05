@@ -9,8 +9,9 @@ final class GpDb
     public static function boot(): void
     {
         self::pdo();
-        self::migrate();
-        self::ensureExtras();
+        if (GpConfig::isDevelopment()) {
+            GpMigrations::run();
+        }
     }
 
     public static function driver(): string
@@ -74,7 +75,14 @@ final class GpDb
         return self::$pdo;
     }
 
-    public static function migrate(): void
+    /** Explicit one-time compatibility baseline; never called from production HTTP boot. */
+    public static function installLegacySchema(): void
+    {
+        self::migrate();
+        self::ensureExtras();
+    }
+
+    private static function migrate(): void
     {
         $file = match (self::$driver) {
             'pgsql' => GRESSPAY_ROOT . '/schema/install.pgsql.sql',
@@ -881,7 +889,7 @@ final class GpDb
         self::seedMissingPlatformGateways();
 
         self::seedDefaultPlans();
-        self::autoPromoteSuperAdmins();
+
 
         self::backfillGatewaysFromMethods();
 
