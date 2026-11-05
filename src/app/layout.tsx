@@ -6,9 +6,25 @@ import { ThemeProvider } from "@/lib/theme";
 import { ToastProvider } from "@/components/ui/toast";
 
 export const metadata: Metadata = {
-  title: "GressPay — Bangladesh MFS, Binance Pay & USDT",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://gresspay.extxcheats.com"),
+  title: {
+    default: "GressPay — Collect bKash, Nagad & USDT into your wallets",
+    template: "%s · GressPay",
+  },
   description:
-    "First release: bKash and Nagad via your configured wallet + SMS companion, Binance Pay checkout, and USDT TRC-20 on-chain verification.",
+    "Collect bKash, Nagad, Rocket, Upay and USDT into your own wallets. GressPay verifies SMS and crypto evidence server-side and never holds your money.",
+  openGraph: {
+    type: "website",
+    siteName: "GressPay",
+    title: "GressPay — Collect bKash, Nagad & USDT into your wallets",
+    description:
+      "Non-custodial payment verification for Bangladesh merchants. Companion SMS match, Binance Pay, USDT TRC-20, HMAC webhooks.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "GressPay — Collect bKash, Nagad & USDT into your wallets",
+    description: "Non-custodial payment verification. Never holds your money.",
+  },
   icons: {
     icon: [
       { url: "/favicon.ico" },

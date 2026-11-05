@@ -1,40 +1,29 @@
 "use client";
 
-import React from "react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { ArrowRight, Code2, ShieldCheck } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import { MarketingBand } from "./MarketingPage";
+import { cta } from "@/content/marketing";
 
-export const CTASection: React.FC = () => {
+export function CTASection() {
   return (
-    <section className="py-20 bg-gradient-to-b from-card/50 to-surface/30 dark:from-canvas dark:to-brand/20 border-t border-border dark:border-border transition-colors">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 dark:bg-brand/50 border border-accent dark:border-accent text-accent dark:text-accent text-xs font-semibold">
-          <ShieldCheck className="w-3.5 h-3.5 text-accent dark:text-accent" />
-          <span>Non-Custodial Architecture • Direct Wallet Settle</span>
-        </div>
-
-        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-ink dark:text-ink tracking-tight leading-tight">
-          Automate Your Bangladesh Payments with GressPay
-        </h2>
-
-        <p className="text-muted dark:text-muted text-sm sm:text-base max-w-2xl mx-auto leading-relaxed">
-          Sign in with Google, publish the wallets you control, and pair a companion if you want live bKash or Nagad matching.
-        </p>
-
-        <div className="flex flex-wrap items-center justify-center gap-3 pt-4">
-          <Link href="/register">
-            <Button size="lg" variant="primary" rightIcon={<ArrowRight className="w-4 h-4" />}>
-              Sign up
-            </Button>
+    <MarketingBand id="cta" bordered={false} className="bg-surface">
+      <div className="gp-surface mx-auto max-w-3xl px-6 py-10 text-center sm:px-10" data-elevation="floating">
+        <h2 className="gp-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">{cta.title}</h2>
+        <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-muted">{cta.body}</p>
+        <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+          <Link href={cta.primary.href}>
+            <span className="gp-button inline-flex min-h-12 items-center gap-2 px-6 text-sm" data-variant="primary">
+              {cta.primary.label} <ArrowRight size={16} aria-hidden />
+            </span>
           </Link>
-          <Link href="/developers">
-            <Button size="lg" variant="outline" leftIcon={<Code2 className="w-4 h-4" />}>
-              Explore API Reference
-            </Button>
+          <Link href={cta.secondary.href}>
+            <span className="gp-button inline-flex min-h-12 items-center px-6 text-sm" data-variant="secondary">
+              {cta.secondary.label}
+            </span>
           </Link>
         </div>
       </div>
-    </section>
+    </MarketingBand>
   );
-};
+}

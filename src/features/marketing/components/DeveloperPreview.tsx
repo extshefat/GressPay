@@ -1,146 +1,112 @@
 "use client";
 
-import React, { useState } from "react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Copy, Check, Terminal, ArrowRight } from "lucide-react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
+import { Check, Copy } from "lucide-react";
+import { MarketingBand, MarketingHeader } from "./MarketingPage";
+import { developers, site } from "@/content/marketing";
+import { Button } from "@/components/ui/button";
+
+const HOST = `${site.url.replace(/\/$/, "")}/api/v1`;
 
 const SNIPPETS: Record<string, string> = {
-  Create: `curl -X POST https://your-domain.com/api/v1/checkout/create \\
-  -H "Authorization: Bearer gp_live_..." \\
+  curl: `curl -X POST ${HOST}/checkout/sessions \\
+  -H "Authorization: Bearer gp_live_YOUR_KEY" \\
+  -H "X-GressPay-Brand: your_brand_id" \\
   -H "Content-Type: application/json" \\
-  -d '{
-    "amount": 1500,
-    "currency": "BDT",
-    "full_name": "Ayesha",
-    "email": "a@shop.bd",
-    "return_url": "https://yoursite.com/order/thanks",
-    "webhook_url": "https://yoursite.com/webhooks/gresspay",
-    "metadata": { "orderId": "ORD-8842" }
-  }'
-
-# Response includes sessionId + payUrl → redirect the buyer to payUrl`,
-  Pay: `# Buyer opens hosted checkout (no API key):
-# GET https://your-domain.com/pay/chs_xxx
-#
-# Page calls:
-curl -X POST https://your-domain.com/api/v1/checkout/chs_xxx/init \\
-  -H "Content-Type: application/json"
-
-# Buyer submits TxID on the hosted form:
-curl -X POST https://your-domain.com/api/v1/checkout/chs_xxx/verify \\
-  -H "Content-Type: application/json" \\
-  -d '{ "trx_id": "BKH1234567", "method": "bkash" }'`,
-  Status: `curl -X POST https://your-domain.com/api/v1/checkout/verify-payment \\
-  -H "Authorization: Bearer gp_live_..." \\
-  -H "Content-Type: application/json" \\
-  -d '{ "sessionId": "chs_xxx" }'
-
-# Also: GET /api/v1/checkout/chs_xxx/status (public poll)
-# Webhook: X-GressPay-Signature = HMAC-SHA256(rawBody, webhookSecret)`,
+  -d '{"amount":"1250.00","currency":"BDT","orderId":"ORD-1042"}'`,
+  php: `$ch = curl_init('${HOST}/checkout/sessions');
+curl_setopt_array($ch, [
+  CURLOPT_POST => true,
+  CURLOPT_HTTPHEADER => [
+    'Authorization: Bearer gp_live_YOUR_KEY',
+    'X-GressPay-Brand: your_brand_id',
+    'Content-Type: application/json',
+  ],
+  CURLOPT_POSTFIELDS => json_encode([
+    'amount' => '1250.00',
+    'currency' => 'BDT',
+    'orderId' => 'ORD-1042',
+  ]),
+  CURLOPT_RETURNTRANSFER => true,
+]);
+echo curl_exec($ch);`,
+  node: `const res = await fetch("${HOST}/checkout/sessions", {
+  method: "POST",
+  headers: {
+    Authorization: "Bearer gp_live_YOUR_KEY",
+    "X-GressPay-Brand": "your_brand_id",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({ amount: "1250.00", currency: "BDT", orderId: "ORD-1042" }),
+});
+console.log(await res.json());`,
+  wordpress: `// WooCommerce: install sdk/wordpress/gresspay-woocommerce
+// Settings → Payments → GressPay → paste live key + brand id
+// Checkout creates a hosted session via POST /api/v1/checkout/sessions`,
 };
 
-const TABS = ["Create", "Pay", "Status"] as const;
+function highlight(code: string) {
+  return code
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/(https?:\/\/[^\s"']+)/g, '<span class="text-accent">$1</span>')
+    .replace(/("(?:\\.|[^"\\])*")/g, '<span class="text-success">$1</span>')
+    .replace(/\b(curl|fetch|json_encode|Authorization|X-GressPay-Brand)\b/g, '<span class="text-warning">$1</span>');
+}
 
-export const DeveloperPreview: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("Create");
+export function DeveloperPreview() {
+  const [tab, setTab] = useState<keyof typeof SNIPPETS>("curl");
   const [copied, setCopied] = useState(false);
+  const code = SNIPPETS[tab];
+  const html = useMemo(() => highlight(code), [code]);
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(SNIPPETS[activeTab]);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* ignore */
+    }
   };
 
   return (
-    <section className="py-20 bg-card/60 dark:bg-surface/40 border-t border-border dark:border-border transition-colors">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
-          <div className="lg:col-span-5 space-y-4">
-            <Badge variant="emerald" dot>
-              REST API
-            </Badge>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-ink dark:text-ink tracking-tight leading-tight">
-              Create a session. Host the pay page. Confirm with verify-payment.
-            </h2>
-            <p className="text-muted dark:text-muted text-sm sm:text-base leading-relaxed">
-              Authenticate with your brand website key{" "}
-              <span className="font-mono text-ink dark:text-ink">gp_live_…</span> from Dashboard → Brands.
-              Create returns{" "}
-              <span className="font-mono text-ink dark:text-ink">payUrl</span> — redirect the customer to
-              GressPay hosted checkout, then confirm via webhook HMAC or{" "}
-              <span className="font-mono text-ink dark:text-ink">verify-payment</span>.
-            </p>
-            <div className="space-y-2 text-xs font-mono text-ink dark:text-ink">
-              <p className="flex flex-wrap items-center gap-2">
-                <span className="font-bold text-ink dark:text-ink">POST /api/v1/checkout/create</span>
-                <span className="text-muted">→ sessionId + payUrl</span>
-              </p>
-              <p className="flex flex-wrap items-center gap-2">
-                <span className="font-bold text-ink dark:text-ink">/pay/&#123;sessionId&#125;</span>
-                <span className="text-muted">— Hosted checkout</span>
-              </p>
-              <p className="flex flex-wrap items-center gap-2">
-                <span className="font-bold text-ink dark:text-ink">POST …/verify-payment</span>
-                <span className="text-muted">— Payment status</span>
-              </p>
-            </div>
-            <div className="pt-2">
-              <Link href="/developers">
-                <Button variant="outline" size="sm" rightIcon={<ArrowRight className="w-3.5 h-3.5" />}>
-                  Full API reference
-                </Button>
-              </Link>
-            </div>
-          </div>
-
-          <div className="lg:col-span-7">
-            <Card className="dark overflow-hidden border-border dark:border-border bg-ink-solid text-on-ink p-0 shadow-lg">
-              <div className="flex items-center justify-between px-4 py-2.5 bg-ink-solid/90 border-b border-border">
-                <div className="flex items-center gap-3">
-                  <Terminal className="w-4 h-4 text-muted" />
-                  <div className="flex gap-1">
-                    {TABS.map((tab) => (
-                      <button
-                        key={tab}
-                        onClick={() => setActiveTab(tab)}
-                        className={`px-2.5 py-1 text-xs font-mono rounded transition-colors ${
-                          activeTab === tab
-                            ? "bg-ink-solid text-white font-medium"
-                            : "text-muted hover:text-white"
-                        }`}
-                      >
-                        {tab}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <button
-                  onClick={handleCopy}
-                  className="flex items-center gap-1.5 text-xs text-muted hover:text-white font-mono px-2 py-1 rounded hover:bg-ink-solid transition-colors"
-                >
-                  {copied ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-success" />
-                      <span>Copied</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5" />
-                      <span>Copy</span>
-                    </>
-                  )}
-                </button>
-              </div>
-              <pre className="p-4 sm:p-5 text-xs font-mono text-muted overflow-x-auto leading-relaxed selection:bg-ink-solid">
-                <code>{SNIPPETS[activeTab]}</code>
-              </pre>
-            </Card>
-          </div>
+    <MarketingBand id="developers">
+      <MarketingHeader
+        kicker={developers.eyebrow}
+        title={developers.title}
+        description={developers.body}
+        actions={
+          <Link href={developers.cta.href}>
+            <Button type="button" variant="secondary" size="sm">
+              {developers.cta.label}
+            </Button>
+          </Link>
+        }
+      />
+      <div className="gp-surface overflow-hidden" data-elevation="raised">
+        <div className="flex flex-wrap items-center gap-2 border-b border-border bg-surface px-3 py-2">
+          {(Object.keys(SNIPPETS) as Array<keyof typeof SNIPPETS>).map((key) => (
+            <button
+              key={key}
+              type="button"
+              aria-pressed={tab === key}
+              onClick={() => setTab(key)}
+              className={`rounded-md px-3 py-1.5 text-xs font-semibold capitalize ${tab === key ? "bg-card shadow-raised" : "text-muted"}`}
+            >
+              {key}
+            </button>
+          ))}
+          <button type="button" onClick={copy} className="ml-auto inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-semibold text-muted hover:text-ink">
+            {copied ? <Check size={14} /> : <Copy size={14} />}
+            {copied ? "Copied" : "Copy"}
+          </button>
         </div>
+        <pre className="overflow-x-auto p-4 text-xs leading-relaxed">
+          <code className="font-mono" dangerouslySetInnerHTML={{ __html: html }} />
+        </pre>
       </div>
-    </section>
+    </MarketingBand>
   );
-};
+}

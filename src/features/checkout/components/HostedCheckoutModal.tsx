@@ -10,6 +10,15 @@ import { gatewayLogoPath } from "@/lib/gateway-library";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
+import { resolveCheckoutPhase, formatSessionClock } from "@/features/checkout/checkoutMachine";
+import {
+  CheckoutCancelledView,
+  CheckoutConfirmingExpiryView,
+  CheckoutExpiredView,
+  CheckoutFailedView,
+  CheckoutSuccessView,
+  CheckoutWaitingSmsView,
+} from "@/features/checkout/components/CheckoutStatusViews";
 import {
   ShieldCheck,
   Clock,
@@ -217,9 +226,14 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
     };
   }, []);
 
-  const minutes = Math.floor(secondsLeft / 60);
-  const seconds = secondsLeft % 60;
-  const timeFormatted = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  const timeFormatted = formatSessionClock(secondsLeft);
+  const phase = resolveCheckoutPhase({
+    checkoutStatus,
+    methodChosen,
+    isPollingVerification,
+    cancelMessage,
+    secondsLeft,
+  });
 
   const copyToClipboard = (text: string, key: string) => {
     if (!navigator.clipboard) { setErrorMessage("Select and copy the value manually."); return; }
@@ -495,159 +509,49 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
     ];
   };
 
-  // 1. EXPIRED STATE
-  if (cancelMessage) {
+  if (phase === "cancelled" && cancelMessage) {
     return (
-      <div className="gp-canceled w-full max-w-lg mx-auto bg-white dark:bg-canvas border border-border dark:border-border rounded-3xl shadow-2xl p-8 text-center space-y-4">
-        <div className="w-14 h-14 rounded-full bg-danger/10 dark:bg-danger/40 text-danger flex items-center justify-center mx-auto">
-          <AlertCircle className="w-8 h-8" />
-        </div>
-        <h2 className="text-xl font-bold text-ink dark:text-ink">Checkout canceled</h2>
-        <p className="text-xs text-muted">{cancelMessage}</p>
-        {cancelRedirectUrl && <a href={cancelRedirectUrl} className="inline-block py-2 text-sm font-semibold underline">Return now</a>}
-        {cancelRedirectUrl && <p className="text-[11px] font-mono text-muted">
-          Redirecting in {cancelRedirectSec} seconds…
-        </p>}
-        <div className="h-1.5 w-full rounded-full bg-surface dark:bg-surface-muted overflow-hidden">
-          <div
-            className="gp-redirect-meter h-full bg-danger"
-            style={{ width: `${Math.max(0, (cancelRedirectSec / 3) * 100)}%` }}
-          />
-        </div>
-      </div>
+      <CheckoutCancelledView
+        message={cancelMessage}
+        redirectUrl={cancelRedirectUrl}
+        redirectSec={cancelRedirectSec}
+      />
     );
   }
 
-  if (checkoutStatus === "FAILED" || checkoutStatus === "REFUNDED") {
-    return <section className="mx-auto max-w-lg space-y-3 rounded-2xl border bg-[var(--bg-card)] p-8 text-center">
-      <h2 className="text-xl font-semibold">{checkoutStatus === "FAILED" ? "Payment unsuccessful" : "Payment refunded"}</h2>
-      <p className="text-sm text-[var(--text-secondary)]">
-        {statusMessage ||
-          `Contact ${session.merchantName} with your order reference before sending another payment.`}
-      </p>
-      <p className="break-all font-mono text-xs">{session.sessionId}</p>
-      {session.returnUrl && <a className="inline-block underline" href={session.returnUrl}>Return to seller</a>}
-    </section>;
-  }
-
-  if (checkoutStatus === "EXPIRED") {
+  if (phase === "failed" || phase === "refunded") {
     return (
-      <div className="w-full max-w-lg mx-auto bg-white dark:bg-canvas border border-border dark:border-border rounded-3xl shadow-xl p-8 text-center space-y-4">
-        <div className="w-14 h-14 rounded-2xl bg-surface dark:bg-surface border border-border dark:border-border flex items-center justify-center mx-auto text-ink dark:text-ink">
-          <Clock className="w-7 h-7" />
-        </div>
-        <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-surface dark:bg-surface-muted text-ink dark:text-ink">
-          Session Expired
-        </span>
-        <h2 className="text-xl font-bold text-ink dark:text-ink">
-          Payment Window Ended
-        </h2>
-        <p className="text-xs text-muted dark:text-muted leading-relaxed max-w-sm mx-auto">
-          {statusMessage ||
-            "This payment session has timed out for security. Please request a new checkout link or invoice from the seller."}
-        </p>
-        <div className="pt-2">
-          <Button
-            variant="outline"
-            size="md"
-            className="w-full"
-            onClick={() => {
-              if (session.returnUrl) window.location.href = session.returnUrl;
-              else window.location.reload();
-            }}
-          >
-            {session.returnUrl ? "Return to seller" : "Reload status"}
-          </Button>
-        </div>
-      </div>
+      <CheckoutFailedView
+        refunded={phase === "refunded"}
+        merchantName={session.merchantName}
+        sessionId={session.sessionId}
+        message={statusMessage}
+        returnUrl={session.returnUrl}
+      />
     );
   }
 
-  if (secondsLeft === 0 && checkoutStatus !== "COMPLETED") {
-    return <div className="mx-auto max-w-lg space-y-4 rounded-2xl border border-border bg-white p-8 text-center dark:border-border dark:bg-canvas">
-      <h2 className="text-lg font-semibold">Confirming payment status</h2>
-      <p className="text-sm text-muted">{errorMessage || statusMessage || "The server is checking whether this payment window has ended."}</p>
-      <Button variant="outline" onClick={() => window.location.reload()}>Retry status</Button>
-    </div>;
+  if (phase === "expired") {
+    return <CheckoutExpiredView message={statusMessage} returnUrl={session.returnUrl} />;
   }
 
-  // 2. ACTIVE VERIFICATION POLLING STATE (Scenario B)
-  if (isPollingVerification) {
+  if (phase === "confirming_expiry") {
+    return <CheckoutConfirmingExpiryView message={errorMessage || statusMessage} />;
+  }
+
+  if (phase === "waiting_sms") {
     return (
-      <div className="w-full max-w-lg mx-auto bg-white dark:bg-canvas border border-border dark:border-border rounded-3xl shadow-2xl p-8 text-center space-y-5">
-        <div className="relative w-16 h-16 mx-auto flex items-center justify-center">
-          <div className="absolute inset-0 rounded-full border-2 border-border dark:border-border border-t-transparent animate-spin" />
-          <div className="w-10 h-10 rounded-full bg-surface dark:bg-surface flex items-center justify-center text-ink dark:text-ink">
-            <RefreshCw className="w-5 h-5 " />
-          </div>
-        </div>
-
-        <div className="space-y-1">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-surface dark:bg-surface-muted text-ink dark:text-ink">
-            <span className="w-2 h-2 rounded-full bg-brand animate-ping" />
-            Payment submitted
-          </span>
-          <h2 className="text-xl font-bold text-ink dark:text-ink pt-2">
-            Waiting for payment confirmation
-          </h2>
-          <p className="text-xs text-muted dark:text-muted leading-relaxed max-w-sm mx-auto">
-            {statusMessage ||
-              "Your Transaction ID is registered. The merchant GressPay app is listening for incoming carrier SMS to auto-verify your payment."}
-          </p>
-        </div>
-
-        {providerUrl && <a className="inline-block rounded-lg border px-4 py-2 text-sm font-semibold" href={providerUrl} target="_blank" rel="noopener noreferrer">Continue to Binance Pay ↗</a>}
-
-        <div className="p-4 rounded-2xl bg-card dark:bg-surface border border-border dark:border-border text-left font-mono text-xs space-y-2.5">
-          <div className="flex justify-between items-center text-muted">
-            <span>Submitted TrxID</span>
-            <span className="text-ink dark:text-ink font-semibold break-all text-right ml-3 font-mono">
-              {txidInput || "—"}
-            </span>
-          </div>
-          {senderNumber && (
-            <div className="flex justify-between items-center text-muted">
-              <span>Sender Number</span>
-              <span className="text-ink dark:text-ink font-medium font-mono">
-                {senderNumber}
-              </span>
-            </div>
-          )}
-          <div className="flex justify-between items-center text-muted">
-            <span>Payment Rail</span>
-            <span className="text-ink dark:text-ink font-medium">
-              {selectedMethod?.name || "—"}
-            </span>
-          </div>
-          <div className="flex justify-between items-center text-muted">
-            <span>Time Elapsed</span>
-            <span className="text-ink dark:text-ink font-mono">
-              {pollingSeconds}s
-            </span>
-          </div>
-        </div>
-
-        <p className="text-[11px] font-mono text-muted">
-          Syncing automatically every 3 seconds • Do not close this window
-        </p>
-
-        <Button
-          variant="outline"
-          size="sm"
-          className="text-xs text-muted dark:text-muted"
-          onClick={() => {
-            if (pollingRef.current) clearInterval(pollingRef.current);
-            setIsPollingVerification(false);
-          }}
-        >
-          Back to Payment Form
-        </Button>
-      </div>
+      <CheckoutWaitingSmsView
+        message={statusMessage}
+        providerUrl={providerUrl}
+        pollingSeconds={pollingSeconds}
+        txid={txidInput || session.submittedTxid || undefined}
+      />
     );
   }
 
   // 3. COMPLETED STATE
-  if (checkoutStatus === "COMPLETED") {
+  if (phase === "success" || checkoutStatus === "COMPLETED") {
     const restored = session.paymentStatus === "COMPLETED";
     const receiptMethod = restored
       ? (methods.find(m => session.submittedGateway && m.gatewayId === session.submittedGateway) ?? methods.find(m => m.code === session.submittedMethod))?.name || session.submittedMethod
@@ -791,6 +695,11 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
             <h1 className="flex items-center gap-1.5 break-words text-base font-semibold">
               {session.merchantName}{session.merchantVerified && <ShieldCheck aria-label="Verified business" className="h-4 w-4 shrink-0 text-[var(--gp-ck-accent)]" />}
             </h1>
+            <p className="mt-1 text-[11px] leading-snug text-[var(--gp-ck-muted)]">
+              {locale === "bn"
+                ? "টাকা সরাসরি মার্চেন্টের ওয়ালেটে যায় — GressPay শুধু যাচাই করে।"
+                : "Payment goes directly to the merchant's wallet. GressPay only verifies evidence."}
+            </p>
           </div>
         </div>
         <div className="gp-order-total gp-compact-total">
