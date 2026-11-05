@@ -459,6 +459,7 @@ final class GpPresenters
             'supportEmail' => trim((string) ($brand['support_email'] ?? '')) ?: null,
             'supportTelegram' => trim((string) ($brand['support_telegram'] ?? '')) ?: null,
             'checkoutTheme' => (string) ($brand['checkout_theme'] ?? 'default') ?: 'default',
+            'requirePayerMatch' => !empty($brand['require_payer_match']),
             'verificationMode' => GpConfig::get('GRESSPAY_SMS_AUTO_ALLOWED', '0') === '1'
                 ? ((string) ($brand['verification_mode'] ?? 'trx_id') ?: 'trx_id') : 'trx_id',
             'amountPolicy' => (string) ($brand['amount_policy'] ?? 'exact') ?: 'exact',

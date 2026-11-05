@@ -342,6 +342,7 @@ final class BrandsController
         if ($brandFee < 0 || ($feeType === 'percentage' && $brandFee > 100)) {
             GpJson::error('INVALID_FEE', 'brandFee must be >= 0 (and <= 100 for percentage).', 400);
         }
+        $requirePayer = filter_var($req->input('requirePayerMatch', $brand['require_payer_match'] ?? 1), FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
         $shuffleRaw = $req->input('shuffleDuplicateGateways', $req->input('shuffle_duplicate_gateways', $brand['shuffle_duplicate_gateways'] ?? 0));
         $shuffle = ($shuffleRaw === true || $shuffleRaw === 1 || $shuffleRaw === '1' || $shuffleRaw === 'true') ? 1 : 0;
 
@@ -359,7 +360,7 @@ final class BrandsController
                 support_mobile = ?, support_whatsapp = ?, support_email = ?, support_telegram = ?,
                 checkout_theme = ?, brand_status = ?, verification_mode = ?,
                 amount_policy = ?, amount_format = ?, brand_fee = ?, brand_fee_type = ?,
-                shuffle_duplicate_gateways = ?, payment_tolerance = ?, updated_at = ?
+                shuffle_duplicate_gateways = ?, payment_tolerance = ?, require_payer_match = ?, updated_at = ?
              WHERE brand_id = ?',
             [
                 $name,
@@ -378,6 +379,7 @@ final class BrandsController
                 $feeType,
                 $shuffle,
                 $tolerance,
+                $requirePayer,
                 GpIds::now(),
                 $brandId,
             ]
@@ -417,6 +419,7 @@ final class BrandsController
             'supportTelegram' => trim((string) ($row['support_telegram'] ?? '')) ?: null,
             'checkoutTheme' => (string) ($row['checkout_theme'] ?? 'default') ?: 'default',
             'brandStatus' => (string) ($row['brand_status'] ?? 'active') ?: 'active',
+            'requirePayerMatch' => !empty($row['require_payer_match']),
             'verificationMode' => (string) ($row['verification_mode'] ?? 'trx_id') ?: 'trx_id',
             'amountPolicy' => (string) ($row['amount_policy'] ?? 'exact') ?: 'exact',
             'amountFormat' => (string) ($row['amount_format'] ?? 'as_is') ?: 'as_is',

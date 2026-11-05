@@ -21,6 +21,7 @@ final class GpMigrations
                 1 => static function (): void { GpDb::installLegacySchema(); },
                 2 => [self::class, 'securityColumns'],
                 3 => [GpQrStorage::class, 'migrateLegacy'],
+                4 => [self::class, 'transactionClaims'],
             ];
             foreach ($migrations as $version => $apply) {
                 if (GpDb::one('SELECT version FROM gp_schema_version WHERE version = ?', [$version]) !== null) {
@@ -75,6 +76,20 @@ final class GpMigrations
         self::index('idx_gp_device_prefix', 'gp_devices', 'token_prefix, status');
         self::index('idx_gp_rate_expiry', 'gp_rate_limit', 'window_start');
         GpDb::pdo()->exec('CREATE TABLE IF NOT EXISTS gp_login_failures (account_hash VARCHAR(64) PRIMARY KEY, failures INTEGER NOT NULL, window_start INTEGER NOT NULL, next_attempt INTEGER NOT NULL)');
+    }
+
+    private static function transactionClaims(): void
+    {
+        // Do not delete colliding legacy evidence. A conflicting backfill aborts deployment
+        // for owner review rather than silently legitimizing duplicate payments.
+        GpDb::pdo()->exec('UPDATE gp_transactions SET trx_id = UPPER(TRIM(trx_id)) WHERE trx_id IS NOT NULL');
+        GpDb::pdo()->exec('UPDATE gp_sms_data SET trx_id = UPPER(TRIM(trx_id)) WHERE trx_id IS NOT NULL');
+        self::index('idx_gp_txn_brand_normalized', 'gp_transactions', 'brand_id, trx_id');
+        self::index('idx_gp_sms_brand_normalized', 'gp_sms_data', 'brand_id, trx_id');
+        GpDb::pdo()->exec('CREATE TABLE IF NOT EXISTS gp_trx_claims (brand_id VARCHAR(24) NOT NULL, ledger_mode VARCHAR(8) NOT NULL, trx_id VARCHAR(160) NOT NULL, session_id VARCHAR(32) NOT NULL, PRIMARY KEY (brand_id,ledger_mode,trx_id))');
+        foreach (GpDb::all("SELECT brand_id,ledger_mode,trx_id,session_id FROM gp_transactions WHERE status = 'completed' AND trx_id IS NOT NULL AND trx_id <> ''") as $row) {
+            if (!GpTrxClaims::claim($row['brand_id'],$row['ledger_mode'],$row['trx_id'],$row['session_id'])) throw new RuntimeException('Conflicting legacy completed transaction IDs require owner review.');
+        }
     }
 
     public static function index(string $name, string $table, string $columns): void

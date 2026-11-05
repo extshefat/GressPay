@@ -31,6 +31,7 @@ type BrandRow = {
   supportTelegram?: string | null;
   checkoutTheme?: string;
   brandStatus?: string;
+  requirePayerMatch?: boolean;
   verificationMode?: string;
   amountPolicy?: string;
   amountFormat?: string;
@@ -71,6 +72,7 @@ export default function BrandsPage() {
   const [editTelegram, setEditTelegram] = useState("");
   const [editTheme, setEditTheme] = useState("default");
   const [editStatus, setEditStatus] = useState("active");
+  const [requirePayerMatch, setRequirePayerMatch] = useState(true);
   const [editVerifyMode, setEditVerifyMode] = useState<"trx_id" | "sms_auto">("trx_id");
   const [editAmountPolicy, setEditAmountPolicy] = useState("exact");
   const [editAmountFormat, setEditAmountFormat] = useState("as_is");
@@ -163,6 +165,7 @@ export default function BrandsPage() {
     setEditTelegram(b.supportTelegram || "");
     setEditTheme(b.checkoutTheme || "default");
     setEditStatus(b.brandStatus || "active");
+    setRequirePayerMatch(b.requirePayerMatch !== false);
     setEditVerifyMode((b.verificationMode as "trx_id" | "sms_auto") || "trx_id");
     setEditAmountPolicy(b.amountPolicy || "exact");
     setEditAmountFormat(b.amountFormat || "as_is");
@@ -186,6 +189,7 @@ export default function BrandsPage() {
         checkoutTheme: editTheme,
         brandStatus: editStatus,
         verificationMode: editVerifyMode,
+        requirePayerMatch,
         amountPolicy: editAmountPolicy,
         amountFormat: editAmountFormat,
         brandFee: Number(editFee) || 0,
@@ -668,6 +672,10 @@ export default function BrandsPage() {
 
           <div className="space-y-2">
             <div className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">Payment Verification Method</div>
+            <label className="flex items-start gap-2 text-sm leading-relaxed text-zinc-700 dark:text-zinc-200">
+              <input type="checkbox" className="mt-1" checked={requirePayerMatch} onChange={e => setRequirePayerMatch(e.target.checked)} />
+              <span>Match payer phone with SMS evidence. Recommended: when a receipt includes the sender number, the buyer must enter that same number, even with a valid TrxID.</span>
+            </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <button
                 type="button"

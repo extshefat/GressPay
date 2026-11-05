@@ -9,6 +9,7 @@ spl_autoload_register(static function (string $class): void {
         'GpConfig' => GRESSPAY_SRC . '/lib/Config.php',
         'GpMigrations' => GRESSPAY_SRC . '/lib/Migrations.php',
         'GpQrStorage' => GRESSPAY_SRC . '/lib/QrStorage.php',
+        'GpTrxClaims' => GRESSPAY_SRC . '/lib/TrxClaims.php',
         'GpDb' => GRESSPAY_SRC . '/lib/Db.php',
         'GpJson' => GRESSPAY_SRC . '/lib/Json.php',
         'GpRequest' => GRESSPAY_SRC . '/lib/Request.php',

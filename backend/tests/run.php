@@ -1273,12 +1273,24 @@ if (function_exists('imagecreatefromstring')) {
     assert_true($qrClean['mime']==='image/png' && getimagesizefromstring($qrClean['bytes'])[0]===1,'QR re-encodes validated raster');
 }
 
+// Settlement claims are tenant-scoped and survive concurrent inserts through a unique PK.
+$claimTrx='CLAIM'.strtoupper(bin2hex(random_bytes(8)));
+assert_true(GpTrxClaims::claim($brandId,'live',$claimTrx,'session-one'),'First session claims TrxID');
+assert_true(!GpTrxClaims::claim($brandId,'live',strtolower($claimTrx),'session-two'),'Second session cannot reuse normalized TrxID');
+assert_true(GpTrxClaims::claim('other-brand','live',$claimTrx,'session-two'),'Other tenant receipt is independent');
+assert_true(GpTrxClaims::claim($brandId,'test',$claimTrx,'session-three'),'Test and live claims are isolated');
+$phoneSession=['metadata'=>json_encode(['sender_number'=>'01712345678'])];
+assert_true(CheckoutController::payerMatches(['require_payer_match'=>1],$phoneSession,['payer_phone'=>'+8801712345678']),'TrxID mode accepts matching payer phone');
+assert_true(!CheckoutController::payerMatches(['require_payer_match'=>1],$phoneSession,['payer_phone'=>'01812345678']),'TrxID mode rejects different payer');
+assert_true(!CheckoutController::payerMatches(['require_payer_match'=>1],['metadata'=>'{}'],['payer_phone'=>'01712345678']),'TrxID mode rejects absent buyer phone when evidence includes payer');
+assert_true(CheckoutController::payerMatches(['require_payer_match'=>0],$phoneSession,['payer_phone'=>'01812345678']),'Owner may explicitly disable payer requirement');
+
 // Versioned migrations preserve existing data and skip already-applied work.
 $versions = GpDb::all('SELECT * FROM gp_schema_version ORDER BY version');
 GpMigrations::run();
 assert_true(GpDb::all('SELECT * FROM gp_schema_version ORDER BY version') === $versions, 'Migrations are idempotent and retain version stamps');
 assert_true(GpDb::one('SELECT merchant_id FROM gp_merchants WHERE merchant_id = ?', [$merchantId]) !== null, 'Migration preserves existing merchant data');
-assert_true(count($versions) === 3, 'Ordered schema migrations applied');
+assert_true(count($versions) === 4, 'Ordered schema migrations applied');
 
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

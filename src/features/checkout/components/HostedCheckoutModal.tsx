@@ -1069,7 +1069,7 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
 
                 <div className="space-y-1.5">
                   <label htmlFor="checkout-payer" className="block text-xs font-semibold text-[var(--gp-ck-text)]">
-                    {locale === "bn" ? "আপনার মোবাইল নম্বর (ঐচ্ছিক)" : "Your mobile number (optional)"}
+                    {locale === "bn" ? "যে নম্বর থেকে পেমেন্ট করেছেন" : "Phone number used for payment (required when shown on receipt)"}
                   </label>
                   <Input id="checkout-payer"
                     placeholder="e.g. 01XXXXXXXXX"

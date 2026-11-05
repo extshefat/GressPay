@@ -887,31 +887,32 @@ final class CheckoutController
             GpJson::error('MISSING_FIELD', 'trx_id is required.');
         }
 
+        $trxId = strtoupper(trim($trxId));
         // Anti-Fraud & Duplicate TrxID Protection (skip when sms_auto with no TrxID yet).
         if ($trxId !== '') {
             $dupCompleted = GpDb::one(
-                'SELECT session_id FROM gp_transactions WHERE (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND status = ?',
-                [$trxId, strtoupper($trxId), strtolower($trxId), 'completed']
+                'SELECT session_id FROM gp_transactions WHERE brand_id = ? AND trx_id = ? AND status = ?',
+                [$row['brand_id'], strtoupper($trxId), 'completed']
             );
             if ($dupCompleted) {
-                GpJson::error('DUPLICATE_TRX', 'This Transaction ID has already been used.', 409);
+                GpJson::error('DUPLICATE_TRX', 'Payment evidence cannot be used for this checkout.', 409);
             }
 
             $usedSms = GpDb::one(
-                'SELECT id FROM gp_sms_data WHERE (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND status = ?',
-                [$trxId, strtoupper($trxId), strtolower($trxId), 'used']
+                'SELECT id FROM gp_sms_data WHERE brand_id = ? AND trx_id = ? AND status = ?',
+                [$row['brand_id'], strtoupper($trxId), 'used']
             );
             if ($usedSms) {
-                GpJson::error('DUPLICATE_TRX', 'This Transaction ID has already been used.', 409);
+                GpJson::error('DUPLICATE_TRX', 'Payment evidence cannot be used for this checkout.', 409);
             }
 
             $openDup = GpDb::one(
                 'SELECT session_id FROM gp_transactions
-                 WHERE (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND brand_id = ? AND session_id != ? AND status IN (?, ?)',
-                [$trxId, strtoupper($trxId), strtolower($trxId), $row['brand_id'], $id, 'pending', 'initiated']
+                 WHERE trx_id = ? AND brand_id = ? AND session_id != ? AND status IN (?, ?)',
+                [strtoupper($trxId), $row['brand_id'], $id, 'pending', 'initiated']
             );
             if ($openDup) {
-                GpJson::error('DUPLICATE_TRX', 'This Transaction ID is already attached to another open checkout.', 409);
+                GpJson::error('DUPLICATE_TRX', 'Payment evidence cannot be used for this checkout.', 409);
             }
         }
 
@@ -1167,6 +1168,16 @@ final class CheckoutController
         return true;
     }
 
+    public static function payerMatches(array $brand, array $session, array $sms): bool
+    {
+        if (empty($brand['require_payer_match'])) return true;
+        $payer = preg_replace('/\D+/', '', (string) ($sms['payer_phone'] ?? '')) ?: '';
+        if ($payer === '') return true; // Older companion evidence may not include a payer.
+        $meta = self::decodeMeta($session);
+        $entered = preg_replace('/\D+/', '', (string) ($meta['sender_number'] ?? '')) ?: '';
+        return strlen($payer) >= 10 && strlen($entered) >= 10 && substr($payer,-10) === substr($entered,-10);
+    }
+
     public static function matchingSms(
         string $brandId,
         string $trxId,
@@ -1177,8 +1188,8 @@ final class CheckoutController
         ?array $session = null
     ): ?array {
         $sms = GpDb::one(
-            'SELECT * FROM gp_sms_data WHERE brand_id = ? AND (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND status IN (?, ?) ORDER BY id DESC',
-            [$brandId, $trxId, strtoupper($trxId), strtolower($trxId), 'approved', 'unmatched']
+            'SELECT * FROM gp_sms_data WHERE brand_id = ? AND trx_id = ? AND status IN (?, ?) ORDER BY id DESC',
+            [$brandId, strtoupper($trxId), 'approved', 'unmatched']
         );
         if ($sms === null) {
             return null;
@@ -1190,7 +1201,8 @@ final class CheckoutController
         if (!self::smsWithinSessionWindow($sms, $session)) {
             return null;
         }
-        $brand = GpDb::one('SELECT payment_tolerance FROM gp_brands WHERE brand_id = ?', [$brandId]);
+        $brand = GpDb::one('SELECT payment_tolerance, require_payer_match FROM gp_brands WHERE brand_id = ?', [$brandId]);
+        if ($session !== null && !self::payerMatches($brand ?? [], $session, $sms)) return null;
         $tol = GpMoney::sanitize((string) ($brand['payment_tolerance'] ?? '0'));
         if (!GpMoney::withinTolerance((string) $sms['amount'], $payable, $tol)) {
             return null;
@@ -1344,6 +1356,7 @@ final class CheckoutController
         string $evidence = 'matched',
         array $evidenceExtra = []
     ): array {
+        $trxId = strtoupper(trim($trxId));
         if (($row['ledger_mode'] ?? 'live') === 'live') {
             $requiresSms = in_array($methodCode, ['bkash', 'nagad', 'rocket', 'upay', 'cellfin'], true);
             if (($requiresSms && ($sms === null || $evidence !== 'matched'))
@@ -1353,13 +1366,14 @@ final class CheckoutController
             }
         }
         if ($sms !== null && strtolower((string) ($row['ledger_mode'] ?? 'live')) === 'live') {
-            $brand = GpDb::one('SELECT verification_mode FROM gp_brands WHERE brand_id = ?', [$row['brand_id']]);
+            $brand = GpDb::one('SELECT verification_mode, require_payer_match FROM gp_brands WHERE brand_id = ?', [$row['brand_id']]);
             if (GpConfig::get('GRESSPAY_SMS_AUTO_ALLOWED', '0') === '1' && ($brand['verification_mode'] ?? '') === 'sms_auto') {
                 $phoneMeta = self::decodeMeta($row);
                 $expectedPhone = preg_replace('/\D+/', '', (string) ($phoneMeta['sender_number'] ?? '')) ?: '';
                 $evidencePhone = preg_replace('/\D+/', '', (string) ($sms['payer_phone'] ?? '')) ?: '';
                 if ($expectedPhone === '' || $evidencePhone === '' || substr($expectedPhone, -10) !== substr($evidencePhone, -10)) return $row;
             }
+            if (!self::payerMatches($brand ?? [], $row, $sms)) return $row;
             // Keep late evidence for review, but never settle a different or expired session.
             if (!self::smsWithinSessionWindow($sms, $row)) {
                 return $row;
@@ -1382,19 +1396,26 @@ final class CheckoutController
         $pdo = GpDb::pdo();
         $pdo->beginTransaction();
         try {
+            $lock = GpDb::driver() === 'sqlite' ? '' : ' FOR UPDATE';
+            $fresh = GpDb::one('SELECT * FROM gp_transactions WHERE session_id = ? AND brand_id = ?' . $lock, [$row['session_id'],$row['brand_id']]);
+            if (!$fresh || !in_array($fresh['status'], ['initiated','pending'], true)) { $pdo->rollBack(); return $fresh ?? $row; }
+            if (!GpTrxClaims::claim($row['brand_id'], $row['ledger_mode'] ?? 'live', $trxId, $row['session_id'])) {
+                $pdo->rollBack();
+                GpJson::error('DUPLICATE_TRX','Payment evidence cannot be used for this checkout.',409);
+            }
             $dup = GpDb::one(
-                'SELECT session_id FROM gp_transactions WHERE (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND session_id != ? AND status = ?',
-                [$trxId, strtoupper($trxId), strtolower($trxId), $row['session_id'], 'completed']
+                'SELECT session_id FROM gp_transactions WHERE brand_id = ? AND trx_id = ? AND session_id != ? AND status = ?',
+                [$row['brand_id'], strtoupper($trxId), $row['session_id'], 'completed']
             );
             if ($dup) {
                 $pdo->rollBack();
-                GpJson::error('DUPLICATE_TRX', 'This Transaction ID has already been used.', 409);
+                GpJson::error('DUPLICATE_TRX', 'Payment evidence cannot be used for this checkout.', 409);
             }
 
             if ($sms) {
                 $smsLock = GpDb::exec(
-                    'UPDATE gp_sms_data SET status = ?, updated_at = ? WHERE id = ? AND status IN (?, ?)',
-                    ['used', $now, $sms['id'], 'approved', 'unmatched']
+                    'UPDATE gp_sms_data SET status = ?, updated_at = ? WHERE id = ? AND brand_id = ? AND status IN (?, ?)',
+                    ['used', $now, $sms['id'], $row['brand_id'], 'approved', 'unmatched']
                 );
                 if ($smsLock === 0) {
                     $pdo->rollBack();

@@ -286,6 +286,7 @@ export interface CheckoutSession {
   supportEmail?: string | null;
   supportTelegram?: string | null;
   checkoutTheme?: "default" | "luxury" | "minimal" | string;
+  requirePayerMatch?: boolean;
   verificationMode?: "trx_id" | "sms_auto" | string;
   amountPolicy?: "exact" | "equal_or_more" | string;
   amountFormat?: "as_is" | "floor" | "ceil" | string;
@@ -310,6 +311,7 @@ export interface BrandCheckoutSettings {
   supportTelegram?: string | null;
   checkoutTheme?: "default" | "luxury" | "minimal" | string;
   brandStatus?: "active" | "inactive" | string;
+  requirePayerMatch?: boolean;
   verificationMode?: "trx_id" | "sms_auto" | string;
   amountPolicy?: "exact" | "equal_or_more" | string;
   amountFormat?: "as_is" | "floor" | "ceil" | string;

@@ -159,6 +159,7 @@ final class CompanionController
             if ($plugin) {
                 $trxId = $plugin->normalizeTrx($trxId);
             }
+            $trxId = strtoupper(trim($trxId));
             $amount = GpMoney::sanitize((string) $req->input('amount', '0'));
             $receivedAtMs = filter_var($req->input('received_at_ms', null), FILTER_VALIDATE_INT);
             if ($receivedAtMs === false || $receivedAtMs === null || $receivedAtMs <= 0
@@ -203,23 +204,23 @@ final class CompanionController
 
             // Anti-Fraud: Strict uniqueness check against completed orders and used SMS
             $alreadyCompleted = GpDb::one(
-                'SELECT session_id FROM gp_transactions WHERE (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND status = ?',
-                [$trxId, strtoupper($trxId), strtolower($trxId), 'completed']
+                'SELECT session_id FROM gp_transactions WHERE brand_id = ? AND trx_id = ? AND status = ?',
+                [$device['brand_id'], strtoupper($trxId), 'completed']
             );
             if ($alreadyCompleted) {
-                GpJson::error('DUPLICATE_TRX', 'This Transaction ID has already been used.', 409);
+                GpJson::error('DUPLICATE_TRX', 'Payment evidence cannot be used for this checkout.', 409);
             }
 
             $used = GpDb::one(
-                'SELECT id FROM gp_sms_data WHERE (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND status = ?',
-                [$trxId, strtoupper($trxId), strtolower($trxId), 'used']
+                'SELECT id FROM gp_sms_data WHERE brand_id = ? AND trx_id = ? AND status = ?',
+                [$device['brand_id'], strtoupper($trxId), 'used']
             );
             if ($used) {
-                GpJson::error('DUPLICATE_SMS', 'This Transaction ID has already been used.', 409);
+                GpJson::error('DUPLICATE_TRX', 'Payment evidence cannot be used for this checkout.', 409);
             }
 
             $existingApproved = GpDb::one(
-                'SELECT * FROM gp_sms_data WHERE brand_id = ? AND UPPER(trx_id) = ? AND status = ?',
+                'SELECT * FROM gp_sms_data WHERE brand_id = ? AND trx_id = ? AND status = ?',
                 [$device['brand_id'], strtoupper($trxId), 'approved']
             );
             $now = GpIds::now();
@@ -257,8 +258,8 @@ final class CompanionController
             }
 
             $pendingCandidates = GpDb::all(
-                'SELECT * FROM gp_transactions WHERE brand_id = ? AND (trx_id = ? OR UPPER(trx_id) = ? OR LOWER(trx_id) = ?) AND status IN (?, ?) ORDER BY id ASC LIMIT 40',
-                [$device['brand_id'], $trxId, strtoupper($trxId), strtolower($trxId), 'pending', 'initiated']
+                'SELECT * FROM gp_transactions WHERE brand_id = ? AND trx_id = ? AND status IN (?, ?) ORDER BY id ASC LIMIT 40',
+                [$device['brand_id'], strtoupper($trxId), 'pending', 'initiated']
             );
             // sms_auto: pending checkouts may have no trx_id yet — scan concurrent candidates by amount/wallet.
             if ($pendingCandidates === []) {
