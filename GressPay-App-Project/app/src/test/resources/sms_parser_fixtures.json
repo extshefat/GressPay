@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "note": "Synthetic credit/reject samples for PaymentSmsParser. Replace/extend with redacted real merchant receipts when available.",
+  "cases": [
+    {
+      "name": "bkash_credit",
+      "sender": "bKash",
+      "body": "You have received Tk 500.00 from 017XXXXXXXX. Fee Tk 0.00. Balance Tk 1,200.00. TrxID 8N2K4M9P1Q Ref.",
+      "expect": { "senderKey": "bkash", "amount": "500.00", "trxId": "8N2K4M9P1Q" }
+    },
+    {
+      "name": "nagad_credit",
+      "sender": "Nagad",
+      "body": "Cash In Tk 250.50 to your Nagad Account. TrxID AB12CD34EF successful.",
+      "expect": { "senderKey": "nagad", "amount": "250.50", "trxId": "AB12CD34EF" }
+    },
+    {
+      "name": "rocket_credit",
+      "sender": "Rocket",
+      "body": "Tk.500.00 received from 019XXXXXXXX into your Rocket A/C. TxnId: 88471928 at 28-OCT-26.",
+      "expect": { "senderKey": "rocket", "amount": "500.00", "trxId": "88471928" }
+    },
+    {
+      "name": "upay_credit",
+      "sender": "upay",
+      "body": "Received Tk 1200.00 from 016XXXXXXXX. TrxID: UP981247. Fee Tk 0.00.",
+      "expect": { "senderKey": "upay", "amount": "1200.00", "trxId": "UP981247" }
+    },
+    {
+      "name": "cellfin_credit",
+      "sender": "CellFin",
+      "body": "Your Cellfin A/C has been credited with Tk 2,500.00 from 017XXXXXXXX. TrxID: CF84729104 at 28-10-2026.",
+      "expect": { "senderKey": "cellfin", "amount": "2500.00", "trxId": "CF84729104" }
+    },
+    {
+      "name": "reject_numeric_shortcode",
+      "sender": "16262",
+      "body": "You have received Tk 500.00 from 01712345678. TrxID ABCDEF1234",
+      "expect": null
+    },
+    {
+      "name": "reject_fake_sender_substring",
+      "sender": "fakebkash",
+      "body": "You have received Tk 75.25. TrxID XYZABCDE12",
+      "expect": null
+    },
+    {
+      "name": "reject_outgoing_send",
+      "sender": "bKash",
+      "body": "You have sent Tk 500.00 to 017XXXXXXXX. Fee Tk 5.00. TrxID OUTGOING99X Balance Tk 100.",
+      "expect": null
+    },
+    {
+      "name": "reject_otp",
+      "sender": "bKash",
+      "body": "Your bKash OTP is 482910. Do not share this code with anyone.",
+      "expect": null
+    },
+    {
+      "name": "reject_promo",
+      "sender": "bKash",
+      "body": "Get 50% cashback on bKash payments this weekend!",
+      "expect": null
+    }
+  ]
+}
