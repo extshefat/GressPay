@@ -18,6 +18,7 @@ final class TransactionsController
                 GpJson::send(['transactions' => [], 'total' => 0, 'noBrand' => true]);
             }
             $status = strtolower((string) ($req->input('status', '')));
+            $q = trim((string) ($req->input('q', $req->input('search', ''))));
             $sql = 'SELECT * FROM gp_transactions WHERE brand_id = ? AND ledger_mode = ?';
             $params = [$actor['brand_id'], $actor['mode']];
             if ($status !== '') {
@@ -37,6 +38,14 @@ final class TransactionsController
                     $sql .= ' AND status = ?';
                     $params[] = $dbStatus;
                 }
+            }
+            if ($q !== '') {
+                $like = '%' . $q . '%';
+                $sql .= ' AND (session_id LIKE ? OR trx_id LIKE ? OR merchant_order_id LIKE ? OR customer_json LIKE ?)';
+                $params[] = $like;
+                $params[] = $like;
+                $params[] = $like;
+                $params[] = $like;
             }
             $sql .= ' ORDER BY id DESC LIMIT 100';
             $rows = GpDb::all($sql, $params);

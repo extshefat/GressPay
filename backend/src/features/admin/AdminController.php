@@ -14,7 +14,7 @@ final class AdminController
             'stats' => self::stats(),
             'support' => self::support($req, $id, $sub),
             'merchants' => match ($req->method) {
-                'GET' => self::listMerchants(),
+                'GET' => self::listMerchants($req),
                 'POST' => match ($sub) {
                     'status' => self::updateMerchantStatus($actor, $id, $req),
                     'role' => self::updateMerchantRole($actor, $id, $req),
@@ -180,21 +180,52 @@ final class AdminController
                 'status' => 'operational',
                 'adminEmails' => GpConfig::adminEmails(),
                 'serverTime' => GpIds::now(),
+                // Read-only Coolify env mirrors — never editable from the UI.
+                'operatorToggles' => [
+                    'GRESSPAY_CRYPTO_ALLOWED' => GpConfig::get('GRESSPAY_CRYPTO_ALLOWED', '0') === '1',
+                    'GRESSPAY_SMS_AUTO_ALLOWED' => GpConfig::get('GRESSPAY_SMS_AUTO_ALLOWED', '0') === '1',
+                ],
             ],
         ]);
     }
 
-    private static function listMerchants(): never
+    private static function listMerchants(GpRequest $req): never
     {
-        $rows = GpDb::all('
-            SELECT m.merchant_id, m.full_name, m.email, m.auth_provider, m.status, m.created_at,
-                   m.role, m.plan_id, m.plan_expires_at,
-                   b.brand_id, b.name as brand_name, b.currency_code
-            FROM gp_merchants m
-            LEFT JOIN gp_brands b ON b.merchant_id = m.merchant_id
-            ORDER BY m.id DESC
-            LIMIT 200
-        ');
+        $q = trim((string) $req->input('q', $req->input('search', '')));
+        $page = max(1, (int) $req->input('page', 1));
+        $limit = min(100, max(1, (int) $req->input('limit', 50)));
+        $offset = ($page - 1) * $limit;
+
+        $where = '1=1';
+        $params = [];
+        if ($q !== '') {
+            $like = '%' . $q . '%';
+            $where .= ' AND (m.email LIKE ? OR m.full_name LIKE ? OR m.merchant_id LIKE ? OR b.name LIKE ?)';
+            $params[] = $like;
+            $params[] = $like;
+            $params[] = $like;
+            $params[] = $like;
+        }
+
+        $total = (int) (GpDb::one(
+            "SELECT COUNT(DISTINCT m.merchant_id) AS c
+             FROM gp_merchants m
+             LEFT JOIN gp_brands b ON b.merchant_id = m.merchant_id
+             WHERE {$where}",
+            $params
+        )['c'] ?? 0);
+
+        $rows = GpDb::all(
+            "SELECT m.merchant_id, m.full_name, m.email, m.auth_provider, m.status, m.created_at,
+                    m.role, m.plan_id, m.plan_expires_at,
+                    b.brand_id, b.name as brand_name, b.currency_code
+             FROM gp_merchants m
+             LEFT JOIN gp_brands b ON b.merchant_id = m.merchant_id
+             WHERE {$where}
+             ORDER BY m.id DESC
+             LIMIT {$limit} OFFSET {$offset}",
+            $params
+        );
 
         $out = [];
         foreach ($rows as $r) {
@@ -261,7 +292,12 @@ final class AdminController
             ];
         }
 
-        GpJson::send(['merchants' => $out]);
+        GpJson::send([
+            'merchants' => $out,
+            'total' => $total,
+            'page' => $page,
+            'limit' => $limit,
+        ]);
     }
 
     private static function updateMerchantRole(array $actor, string $merchantId, GpRequest $req): never
