@@ -5,7 +5,7 @@ import { ShieldCheck } from "lucide-react";
 
 export const Footer: React.FC = () => {
   return (
-    <footer className="bg-ink-solid border-t border-border py-16 text-muted text-xs">
+    <footer className="dark bg-ink-solid border-t border-border py-16 text-muted text-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8 pb-12 border-b border-border">
           <div className="col-span-2 space-y-4">

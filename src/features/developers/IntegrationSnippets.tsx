@@ -175,7 +175,7 @@ export function IntegrationSnippets() {
         ))}
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-border bg-ink-solid">
+      <div className="dark overflow-hidden rounded-xl border border-border bg-ink-solid">
         <div className="flex items-center justify-between border-b border-border px-4 py-2">
           <span className="font-mono text-[11px] uppercase tracking-wide text-muted">
             {active.label}
@@ -187,7 +187,7 @@ export function IntegrationSnippets() {
         </pre>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-border bg-ink-solid">
+      <div className="dark overflow-hidden rounded-xl border border-border bg-ink-solid">
         <div className="flex items-center justify-between border-b border-border px-4 py-2">
           <span className="font-mono text-[11px] uppercase tracking-wide text-muted">
             Verify payment status (your server)

@@ -97,7 +97,7 @@ export const DeveloperPreview: React.FC = () => {
           </div>
 
           <div className="lg:col-span-7">
-            <Card className="overflow-hidden border-border dark:border-border bg-ink-solid text-on-ink p-0 shadow-lg">
+            <Card className="dark overflow-hidden border-border dark:border-border bg-ink-solid text-on-ink p-0 shadow-lg">
               <div className="flex items-center justify-between px-4 py-2.5 bg-ink-solid/90 border-b border-border">
                 <div className="flex items-center gap-3">
                   <Terminal className="w-4 h-4 text-muted" />

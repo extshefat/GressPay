@@ -57,7 +57,7 @@ export function GlobeHero() {
                 </div>
                 <div className="mt-4 rounded-md bg-ink-solid px-4 py-3 text-center text-xs font-bold text-white">Continue with bKash</div>
               </div>
-              <div className="relative min-h-[20rem] overflow-hidden bg-ink-solid text-white">
+              <div className="dark relative min-h-[20rem] overflow-hidden bg-ink-solid text-white">
                 <div className="absolute inset-x-0 top-0 z-10 flex justify-between p-5 text-[10px] uppercase tracking-widest text-on-ink"><span>South Asia</span><span>Illustrative</span></div>
                 <div className="flex h-full min-h-[20rem] items-center justify-center translate-y-5 scale-[.78] sm:translate-y-4 sm:scale-[.88]"><InteractiveGlobe /></div>
                 <div className="absolute inset-x-4 bottom-4 rounded-md border border-white/10 bg-black/35 p-3 ">

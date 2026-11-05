@@ -75,7 +75,7 @@ export function GatewayWalkthrough() {
             <div className="space-y-2">
               {stages.map((item, index) => (
                 <button key={item.label} onClick={() => { setStep(index); setPlaying(false); }} aria-current={step === index ? "step" : undefined} className={`flex w-full items-center gap-4 rounded-md border p-4 text-left transition ${step === index ? "border-accent/60 bg-brand/10" : "border-border/80 hover:border-border"}`}>
-                  <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-md text-xs font-bold ${step === index ? "bg-brand text-on-brand" : "bg-ink-solid text-muted"}`}>0{index + 1}</span>
+                  <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-md text-xs font-bold ${step === index ? "bg-brand text-on-brand" : "bg-surface-muted text-muted"}`}>0{index + 1}</span>
                   <span className="min-w-0"><strong className="block text-sm">{item.label}</strong><small className="mt-0.5 block truncate text-muted">{item.title}</small></span>
                   {index === 1 ? <Smartphone className="ml-auto h-4 w-4 text-muted" /> : index === 3 ? <Webhook className="ml-auto h-4 w-4 text-muted" /> : null}
                 </button>
