@@ -1248,6 +1248,16 @@ $expiredToken = GpEmailVerification::issue($verifyMerchant);
 GpDb::exec('UPDATE gp_email_verifications SET expires_at = ? WHERE token_hash = ?', [time()-1,hash('sha256',$expiredToken)]);
 assert_true(!GpEmailVerification::consume($expiredToken), 'Expired stored verification token rejected');
 
+// Google ownership proof removes an unverified registrant's password and sessions.
+$googleVictim = GpIds::make('mrc',8);
+GpDb::exec('INSERT INTO gp_merchants (merchant_id,full_name,email,password_hash,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?)', [$googleVictim,'Victim','google-victim@test.local',password_hash('attacker-password',PASSWORD_BCRYPT),'active',$now,$now]);
+$victimRow = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$googleVictim]);
+GpEmailVerification::adoptGoogleIdentity($victimRow);
+$victimRow = GpDb::one('SELECT * FROM gp_merchants WHERE merchant_id = ?', [$googleVictim]);
+assert_true($victimRow['password_hash'] === null && (int)$victimRow['token_version'] === 1 && !empty($victimRow['email_verified']), 'Google linking clears pre-hijack password and revokes sessions');
+GpEmailVerification::adoptGoogleIdentity($victimRow);
+assert_true((int)GpDb::one('SELECT token_version FROM gp_merchants WHERE merchant_id = ?',[$googleVictim])['token_version'] === 1, 'Repeat Google sign-in preserves verified sessions');
+
 // Versioned migrations preserve existing data and skip already-applied work.
 $versions = GpDb::all('SELECT * FROM gp_schema_version ORDER BY version');
 GpMigrations::run();

@@ -190,6 +190,10 @@ final class CheckoutController
     private static function openSession(GpRequest $req, string $brandId, string $mode, ?array $link, string $source): array
     {
         $mode = $mode === 'test' ? 'test' : 'live';
+        if ($mode === 'live') {
+            $owner = GpDb::one('SELECT m.email_verified FROM gp_merchants m JOIN gp_brands b ON b.merchant_id = m.merchant_id WHERE b.brand_id = ?', [$brandId]);
+            if (empty($owner['email_verified'])) GpJson::error('EMAIL_UNVERIFIED', 'This merchant is not ready to accept live payments.', 403);
+        }
         $brandRow = GpDb::one('SELECT * FROM gp_brands WHERE brand_id = ?', [$brandId]);
         if ($brandRow === null) {
             GpJson::error('NOT_FOUND', 'Brand not found.', 404);
