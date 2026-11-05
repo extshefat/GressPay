@@ -70,6 +70,24 @@ export type ProbeResult = {
   bodyOk?: boolean;
 };
 
+function mergeSignals(signals: AbortSignal[]): AbortSignal {
+  const viable = signals.filter(Boolean);
+  if (viable.length === 0) return AbortSignal.timeout(8000);
+  if (viable.length === 1) return viable[0];
+  const any = (AbortSignal as unknown as { any?: (s: AbortSignal[]) => AbortSignal }).any;
+  if (typeof any === "function") return any(viable);
+  // Fallback: abort when the earliest signal aborts.
+  const controller = new AbortController();
+  for (const signal of viable) {
+    if (signal.aborted) {
+      controller.abort(signal.reason);
+      return controller.signal;
+    }
+    signal.addEventListener("abort", () => controller.abort(signal.reason), { once: true });
+  }
+  return controller.signal;
+}
+
 /** Probe /api/v1/health on each candidate (liveness: any HTTP response counts). */
 export async function probePhpOrigins(timeoutMs = 2500): Promise<ProbeResult[]> {
   const results: ProbeResult[] = [];
@@ -107,28 +125,34 @@ export async function probePhpOrigins(timeoutMs = 2500): Promise<ProbeResult[]> 
 
 /**
  * Fetch path `/api/v1/...` trying candidates until one responds (not network-dead).
- * Retries once per origin on 502–504.
+ * Each origin gets its own short timeout so a blackholed host cannot stall Google login.
  */
 export async function fetchPhpUpstream(
   apiPathAndQuery: string,
   init: RequestInit,
-  opts?: { retriesPerOrigin?: number }
+  opts?: { retriesPerOrigin?: number; perOriginTimeoutMs?: number }
 ): Promise<{ response: Response; origin: string }> {
   const path = apiPathAndQuery.startsWith("/") ? apiPathAndQuery : `/${apiPathAndQuery}`;
   const retries = opts?.retriesPerOrigin ?? 0;
+  const perOriginTimeoutMs = opts?.perOriginTimeoutMs ?? 2500;
   const preferred = getCachedPhpOrigin();
   const origins = preferred
     ? [preferred, ...phpOriginCandidates().filter((o) => o !== preferred)]
     : phpOriginCandidates();
 
+  const parentSignal = init.signal;
   let lastError: unknown;
+
   for (const origin of origins) {
+    if (parentSignal?.aborted) break;
     const target = `${origin}${path}`;
     for (let attempt = 0; attempt <= retries; attempt++) {
+      if (parentSignal?.aborted) break;
+      const signal = mergeSignals([parentSignal, AbortSignal.timeout(perOriginTimeoutMs)].filter(Boolean) as AbortSignal[]);
       try {
-        const response = await fetch(target, init);
+        const response = await fetch(target, { ...init, signal });
         if (response.status >= 502 && response.status <= 504 && attempt < retries) {
-          await new Promise((r) => setTimeout(r, 200 * (attempt + 1)));
+          await new Promise((r) => setTimeout(r, 150 * (attempt + 1)));
           continue;
         }
         // Network path worked — cache even on 4xx/503 JSON from PHP itself.
@@ -145,8 +169,8 @@ export async function fetchPhpUpstream(
         return { response, origin };
       } catch (err) {
         lastError = err;
-        if (attempt < retries) {
-          await new Promise((r) => setTimeout(r, 200 * (attempt + 1)));
+        if (attempt < retries && !parentSignal?.aborted) {
+          await new Promise((r) => setTimeout(r, 150 * (attempt + 1)));
           continue;
         }
       }

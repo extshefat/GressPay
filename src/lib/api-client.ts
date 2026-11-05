@@ -335,7 +335,10 @@ class ApiClient {
       const text = await res.text();
       return (text ? JSON.parse(text) : {}) as T;
     } catch (err: unknown) {
-      if (err instanceof Error && err.name === "AbortError") {
+      if (
+        err instanceof Error &&
+        (err.name === "AbortError" || err.name === "TimeoutError")
+      ) {
         throw new Error("Request timed out. Please check your network or try again.");
       }
       throw err;

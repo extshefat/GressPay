@@ -90,11 +90,13 @@ async function proxy(req: NextRequest, ctx: RouteContext): Promise<NextResponse>
     headers.set("Authorization", `Bearer ${sessionJwt}`);
   }
 
+  const googleUrl = looksLikeAuthGoogleUrl(segments, method);
   const init: RequestInit = {
     method: req.method,
     headers,
     redirect: "manual",
-    signal: AbortSignal.timeout(looksLikeAuthGoogleUrl(segments, method) ? 15000 : 25000),
+    // Hard ceiling so a dead PHP host cannot leave the login button spinning.
+    signal: AbortSignal.timeout(googleUrl ? 8000 : 25000),
   };
 
   if (method !== "GET" && method !== "HEAD") {
@@ -102,9 +104,9 @@ async function proxy(req: NextRequest, ctx: RouteContext): Promise<NextResponse>
   }
 
   try {
-    const retries = looksLikeAuthGoogleUrl(segments, method) ? 2 : 0;
     const { response: upstream, origin } = await fetchPhpUpstream(apiPath, init, {
-      retriesPerOrigin: retries,
+      retriesPerOrigin: googleUrl ? 1 : 0,
+      perOriginTimeoutMs: googleUrl ? 2000 : 8000,
     });
     const { buffer, text } = await readUpstreamBody(upstream);
     const contentType = (upstream.headers.get("content-type") || "").toLowerCase();
