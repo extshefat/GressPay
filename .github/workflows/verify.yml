@@ -41,6 +41,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Ensure Compose variants match
+        run: cmp docker-compose.yml docker-compose.yaml
       - name: Check for merge conflict markers
         run: |
           if grep -rnE '<<<<<<< |>>>>>>> ' src/ backend/ --include='*.php' --include='*.ts' --include='*.tsx'; then

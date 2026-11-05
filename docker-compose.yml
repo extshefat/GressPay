@@ -16,6 +16,7 @@ services:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
       GRESSPAY_PHP_URL: ${GRESSPAY_PHP_URL:-http://php:8080}
       PORT: "3000"
+      TRUSTED_PROXY_HOPS: ${WEB_TRUSTED_PROXY_HOPS:-0}
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
@@ -40,7 +41,15 @@ services:
       retries: 3
     environment: &php_environment
       PORT: "8080"
-      PHP_CLI_SERVER_WORKERS: "8"
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
+      TRUSTED_NEXT_PROXIES: ${TRUSTED_NEXT_PROXIES:-}
+      TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-0}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_ENCRYPTION: ${SMTP_ENCRYPTION:-tls}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       APP_ENV: production
       PUBLIC_APP_URL: ${PUBLIC_APP_URL:-${APP_URL}}
       GRESSPAY_CRYPTO_ALLOWED: ${GRESSPAY_CRYPTO_ALLOWED:-0}

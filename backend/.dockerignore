@@ -1,0 +1,6 @@
+.env
+.env.*
+!.env.example
+storage/*.sqlite*
+storage/*.log
+.git
