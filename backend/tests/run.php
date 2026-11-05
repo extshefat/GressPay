@@ -789,6 +789,7 @@ GpDb::exec(
     'INSERT INTO gp_devices (device_id, brand_id, label, token_hash, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
     [$smsDevId, $smsBrand, 'sms', password_hash($plainTok, PASSWORD_BCRYPT), 'active', $limNow, $limNow]
 );
+GpDb::exec('UPDATE gp_devices SET token_prefix = ? WHERE device_id = ?', [substr($plainTok, 0, 12), $smsDevId]);
 $otherBrand = GpIds::make('b', 6);
 assert_true(CompanionController::deviceForSmsToken($otherBrand, $plainTok) === null, 'wrong brand header scope rejects token');
 $found = CompanionController::deviceForSmsToken($smsBrand, $plainTok);
@@ -860,6 +861,7 @@ GpDb::exec(
     'INSERT INTO gp_devices (device_id, brand_id, label, token_hash, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
     [$devActive, $hbBrand, 'active node', password_hash($tokActive, PASSWORD_BCRYPT), 'active', $hbNow, $hbNow]
 );
+GpDb::exec('UPDATE gp_devices SET token_prefix = ? WHERE device_id = ?', [substr($tokActive, 0, 12), $devActive]);
 GpDb::exec(
     'INSERT INTO gp_devices (device_id, brand_id, label, token_hash, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
     [$devRevoked, $hbBrand, 'revoked node', password_hash('gpdev_revoked', PASSWORD_BCRYPT), 'revoked', $hbNow, $hbNow]
@@ -1196,6 +1198,15 @@ assert_true(GpRateLimiter::accountAllowed($loginEmail), 'Successful login clears
 GpDb::exec('INSERT INTO gp_rate_limit (bucket,window_start,hit_count) VALUES (?,?,?)', ['expired-test', time()-200000, 1]);
 GpRateLimiter::cleanup();
 assert_true(GpDb::one('SELECT bucket FROM gp_rate_limit WHERE bucket = ?', ['expired-test']) === null, 'Expired rate buckets are removed');
+
+// Indexed device lookup includes old devices regardless of newer row count.
+$oldDevice = GpIds::make('dev', 8); $oldToken = 'gpdev_' . bin2hex(random_bytes(20));
+GpDb::exec('INSERT INTO gp_devices (device_id,brand_id,token_hash,token_prefix,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?)', [$oldDevice,$brandId,password_hash($oldToken,PASSWORD_BCRYPT),substr($oldToken,0,12),'active',$now,$now]);
+for ($n=0; $n<501; $n++) GpDb::exec('INSERT INTO gp_devices (device_id,brand_id,token_hash,token_prefix,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?)', [GpIds::make('dev',8),$brandId,'not-a-bcrypt-hash','gpdev_newest','active',$now,$now]);
+assert_true((CompanionController::deviceForToken($oldToken)['device_id'] ?? '') === $oldDevice, 'Indexed lookup authenticates device older than newest 500');
+assert_true(CompanionController::deviceForToken('gpdev_invalid-prefix') === null, 'Invalid prefix returns no device');
+GpDb::exec('UPDATE gp_devices SET status = ? WHERE device_id = ?', ['revoked',$oldDevice]);
+assert_true(CompanionController::deviceForToken($oldToken) === null, 'Indexed lookup rejects revoked device');
 
 // Versioned migrations preserve existing data and skip already-applied work.
 $versions = GpDb::all('SELECT * FROM gp_schema_version ORDER BY version');

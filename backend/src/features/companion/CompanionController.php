@@ -39,14 +39,15 @@ final class CompanionController
             $plain = 'gpdev_' . bin2hex(random_bytes(20));
             $label = trim((string) $req->input('label', 'Android companion'));
             GpDb::exec(
-                'INSERT INTO gp_devices (device_id, brand_id, label, token_hash, token_sealed, status, created_at, updated_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                'INSERT INTO gp_devices (device_id, brand_id, label, token_hash, token_sealed, token_prefix, status, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 [
                     $deviceId,
                     $brandId,
                     $label,
                     password_hash($plain, PASSWORD_BCRYPT),
                     GpCrypto::seal($plain),
+                    substr($plain, 0, 12),
                     'active',
                     $now,
                     $now,
@@ -92,8 +93,8 @@ final class CompanionController
             }
             $plain = 'gpdev_' . bin2hex(random_bytes(20));
             GpDb::exec(
-                'UPDATE gp_devices SET token_hash = ?, token_sealed = ?, status = ?, updated_at = ? WHERE device_id = ?',
-                [password_hash($plain, PASSWORD_BCRYPT), GpCrypto::seal($plain), 'active', GpIds::now(), $devicePart]
+                'UPDATE gp_devices SET token_hash = ?, token_sealed = ?, token_prefix = ?, status = ?, updated_at = ? WHERE device_id = ?',
+                [password_hash($plain, PASSWORD_BCRYPT), GpCrypto::seal($plain), substr($plain, 0, 12), 'active', GpIds::now(), $devicePart]
             );
             GpJson::send([
                 'deviceId' => $devicePart,
@@ -372,7 +373,9 @@ final class CompanionController
      */
     public static function authenticateActiveDevice(GpRequest $req): array
     {
+        GpRateLimiter::guard('device-ip:' . GpRateLimiter::ip(), 120, 60);
         $token = $req->bearer() ?? ($req->deviceToken() ?? '');
+        GpRateLimiter::guard('device-prefix:' . substr((string) $token, 0, 12), 60, 60);
         if (!is_string($token) || $token === '') {
             GpJson::error('UNAUTHORIZED', 'Device API key required (gpdev_…).', 401);
         }
@@ -457,8 +460,8 @@ final class CompanionController
             return null;
         }
         $devices = GpDb::all(
-            'SELECT * FROM gp_devices WHERE brand_id = ? AND status = ?',
-            [$brandId, 'active']
+            'SELECT * FROM gp_devices WHERE brand_id = ? AND token_prefix = ? AND status = ?',
+            [$brandId, substr($token, 0, 12), 'active']
         );
         foreach ($devices as $row) {
             if (password_verify($token, $row['token_hash'])) {
@@ -479,7 +482,8 @@ final class CompanionController
             return null;
         }
         $devices = GpDb::all(
-            "SELECT * FROM gp_devices WHERE status = 'active' ORDER BY id DESC LIMIT 500"
+            "SELECT * FROM gp_devices WHERE token_prefix = ? AND status = 'active'",
+            [substr($token, 0, 12)]
         );
         foreach ($devices as $row) {
             if (password_verify($token, (string) ($row['token_hash'] ?? ''))) {
