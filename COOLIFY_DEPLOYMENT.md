@@ -28,6 +28,7 @@ Cloudflare 502 with **Host = Error** means Coolify’s proxy cannot reach a runn
    ```bash
    curl -sS http://127.0.0.1:3000/ | head
    curl -sS http://127.0.0.1:8080/api/v1/health
+   curl -sS http://127.0.0.1:8080/api/v1/health/worker
    ```
 6. Confirm env on **web**: `GRESSPAY_PHP_URL=http://<api-service-name>:8080`
 7. Confirm env on **api**: `JWT_SECRET`, `APP_ENCRYPTION_KEY`, `DB_*`, `PORT=8080`
@@ -124,7 +125,9 @@ TLS terminates at Coolify. Force HTTPS for merchant credential forms.
 ## Health checks
 
 - API: `GET /api/v1/health` → HTTP 200  
+- Worker queue: `GET /api/v1/health/worker` → HTTP 200 when no stale `processing` rows; body includes `queuePending`, `queueFailed`, `lastDeliveredAt` (no secrets)  
 - Web: `GET /` → HTTP 200  
+- Keep `webhook-worker` as its own Coolify service (`php jobs/WebhookWorker.php`); a green web health check does not prove the worker is running.
 
 ## Database & migrations
 

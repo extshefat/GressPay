@@ -27,7 +27,7 @@ final class GpRouter
         $head = $req->part(0) ?? '';
 
         match ($head) {
-            'health' => self::health(),
+            'health' => self::health($req),
             'auth' => AuthController::handle($req),
             'me' => AuthController::me($req),
             'checkout' => CheckoutController::handle($req),
@@ -52,8 +52,13 @@ final class GpRouter
         };
     }
 
-    private static function health(): never
+    private static function health(GpRequest $req): never
     {
+        $sub = $req->part(1) ?? '';
+        if ($sub === 'worker') {
+            self::workerHealth();
+        }
+
         $driver = 'unknown';
         $dbOk = false;
         try {
@@ -78,6 +83,71 @@ final class GpRouter
             GpJson::send($body, 503);
         }
         GpJson::send($body);
+    }
+
+    /** Public worker liveness: queue depth + last successful dequeue age (no secrets). */
+    private static function workerHealth(): never
+    {
+        $pending = 0;
+        $failed = 0;
+        $delivered = 0;
+        $lastDeliveredAt = null;
+        $staleProcessing = 0;
+        try {
+            $pending = (int) (GpDb::one(
+                "SELECT COUNT(*) AS c FROM gp_webhook_queue WHERE status IN ('pending', 'processing')"
+            )['c'] ?? 0);
+            $failed = (int) (GpDb::one(
+                "SELECT COUNT(*) AS c FROM gp_webhook_queue WHERE status = 'failed'"
+            )['c'] ?? 0);
+            $delivered = (int) (GpDb::one(
+                "SELECT COUNT(*) AS c FROM gp_webhook_queue WHERE status = 'delivered'"
+            )['c'] ?? 0);
+            $last = GpDb::one(
+                "SELECT updated_at FROM gp_webhook_queue WHERE status = 'delivered' ORDER BY updated_at DESC LIMIT 1"
+            );
+            $lastDeliveredAt = is_array($last) ? (string) ($last['updated_at'] ?? '') : null;
+            if ($lastDeliveredAt === '') {
+                $lastDeliveredAt = null;
+            }
+            $staleCutoff = gmdate('Y-m-d\TH:i:s\Z', time() - 300);
+            $staleProcessing = (int) (GpDb::one(
+                "SELECT COUNT(*) AS c FROM gp_webhook_queue WHERE status = 'processing' AND updated_at < ?",
+                [$staleCutoff]
+            )['c'] ?? 0);
+        } catch (Throwable $e) {
+            error_log('GressPay worker health failed: ' . $e->getMessage());
+            GpJson::send([
+                'ok' => false,
+                'product' => 'GressPay',
+                'time' => GpIds::now(),
+                'worker' => ['ok' => false, 'error' => 'Queue unavailable'],
+            ], 503);
+        }
+
+        $lastAgeSec = null;
+        if ($lastDeliveredAt !== null) {
+            $ts = strtotime($lastDeliveredAt);
+            if ($ts !== false) {
+                $lastAgeSec = max(0, time() - $ts);
+            }
+        }
+        // Ok when DB readable; warn via staleProcessing / backlog for operators.
+        $ok = $staleProcessing === 0;
+        GpJson::send([
+            'ok' => $ok,
+            'product' => 'GressPay',
+            'time' => GpIds::now(),
+            'worker' => [
+                'ok' => $ok,
+                'queuePending' => $pending,
+                'queueFailed' => $failed,
+                'queueDelivered' => $delivered,
+                'lastDeliveredAt' => $lastDeliveredAt,
+                'lastDeliveredAgeSec' => $lastAgeSec,
+                'staleProcessing' => $staleProcessing,
+            ],
+        ], $ok ? 200 : 503);
     }
 
     private static function binancePay(GpRequest $req): never

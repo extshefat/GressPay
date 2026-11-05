@@ -743,6 +743,16 @@ GpDb::exec(
 );
 $completedWh = (int) (GpDb::one("SELECT COUNT(*) AS c FROM gp_webhook_deliveries WHERE status IN ('completed', 'delivered')")['c'] ?? 0);
 assert_true($completedWh >= 1, 'webhook health query counts completed deliveries');
+$whPending = (int) (GpDb::one("SELECT COUNT(*) AS c FROM gp_webhook_queue WHERE status IN ('pending', 'processing')")['c'] ?? 0);
+$whFailed = (int) (GpDb::one("SELECT COUNT(*) AS c FROM gp_webhook_queue WHERE status = 'failed'")['c'] ?? 0);
+$whDelivered = (int) (GpDb::one("SELECT COUNT(*) AS c FROM gp_webhook_queue WHERE status = 'delivered'")['c'] ?? 0);
+assert_true($whPending >= 0 && $whFailed >= 0 && $whDelivered >= 0, 'worker health queue depth queries succeed');
+$staleCutoff = gmdate('Y-m-d\TH:i:s\Z', time() - 300);
+$staleProc = (int) (GpDb::one(
+    "SELECT COUNT(*) AS c FROM gp_webhook_queue WHERE status = 'processing' AND updated_at < ?",
+    [$staleCutoff]
+)['c'] ?? 0);
+assert_true($staleProc >= 0, 'worker health stale-processing query succeeds');
 
 // —— Plan device limit (companion register) ——
 $limBrand = GpIds::make('b', 6);
