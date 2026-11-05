@@ -1208,6 +1208,16 @@ assert_true(CompanionController::deviceForToken('gpdev_invalid-prefix') === null
 GpDb::exec('UPDATE gp_devices SET status = ? WHERE device_id = ?', ['revoked',$oldDevice]);
 assert_true(CompanionController::deviceForToken($oldToken) === null, 'Indexed lookup rejects revoked device');
 
+// SSRF ranges, authorities and Discord paths fail closed without DNS/network fixtures.
+foreach (['::', '::ffff:127.0.0.1', '::ffff:10.0.0.1', 'fe90::1', '100.64.0.1', '198.51.100.1', 'ff02::1', '2001:db8::1'] as $ip) {
+    assert_true(GpSafeHttp::isBlockedIp($ip), 'Safe HTTP blocks reserved address ' . $ip);
+}
+assert_true(!GpSafeHttp::isBlockedIp('2606:4700:4700::1111'), 'Safe HTTP permits global IPv6');
+foreach (['https://user:pass@8.8.8.8/hook','https://8.8.8.8:8443/hook','http://8.8.8.8/hook'] as $url) assert_true(!GpSafeHttp::destination($url)['ok'], 'Safe HTTP rejects unsafe authority');
+assert_true(GpSafeHttp::discordUrl('https://discord.com/api/webhooks/123/abc_DEF'), 'Discord webhook path allowed');
+assert_true(!GpSafeHttp::discordUrl('https://discord.com.evil.test/api/webhooks/123/abc'), 'Discord suffix impostor rejected');
+assert_true(!GpSafeHttp::discordUrl('https://discord.com/channels/123'), 'Discord non-webhook rejected');
+
 // Versioned migrations preserve existing data and skip already-applied work.
 $versions = GpDb::all('SELECT * FROM gp_schema_version ORDER BY version');
 GpMigrations::run();

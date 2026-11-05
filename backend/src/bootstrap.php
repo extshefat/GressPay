@@ -16,6 +16,7 @@ spl_autoload_register(static function (string $class): void {
         'GpRateLimiter' => GRESSPAY_SRC . '/lib/RateLimiter.php',
         'GpMoney' => GRESSPAY_SRC . '/lib/Money.php',
         'GpIds' => GRESSPAY_SRC . '/lib/Ids.php',
+        'GpSafeHttp' => GRESSPAY_SRC . '/lib/SafeHttp.php',
         'GpWebhook' => GRESSPAY_SRC . '/lib/Webhook.php',
         'GpWebhookWorker' => GRESSPAY_SRC . '/jobs/WebhookWorker.php',
         'GpCrypto' => GRESSPAY_SRC . '/lib/Crypto.php',

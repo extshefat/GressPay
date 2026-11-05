@@ -267,8 +267,8 @@ final class MerchantController
         if ($brandLogo !== '' && !preg_match('#^https://#i', $brandLogo)) {
             GpJson::error('INVALID_URL', 'Brand logo URL must be HTTPS.', 400);
         }
-        if ($discordWebhook !== '' && !preg_match('#^https://#i', $discordWebhook)) {
-            GpJson::error('INVALID_URL', 'Discord webhook URL must be HTTPS.', 400);
+        if ($discordWebhook !== '' && !GpSafeHttp::discordUrl($discordWebhook)) {
+            GpJson::error('INVALID_URL', 'Use a discord.com or discordapp.com HTTPS webhook URL.', 400);
         }
 
         $resolvedBrandName = $name !== '' ? $name : ($brandName !== '' ? $brandName : 'Store');
@@ -433,18 +433,9 @@ final class MerchantController
             } else {
                 $url = 'https://api.telegram.org/bot' . rawurlencode($token) . '/sendMessage';
                 $payload = json_encode(['chat_id' => $chatId, 'text' => $message], JSON_UNESCAPED_UNICODE);
-                $ch = curl_init($url);
-                curl_setopt_array($ch, [
-                    CURLOPT_POST => true,
-                    CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-                    CURLOPT_POSTFIELDS => $payload,
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_TIMEOUT => 8,
-                ]);
-                $body = curl_exec($ch);
-                $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                curl_close($ch);
-                $results['telegram'] = ['ok' => $code >= 200 && $code < 300, 'httpCode' => $code, 'body' => is_string($body) ? substr($body, 0, 200) : ''];
+                $result = GpSafeHttp::post($url, (string) $payload);
+                $code = (int) $result['code'];
+                $results['telegram'] = ['ok' => $code >= 200 && $code < 300, 'httpCode' => $code];
             }
         }
 
@@ -454,17 +445,8 @@ final class MerchantController
                 $results['discord'] = ['ok' => false, 'error' => 'Discord webhook URL is not configured.'];
             } else {
                 $payload = json_encode(['content' => $message], JSON_UNESCAPED_UNICODE);
-                $ch = curl_init($hook);
-                curl_setopt_array($ch, [
-                    CURLOPT_POST => true,
-                    CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-                    CURLOPT_POSTFIELDS => $payload,
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_TIMEOUT => 8,
-                ]);
-                $body = curl_exec($ch);
-                $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                curl_close($ch);
+                $result = GpSafeHttp::discordUrl($hook) ? GpSafeHttp::post($hook, (string) $payload) : ['code' => 0];
+                $code = (int) $result['code'];
                 $results['discord'] = ['ok' => $code >= 200 && $code < 300, 'httpCode' => $code];
             }
         }
