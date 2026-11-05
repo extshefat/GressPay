@@ -9,7 +9,29 @@ final class GpDb
     public static function boot(): void
     {
         self::pdo();
-        self::migrate();
+        $env = strtolower(GpConfig::get('APP_ENV', 'production'));
+        // Production: schema changes only via backend/bin/migrate.php (Docker entrypoint).
+        // Development / test runners still migrate on boot for convenience.
+        if ($env === 'development' || $env === 'test' || defined('GRESSPAY_TEST_RUNNER')) {
+            if (class_exists('GpSchema', false) || true) {
+                // Autoload Schema via map; fall back to legacy migrate for empty installs.
+                try {
+                    GpSchema::migrateToLatest();
+                    return;
+                } catch (Throwable $e) {
+                    error_log('GpSchema migrate failed, falling back: ' . $e->getMessage());
+                }
+            }
+            self::migrate();
+            self::ensureExtras();
+            return;
+        }
+        // Production request path: open connection only; do not run DDL.
+    }
+
+    /** Exposed for GpSchema / migrate.php. */
+    public static function ensureExtrasPublic(): void
+    {
         self::ensureExtras();
     }
 
@@ -229,6 +251,14 @@ final class GpDb
             'ALTER TABLE gp_gateways ADD COLUMN gateway_fee_type VARCHAR(16) NOT NULL DEFAULT \'percentage\'',
             'ALTER TABLE gp_gateways ADD COLUMN exchange_rate DECIMAL(20,8)',
             'ALTER TABLE gp_gateways ADD COLUMN gateway_category VARCHAR(32)',
+            // Phase 1 security columns
+            'ALTER TABLE gp_merchants ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0',
+            'ALTER TABLE gp_merchants ADD COLUMN email_verified_at VARCHAR(32)',
+            'ALTER TABLE gp_merchants ADD COLUMN email_verify_token_hash VARCHAR(64)',
+            'ALTER TABLE gp_merchants ADD COLUMN email_verify_expires_at VARCHAR(32)',
+            'ALTER TABLE gp_merchants ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0',
+            'ALTER TABLE gp_devices ADD COLUMN token_prefix VARCHAR(12)',
+            'ALTER TABLE gp_brands ADD COLUMN require_payer_match INTEGER NOT NULL DEFAULT 1',
         ];
         foreach ($deviceAlters as $sql) {
             try {
@@ -236,6 +266,75 @@ final class GpDb
             } catch (PDOException $e) {
                 // exists
             }
+        }
+        // Index companion token prefix lookups.
+        try {
+            if (self::$driver === 'mysql') {
+                self::pdo()->exec('CREATE INDEX idx_gp_devices_token_prefix ON gp_devices (token_prefix)');
+            } else {
+                self::pdo()->exec('CREATE INDEX IF NOT EXISTS idx_gp_devices_token_prefix ON gp_devices (token_prefix)');
+            }
+        } catch (PDOException $e) {
+            // exists
+        }
+        // Stamp legacy verified accounts (Google verified + configured admins).
+        try {
+            self::pdo()->exec(
+                "UPDATE gp_merchants SET email_verified = 1, email_verified_at = COALESCE(email_verified_at, '" . gmdate('Y-m-d\TH:i:s\Z') . "')
+                 WHERE email_verified = 0 AND (google_email_verified = 1 OR google_email_verified = '1')"
+            );
+            foreach (GpConfig::adminEmails() as $adminEmail) {
+                $adminEmail = strtolower(trim((string) $adminEmail));
+                if ($adminEmail === '') {
+                    continue;
+                }
+                self::exec(
+                    "UPDATE gp_merchants SET email_verified = 1, email_verified_at = COALESCE(email_verified_at, ?) WHERE email = ? AND email_verified = 0",
+                    [gmdate('Y-m-d\TH:i:s\Z'), $adminEmail]
+                );
+            }
+        } catch (Throwable $e) {
+            // columns may not exist yet on first create race
+        }
+        // Backfill device token_prefix from sealed tokens when possible.
+        try {
+            $legacyDevices = self::all(
+                "SELECT device_id, token_sealed, token_prefix FROM gp_devices WHERE token_prefix IS NULL OR token_prefix = '' LIMIT 500"
+            );
+            foreach ($legacyDevices as $dev) {
+                $sealed = (string) ($dev['token_sealed'] ?? '');
+                if ($sealed === '' || !str_starts_with($sealed, 'gpw1:')) {
+                    continue;
+                }
+                try {
+                    $plain = GpCrypto::open($sealed);
+                    if (is_string($plain) && $plain !== '') {
+                        self::exec(
+                            'UPDATE gp_devices SET token_prefix = ? WHERE device_id = ?',
+                            [substr($plain, 0, 12), $dev['device_id']]
+                        );
+                    }
+                } catch (Throwable $e) {
+                    // skip undecryptable
+                }
+            }
+        } catch (Throwable $e) {
+            // ignore
+        }
+        // Normalize historical trx_id to uppercase (best-effort).
+        try {
+            if (self::$driver === 'mysql') {
+                self::pdo()->exec('UPDATE gp_transactions SET trx_id = UPPER(trx_id) WHERE trx_id IS NOT NULL AND trx_id <> UPPER(trx_id)');
+                self::pdo()->exec('UPDATE gp_sms_data SET trx_id = UPPER(trx_id) WHERE trx_id IS NOT NULL AND trx_id <> UPPER(trx_id)');
+            } elseif (self::$driver === 'pgsql') {
+                self::pdo()->exec('UPDATE gp_transactions SET trx_id = UPPER(trx_id) WHERE trx_id IS NOT NULL AND trx_id <> UPPER(trx_id)');
+                self::pdo()->exec('UPDATE gp_sms_data SET trx_id = UPPER(trx_id) WHERE trx_id IS NOT NULL AND trx_id <> UPPER(trx_id)');
+            } else {
+                self::pdo()->exec("UPDATE gp_transactions SET trx_id = UPPER(trx_id) WHERE trx_id IS NOT NULL AND trx_id != UPPER(trx_id)");
+                self::pdo()->exec("UPDATE gp_sms_data SET trx_id = UPPER(trx_id) WHERE trx_id IS NOT NULL AND trx_id != UPPER(trx_id)");
+            }
+        } catch (Throwable $e) {
+            // ignore
         }
 
         $rateLimit = self::$driver === 'mysql'
