@@ -437,13 +437,22 @@ final class GpPresenters
         if (!is_array($customFields)) {
             $customFields = [];
         }
+        // PENDING is also used for newly created invoices. It must not hide receiving
+        // details before the buyer has actually submitted a reference or provider order.
+        $selectedMethod = trim((string) ($txn['method_code'] ?? ''));
+        $confirmation = (string) ($meta['confirmationState'] ?? 'none');
+        $hasSubmission = $selectedMethod !== '' && (
+            trim((string) ($txn['trx_id'] ?? '')) !== ''
+            || trim((string) ($txn['merchant_trade_no'] ?? '')) !== ''
+            || in_array($confirmation, ['verifying', 'submitted'], true)
+        );
         return [
             'status' => true,
             'paymentStatus' => self::status((string) $txn['status']),
             'submittedMethod' => $txn['method_code'] ?? null,
             'submittedGateway' => $txn['gateway_id'] ?? null,
             'submittedTxid' => $txn['trx_id'] ?? null,
-            'awaitingEvidence' => strtolower((string) $txn['status']) === 'pending',
+            'awaitingEvidence' => strtolower((string) ($txn['status'] ?? '')) === 'pending' && $hasSubmission,
             'settledAmount' => isset($txn['verified_amount']) ? self::num($txn['verified_amount']) : null,
             'settledCurrency' => $txn['verified_currency'] ?? null,
             'sessionId' => $txn['session_id'],

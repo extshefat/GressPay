@@ -719,6 +719,27 @@ assert_true(($createOut['status'] ?? false) === true, 'create payload status is 
 assert_true(($createOut['session_id'] ?? '') === 'chs_stage1_create', 'create payload includes session_id');
 assert_true(str_contains((string) ($createOut['payment_url'] ?? ''), '/pay/chs_stage1_create'), 'create payload includes payment_url');
 
+// Pending does not imply that the buyer has submitted payment evidence.
+$flowTxn = [
+    'session_id' => 'chs_flow_pending', 'amount' => '150', 'currency' => 'BDT',
+    'status' => 'pending', 'metadata' => '{}', 'ledger_mode' => 'live',
+    'expires_at' => null, 'created_at' => $now, 'source' => 'api',
+];
+$flowLink = ['link_id' => 'lnk_flow', 'title' => 'Order', 'description' => ''];
+$flowBrand = ['brand_id' => $brandP5, 'name' => 'Flow Brand'];
+$flowFresh = GpPresenters::checkoutSession($flowTxn, $flowLink, $flowBrand, []);
+assert_true($flowFresh['awaitingEvidence'] === false, 'CHECKOUT-FLOW: fresh PENDING shows method choices before waiting');
+$flowPreselected = GpPresenters::checkoutSession(array_merge($flowTxn, ['method_code' => 'bkash']), $flowLink, $flowBrand, []);
+assert_true($flowPreselected['awaitingEvidence'] === false, 'CHECKOUT-FLOW: preselected method without submission is not waiting for SMS');
+$flowSubmitted = GpPresenters::checkoutSession(array_merge($flowTxn, ['method_code' => 'bkash', 'trx_id' => 'FLOWTRX1']), $flowLink, $flowBrand, []);
+assert_true($flowSubmitted['awaitingEvidence'] === true, 'CHECKOUT-FLOW: submitted TrxID resumes evidence matching');
+$flowAuto = GpPresenters::checkoutSession(array_merge($flowTxn, ['method_code' => 'nagad', 'metadata' => json_encode(['confirmationState' => 'verifying', 'sender_number' => '01700000000'])]), $flowLink, $flowBrand, []);
+assert_true($flowAuto['awaitingEvidence'] === true, 'CHECKOUT-FLOW: SMS-auto submission resumes without requiring a TrxID');
+$flowProvider = GpPresenters::checkoutSession(array_merge($flowTxn, ['method_code' => 'binance_pay', 'merchant_trade_no' => 'ci-trade']), $flowLink, $flowBrand, []);
+assert_true($flowProvider['awaitingEvidence'] === true, 'CHECKOUT-FLOW: existing provider order resumes confirmation');
+$flowCompleted = GpPresenters::checkoutSession(array_merge($flowTxn, ['status' => 'completed', 'method_code' => 'bkash', 'trx_id' => 'FLOWTRX1']), $flowLink, $flowBrand, []);
+assert_true($flowCompleted['awaitingEvidence'] === false && $flowCompleted['paymentStatus'] === 'COMPLETED', 'CHECKOUT-FLOW: confirmed receipt never resumes a waiting screen');
+
 // —— Plan seeds: trial + paid starter ——
 $trialRow = GpDb::one('SELECT plan_id, credit_allowance FROM gp_plans WHERE LOWER(code) = ? LIMIT 1', ['trial']);
 assert_true(
