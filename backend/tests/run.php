@@ -1548,5 +1548,15 @@ $swJwt = GpJwt::issueForMerchant($swRow, ['brand' => 'brd_test']);
 $swPayload = GpJwt::decode($swJwt);
 assert_true(is_array($swPayload) && (int) ($swPayload['tv'] ?? -1) === 3, 'WS-01: issueForMerchant embeds current token_version');
 
+// Non-root Alpine nginx must not fall back to nginx-owned /var/lib/nginx/tmp.
+// API container integration in CI additionally boots the actual image as www-data.
+$apiNginxConfig = file_get_contents($root . '/deploy/nginx.docker.conf');
+foreach (['client_body', 'fastcgi', 'proxy', 'uwsgi', 'scgi'] as $tempModule) {
+    assert_true(
+        preg_match('/^\s*' . $tempModule . '_temp_path\s+\/tmp\/nginx\/[a-z_]+\s*;/m', $apiNginxConfig) === 1,
+        'API-BOOT: ' . $tempModule . ' temporary files stay under www-data-owned /tmp/nginx'
+    );
+}
+
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

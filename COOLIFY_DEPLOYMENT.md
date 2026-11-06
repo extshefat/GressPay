@@ -108,6 +108,30 @@ NEXT_PUBLIC_API_URL=
 
 **Critical Coolify gotcha:** if `PORT=3000` is a *shared* stack variable, older PHP images could bind nginx to 3000 while web still calls `http://php:8080` → Google 502 and **Degraded**. Current images force `API_PORT=8080` on the php service. After deploy, open `/api/ops/php-reachability` and confirm `ok: true`.
 
+**Non-root nginx startup:** Alpine's nginx package owns `/var/lib/nginx/tmp`
+as the `nginx` user with mode 0700; GressPay runs as `www-data`. Overriding
+only `client_body_temp_path` and `fastcgi_temp_path` leaves the proxy/uwsgi/scgi
+module defaults unwritable and can terminate nginx before the API listens.
+The image now creates all five temporary directories under `/tmp/nginx`, owns
+them as `www-data`, and validates the generated configuration before FPM starts.
+An older image with this defect must be rebuilt and redeployed; changing Google
+keys does not repair it. Look for `mkdir() ... /var/lib/nginx ... Permission denied`
+in the PHP service startup logs. Do not work around it by running the image as root.
+
+After rebuilding on Coolify, confirm the PHP service is running, then from the
+**web** service terminal run this read-only check (it prints no credentials):
+
+```sh
+node -e "fetch('http://php:8080/api/v1/auth/providers').then(async r=>{const p=await r.json();console.log({status:r.status,googleEnabled:p.google?.enabled});process.exit(r.ok&&p.google?.enabled?0:1)}).catch(()=>{console.error('PHP API unreachable');process.exit(1)})"
+```
+
+Then use **Continue with Google** and verify the browser reaches
+`accounts.google.com`. The CI `api-container` job boots the production image
+as non-root with `PORT=3000` and `API_PORT=8080`, checks health and creates an
+OAuth state with PKCE using isolated test credentials. It does not sign in to a
+real Google account. If startup still fails, review the PHP service log before
+changing credentials; database migration or DNS failures are separate causes.
+
 Do **not** set `GRESSPAY_PHP_URL` to `http://0.0.0.0:8080`, `localhost`, or the public site URL.
 
 ### Never put in Coolify env

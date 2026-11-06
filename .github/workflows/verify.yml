@@ -66,6 +66,63 @@ jobs:
       - run: docker-php-ext-install pdo_mysql bcmath
       - run: php backend/tests/mysql.php
 
+  api-container:
+    name: Non-root API boot and Google OAuth start
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the production API image
+        run: docker build --tag gresspay-api-ci ./backend
+      - name: Boot with Coolify's shared web port
+        run: |
+          docker run --detach --name gresspay-api-ci \
+            --publish 127.0.0.1:18080:8080 \
+            --env APP_ENV=production --env DB_DRIVER=sqlite \
+            --env SQLITE_PATH=/tmp/php/ci.sqlite \
+            --env JWT_SECRET=ci-only-jwt-secret-at-least-32-characters \
+            --env APP_ENCRYPTION_KEY=ci-only-encryption-key-at-least-32-characters \
+            --env GOOGLE_CLIENT_ID=ci-client.apps.googleusercontent.com \
+            --env GOOGLE_CLIENT_SECRET=ci-only-google-secret \
+            --env APP_URL=https://gresspay.example \
+            --env API_PORT=8080 --env PORT=3000 \
+            gresspay-api-ci
+          ready=0
+          for attempt in $(seq 1 40); do
+            if curl --fail --silent --max-time 2 http://127.0.0.1:18080/api/v1/health > /dev/null; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          test "$ready" -eq 1
+          test "$(docker exec gresspay-api-ci id -u)" -ne 0
+      - name: Check OAuth state storage and environment propagation
+        run: |
+          curl --fail --silent --show-error --max-time 8 \
+            'http://127.0.0.1:18080/api/v1/auth/google/url?redirect_uri=https%3A%2F%2Fgresspay.example%2Fcallback%2Fgoogle' \
+            > /tmp/gresspay-oauth-start.json
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { readFileSync } from 'node:fs';
+          const response = JSON.parse(readFileSync('/tmp/gresspay-oauth-start.json', 'utf8'));
+          assert.equal(response.enabled, true);
+          const destination = new URL(response.url);
+          assert.equal(destination.origin, 'https://accounts.google.com');
+          assert.equal(destination.searchParams.get('client_id'), 'ci-client.apps.googleusercontent.com');
+          assert.equal(destination.searchParams.get('redirect_uri'), 'https://gresspay.example/callback/google');
+          assert.equal(destination.searchParams.get('code_challenge_method'), 'S256');
+          assert.ok(destination.searchParams.get('state'));
+          assert.ok(destination.searchParams.get('nonce'));
+          console.log('PASS non-root API boot, fixed API port, FPM environment and Google state/PKCE');
+          JS
+      - name: Show API startup logs
+        if: always()
+        run: docker logs gresspay-api-ci || true
+      - name: Remove the isolated CI container
+        if: always()
+        run: docker rm --force gresspay-api-ci || true
+
   web:
     name: Next.js tsc + live build
     runs-on: ubuntu-latest

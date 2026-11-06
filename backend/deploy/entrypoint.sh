@@ -15,6 +15,9 @@ export PORT="${LISTEN_PORT}"
 echo "GressPay API listening on ${LISTEN_PORT} (API_PORT; ignoring Coolify web PORT)" >&2
 
 sed "s/__PORT__/${LISTEN_PORT}/g" /etc/nginx/nginx.conf.template > /tmp/nginx/nginx.conf
+# Validate paths/permissions before starting FPM. A startup failure must remain
+# visible in container logs rather than leave an apparently running PHP process.
+nginx -t -c /tmp/nginx/nginx.conf
 php-fpm -F &
 fpm_pid=$!
 nginx -c /tmp/nginx/nginx.conf -g 'daemon off;' &

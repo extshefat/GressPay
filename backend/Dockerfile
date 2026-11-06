@@ -9,7 +9,9 @@ COPY --chown=www-data:www-data . .
 COPY deploy/nginx.docker.conf /etc/nginx/nginx.conf.template
 COPY deploy/entrypoint.sh /usr/local/bin/gresspay-entrypoint
 COPY deploy/php-security.ini /usr/local/etc/php/conf.d/zz-security.ini
-RUN mkdir -p storage /tmp/nginx /tmp/php \
+RUN mkdir -p storage /tmp/php \
+        /tmp/nginx/client /tmp/nginx/fastcgi /tmp/nginx/proxy \
+        /tmp/nginx/uwsgi /tmp/nginx/scgi \
     && chown -R www-data:www-data storage /tmp/nginx /tmp/php \
     && chmod +x /usr/local/bin/gresspay-entrypoint \
     && printf '[www]\nlisten = 127.0.0.1:9000\nclear_env = no\npm = dynamic\npm.max_children = 12\npm.start_servers = 2\npm.min_spare_servers = 2\npm.max_spare_servers = 4\nrequest_terminate_timeout = 60s\n' > /usr/local/etc/php-fpm.d/zz-gresspay.conf
