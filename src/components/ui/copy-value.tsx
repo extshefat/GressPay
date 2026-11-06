@@ -22,9 +22,9 @@ export function CopyValue({ label, value, displayValue, hint }: { label: string;
     setMessage(copied ? "Copied" : "Select the value and copy manually.");
     clearTimeout(timer.current); timer.current = setTimeout(() => setMessage(""), 3000);
   }
-  return <div className="min-w-0 rounded-md border border-border-strong bg-card p-4">
+  return <div className="relative min-w-0 rounded-md border border-border-strong bg-card p-4">
     <div className="flex items-start justify-between gap-3"><div className="min-w-0 flex-1"><p className="text-xs font-medium text-muted">{label}</p><p className="mt-2 select-all break-all font-mono text-lg font-semibold leading-7 tabular-nums text-ink">{displayValue || value}</p></div><IconButton label={`Copy ${label.toLowerCase()}`} variant="secondary" size="sm" onClick={copy}>{message === "Copied" ? <Check size={16}/> : <Copy size={16}/>}</IconButton></div>
     {hint && <p className="mt-2 text-xs leading-5 text-muted">{hint}</p>}
-    <p role="status" className="mt-1 min-h-5 text-xs text-accent">{message}</p>
+    <span role="status" className="pointer-events-none absolute right-4 top-14 text-xs text-accent">{message === "Copied" ? "Copied" : ""}</span>{message && message !== "Copied" && <p role="alert" className="mt-2 text-xs text-danger">{message}</p>}
   </div>;
 }

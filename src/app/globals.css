@@ -235,3 +235,7 @@ body { font-variant-numeric:tabular-nums; margin:0; color:var(--text-primary); b
 
 }
 :is(h1,h2,h3,h4,p):lang(bn) { line-height:1.6; }
+
+/* Receiving details remain visible throughout transfer and verification. */
+.gp-checkout-flow { max-width:1064px; }
+@media (min-width:900px) { .gp-checkout-flow { display:grid; grid-template-columns:320px minmax(0,1fr); align-items:stretch; } }

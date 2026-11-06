@@ -3,19 +3,21 @@
 import { AlertCircle, CheckCircle2, Clock, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusTimeline } from "@/components/ui/status-timeline";
-import type { CheckoutSession } from "@/lib/types/api";
+import { formatCurrency } from "@/lib/formatters";
+import type { CheckoutSession, PaymentMethod } from "@/lib/types/api";
 
 export function CheckoutCancelledView(props: {
   message: string;
+  hideHeading?: boolean;
   redirectUrl: string | null;
   redirectSec: number;
 }) {
   return (
-    <div className="gp-checkout-card mx-auto w-full max-w-lg space-y-4 p-8 text-center" role="status" aria-live="polite">
+    <div className={props.hideHeading ? "space-y-4 rounded-lg border border-border bg-surface p-5 text-center" : "gp-checkout-card mx-auto w-full max-w-lg space-y-4 p-8 text-center"} role="status" aria-live="polite">
       <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-danger/10 text-danger">
         <AlertCircle className="h-7 w-7" aria-hidden />
       </div>
-      <h2 className="text-xl font-semibold text-ink">Checkout canceled</h2>
+      {!props.hideHeading && <h2 className="text-xl font-semibold text-ink">Checkout canceled</h2>}
       <p className="text-sm text-muted">{props.message}</p>
       {props.redirectUrl && (
         <>
@@ -30,6 +32,7 @@ export function CheckoutCancelledView(props: {
 }
 
 export function CheckoutFailedView(props: {
+  hideHeading?: boolean;
   refunded?: boolean;
   merchantName: string;
   sessionId: string;
@@ -37,8 +40,8 @@ export function CheckoutFailedView(props: {
   returnUrl?: string | null;
 }) {
   return (
-    <section className="gp-checkout-card mx-auto max-w-lg space-y-3 p-8 text-center" role="alert" aria-live="assertive">
-      <h2 className="text-xl font-semibold">{props.refunded ? "Payment refunded" : "Payment unsuccessful"}</h2>
+    <section className={props.hideHeading ? "space-y-3 rounded-lg border border-border bg-surface p-5 text-center" : "gp-checkout-card mx-auto max-w-lg space-y-3 p-8 text-center"} role="alert" aria-live="assertive">
+      {!props.hideHeading && <h2 className="text-xl font-semibold">{props.refunded ? "Payment refunded" : "Payment unsuccessful"}</h2>}
       <p className="text-sm text-muted">
         {props.message || `Contact ${props.merchantName} with your order reference before sending another payment.`}
       </p>
@@ -57,16 +60,17 @@ export function CheckoutFailedView(props: {
 }
 
 export function CheckoutExpiredView(props: {
+  hideHeading?: boolean;
   message?: string | null;
   returnUrl?: string | null;
 }) {
   return (
-    <div className="gp-checkout-card mx-auto w-full max-w-lg space-y-4 p-8 text-center" role="status" aria-live="polite">
+    <div className={props.hideHeading ? "space-y-4 rounded-lg border border-border bg-surface p-5 text-center" : "gp-checkout-card mx-auto w-full max-w-lg space-y-4 p-8 text-center"} role="status" aria-live="polite">
       <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-surface text-ink">
         <Clock className="h-7 w-7" aria-hidden />
       </div>
       <p className="text-xs font-semibold uppercase tracking-wider text-muted">Session expired</p>
-      <h2 className="text-xl font-semibold text-ink">Payment window ended</h2>
+      {!props.hideHeading && <h2 className="text-xl font-semibold text-ink">Payment window ended</h2>}
       <p className="mx-auto max-w-sm text-sm leading-relaxed text-muted">
         {props.message || "This payment session timed out. Ask the seller for a new checkout link before sending money again."}
       </p>
@@ -137,31 +141,39 @@ export function CheckoutWaitingSmsView(props: {
 }
 
 export function CheckoutSuccessView(props: {
+  hideHeading?: boolean;
   session: CheckoutSession;
   demoMode?: boolean;
   redirectCountdown: number;
+  redirectUrl?: string | null;
+  redirectActive?: boolean;
+  method?: PaymentMethod;
+  txid?: string;
 }) {
-  const target = props.session.successRedirectUrl || props.session.returnUrl;
+  const target = props.redirectUrl || props.session.successRedirectUrl || props.session.returnUrl;
+  const amount = props.session.settledAmount ?? props.method?.payableAmount ?? props.session.amount;
+  const currency = props.session.settledCurrency ?? props.method?.payableCurrency ?? props.method?.currency ?? props.session.currency;
   return (
-    <div className="gp-checkout-card mx-auto w-full max-w-lg space-y-4 p-8 text-center" role="status" aria-live="polite">
+    <div className={props.hideHeading ? "space-y-4 rounded-lg border border-border bg-surface p-5 text-center" : "gp-checkout-card mx-auto w-full max-w-lg space-y-4 p-8 text-center"} role="status" aria-live="polite">
       <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-success/15 text-success">
         <CheckCircle2 className="h-8 w-8" aria-hidden />
       </div>
-      <h2 className="text-xl font-semibold text-ink">
+      {!props.hideHeading && <h2 className="text-xl font-semibold text-ink">
         {props.demoMode ? "Sample payment successful" : "Payment confirmed"}
-      </h2>
+      </h2>}
       <p className="text-sm text-muted">
         {props.demoMode
           ? "This preview never moved money. Use a live payment link for real checkouts."
-          : "Evidence matched. The merchant store has been notified."}
+          : "The server confirmed matching payment evidence. Keep this receipt for the merchant."}
       </p>
+      <p className="text-xs text-muted">{props.session.settledAmount != null ? "Confirmed amount" : "Checkout amount"}</p>
+      <p className="text-2xl font-semibold tabular-nums">{formatCurrency(amount, currency, { maximumFractionDigits: 8 })}</p>
       <p className="break-all font-mono text-xs text-muted">{props.session.sessionId}</p>
-      {target && <p className="text-xs text-muted">Redirecting in {props.redirectCountdown}s…</p>}
-      {target && (
-        <a href={target} className="inline-block text-sm font-semibold text-accent underline">
-          Continue now
-        </a>
-      )}
+      {(props.txid || props.session.submittedTxid) && <p className="break-all font-mono text-xs text-muted">TrxID · {props.txid || props.session.submittedTxid}</p>}
+      {target && props.redirectActive && !props.demoMode && <p className="text-xs text-muted">Redirecting in {props.redirectCountdown}s…</p>}
+      <a href={target || "/"} className="inline-block min-h-10 py-2 text-sm font-semibold text-accent underline">
+        {target ? "Return to merchant" : "Return to GressPay"}
+      </a>
     </div>
   );
 }

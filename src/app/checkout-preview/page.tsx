@@ -1,118 +1,60 @@
 "use client";
-
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { HostedCheckoutModal } from "@/features/checkout/components/HostedCheckoutModal";
-import {
-  CheckoutCancelledView,
-  CheckoutConfirmingExpiryView,
-  CheckoutExpiredView,
-  CheckoutFailedView,
-  CheckoutSuccessView,
-  CheckoutWaitingSmsView,
-} from "@/features/checkout/components/CheckoutStatusViews";
+import { ThemeToggle } from "@/lib/theme";
 import { gatewayLogoPath } from "@/lib/gateway-library";
+import { Select } from "@/components/ui/select";
 import type { CheckoutSession, PaymentMethod } from "@/lib/types/api";
+import type { CheckoutPreviewSeed } from "@/features/checkout/hooks/useCheckout";
 
-const STATES = [
-  "live",
-  "waiting_sms",
-  "success",
-  "expired",
-  "cancelled",
-  "failed",
-  "confirming",
-] as const;
-
+const VIEWS = [
+  { value: "choose", label: "1. Categories & payment methods" },
+  { value: "payer", label: "2. Your payment number" },
+  { value: "payment", label: "3. Receiving details & timer" },
+  { value: "verify", label: "4. Transaction reference" },
+  { value: "submitted", label: "5. Server verification" },
+  { value: "waiting_sms", label: "6. Waiting for SMS evidence" },
+  { value: "success", label: "Confirmed receipt" },
+  { value: "expired", label: "Expired" },
+  { value: "confirming", label: "Final status check" },
+  { value: "cancelled", label: "Cancelled" },
+  { value: "failed", label: "Failed" },
+  { value: "refunded", label: "Refunded" },
+  { value: "empty", label: "No connected methods" },
+];
+function makeMethod(code: string, name: string, crypto = false): PaymentMethod {
+  return {
+    code, name, country: crypto ? "GLOBAL" : "BD", category: crypto ? "crypto" : "mfs", logo: gatewayLogoPath(code),
+    currency: crypto ? "USDT" : "BDT", feePercentage: 0, fixedFee: 0, minAmount: 1, maxAmount: 100000,
+    isEnabled: true, isAutomated: true, requiresTxidInput: code !== "binance_pay", payableAmount: crypto ? 1.25 : 150,
+    payableCurrency: crypto ? "USDT" : "BDT", depositAddressOrNumber: crypto ? "EXAMPLE-ADDRESS-DO-NOT-PAY" : "01XXXXXXXXX", accountType: "personal",
+  };
+}
 export default function CheckoutPreview() {
-  const [session, setSession] = useState<CheckoutSession | null>(null);
-  const [view, setView] = useState<(typeof STATES)[number]>("live");
-
-  useEffect(() => {
-    const method = (code: string, name: string, crypto = false): PaymentMethod => {
-      const currency = crypto ? "USDT" : "BDT";
-      return {
-        code,
-        name,
-        country: crypto ? "GLOBAL" : "BD",
-        category: crypto ? "crypto" : "mfs",
-        logo: gatewayLogoPath(code),
-        currency,
-        feePercentage: 0,
-        fixedFee: 0,
-        minAmount: 1,
-        maxAmount: 100000,
-        isEnabled: true,
-        isAutomated: true,
-        requiresTxidInput: code !== "binance_pay",
-        payableAmount: crypto ? 1.25 : 150,
-        payableCurrency: currency,
-        depositAddressOrNumber: crypto ? "TXdemoWalletAddress123" : "01XXXXXXXXX",
-        trxHint: "Enter the TrxID from your confirmation SMS",
-      };
-    };
-    setSession({
-      sessionId: "demo-checkout-preview",
-      linkId: "demo",
-      merchantName: "Studio Sample",
-      merchantVerified: false,
-      orderTitle: "Digital print · Order GP-0150",
-      amount: 150,
-      currency: "BDT",
-      availableMethods: [
-        method("bkash", "bKash"),
-        method("nagad", "Nagad"),
-        method("binance_pay", "Binance Pay", true),
-        method("usdt_trc20", "USDT TRC-20", true),
-      ],
-      ledgerMode: "test",
-      verificationMode: "trx_id",
-      expiresAt: new Date(Date.now() + 1800000).toISOString(),
-      createdAt: new Date().toISOString(),
-      returnUrl: "/checkout-preview",
-    });
-  }, []);
-
-  const specimen = useMemo(() => {
-    if (!session) return null;
-    switch (view) {
-      case "waiting_sms":
-        return <CheckoutWaitingSmsView message="Illustrative waiting state." pollingSeconds={12} txid="DEMOBKASH01" />;
-      case "success":
-        return <CheckoutSuccessView session={session} demoMode redirectCountdown={4} />;
-      case "expired":
-        return <CheckoutExpiredView returnUrl="/checkout-preview" />;
-      case "cancelled":
-        return <CheckoutCancelledView message="Illustrative cancel." redirectUrl="/checkout-preview" redirectSec={3} />;
-      case "failed":
-        return <CheckoutFailedView merchantName={session.merchantName} sessionId={session.sessionId} returnUrl="/checkout-preview" />;
-      case "confirming":
-        return <CheckoutConfirmingExpiryView />;
-      default:
-        return <HostedCheckoutModal session={session} demoMode />;
-    }
-  }, [session, view]);
-
-  return (
-    <main className="gp-checkout-shell min-h-screen px-3 py-6 sm:py-12">
-      <div className="mx-auto mb-5 max-w-[32rem] space-y-3 rounded-xl border border-border bg-card/95 p-4 text-center text-sm shadow-raised">
-        <strong>Checkout preview</strong>
-        <p className="text-xs text-muted">Fixed fixtures for visual QA. No money moves. Excluded from search indexing.</p>
-        <div className="flex flex-wrap justify-center gap-2" role="tablist" aria-label="Checkout states">
-          {STATES.map((state) => (
-            <button
-              key={state}
-              type="button"
-              role="tab"
-              aria-selected={view === state}
-              className={`rounded-md border px-2.5 py-1 text-[11px] font-semibold ${view === state ? "border-accent bg-accent/10" : "border-border"}`}
-              onClick={() => setView(state)}
-            >
-              {state}
-            </button>
-          ))}
-        </div>
-      </div>
-      {specimen}
-    </main>
-  );
+  const [view, setView] = useState("choose");
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => setNow(Date.now()), []);
+  const methods = [makeMethod("bkash", "bKash"), makeMethod("nagad", "Nagad"), makeMethod("rocket", "Rocket"), makeMethod("upay", "Upay"), makeMethod("cellfin", "Cellfin"), makeMethod("binance_pay", "Binance Pay", true), makeMethod("bybit_pay", "Bybit Pay", true), makeMethod("usdt_trc20", "USDT TRC-20", true)];
+  if (view === "waiting_sms") methods[0] = { ...methods[0], requiresTxidInput: false };
+  const submitted = ["submitted", "waiting_sms"].includes(view);
+  const session: CheckoutSession | null = now === null ? null : {
+    sessionId: "example-checkout-preview", linkId: "example", merchantName: "Illustrative merchant", merchantVerified: false,
+    orderTitle: "Example order · GP-0150", amount: 150, currency: "BDT", availableMethods: view === "empty" ? [] : methods,
+    ledgerMode: "test", verificationMode: view === "waiting_sms" ? "sms_auto" : "trx_id", requirePayerMatch: true,
+    paymentStatus: view === "success" ? "COMPLETED" : view === "expired" ? "EXPIRED" : view === "failed" ? "FAILED" : view === "refunded" ? "REFUNDED" : "PENDING",
+    submittedMethod: submitted || view === "success" ? "bkash" : null,
+    submittedTxid: view === "submitted" || view === "success" ? "EXAMPLE1234" : null,
+    awaitingEvidence: submitted,
+    expiresAt: new Date(now + (["expired", "confirming"].includes(view) ? -1000 : 15 * 60 * 1000)).toISOString(), createdAt: new Date(now).toISOString(),
+    returnUrl: "/checkout-preview",
+  };
+  const seed: CheckoutPreviewSeed = {
+    step: view === "payer" ? "payer" : view === "verify" ? "verify" : ["payment", "submitted", "waiting_sms"].includes(view) ? "payment" : undefined,
+    payerNumber: ["payment", "verify", "submitted", "waiting_sms"].includes(view) ? "01700000000" : undefined,
+    cancelMessage: view === "cancelled" ? "Illustrative cancelled checkout. No money moved." : undefined,
+  };
+  return <main className="gp-checkout-shell min-h-screen px-3 py-6 sm:px-6 sm:py-10">
+    <header className="mx-auto mb-6 flex max-w-[1064px] flex-wrap items-end justify-between gap-5 rounded-lg border border-border bg-card p-4 sm:p-5"><div className="min-w-0 max-w-xl"><h1 className="text-lg font-semibold">Checkout flow preview</h1><p className="mt-2 text-xs leading-6 text-muted">Every value is a labeled fixture. No payment APIs are called and no money moves. Do not transfer funds to these example destinations.</p></div><div className="flex items-end gap-3"><Select label="Review a checkout state" value={view} onChange={event => setView(event.target.value)} options={VIEWS}/><ThemeToggle/></div></header>
+    {session ? <HostedCheckoutModal key={view} session={session} demoMode previewSeed={seed}/> : <p role="status" className="p-10 text-center text-sm text-muted">Preparing the checkout preview…</p>}
+  </main>;
 }
