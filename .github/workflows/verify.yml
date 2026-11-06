@@ -144,10 +144,35 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run check:design
+      - run: npm run check:checkout
       - run: npx tsc --noEmit
       - run: npm run build
         env:
           NEXT_PUBLIC_DATA_SOURCE: live
+      - name: Checkout flow and responsive browser regressions
+        run: |
+          set -eu
+          npm run start -- --hostname 127.0.0.1 --port 3200 > /tmp/gresspay-checkout-server.log 2>&1 &
+          checkout_pid=$!
+          google-chrome --headless --no-sandbox --disable-dev-shm-usage \
+            --remote-debugging-port=9223 --user-data-dir="$RUNNER_TEMP/gresspay-checkout-chrome" \
+            about:blank > /tmp/gresspay-checkout-chrome.log 2>&1 &
+          browser_pid=$!
+          trap 'kill "$checkout_pid" "$browser_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3200/api/auth/session > /dev/null && curl -fsS http://127.0.0.1:9223/json/version > /dev/null; then break; fi
+            sleep 1
+          done
+          CHECKOUT_QA_BASE=http://127.0.0.1:3200 \
+          CHECKOUT_QA_CDP=http://127.0.0.1:9223/json \
+          CHECKOUT_QA_ARTIFACTS="$RUNNER_TEMP/gresspay-checkout-review" \
+            node scripts/check-checkout-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: checkout-flow-review
+          path: ${{ runner.temp }}/gresspay-checkout-review
+          if-no-files-found: ignore
       - name: Web security regression checks
         run: |
           set -eu
