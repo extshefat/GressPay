@@ -108,13 +108,15 @@ export function PlanUsageBanner({ usage, className = "" }: Props) {
     );
   }
 
-  if (atBrandLimit && brands.limit <= 1) {
+  // WS-03: show whenever brands.atLimit (not only Trial/Starter limit === 1).
+  if (atBrandLimit) {
     return shell(
       "brand-limit",
       <Alert variant="warning" title="Brand limit">
         <div className="flex flex-col gap-3 pr-8 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm">
-            Trial/Starter includes one website. Upgrade when you need another brand workspace.
+            You are using {brands.used} of {brands.limit} brand
+            {brands.limit === 1 ? "" : "s"} on your plan. Upgrade to add another website workspace.
           </p>
           <Link href="/fees">
             <Button size="sm" variant="secondary" rightIcon={<ArrowRight className="h-4 w-4" />}>

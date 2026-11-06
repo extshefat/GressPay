@@ -4,6 +4,7 @@ import {
   TTL_DEFAULT_SEC,
   TTL_REMEMBER_SEC,
 } from "@/lib/session-cookie";
+import { fetchPhpUpstream } from "@/lib/php-upstream";
 
 function cookieSecure(req: NextRequest): boolean {
   return req.nextUrl.protocol === "https:" || process.env.NODE_ENV === "production";
@@ -90,7 +91,27 @@ export async function DELETE(req: NextRequest) {
   return res;
 }
 
+/** AUTH-03: shape alone is not enough — confirm the JWT with PHP /me. */
 export async function GET(req: NextRequest) {
   const token = req.cookies.get(SESSION_COOKIE)?.value;
-  return NextResponse.json({ ok: tokenShape(token) });
+  if (!tokenShape(token)) {
+    return NextResponse.json({ ok: false });
+  }
+  try {
+    const { response } = await fetchPhpUpstream(
+      "/api/v1/me",
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        signal: AbortSignal.timeout(5000),
+      },
+      { retriesPerOrigin: 0, perOriginTimeoutMs: 2000 }
+    );
+    return NextResponse.json({ ok: response.ok });
+  } catch {
+    return NextResponse.json({ ok: false });
+  }
 }

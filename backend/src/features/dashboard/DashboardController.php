@@ -50,13 +50,15 @@ final class DashboardController
             ]);
         }
 
+        // TXN-07: filter pending reconciliation by active ledger mode (live vs test).
+        $mode = (string) ($actor['mode'] ?? 'live');
         $pendingRows = GpDb::all(
             "SELECT session_id, amount, currency, method_code, status, trx_id, gateway_id, ledger_mode, expires_at, created_at, updated_at
              FROM gp_transactions
-             WHERE brand_id = ? AND status IN ('pending', 'initiated')
+             WHERE brand_id = ? AND ledger_mode = ? AND status IN ('pending', 'initiated')
              ORDER BY id DESC
              LIMIT 100",
-            [$brandId]
+            [$brandId, $mode]
         );
         $pendingSessions = [];
         foreach ($pendingRows as $r) {

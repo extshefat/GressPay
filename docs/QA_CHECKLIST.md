@@ -220,3 +220,4 @@ Ready for production? Yes / No
 - Recommended: Playwright smoke — login, add bKash gateway, complete checkout, webhook test.
 - SMTP + `TRUSTED_PROXIES` + R2 required for verify-email / QR / correct client IP.
 - Coolify: web `GRESSPAY_PHP_URL=http://php:8080` (same Docker network); php healthy before web; Google OAuth env on php.
+- Full Google login ops: [`docs/GOOGLE_LOGIN_OPS.md`](GOOGLE_LOGIN_OPS.md).

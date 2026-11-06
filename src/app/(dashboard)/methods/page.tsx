@@ -355,7 +355,7 @@ export default function GatewaysPage() {
   const [gateways, setGateways] = useState<MerchantGateway[]>([]);
   const [availableOptions, setAvailableOptions] = useState<MethodMeta[]>(ALL_METHOD_OPTIONS);
   const [r2Configured, setR2Configured] = useState(false);
-  const [maxBytes, setMaxBytes] = useState(5242880);
+  const [maxBytes, setMaxBytes] = useState(3 * 1024 * 1024);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -417,7 +417,7 @@ export default function GatewaysPage() {
       ]);
       setGateways(gwData.gateways || []);
       setR2Configured(Boolean(gwData.r2Configured));
-      setMaxBytes(gwData.maxUploadBytes || 5242880);
+      setMaxBytes(Math.min(gwData.maxUploadBytes || 3 * 1024 * 1024, 3 * 1024 * 1024));
 
       const activeB = (brandData.brands || []).find(
         (b: { brandId: string; name: string; verificationMode?: string }) =>
@@ -1432,8 +1432,8 @@ export default function GatewaysPage() {
                         setErrorMessage("Only PNG, JPEG, or WebP images are allowed.");
                         return;
                       }
-                      if (file.size > 5 * 1024 * 1024) {
-                        setErrorMessage("File exceeds 5MB limit.");
+                      if (file.size > 3 * 1024 * 1024) {
+                        setErrorMessage("File exceeds 3MB limit.");
                         return;
                       }
                       setFormQrFile(file);

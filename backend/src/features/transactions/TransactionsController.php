@@ -47,13 +47,43 @@ final class TransactionsController
                 $params[] = $like;
                 $params[] = $like;
             }
+            // TXN-03: real COUNT for total; LIMIT only applies to returned rows.
+            $countSql = 'SELECT COUNT(*) AS c FROM gp_transactions WHERE brand_id = ? AND ledger_mode = ?';
+            $countParams = [$actor['brand_id'], $actor['mode']];
+            if ($status !== '') {
+                $upper = strtoupper($status);
+                if ($upper === 'PENDING') {
+                    $countSql .= ' AND status IN (?, ?)';
+                    $countParams[] = 'initiated';
+                    $countParams[] = 'pending';
+                } else {
+                    $dbStatus = match ($upper) {
+                        'COMPLETED' => 'completed',
+                        'EXPIRED' => 'expired',
+                        'FAILED' => 'failed',
+                        'REFUNDED' => 'refunded',
+                        default => strtolower($status),
+                    };
+                    $countSql .= ' AND status = ?';
+                    $countParams[] = $dbStatus;
+                }
+            }
+            if ($q !== '') {
+                $like = '%' . $q . '%';
+                $countSql .= ' AND (session_id LIKE ? OR trx_id LIKE ? OR merchant_order_id LIKE ? OR customer_json LIKE ?)';
+                $countParams[] = $like;
+                $countParams[] = $like;
+                $countParams[] = $like;
+                $countParams[] = $like;
+            }
+            $total = (int) (GpDb::one($countSql, $countParams)['c'] ?? 0);
             $sql .= ' ORDER BY id DESC LIMIT 100';
             $rows = GpDb::all($sql, $params);
             $transactions = array_map(
                 static fn ($row) => GpPresenters::transaction($row, $brand, $merchant),
                 $rows
             );
-            GpJson::send(['transactions' => $transactions, 'total' => count($transactions)]);
+            GpJson::send(['transactions' => $transactions, 'total' => $total]);
         }
 
         if ($req->method === 'GET' && $id !== null && $action === null) {

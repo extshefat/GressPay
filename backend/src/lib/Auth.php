@@ -335,12 +335,21 @@ final class GpAuth
             if ($own !== null) {
                 return $own;
             }
+            // WS-02: invalid X-GressPay-Brand / claim — fall back to first owned brand
+            // instead of dropping brand context entirely.
+            $ownFirst = GpDb::one(
+                'SELECT * FROM gp_brands WHERE merchant_id = ? ORDER BY id ASC',
+                [$merchantId]
+            );
+            if ($ownFirst !== null) {
+                return $ownFirst;
+            }
         } else {
             $ownFirst = GpDb::one(
                 'SELECT * FROM gp_brands WHERE merchant_id = ? ORDER BY id ASC',
                 [$merchantId]
             );
-            if ($ownFirst !== null && $wanted === '') {
+            if ($ownFirst !== null) {
                 // Still check team if header empty — prefer own brand.
                 return $ownFirst;
             }

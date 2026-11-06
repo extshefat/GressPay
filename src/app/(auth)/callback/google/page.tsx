@@ -12,6 +12,25 @@ import { Spinner } from "@/components/ui/spinner";
 import { GressPayLogo } from "@/components/brand/GressPayLogo";
 import { CheckCircle2, AlertCircle, ArrowLeft } from "lucide-react";
 
+function mapGoogleOAuthError(code: string, _description: string | null): string {
+  switch (code) {
+    case "access_denied":
+      return "Google sign-in was cancelled. You can try again or use email instead.";
+    case "immediately_available_login_required":
+    case "login_required":
+      return "Google needs you to sign in again. Please retry Continue with Google.";
+    case "invalid_request":
+    case "unauthorized_client":
+    case "unsupported_response_type":
+      return "Google sign-in is misconfigured on this server. Contact the platform operator.";
+    case "server_error":
+    case "temporarily_unavailable":
+      return "Google is temporarily unavailable. Wait a moment and try again.";
+    default:
+      return "Google authentication could not be completed. Please try again or use email.";
+  }
+}
+
 function GoogleCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -31,9 +50,8 @@ function GoogleCallbackContent() {
       if (errorParam) {
         if (alive) {
           setStatus("error");
-          setErrorMessage(
-            errorDescription || `Google authentication was cancelled or rejected (${errorParam}).`
-          );
+          // AUTH-04: never render raw Google error_description in the UI.
+          setErrorMessage(mapGoogleOAuthError(errorParam, errorDescription));
         }
         return;
       }

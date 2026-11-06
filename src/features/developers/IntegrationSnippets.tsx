@@ -1,16 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Check, Copy } from "lucide-react";
 
-const HOST = "https://gresspay.extxcheats.com/api/v1";
+function apiHost(): string {
+  const env = (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "");
+  if (env) return `${env}/api/v1`;
+  if (typeof window !== "undefined" && window.location?.origin) {
+    return `${window.location.origin}/api/v1`;
+  }
+  return "https://gresspay.extxcheats.com/api/v1";
+}
 
 type Lang = "curl" | "php" | "laravel" | "node" | "wordpress";
 
-const SNIPPETS: Record<Lang, { label: string; code: string }> = {
-  curl: {
-    label: "cURL",
-    code: `curl -X POST ${HOST}/payment/create \\
+function buildSnippets(host: string): Record<Lang, { label: string; code: string }> {
+  return {
+    curl: {
+      label: "cURL",
+      code: `curl -X POST ${host}/payment/create \\
   -H "Authorization: Bearer gp_live_your_key" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -23,11 +31,11 @@ const SNIPPETS: Record<Lang, { label: string; code: string }> = {
     "cancel_url": "https://shop.example/cancel",
     "webhook_url": "https://shop.example/hooks/gresspay"
   }'`,
-  },
-  php: {
-    label: "PHP",
-    code: `<?php
-$ch = curl_init('${HOST}/payment/create');
+    },
+    php: {
+      label: "PHP",
+      code: `<?php
+$ch = curl_init('${host}/payment/create');
 curl_setopt_array($ch, [
   CURLOPT_POST => true,
   CURLOPT_RETURNTRANSFER => true,
@@ -48,14 +56,14 @@ curl_setopt_array($ch, [
 ]);
 $data = json_decode(curl_exec($ch), true);
 header('Location: ' . ($data['payment_url'] ?? $data['payUrl']));`,
-  },
-  laravel: {
-    label: "Laravel",
-    code: `<?php
+    },
+    laravel: {
+      label: "Laravel",
+      code: `<?php
 use Illuminate\\Support\\Facades\\Http;
 
 $response = Http::withToken(config('services.gresspay.key'))
-    ->post('${HOST}/payment/create', [
+    ->post('${host}/payment/create', [
         'amount' => '500.00',
         'currency' => 'BDT',
         'order_id' => (string) $order->id,
@@ -69,10 +77,10 @@ $response = Http::withToken(config('services.gresspay.key'))
     ->json();
 
 return redirect()->away($response['payment_url'] ?? $response['payUrl']);`,
-  },
-  node: {
-    label: "Node / Next.js",
-    code: `const res = await fetch("${HOST}/payment/create", {
+    },
+    node: {
+      label: "Node / Next.js",
+      code: `const res = await fetch("${host}/payment/create", {
   method: "POST",
   headers: {
     Authorization: "Bearer " + process.env.GRESSPAY_API_KEY,
@@ -91,12 +99,12 @@ return redirect()->away($response['payment_url'] ?? $response['payUrl']);`,
 });
 const data = await res.json();
 // Redirect the buyer to data.payment_url (alias: data.payUrl)`,
-  },
-  wordpress: {
-    label: "WordPress / Woo",
-    code: `<?php
+    },
+    wordpress: {
+      label: "WordPress / Woo",
+      code: `<?php
 // Call from the server (checkout handler / REST), never from the browser.
-$response = wp_remote_post('${HOST}/payment/create', [
+$response = wp_remote_post('${host}/payment/create', [
   'headers' => [
     'Authorization' => 'Bearer ' . getenv('GRESSPAY_API_KEY'),
     'Content-Type' => 'application/json',
@@ -115,8 +123,9 @@ $response = wp_remote_post('${HOST}/payment/create', [
 $body = json_decode(wp_remote_retrieve_body($response), true);
 wp_redirect($body['payment_url'] ?? $body['payUrl']);
 exit;`,
-  },
-};
+    },
+  };
+}
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -142,7 +151,9 @@ function CopyButton({ text }: { text: string }) {
 
 export function IntegrationSnippets() {
   const [lang, setLang] = useState<Lang>("curl");
-  const active = SNIPPETS[lang];
+  const host = useMemo(() => apiHost(), []);
+  const snippets = useMemo(() => buildSnippets(host), [host]);
+  const active = snippets[lang];
 
   return (
     <section id="snippets" className="space-y-4">
@@ -152,14 +163,14 @@ export function IntegrationSnippets() {
         </h2>
         <p className="mt-1 text-sm text-muted dark:text-muted">
           Create a session with your brand website API key (Dashboard → Brands), send the buyer to{" "}
-          <code className="font-mono text-xs">payment_url</code>, then confirm
-          with <code className="font-mono text-xs">POST /payment/verify</code> or{" "}
+          <code className="font-mono text-xs">payment_url</code>, then confirm with{" "}
+          <code className="font-mono text-xs">POST /payment/verify</code> or{" "}
           <code className="font-mono text-xs">GET /payment/status/{"{session_id}"}</code>.
         </p>
       </div>
 
       <div className="flex flex-wrap gap-1 rounded-xl border border-border bg-card p-1 dark:border-border dark:bg-canvas">
-        {(Object.keys(SNIPPETS) as Lang[]).map((key) => (
+        {(Object.keys(snippets) as Lang[]).map((key) => (
           <button
             key={key}
             type="button"
@@ -170,7 +181,7 @@ export function IntegrationSnippets() {
                 : "text-muted hover:text-ink dark:text-muted dark:hover:text-white"
             }`}
           >
-            {SNIPPETS[key].label}
+            {snippets[key].label}
           </button>
         ))}
       </div>
@@ -193,7 +204,7 @@ export function IntegrationSnippets() {
             Verify payment status (your server)
           </span>
           <CopyButton
-            text={`curl -s ${HOST}/checkout/verify-payment \\
+            text={`curl -s ${host}/checkout/verify-payment \\
   -H "Authorization: Bearer gp_live_your_key" \\
   -H "Content-Type: application/json" \\
   -d '{"sessionId":"chs_your_session_id"}'`}
@@ -201,10 +212,10 @@ export function IntegrationSnippets() {
         </div>
         <pre className="overflow-x-auto p-4 text-xs leading-relaxed text-on-ink">
           <code>{`// Buyer-facing status (public, no API key)
-GET ${HOST}/checkout/{sessionId}/status
+GET ${host}/checkout/{sessionId}/status
 
 // Verify by session id from your backend
-POST ${HOST}/checkout/verify-payment
+POST ${host}/checkout/verify-payment
 Authorization: Bearer gp_live_…
 { "sessionId": "chs_…" }`}</code>
         </pre>
