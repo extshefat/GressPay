@@ -35,9 +35,8 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user, onMenuCl
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [advancedTest, setAdvancedTest] = useState(false);
-  const [ledgerMode, setLedgerMode] = useState<"live" | "test">(() =>
-    typeof window !== "undefined" ? api.getLedgerMode() : "live"
-  );
+  // UX-02: always init "live" for SSR/hydration parity; sync from api in useEffect.
+  const [ledgerMode, setLedgerMode] = useState<"live" | "test">("live");
 
   const isAdmin = Boolean(
     user?.role === "admin" || user?.isAdmin || (user as { is_admin?: boolean })?.is_admin

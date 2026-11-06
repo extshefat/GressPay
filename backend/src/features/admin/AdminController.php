@@ -12,7 +12,7 @@ final class AdminController
 
         match ($action) {
             'stats' => self::stats(),
-            'support' => self::support($req, $id, $sub),
+            'support' => self::support($actor, $req, $id, $sub),
             'merchants' => match ($req->method) {
                 'GET' => self::listMerchants($req),
                 'POST' => match ($sub) {
@@ -77,7 +77,7 @@ final class AdminController
         };
     }
 
-    private static function support(GpRequest $req, string $id, string $sub): never
+    private static function support(array $actor, GpRequest $req, string $id, string $sub): never
     {
         if ($req->method === 'GET' && $id === '') {
             $rows = GpDb::all("SELECT ticket_id, subject, message, contact_email, status, reply, updated_at FROM gp_support_tickets ORDER BY CASE WHEN status = 'open' THEN 0 ELSE 1 END, id DESC LIMIT 100");
@@ -88,6 +88,9 @@ final class AdminController
             if ($reply === '' || strlen($reply) > 8000) GpJson::error('INVALID_REPLY', 'Enter a reply of up to 8000 bytes.', 400);
             $changed = GpDb::exec("UPDATE gp_support_tickets SET reply = ?, status = 'answered', updated_at = ? WHERE ticket_id = ? AND status = 'open'", [$reply, GpIds::now(), $id]);
             if (!$changed) GpJson::error('TICKET_CLOSED', 'Refresh the inbox. This ticket is unavailable or already answered.', 409);
+            self::logAudit((string) ($actor['email'] ?? ''), 'support_ticket', $id, 'support_reply', [
+                'reply_len' => strlen($reply),
+            ]);
             GpJson::send(['ok' => true]);
         }
         GpJson::error('NOT_FOUND', 'Unknown support action.', 404);
@@ -227,73 +230,73 @@ final class AdminController
             $params
         );
 
-        $out = [];
+        // ADMIN-01: aggregate one row per merchant (JOIN brands must not duplicate accounts).
+        $byMerchant = [];
         foreach ($rows as $r) {
             $mid = (string) $r['merchant_id'];
             $bid = (string) ($r['brand_id'] ?? '');
+            if (!isset($byMerchant[$mid])) {
+                $sub = GpDb::one('
+                    SELECT s.subscription_id, s.plan_id, s.status as sub_status, s.credits_remaining, s.credits_used, s.starts_at, s.expires_at,
+                           p.name as plan_name, p.code as plan_code
+                    FROM gp_subscriptions s
+                    LEFT JOIN gp_plans p ON p.plan_id = s.plan_id
+                    WHERE s.merchant_id = ? AND s.status = ?
+                    ORDER BY s.id DESC LIMIT 1
+                ', [$mid, 'active']);
 
-            // Fetch subscription and credit balance
-            $sub = GpDb::one('
-                SELECT s.subscription_id, s.plan_id, s.status as sub_status, s.credits_remaining, s.credits_used, s.starts_at, s.expires_at,
-                       p.name as plan_name, p.code as plan_code
-                FROM gp_subscriptions s
-                LEFT JOIN gp_plans p ON p.plan_id = s.plan_id
-                WHERE s.merchant_id = ? AND s.status = ?
-                ORDER BY s.id DESC LIMIT 1
-            ', [$mid, 'active']);
+                $creditRow = GpDb::one('
+                    SELECT balance_after FROM gp_credit_transactions
+                    WHERE merchant_id = ? ORDER BY id DESC LIMIT 1
+                ', [$mid]);
+                $credits = $creditRow ? (int) $creditRow['balance_after'] : ($sub ? (int) $sub['credits_remaining'] : 0);
 
-            // Get credit transaction total
-            $creditRow = GpDb::one('
-                SELECT balance_after FROM gp_credit_transactions
-                WHERE merchant_id = ? ORDER BY id DESC LIMIT 1
-            ', [$mid]);
-            $credits = $creditRow ? (int) $creditRow['balance_after'] : ($sub ? (int) $sub['credits_remaining'] : 0);
+                $byMerchant[$mid] = [
+                    'id' => $mid,
+                    'name' => $r['full_name'],
+                    'email' => $r['email'],
+                    'role' => $r['role'] ?? 'merchant',
+                    'planId' => $r['plan_id'] ?? 'starter',
+                    'planExpiresAt' => $r['plan_expires_at'] ?? null,
+                    'brandId' => $r['brand_id'],
+                    'brandName' => $r['brand_name'] ?? 'Merchant Store',
+                    'authProvider' => $r['auth_provider'] ?? 'local',
+                    'status' => $r['status'] ?? 'active',
+                    'credits' => $credits,
+                    'transactionsCount' => 0,
+                    'totalVolumeBdt' => 0.0,
+                    'deviceCount' => 0,
+                    'activeGatewaysCount' => 0,
+                    'subscription' => $sub ? [
+                        'id' => $sub['subscription_id'],
+                        'planId' => $sub['plan_id'],
+                        'planName' => $sub['plan_name'] ?? 'Standard Plan',
+                        'planCode' => $sub['plan_code'] ?? 'starter',
+                        'creditsRemaining' => (int) $sub['credits_remaining'],
+                        'creditsUsed' => (int) $sub['credits_used'],
+                        'startsAt' => $sub['starts_at'],
+                        'expiresAt' => $sub['expires_at'],
+                    ] : null,
+                    'createdAt' => $r['created_at'],
+                ];
+            }
 
-            // Count total transactions
-            $txCount = (int) (GpDb::one('SELECT COUNT(*) as c FROM gp_transactions WHERE brand_id = ?', [$bid])['c'] ?? 0);
-
-            // Count connected devices
-            $devCount = (int) (GpDb::one('SELECT COUNT(*) as c FROM gp_devices WHERE brand_id = ?', [$bid])['c'] ?? 0);
-
-            // Count active payment methods
-            $gwCount = (int) (GpDb::one("SELECT COUNT(*) as c FROM gp_methods WHERE brand_id = ? AND status = 'active'", [$bid])['c'] ?? 0);
-
-            // Total verified volume in BDT
+            if ($bid === '') {
+                continue;
+            }
+            if (empty($byMerchant[$mid]['brandId'])) {
+                $byMerchant[$mid]['brandId'] = $bid;
+                $byMerchant[$mid]['brandName'] = $r['brand_name'] ?? 'Merchant Store';
+            }
+            $byMerchant[$mid]['transactionsCount'] += (int) (GpDb::one('SELECT COUNT(*) as c FROM gp_transactions WHERE brand_id = ?', [$bid])['c'] ?? 0);
+            $byMerchant[$mid]['deviceCount'] += (int) (GpDb::one('SELECT COUNT(*) as c FROM gp_devices WHERE brand_id = ?', [$bid])['c'] ?? 0);
+            $byMerchant[$mid]['activeGatewaysCount'] += (int) (GpDb::one("SELECT COUNT(*) as c FROM gp_methods WHERE brand_id = ? AND status = 'active'", [$bid])['c'] ?? 0);
             $volRow = GpDb::one("SELECT COALESCE(SUM(amount), 0) as total FROM gp_transactions WHERE brand_id = ? AND status = 'completed' AND currency = 'BDT'", [$bid]);
-            $volBdt = (float) ($volRow['total'] ?? 0);
-
-            $out[] = [
-                'id' => $mid,
-                'name' => $r['full_name'],
-                'email' => $r['email'],
-                'role' => $r['role'] ?? 'merchant',
-                'planId' => $r['plan_id'] ?? 'starter',
-                'planExpiresAt' => $r['plan_expires_at'] ?? null,
-                'brandId' => $r['brand_id'],
-                'brandName' => $r['brand_name'] ?? 'Merchant Store',
-                'authProvider' => $r['auth_provider'] ?? 'local',
-                'status' => $r['status'] ?? 'active',
-                'credits' => $credits,
-                'transactionsCount' => $txCount,
-                'totalVolumeBdt' => $volBdt,
-                'deviceCount' => $devCount,
-                'activeGatewaysCount' => $gwCount,
-                'subscription' => $sub ? [
-                    'id' => $sub['subscription_id'],
-                    'planId' => $sub['plan_id'],
-                    'planName' => $sub['plan_name'] ?? 'Standard Plan',
-                    'planCode' => $sub['plan_code'] ?? 'starter',
-                    'creditsRemaining' => (int) $sub['credits_remaining'],
-                    'creditsUsed' => (int) $sub['credits_used'],
-                    'startsAt' => $sub['starts_at'],
-                    'expiresAt' => $sub['expires_at'],
-                ] : null,
-                'createdAt' => $r['created_at'],
-            ];
+            $byMerchant[$mid]['totalVolumeBdt'] += (float) ($volRow['total'] ?? 0);
         }
 
         GpJson::send([
-            'merchants' => $out,
+            'merchants' => array_values($byMerchant),
             'total' => $total,
             'page' => $page,
             'limit' => $limit,

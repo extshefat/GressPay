@@ -198,12 +198,21 @@ export const HostedCheckoutModal: React.FC<HostedCheckoutModalProps> = ({
       if (checkingExpiryRef.current || Date.now() < nextCheck) return;
       checkingExpiryRef.current = true;
       nextCheck = Date.now() + 5000;
+      // CHK-02: after the clock hits zero, do not stay on "Confirming…" forever.
       void api.getCheckoutStatus(session.sessionId).then(res => {
         if (!active) return;
-        setCheckoutStatus(res.status);
-        if (res.status === "COMPLETED") handleSuccessfulRedirect(res.redirectUrl || res.returnUrl || session.returnUrl);
+        if (res.status === "COMPLETED") {
+          setCheckoutStatus("COMPLETED");
+          handleSuccessfulRedirect(res.redirectUrl || res.returnUrl || session.returnUrl);
+          return;
+        }
+        if (res.status === "EXPIRED" || res.status === "FAILED" || res.status === "REFUNDED") {
+          setCheckoutStatus(res.status);
+          return;
+        }
+        setCheckoutStatus("EXPIRED");
       }).catch(() => {
-        if (active) setErrorMessage("Checking the final payment status. Keep this page open.");
+        if (active) setCheckoutStatus("EXPIRED");
       }).finally(() => { checkingExpiryRef.current = false; });
     };
     tick();

@@ -269,7 +269,7 @@ function TransactionsContent() {
           <div className="flex flex-wrap items-center gap-2">
             {/* Status Pills */}
             <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
-              {["ALL", "COMPLETED", "PENDING", "FAILED"].map((st) => (
+              {["ALL", "COMPLETED", "PENDING", "FAILED", "EXPIRED", "REFUNDED"].map((st) => (
                 <button
                   key={st}
                   type="button"
@@ -281,6 +281,23 @@ function TransactionsContent() {
                   }`}
                 >
                   {st}
+                </button>
+              ))}
+            </div>
+            {/* Method Pills (TXN-06) */}
+            <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+              {["ALL", ...Array.from(new Set(transactions.map((tx) => String(tx.paymentMethod || "").trim()).filter(Boolean))).sort()].map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMethodFilter(m)}
+                  className={`min-h-9 px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-colors ${
+                    methodFilter === m
+                      ? "bg-ink-solid text-white dark:bg-surface-muted dark:text-muted"
+                      : "bg-surface text-muted hover:bg-surface-muted dark:bg-surface dark:text-muted"
+                  }`}
+                >
+                  {m === "ALL" ? "ALL METHODS" : m}
                 </button>
               ))}
             </div>
@@ -318,18 +335,19 @@ function TransactionsContent() {
           <EmptyState
             title="No matching transactions found"
             description={
-              searchQuery || statusFilter !== "ALL"
-                ? "No transactions match your current search or status filter."
+              searchQuery || statusFilter !== "ALL" || methodFilter !== "ALL"
+                ? "No transactions match your current search or filters."
                 : "No customer payments have settled in this ledger mode yet."
             }
             action={
-              (searchQuery || statusFilter !== "ALL") && (
+              (searchQuery || statusFilter !== "ALL" || methodFilter !== "ALL") && (
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => {
                     setSearchQuery("");
                     setStatusFilter("ALL");
+                    setMethodFilter("ALL");
                   }}
                 >
                   Clear Filters

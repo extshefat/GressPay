@@ -567,7 +567,7 @@ export default function CompanionDevicesPage() {
                   <th className="py-2.5 px-4">Provider</th>
                   <th className="py-2.5 px-4">Amount</th>
                   <th className="py-2.5 px-4">Transaction ID (TrxID)</th>
-                  <th className="py-2.5 px-4">Sender Phone</th>
+                  <th className="py-2.5 px-4">Wallet / Number</th>
                   <th className="py-2.5 px-4">Device</th>
                   <th className="py-2.5 px-4">Status</th>
                 </tr>

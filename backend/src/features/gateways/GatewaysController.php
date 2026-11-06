@@ -264,7 +264,13 @@ final class GatewaysController
 
         if ($status === 'active') GpAuth::requireVerified($actor);
         [$gatewayFee, $feeType] = self::feeFromRequest($req, $gw);
-        $exchangeRate = self::nullableAmount($req->input('exchangeRate', $req->input('custom_rate_bdt', $gw['exchange_rate'] ?? null)));
+        // GW-02: honour exchangeRateMode=auto by clearing stale custom BDT/USDT rates.
+        $rateMode = strtolower(trim((string) $req->input('exchangeRateMode', $req->input('exchange_rate_mode', ''))));
+        if ($rateMode === 'auto') {
+            $exchangeRate = null;
+        } else {
+            $exchangeRate = self::nullableAmount($req->input('exchangeRate', $req->input('custom_rate_bdt', $gw['exchange_rate'] ?? null)));
+        }
         $gwCategoryIn = $req->input('gatewayCategory', $req->input('category', null));
         $gwCategory = $gwCategoryIn !== null
             ? trim((string) $gwCategoryIn)
@@ -1120,9 +1126,10 @@ final class GatewaysController
         }
         self::applyFeeToOptions($prev, $fee, $feeType);
         // BUG GW-01: only USDT method options may carry custom_rate_bdt (Binance FX must not bleed).
+        // GW-02: null/empty exchangeRate (auto mode) clears a stale custom_rate_bdt.
         if ($methodCode === 'usdt_trc20' && $exchangeRate !== null && $exchangeRate !== '' && (float) $exchangeRate > 0) {
             $prev['custom_rate_bdt'] = (float) $exchangeRate;
-        } elseif ($methodCode !== 'usdt_trc20' && isset($prev['custom_rate_bdt'])) {
+        } elseif (isset($prev['custom_rate_bdt'])) {
             unset($prev['custom_rate_bdt']);
         }
         $json = GpDb::storedWalletValue($methodCode, 'options', json_encode($prev, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
